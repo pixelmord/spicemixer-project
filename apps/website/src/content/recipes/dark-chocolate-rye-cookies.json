@@ -1,0 +1,34 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "Dark Chocolate Rye Cookies",
+  "description": "Deeply chocolatey, slightly malty cookies with crackled tops and a chewy centre. Rye flour does the heavy lifting.",
+  "author": { "@type": "Person", "name": "Inga Holm" },
+  "datePublished": "2026-04-19",
+  "recipeYield": "16 cookies",
+  "recipeCategory": "Dessert",
+  "recipeCuisine": "Scandinavian",
+  "keywords": ["chocolate", "vegetarian", "weekend", "make-ahead"],
+  "prepTime": "PT20M",
+  "cookTime": "PT12M",
+  "totalTime": "PT32M",
+  "recipeIngredient": [
+    "200g dark chocolate (70%), chopped",
+    "100g unsalted butter",
+    "120g dark muscovado sugar",
+    "2 large eggs",
+    "1 tsp vanilla extract",
+    "120g rye flour",
+    "1/2 tsp baking powder",
+    "1/2 tsp flaky sea salt"
+  ],
+  "recipeInstructions": [
+    "Melt chocolate and butter together over a bain-marie. Set aside to cool slightly.",
+    "Whisk eggs, sugar, and vanilla until thick and pale, about 3 minutes.",
+    "Fold the warm chocolate mixture into the eggs.",
+    "Sift over rye flour and baking powder, fold gently until just combined.",
+    "Chill the batter for 30 minutes — this is non-negotiable for the crackled top.",
+    "Scoop walnut-sized portions onto lined trays, leaving room to spread.",
+    "Bake at 180°C / 355°F for 11–12 minutes. Sprinkle with flaky salt while warm."
+  ]
+}

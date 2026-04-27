@@ -1,0 +1,40 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "Slow Tomato Confit",
+  "description": "Sweet, jammy tomatoes slow-cooked in olive oil with garlic and thyme. Great over toast or stirred through pasta.",
+  "image": "https://images.unsplash.com/photo-1607301406259-dfb186e15de8?w=1200&q=80",
+  "author": { "@type": "Person", "name": "Mira Castell" },
+  "datePublished": "2026-04-12",
+  "recipeYield": "4 servings",
+  "recipeCategory": "Side",
+  "recipeCuisine": "Italian",
+  "keywords": ["vegetarian", "make-ahead", "summer", "gluten-free"],
+  "prepTime": "PT15M",
+  "cookTime": "PT2H",
+  "totalTime": "PT2H15M",
+  "recipeIngredient": [
+    "1kg ripe cherry tomatoes",
+    "300ml extra-virgin olive oil",
+    "6 garlic cloves, lightly smashed",
+    "4 sprigs fresh thyme",
+    "1 tsp flaky sea salt",
+    "Freshly cracked black pepper"
+  ],
+  "recipeInstructions": [
+    { "@type": "HowToStep", "text": "Heat the oven to 130°C / 270°F." },
+    {
+      "@type": "HowToStep",
+      "text": "Place tomatoes in a single layer in a baking dish. Tuck garlic and thyme between them."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Pour over olive oil so tomatoes are mostly submerged. Sprinkle with salt and pepper."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Bake for 2 hours, until tomatoes are collapsed and jammy. Cool in the oil."
+    },
+    { "@type": "HowToStep", "text": "Store in a sealed jar in the fridge for up to a week." }
+  ]
+}
