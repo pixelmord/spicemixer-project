@@ -1,0 +1,173 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import FilterBar from "../components/FilterBar.astro";
+import RecipeCard from "../components/RecipeCard.astro";
+import { keywordList } from "../lib/instructions.ts";
+
+const recipes = (await getCollection("recipes")).sort((a, b) => {
+  const da = a.data.datePublished ?? "";
+  const db = b.data.datePublished ?? "";
+  return db.localeCompare(da);
+});
+
+const categories = [
+  ...new Set(recipes.map((r) => r.data.recipeCategory).filter((c): c is string => Boolean(c))),
+].sort();
+const cuisines = [
+  ...new Set(recipes.map((r) => r.data.recipeCuisine).filter((c): c is string => Boolean(c))),
+].sort();
+const tags = [
+  ...new Set(recipes.flatMap((r) => keywordList(r.data.keywords))),
+].sort();
+---
+
+<BaseLayout
+  title="Spicemixer — Recipes"
+  description="A small collection of recipes worth cooking again."
+>
+  <main class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+    <header class="mb-10">
+      <p class="text-xs font-semibold uppercase tracking-[0.3em] text-stone-500">
+        Spicemixer
+      </p>
+      <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900 sm:text-6xl">
+        Recipes worth cooking again.
+      </h1>
+      <p class="mt-3 max-w-2xl text-lg text-stone-600">
+        A growing collection of dishes from a home kitchen. Filter by tag, category, or cuisine.
+      </p>
+    </header>
+
+    <FilterBar
+      tags={tags}
+      categories={categories}
+      cuisines={cuisines}
+      totalCount={recipes.length}
+    />
+
+    <section
+      data-recipe-grid
+      class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4"
+    >
+      {recipes.map((recipe) => <RecipeCard recipe={recipe} />)}
+    </section>
+
+    <p
+      data-empty-state
+      hidden
+      class="mt-16 text-center text-stone-500"
+    >
+      No recipes match these filters yet.
+    </p>
+  </main>
+</BaseLayout>
+
+<script>
+  const PARAM_KEYS = { category: "category", cuisine: "cuisine", tag: "tag" };
+
+  function readState() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      category: new Set(params.getAll(PARAM_KEYS.category)),
+      cuisine: new Set(params.getAll(PARAM_KEYS.cuisine)),
+      tag: new Set(params.getAll(PARAM_KEYS.tag)),
+    };
+  }
+
+  function writeState(state) {
+    const params = new URLSearchParams();
+    Object.keys(state).forEach((type) => {
+      state[type].forEach((value) => params.append(PARAM_KEYS[type], value));
+    });
+    const query = params.toString();
+    const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+    history.replaceState(null, "", url);
+  }
+
+  function matches(card, state) {
+    if (state.category.size > 0 && !state.category.has(card.dataset.category ?? "")) {
+      return false;
+    }
+    if (state.cuisine.size > 0 && !state.cuisine.has(card.dataset.cuisine ?? "")) {
+      return false;
+    }
+    if (state.tag.size > 0) {
+      const cardTags = (card.dataset.tags ?? "").split(",").filter(Boolean);
+      if (!cardTags.some((t) => state.tag.has(t))) return false;
+    }
+    return true;
+  }
+
+  function applyState(state) {
+    const cards = document.querySelectorAll("[data-recipe-card]");
+    let visible = 0;
+    cards.forEach((card) => {
+      const show = matches(card, state);
+      card.hidden = !show;
+      if (show) visible += 1;
+    });
+
+    document.querySelectorAll("[data-filter-type]").forEach((btn) => {
+      const type = btn.dataset.filterType;
+      const value = btn.dataset.filterValue ?? "";
+      btn.setAttribute("aria-pressed", state[type].has(value) ? "true" : "false");
+    });
+
+    const count = document.querySelector("[data-result-count]");
+    if (count) count.textContent = String(visible);
+
+    const empty = document.querySelector("[data-empty-state]");
+    if (empty) empty.hidden = visible !== 0;
+
+    const clear = document.querySelector("[data-clear-filters]");
+    if (clear) {
+      const hasAny = state.category.size + state.cuisine.size + state.tag.size > 0;
+      clear.dataset.active = hasAny ? "true" : "false";
+    }
+  }
+
+  function transition(update) {
+    if (
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      !("startViewTransition" in document)
+    ) {
+      update();
+      return;
+    }
+    document.startViewTransition(update);
+  }
+
+  function init() {
+    const bar = document.querySelector("[data-filter-bar]");
+    if (!bar || bar.dataset.bound === "true") return;
+    bar.dataset.bound = "true";
+
+    bar.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      const filterBtn = target.closest("[data-filter-type]");
+      if (filterBtn) {
+        const state = readState();
+        const type = filterBtn.dataset.filterType;
+        const value = filterBtn.dataset.filterValue ?? "";
+        if (state[type].has(value)) state[type].delete(value);
+        else state[type].add(value);
+        writeState(state);
+        transition(() => applyState(state));
+        return;
+      }
+
+      if (target.closest("[data-clear-filters]")) {
+        const empty = { category: new Set(), cuisine: new Set(), tag: new Set() };
+        writeState(empty);
+        transition(() => applyState(empty));
+      }
+    });
+
+    applyState(readState());
+  }
+
+  document.addEventListener("astro:page-load", init);
+</script>
