@@ -1,0 +1,31 @@
+---
+export const prerender = false;
+import AdminShell from "@/components/admin/AdminShell.tsx";
+import IngredientForm from "@/components/admin/IngredientForm.tsx";
+import { createStore } from "@/lib/content-store.ts";
+
+const { locale, slug } = Astro.params;
+if (!locale || !slug) return Astro.redirect("/admin/ingredients");
+
+const store = await createStore();
+const item = await store.get("ingredients", `${locale}/${slug}`);
+if (!item) return Astro.redirect("/admin/ingredients");
+
+const currentPath = Astro.url.pathname;
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{String((item.data as Record<string, unknown>).name ?? slug)} [{locale}] · Edit · Admin</title>
+  </head>
+  <body>
+    <AdminShell currentPath={currentPath} client:load>
+      <IngredientForm
+        locale={locale as "en" | "de"}
+        slug={slug}
+        initialData={item.data as never}
+        client:load
+      />
+    </AdminShell>
+  </body>
+</html>

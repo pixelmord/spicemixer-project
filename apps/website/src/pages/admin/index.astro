@@ -1,0 +1,113 @@
+---
+export const prerender = false;
+import AdminShell from "@/components/admin/AdminShell.tsx";
+import { createStore } from "@/lib/content-store.ts";
+import { scoreRecipe, scoreIngredient } from "@/lib/completeness.ts";
+
+const store = await createStore();
+const [recipes, spicemixes, sauces, metas, ingredients] = await Promise.all([
+  store.list("recipes"),
+  store.list("spicemixes"),
+  store.list("sauces"),
+  store.list("meta"),
+  store.list("ingredients"),
+]);
+
+const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown>]));
+
+const allRecipes = [...recipes, ...spicemixes, ...sauces];
+const published = allRecipes.filter((r) => {
+  const meta = metaMap.get(`${r.collection}/${r.id}`) ?? {};
+  return !(meta as Record<string, unknown>).draft;
+});
+const drafts = allRecipes.filter((r) => {
+  const meta = metaMap.get(`${r.collection}/${r.id}`) ?? {};
+  return !!(meta as Record<string, unknown>).draft;
+});
+
+// Completeness breakdown
+const scores = allRecipes.map((r) => {
+  const meta = metaMap.get(`${r.collection}/${r.id}`) ?? {};
+  return scoreRecipe(r.data as never, meta as never).score;
+});
+const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+const complete = scores.filter((s) => s >= 80).length;
+
+const currentPath = Astro.url.pathname;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin · SpiceMixer</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  </head>
+  <body>
+    <AdminShell currentPath={currentPath} client:load>
+      <div class="space-y-6">
+        <div>
+          <h1 class="text-2xl font-bold">Dashboard</h1>
+          <p class="text-muted-foreground text-sm">Content overview for spicemixer.local</p>
+        </div>
+
+        <!-- Stats grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="rounded-lg border border-border bg-card p-4">
+            <p class="text-xs text-muted-foreground font-medium uppercase tracking-widest">Total items</p>
+            <p class="text-3xl font-bold mt-1">{allRecipes.length + ingredients.length}</p>
+          </div>
+          <div class="rounded-lg border border-border bg-card p-4">
+            <p class="text-xs text-muted-foreground font-medium uppercase tracking-widest">Published</p>
+            <p class="text-3xl font-bold mt-1 text-emerald-600">{published.length}</p>
+          </div>
+          <div class="rounded-lg border border-border bg-card p-4">
+            <p class="text-xs text-muted-foreground font-medium uppercase tracking-widest">Drafts</p>
+            <p class="text-3xl font-bold mt-1 text-amber-600">{drafts.length}</p>
+          </div>
+          <div class="rounded-lg border border-border bg-card p-4">
+            <p class="text-xs text-muted-foreground font-medium uppercase tracking-widest">≥80% complete</p>
+            <p class="text-3xl font-bold mt-1">{complete}<span class="text-base text-muted-foreground font-normal">/{allRecipes.length}</span></p>
+          </div>
+        </div>
+
+        <!-- Quick links -->
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {[
+            { href: "/admin/recipes/new", label: "+ New recipe", color: "hover:border-blue-400" },
+            { href: "/admin/spicemixes/new", label: "+ New spicemix", color: "hover:border-purple-400" },
+            { href: "/admin/sauces/new", label: "+ New sauce", color: "hover:border-orange-400" },
+            { href: "/admin/ingredients/new", label: "+ New ingredient", color: "hover:border-green-400" },
+            { href: "/admin/recipes/import", label: "↓ Import from URL", color: "hover:border-pink-400" },
+            { href: "/admin/content", label: "View all content", color: "hover:border-zinc-400" },
+          ].map((link) => (
+            <a
+              href={link.href}
+              class={`flex items-center justify-center rounded-lg border border-border bg-card p-4 text-sm font-medium text-center transition-colors ${link.color}`}
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+
+        <!-- Collection breakdown -->
+        <div class="rounded-lg border border-border bg-card p-5">
+          <h2 class="font-semibold mb-3">Collections</h2>
+          <div class="divide-y divide-border">
+            {[
+              { label: "Recipes", count: recipes.length, href: "/admin/recipes" },
+              { label: "Spicemixes", count: spicemixes.length, href: "/admin/spicemixes" },
+              { label: "Sauces", count: sauces.length, href: "/admin/sauces" },
+              { label: "Ingredients", count: ingredients.length, href: "/admin/ingredients" },
+            ].map((c) => (
+              <div class="flex items-center justify-between py-2.5">
+                <a href={c.href} class="text-sm font-medium hover:underline">{c.label}</a>
+                <span class="text-sm text-muted-foreground">{c.count} items</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </AdminShell>
+  </body>
+</html>

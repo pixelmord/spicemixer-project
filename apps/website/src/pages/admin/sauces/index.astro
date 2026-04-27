@@ -1,0 +1,37 @@
+---
+export const prerender = false;
+import AdminShell from "@/components/admin/AdminShell.tsx";
+import ContentTable from "@/components/admin/ContentTable.tsx";
+import { createStore } from "@/lib/content-store.ts";
+import { scoreRecipe } from "@/lib/completeness.ts";
+import { Button } from "@/components/ui/button.tsx";
+
+const store = await createStore();
+const [items, metas] = await Promise.all([store.list("sauces"), store.list("meta")]);
+const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown>]));
+
+const rows = items.map((item) => {
+  const meta = metaMap.get(`sauces/${item.id}`) ?? {};
+  const completeness = scoreRecipe(item.data as never, meta as never);
+  return { type: "recipe" as const, collection: "sauces", id: item.id, name: String((item.data as Record<string, unknown>).name ?? item.id), draft: !!(meta as Record<string, unknown>).draft, completeness, updatedAt: item.updatedAt };
+});
+
+const currentPath = Astro.url.pathname;
+---
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Sauces · Admin · SpiceMixer</title></head>
+  <body>
+    <AdminShell currentPath={currentPath} client:load>
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h1 class="text-2xl font-bold">Sauces</h1>
+          <div class="flex gap-2">
+            <Button asChild variant="outline"><a href="/admin/sauces/import">Import from URL</a></Button>
+            <Button asChild><a href="/admin/sauces/new">+ New sauce</a></Button>
+          </div>
+        </div>
+        <ContentTable initialRows={rows} client:load />
+      </div>
+    </AdminShell>
+  </body>
+</html>

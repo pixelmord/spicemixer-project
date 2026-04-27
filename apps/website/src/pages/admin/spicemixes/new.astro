@@ -1,0 +1,14 @@
+---
+export const prerender = false;
+import AdminShell from "@/components/admin/AdminShell.tsx";
+import NewRecipePage from "@/components/admin/NewRecipePage.tsx";
+const currentPath = Astro.url.pathname;
+---
+<html lang="en">
+  <head><meta charset="utf-8" /><title>New spicemix · Admin</title></head>
+  <body>
+    <AdminShell currentPath={currentPath} client:load>
+      <NewRecipePage collection="spicemixes" client:load />
+    </AdminShell>
+  </body>
+</html>

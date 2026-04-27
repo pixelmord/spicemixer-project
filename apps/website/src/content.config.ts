@@ -59,6 +59,7 @@ const recipeLinkRef = z.object({
 
 const recipeMetaSchema = z.object({
   kind: z.enum(["recipe", "spicemix", "sauce"]).optional(),
+  draft: z.boolean().default(false),
   variantOf: z.string().optional(),
   variants: z.array(z.string()).default([]),
   goesWellWith: z.array(recipeLinkRef).default([]),

@@ -1,0 +1,38 @@
+---
+export const prerender = false;
+import AdminShell from "@/components/admin/AdminShell.tsx";
+import RecipeForm from "@/components/admin/RecipeForm.tsx";
+import { createStore } from "@/lib/content-store.ts";
+
+const { slug } = Astro.params;
+if (!slug) return Astro.redirect("/admin/recipes");
+
+const store = await createStore();
+const [item, metaItem] = await Promise.all([
+  store.get("recipes", slug),
+  store.get("meta", `recipes/${slug}`),
+]);
+
+if (!item) return Astro.redirect("/admin/recipes");
+
+const currentPath = Astro.url.pathname;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{String((item.data as Record<string, unknown>).name ?? slug)} · Edit · Admin</title>
+  </head>
+  <body>
+    <AdminShell currentPath={currentPath} client:load>
+      <RecipeForm
+        collection="recipes"
+        slug={slug}
+        initialRecipe={item.data as never}
+        initialMeta={metaItem?.data as never}
+        client:load
+      />
+    </AdminShell>
+  </body>
+</html>

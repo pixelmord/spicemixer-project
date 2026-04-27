@@ -1,0 +1,54 @@
+---
+export const prerender = false;
+import AdminShell from "@/components/admin/AdminShell.tsx";
+import ContentTable from "@/components/admin/ContentTable.tsx";
+import { createStore } from "@/lib/content-store.ts";
+import { scoreRecipe } from "@/lib/completeness.ts";
+import { Button } from "@/components/ui/button.tsx";
+
+const store = await createStore();
+const [items, metas] = await Promise.all([store.list("recipes"), store.list("meta")]);
+const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown>]));
+
+const rows = items.map((item) => {
+  const meta = metaMap.get(`recipes/${item.id}`) ?? {};
+  const completeness = scoreRecipe(item.data as never, meta as never);
+  return {
+    type: "recipe" as const,
+    collection: "recipes",
+    id: item.id,
+    name: String((item.data as Record<string, unknown>).name ?? item.id),
+    draft: !!(meta as Record<string, unknown>).draft,
+    completeness,
+    updatedAt: item.updatedAt,
+  };
+});
+
+const currentPath = Astro.url.pathname;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recipes · Admin · SpiceMixer</title>
+  </head>
+  <body>
+    <AdminShell currentPath={currentPath} client:load>
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h1 class="text-2xl font-bold">Recipes</h1>
+          <div class="flex gap-2">
+            <Button asChild variant="outline">
+              <a href="/admin/recipes/import">Import from URL</a>
+            </Button>
+            <Button asChild>
+              <a href="/admin/recipes/new">+ New recipe</a>
+            </Button>
+          </div>
+        </div>
+        <ContentTable initialRows={rows} client:load />
+      </div>
+    </AdminShell>
+  </body>
+</html>
