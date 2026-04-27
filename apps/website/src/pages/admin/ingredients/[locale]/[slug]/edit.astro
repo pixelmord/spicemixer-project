@@ -16,6 +16,7 @@ const currentPath = Astro.url.pathname;
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <link rel="stylesheet" href="/src/styles/global.css" />
     <title>{String((item.data as Record<string, unknown>).name ?? slug)} [{locale}] · Edit · Admin</title>
   </head>
   <body>

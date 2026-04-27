@@ -4,13 +4,14 @@ import AdminShell from "@/components/admin/AdminShell.tsx";
 import ContentTable from "@/components/admin/ContentTable.tsx";
 import { actions } from "astro:actions";
 
-const { data: rows = [], error } = await Astro.callAction(actions.listAll, {});
+const { data: rows = [], error } = await Astro.callAction(actions.listAll, undefined as never);
 const currentPath = Astro.url.pathname;
 ---
 
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <link rel="stylesheet" href="/src/styles/global.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>All content · Admin · SpiceMixer</title>
   </head>

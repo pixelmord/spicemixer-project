@@ -5,7 +5,8 @@ import ImportFromUrl from "@/components/admin/ImportFromUrl.tsx";
 const currentPath = Astro.url.pathname;
 ---
 <html lang="en">
-  <head><meta charset="utf-8" /><title>Import spicemix · Admin</title></head>
+  <head><meta charset="utf-8" />
+    <link rel="stylesheet" href="/src/styles/global.css" /><title>Import spicemix · Admin</title></head>
   <body>
     <AdminShell currentPath={currentPath} client:load>
       <ImportFromUrl client:load />

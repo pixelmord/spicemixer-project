@@ -4,7 +4,6 @@ import AdminShell from "@/components/admin/AdminShell.tsx";
 import ContentTable from "@/components/admin/ContentTable.tsx";
 import { createStore } from "@/lib/content-store.ts";
 import { scoreRecipe } from "@/lib/completeness.ts";
-import { Button } from "@/components/ui/button.tsx";
 
 const store = await createStore();
 const [items, metas] = await Promise.all([store.list("sauces"), store.list("meta")]);
@@ -19,15 +18,16 @@ const rows = items.map((item) => {
 const currentPath = Astro.url.pathname;
 ---
 <html lang="en">
-  <head><meta charset="utf-8" /><title>Sauces · Admin · SpiceMixer</title></head>
+  <head><meta charset="utf-8" />
+    <link rel="stylesheet" href="/src/styles/global.css" /><title>Sauces · Admin · SpiceMixer</title></head>
   <body>
     <AdminShell currentPath={currentPath} client:load>
       <div class="space-y-4">
         <div class="flex items-center justify-between">
           <h1 class="text-2xl font-bold">Sauces</h1>
           <div class="flex gap-2">
-            <Button asChild variant="outline"><a href="/admin/sauces/import">Import from URL</a></Button>
-            <Button asChild><a href="/admin/sauces/new">+ New sauce</a></Button>
+            <a href="/admin/sauces/import" class="inline-flex items-center justify-center rounded-lg border border-border bg-background px-2.5 h-8 text-sm font-medium hover:bg-muted transition-colors">Import from URL</a>
+            <a href="/admin/sauces/new" class="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-2.5 h-8 text-sm font-medium hover:opacity-90 transition-colors">+ New sauce</a>
           </div>
         </div>
         <ContentTable initialRows={rows} client:load />

@@ -2,11 +2,10 @@ import { readdir, readFile, writeFile, unlink, stat } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import type { Collection, ContentItem, ContentStore } from "../content-store.ts";
 
-// Resolve src/content/ relative to this file at runtime.
-const CONTENT_ROOT = join(fileURLToPath(import.meta.url), "../../../../content");
+// process.cwd() is the Astro project root in both dev and SSR contexts.
+const CONTENT_ROOT = join(process.cwd(), "src/content");
 
 /** Map a collection + id to an absolute file path. */
 function idToPath(collection: Collection, id: string): string {

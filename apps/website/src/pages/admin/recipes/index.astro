@@ -30,6 +30,7 @@ const currentPath = Astro.url.pathname;
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <link rel="stylesheet" href="/src/styles/global.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Recipes · Admin · SpiceMixer</title>
   </head>
@@ -39,12 +40,8 @@ const currentPath = Astro.url.pathname;
         <div class="flex items-center justify-between">
           <h1 class="text-2xl font-bold">Recipes</h1>
           <div class="flex gap-2">
-            <Button asChild variant="outline">
-              <a href="/admin/recipes/import">Import from URL</a>
-            </Button>
-            <Button asChild>
-              <a href="/admin/recipes/new">+ New recipe</a>
-            </Button>
+            <a href="/admin/recipes/import" class="inline-flex items-center justify-center rounded-lg border border-border bg-background px-2.5 h-8 text-sm font-medium hover:bg-muted transition-colors">Import from URL</a>
+            <a href="/admin/recipes/new" class="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-2.5 h-8 text-sm font-medium hover:opacity-90 transition-colors">+ New recipe</a>
           </div>
         </div>
         <ContentTable initialRows={rows} client:load />
