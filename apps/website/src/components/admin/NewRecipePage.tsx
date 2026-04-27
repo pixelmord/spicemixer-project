@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState, useEffect } from "react";
 import RecipeForm from "./RecipeForm.tsx";
 import type { RecipeCollection } from "@/lib/content-store.ts";
 
@@ -6,36 +6,56 @@ interface Props {
   collection: RecipeCollection;
 }
 
-/** Reads import data from sessionStorage (set by ImportFromUrl widget) on mount. */
+interface ImportData {
+  recipe: Record<string, unknown>;
+  meta: Record<string, unknown>;
+}
+
+/**
+ * Reads import data from sessionStorage (set by ImportFromUrl widget) then mounts
+ * RecipeForm. Must use useEffect so sessionStorage is read after hydration — useMemo
+ * runs during SSR where window/sessionStorage don't exist, causing the form to
+ * initialise with empty defaultValues before the import data is available.
+ */
 export default function NewRecipePage({ collection }: Props) {
-  const { recipe, meta } = useMemo(() => {
-    if (typeof window === "undefined") return { recipe: undefined, meta: undefined };
+  const [ready, setReady] = useState(false);
+  const [importData, setImportData] = useState<ImportData | null>(null);
+
+  useEffect(() => {
     const stored = sessionStorage.getItem("import-recipe");
-    if (!stored) return { recipe: undefined, meta: undefined };
-    sessionStorage.removeItem("import-recipe");
-    try {
-      const parsed = JSON.parse(stored) as {
-        recipe: Record<string, unknown>;
-        source: { url: string };
-      };
-      const importedMeta = {
-        draft: true,
-        externalSources: [
-          { url: parsed.source.url, title: String(parsed.recipe.name ?? "Imported recipe") },
-        ],
-      };
-      return { recipe: parsed.recipe, meta: importedMeta };
-    } catch {
-      return { recipe: undefined, meta: undefined };
+    if (stored) {
+      sessionStorage.removeItem("import-recipe");
+      try {
+        const parsed = JSON.parse(stored) as {
+          recipe: Record<string, unknown>;
+          source: { url: string };
+        };
+        setImportData({
+          recipe: parsed.recipe,
+          meta: {
+            draft: true,
+            externalSources: [
+              { url: parsed.source.url, title: String(parsed.recipe.name ?? "Imported recipe") },
+            ],
+          },
+        });
+      } catch {
+        // malformed — proceed with empty form
+      }
     }
+    setReady(true);
   }, []);
+
+  // Don't mount RecipeForm until useEffect has run — this guarantees useForm
+  // and the ingredient/instruction useState hooks all initialise from the correct data.
+  if (!ready) return null;
 
   return (
     <RecipeForm
       collection={collection}
       isNew
-      initialRecipe={recipe as never}
-      initialMeta={meta as never}
+      initialRecipe={importData?.recipe as never}
+      initialMeta={importData?.meta as never}
     />
   );
 }
