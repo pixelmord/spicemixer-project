@@ -14,4 +14,16 @@ export default defineConfig({
     },
   },
   fmt: {},
+  test: {
+    include: ["tests/**/*.test.ts"],
+    environment: "node",
+    testTimeout: 10_000,
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      exclude: ["src/types.ts", "src/index.ts"],
+      reporter: ["text", "html"],
+    },
+    globals: false,
+  },
 });

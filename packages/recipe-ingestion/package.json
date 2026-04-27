@@ -1,17 +1,8 @@
 {
   "name": "recipe-ingestion",
   "version": "0.0.0",
-  "description": "A starter for creating a TypeScript package.",
-  "homepage": "https://github.com/author/library#readme",
-  "bugs": {
-    "url": "https://github.com/author/library/issues"
-  },
+  "description": "Fetch and normalize schema.org Recipe JSON-LD from third-party websites.",
   "license": "MIT",
-  "author": "Author Name <author.name@mail.com>",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/author/library.git"
-  },
   "files": [
     "dist"
   ],
@@ -20,9 +11,6 @@
     ".": "./dist/index.mjs",
     "./package.json": "./package.json"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
@@ -30,11 +18,17 @@
     "check": "vp check",
     "prepublishOnly": "vp run build"
   },
+  "dependencies": {
+    "zod": "catalog:"
+  },
   "devDependencies": {
     "@types/node": "^25.5.0",
     "@typescript/native-preview": "7.0.0-dev.20260328.1",
     "bumpp": "^11.0.1",
     "typescript": "^6.0.2",
-    "vite-plus": "^0.1.14"
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

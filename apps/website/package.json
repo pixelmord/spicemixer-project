@@ -16,8 +16,10 @@
     "astro": "^6.1.9",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "recipe-ingestion": "workspace:*",
     "tailwindcss": "catalog:",
-    "utils": "workspace:*"
+    "utils": "workspace:*",
+    "zod": "catalog:"
   },
   "engines": {
     "node": ">=22.12.0"

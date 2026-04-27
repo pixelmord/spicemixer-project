@@ -1,6 +1,9 @@
 import { defineCollection, z } from "astro:content";
 import { glob } from "astro/loaders";
 
+// Schema kept in sync with packages/recipe-ingestion/src/schema.ts.
+// Both must represent identical shapes; the ingestion package validates on ingest,
+// Astro validates on build.
 const isoDuration = z.string().regex(/^PT(?:\d+H)?(?:\d+M)?(?:\d+S)?$/, {
   message: "Expected ISO-8601 duration like PT15M or PT2H30M",
 });
