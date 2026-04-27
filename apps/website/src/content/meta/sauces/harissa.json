@@ -1,0 +1,19 @@
+{
+  "kind": "sauce",
+  "variants": [],
+  "goesWellWith": [{ "collection": "recipes", "slug": "preserved-lemon-couscous" }],
+  "usesBase": [{ "collection": "spicemixes", "slug": "ras-el-hanout" }],
+  "ingredientLinks": [
+    { "pattern": "caraway seeds", "slug": "caraway" },
+    { "pattern": "caraway", "slug": "caraway" },
+    { "pattern": "cumin", "slug": "cumin" }
+  ],
+  "externalSources": [
+    {
+      "url": "https://www.bonappetit.com/recipe/harissa-chicken",
+      "title": "Harissa Chicken with Spring Vegetables",
+      "source": "Bon Appétit"
+    }
+  ],
+  "tags": ["signature", "fiery", "pantry"]
+}

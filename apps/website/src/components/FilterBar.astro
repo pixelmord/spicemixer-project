@@ -1,23 +1,22 @@
 ---
 import { useTranslations, type Lang } from "../i18n/translations.ts";
 
-interface Props {
-  tags: string[];
-  categories: string[];
-  cuisines: string[];
-  totalCount: number;
+export interface FilterGroup {
+  /** URL param key; also used to derive the data-filter-{key} attribute on cards. */
+  key: string;
+  label: string;
+  values: Array<{ value: string; label: string }>;
 }
 
-const { tags, categories, cuisines, totalCount } = Astro.props;
+interface Props {
+  groups: FilterGroup[];
+  totalCount: number;
+  /** Optional suffix after the visible-count number, e.g. "of 24 recipes". */
+  countSuffix?: string;
+}
+
+const { groups, totalCount, countSuffix } = Astro.props;
 const t = useTranslations((Astro.currentLocale ?? "en") as Lang);
-
-const countSuffix = t("filter.count").replace("{total}", String(totalCount));
-
-const sections = [
-  { type: "category", label: t("filter.category"), values: categories },
-  { type: "cuisine", label: t("filter.cuisine"), values: cuisines },
-  { type: "tag", label: t("filter.tag"), values: tags },
-] as const;
 ---
 
 <aside
@@ -27,7 +26,7 @@ const sections = [
   <div class="flex flex-wrap items-center justify-between gap-2">
     <p class="text-sm text-stone-600">
       <span data-result-count>{totalCount}</span>
-      {" "}{countSuffix}
+      {countSuffix && <>{" "}{countSuffix}</>}
     </p>
     <button
       type="button"
@@ -40,23 +39,23 @@ const sections = [
 
   <div class="mt-3 space-y-2">
     {
-      sections.map((section) =>
-        section.values.length > 0 ? (
+      groups.map((group) =>
+        group.values.length > 0 ? (
           <div class="flex flex-wrap items-baseline gap-2">
             <span class="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-400">
-              {section.label}
+              {group.label}
             </span>
             <ul class="flex flex-wrap gap-1.5">
-              {section.values.map((value) => (
+              {group.values.map(({ value, label }) => (
                 <li>
                   <button
                     type="button"
-                    data-filter-type={section.type}
+                    data-filter-type={group.key}
                     data-filter-value={value}
                     aria-pressed="false"
                     class="rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-700 transition hover:border-stone-400 aria-[pressed=true]:border-stone-900 aria-[pressed=true]:bg-stone-900 aria-[pressed=true]:text-white"
                   >
-                    {value}
+                    {label}
                   </button>
                 </li>
               ))}
@@ -67,3 +66,7 @@ const sections = [
     }
   </div>
 </aside>
+
+<script>
+  import "../scripts/filter-bar.ts";
+</script>

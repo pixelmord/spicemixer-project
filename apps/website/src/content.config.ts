@@ -49,12 +49,71 @@ const recipeSchema = z.object({
     .optional(),
 });
 
+const recipeLinkRef = z.object({
+  collection: z.enum(["recipes", "spicemixes", "sauces"]),
+  slug: z.string(),
+});
+
+const recipeMetaSchema = z.object({
+  kind: z.enum(["recipe", "spicemix", "sauce"]).optional(),
+  variantOf: z.string().optional(),
+  variants: z.array(z.string()).default([]),
+  goesWellWith: z.array(recipeLinkRef).default([]),
+  usesBase: z.array(recipeLinkRef).default([]),
+  ingredientLinks: z.array(z.object({ pattern: z.string(), slug: z.string() })).default([]),
+  externalSources: z
+    .array(
+      z.object({
+        url: z.string().url(),
+        title: z.string(),
+        source: z.string().optional(),
+      }),
+    )
+    .default([]),
+  tags: z.array(z.string()).default([]),
+});
+
+const ingredientSchema = z.object({
+  name: z.string(),
+  summary: z.string().optional(),
+  description: z.string().optional(),
+  image: z.string().url().optional(),
+  category: z.enum(["spice", "herb", "seed", "dried-fruit", "salt", "acid", "allium", "other"]),
+  origin: z.array(z.string()).default([]),
+  flavorNotes: z.array(z.string()).default([]),
+  pairings: z.array(z.object({ slug: z.string(), note: z.string().optional() })).default([]),
+});
+
 const recipes = defineCollection({
   loader: glob({ pattern: "**/*.json", base: "./src/content/recipes" }),
   schema: recipeSchema,
 });
 
-export const collections = { recipes };
+const spicemixes = defineCollection({
+  loader: glob({ pattern: "**/*.json", base: "./src/content/spicemixes" }),
+  schema: recipeSchema,
+});
+
+const sauces = defineCollection({
+  loader: glob({ pattern: "**/*.json", base: "./src/content/sauces" }),
+  schema: recipeSchema,
+});
+
+const meta = defineCollection({
+  loader: glob({ pattern: "**/*.json", base: "./src/content/meta" }),
+  schema: recipeMetaSchema,
+});
+
+const ingredients = defineCollection({
+  // Pattern matches only locale-prefixed subdirectories: en/slug.json, de/slug.json, etc.
+  // Root-level files are intentionally excluded.
+  loader: glob({ pattern: "[a-z][a-z]/*.json", base: "./src/content/ingredients" }),
+  schema: ingredientSchema,
+});
+
+export const collections = { recipes, spicemixes, sauces, meta, ingredients };
 
 import type { CollectionEntry } from "astro:content";
 export type Recipe = CollectionEntry<"recipes">["data"];
+export type Ingredient = CollectionEntry<"ingredients">["data"];
+export type RecipeMeta = CollectionEntry<"meta">["data"];

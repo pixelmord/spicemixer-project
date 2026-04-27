@@ -2,172 +2,177 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import FilterBar from "../components/FilterBar.astro";
-import RecipeCard from "../components/RecipeCard.astro";
-import { keywordList } from "../lib/instructions.ts";
+import RecipeMeta from "../components/RecipeMeta.astro";
+import { firstImage, keywordList } from "../lib/instructions.ts";
 import { useTranslations, type Lang } from "../i18n/translations.ts";
 
 const t = useTranslations((Astro.currentLocale ?? "en") as Lang);
+const locale = Astro.currentLocale ?? "en";
+const prefix = locale === "de" ? "/de" : "";
 
-const recipes = (await getCollection("recipes")).sort((a, b) => {
-  const da = a.data.datePublished ?? "";
-  const db = b.data.datePublished ?? "";
-  return db.localeCompare(da);
-});
+const [spicemixes, sauces] = await Promise.all([
+  getCollection("spicemixes"),
+  getCollection("sauces"),
+]);
 
-const categories = [
-  ...new Set(recipes.map((r) => r.data.recipeCategory).filter((c): c is string => Boolean(c))),
-].sort();
+const items = [
+  ...spicemixes.map((e) => ({ entry: e, kind: "spicemix" as const })),
+  ...sauces.map((e) => ({ entry: e, kind: "sauce" as const })),
+].sort((a, b) =>
+  (b.entry.data.datePublished ?? "").localeCompare(a.entry.data.datePublished ?? ""),
+);
+
 const cuisines = [
-  ...new Set(recipes.map((r) => r.data.recipeCuisine).filter((c): c is string => Boolean(c))),
+  ...new Set(items.map((i) => i.entry.data.recipeCuisine).filter((c): c is string => Boolean(c))),
 ].sort();
 const tags = [
-  ...new Set(recipes.flatMap((r) => keywordList(r.data.keywords))),
+  ...new Set(items.flatMap((i) => keywordList(i.entry.data.keywords))),
 ].sort();
+
+const groups = [
+  {
+    key: "kind",
+    label: t("filter.kind"),
+    values: [
+      { value: "spicemix", label: t("badge.spicemix") },
+      { value: "sauce", label: t("badge.sauce") },
+    ],
+  },
+  { key: "cuisine", label: t("filter.cuisine"), values: cuisines.map((v) => ({ value: v, label: v })) },
+  { key: "tags", label: t("filter.tag"), values: tags.map((v) => ({ value: v, label: v })) },
+];
+
+const badgeClass = {
+  spicemix: "bg-amber-100 text-amber-800",
+  sauce: "bg-rose-100 text-rose-800",
+};
+
+const gradientClass = {
+  spicemix: "from-amber-50 via-stone-50 to-orange-50",
+  sauce: "from-rose-50 via-stone-50 to-amber-50",
+};
 ---
 
 <BaseLayout title={t("page.home.title")} description={t("page.home.description")}>
   <main class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
     <header class="mb-10">
-      <p class="text-xs font-semibold uppercase tracking-[0.3em] text-stone-500">
-        Spicemixer
-      </p>
-      <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900 sm:text-6xl">
+      <h1 class="font-serif text-5xl leading-tight text-stone-900 sm:text-6xl">
         {t("page.home.tagline")}
       </h1>
-      <p class="mt-3 max-w-2xl text-lg text-stone-600">
-        {t("page.home.description")}
-      </p>
+      <p class="mt-3 max-w-2xl text-lg text-stone-600">{t("page.home.description")}</p>
     </header>
 
-    <FilterBar
-      tags={tags}
-      categories={categories}
-      cuisines={cuisines}
-      totalCount={recipes.length}
-    />
+    <FilterBar groups={groups} totalCount={items.length} />
 
-    <section
-      data-recipe-grid
-      class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4"
-    >
-      {recipes.map((recipe) => <RecipeCard recipe={recipe} />)}
+    <section class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
+      {
+        items.map(({ entry, kind }) => {
+          const data = entry.data;
+          const slug = entry.id;
+          const href = `${prefix}/${kind === "spicemix" ? "spicemixes" : "sauces"}/${slug}/`;
+          const image = firstImage(data.image);
+          const tags = keywordList(data.keywords);
+          const transitionName = `${kind}-${slug}`;
+          const badge = t(kind === "spicemix" ? "badge.spicemix" : "badge.sauce");
+
+          return (
+            <article
+              data-filter-item
+              data-filter-kind={kind}
+              data-filter-cuisine={data.recipeCuisine ?? ""}
+              data-filter-tags={tags.join(",")}
+              class="mb-6 break-inside-avoid rounded-2xl bg-white shadow-sm ring-1 ring-stone-200 transition hover:shadow-md hover:ring-stone-300"
+            >
+              <a
+                href={href}
+                class="group block overflow-hidden rounded-2xl"
+                style={`view-transition-name: ${transitionName};`}
+              >
+                {image ? (
+                  <>
+                    <figure class="overflow-hidden">
+                      <img
+                        src={image}
+                        alt={data.name}
+                        loading="lazy"
+                        class="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                      />
+                    </figure>
+                    <div class="space-y-1 px-5 py-4">
+                      <span
+                        class:list={[
+                          "inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                          badgeClass[kind],
+                        ]}
+                      >
+                        {badge}
+                      </span>
+                      <h3 class="font-serif text-xl leading-tight text-stone-900">{data.name}</h3>
+                      {data.description && (
+                        <p class="line-clamp-2 text-sm text-stone-600">{data.description}</p>
+                      )}
+                      <RecipeMeta
+                        prepTime={data.prepTime}
+                        totalTime={data.totalTime}
+                        recipeYield={data.recipeYield as string | number | undefined}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div class:list={["bg-gradient-to-br px-6 pb-2 pt-7", gradientClass[kind]]}>
+                    <span
+                      class:list={[
+                        "inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                        badgeClass[kind],
+                      ]}
+                    >
+                      {badge}
+                    </span>
+                    <h3 class="mt-2 font-serif text-3xl leading-tight text-stone-900">{data.name}</h3>
+                    {data.description && (
+                      <p class="mt-2 text-sm italic text-stone-600">{data.description}</p>
+                    )}
+                    {data.recipeIngredient.length > 0 && (
+                      <ul class="mt-4 space-y-1 text-sm text-stone-700">
+                        {data.recipeIngredient.slice(0, 4).map((ing) => (
+                          <li class="border-b border-dashed border-stone-300 pb-1 last:border-0">
+                            {ing}
+                          </li>
+                        ))}
+                        {data.recipeIngredient.length > 4 && (
+                          <li class="pt-1 text-xs text-stone-500">
+                            {t("recipe.more").replace("{n}", String(data.recipeIngredient.length - 4))}
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                    <div class="py-4">
+                      <RecipeMeta
+                        prepTime={data.prepTime}
+                        totalTime={data.totalTime}
+                        recipeYield={data.recipeYield as string | number | undefined}
+                      />
+                    </div>
+                  </div>
+                )}
+                {tags.length > 0 && (
+                  <ul class="flex flex-wrap gap-1.5 px-5 pb-4 pt-0">
+                    {tags.slice(0, 4).map((tag) => (
+                      <li class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">
+                        {tag}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </a>
+            </article>
+          );
+        })
+      }
     </section>
 
-    <p
-      data-empty-state
-      hidden
-      class="mt-16 text-center text-stone-500"
-    >
+    <p data-empty-state hidden class="mt-16 text-center text-stone-500">
       {t("filter.empty")}
     </p>
   </main>
 </BaseLayout>
-
-<script>
-  const PARAM_KEYS = { category: "category", cuisine: "cuisine", tag: "tag" };
-
-  function readState() {
-    const params = new URLSearchParams(window.location.search);
-    return {
-      category: new Set(params.getAll(PARAM_KEYS.category)),
-      cuisine: new Set(params.getAll(PARAM_KEYS.cuisine)),
-      tag: new Set(params.getAll(PARAM_KEYS.tag)),
-    };
-  }
-
-  function writeState(state) {
-    const params = new URLSearchParams();
-    Object.keys(state).forEach((type) => {
-      state[type].forEach((value) => params.append(PARAM_KEYS[type], value));
-    });
-    const query = params.toString();
-    const url = query ? `${window.location.pathname}?${query}` : window.location.pathname;
-    history.replaceState(null, "", url);
-  }
-
-  function matches(card, state) {
-    if (state.category.size > 0 && !state.category.has(card.dataset.category ?? "")) {
-      return false;
-    }
-    if (state.cuisine.size > 0 && !state.cuisine.has(card.dataset.cuisine ?? "")) {
-      return false;
-    }
-    if (state.tag.size > 0) {
-      const cardTags = (card.dataset.tags ?? "").split(",").filter(Boolean);
-      if (!cardTags.some((t) => state.tag.has(t))) return false;
-    }
-    return true;
-  }
-
-  function applyState(state) {
-    const cards = document.querySelectorAll("[data-recipe-card]");
-    let visible = 0;
-    cards.forEach((card) => {
-      const show = matches(card, state);
-      card.hidden = !show;
-      if (show) visible += 1;
-    });
-
-    document.querySelectorAll("[data-filter-type]").forEach((btn) => {
-      const type = btn.dataset.filterType;
-      const value = btn.dataset.filterValue ?? "";
-      btn.setAttribute("aria-pressed", state[type].has(value) ? "true" : "false");
-    });
-
-    const count = document.querySelector("[data-result-count]");
-    if (count) count.textContent = String(visible);
-
-    const empty = document.querySelector("[data-empty-state]");
-    if (empty) empty.hidden = visible !== 0;
-
-    const clear = document.querySelector("[data-clear-filters]");
-    if (clear) {
-      const hasAny = state.category.size + state.cuisine.size + state.tag.size > 0;
-      clear.dataset.active = hasAny ? "true" : "false";
-    }
-  }
-
-  function transition(update) {
-    if (
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
-      !("startViewTransition" in document)
-    ) {
-      update();
-      return;
-    }
-    document.startViewTransition(update);
-  }
-
-  function init() {
-    const bar = document.querySelector("[data-filter-bar]");
-    if (!bar || bar.dataset.bound === "true") return;
-    bar.dataset.bound = "true";
-
-    bar.addEventListener("click", (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) return;
-
-      const filterBtn = target.closest("[data-filter-type]");
-      if (filterBtn) {
-        const state = readState();
-        const type = filterBtn.dataset.filterType;
-        const value = filterBtn.dataset.filterValue ?? "";
-        if (state[type].has(value)) state[type].delete(value);
-        else state[type].add(value);
-        writeState(state);
-        transition(() => applyState(state));
-        return;
-      }
-
-      if (target.closest("[data-clear-filters]")) {
-        const empty = { category: new Set(), cuisine: new Set(), tag: new Set() };
-        writeState(empty);
-        transition(() => applyState(empty));
-      }
-    });
-
-    applyState(readState());
-  }
-
-  document.addEventListener("astro:page-load", init);
-</script>

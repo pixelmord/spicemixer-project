@@ -1,0 +1,23 @@
+{
+  "kind": "spicemix",
+  "variants": [],
+  "goesWellWith": [
+    { "collection": "recipes", "slug": "preserved-lemon-couscous" },
+    { "collection": "sauces", "slug": "harissa" }
+  ],
+  "usesBase": [],
+  "ingredientLinks": [
+    { "pattern": "cardamom pods, seeds only", "slug": "cardamom" },
+    { "pattern": "cardamom", "slug": "cardamom" },
+    { "pattern": "cumin seeds", "slug": "cumin" },
+    { "pattern": "cumin", "slug": "cumin" }
+  ],
+  "externalSources": [
+    {
+      "url": "https://www.seriouseats.com/moroccan-chicken-tagine-recipe",
+      "title": "Chicken Tagine with Ras el Hanout and Preserved Lemon",
+      "source": "Serious Eats"
+    }
+  ],
+  "tags": ["signature", "moroccan"]
+}

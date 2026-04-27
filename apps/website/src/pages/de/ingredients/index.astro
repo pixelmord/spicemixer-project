@@ -1,0 +1,104 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import FilterBar from "../../../components/FilterBar.astro";
+import { useTranslations } from "../../../i18n/translations.ts";
+
+const t = useTranslations("de");
+const prefix = "/de";
+
+const allIngredients = await getCollection("ingredients");
+const enMap = new Map(
+  allIngredients.filter((e) => e.id.startsWith("en/")).map((e) => [e.id.replace(/^en\//, ""), e]),
+);
+const deMap = new Map(
+  allIngredients.filter((e) => e.id.startsWith("de/")).map((e) => [e.id.replace(/^de\//, ""), e]),
+);
+
+const slugs = [...new Set([...enMap.keys(), ...deMap.keys()])].sort();
+const ingredients = slugs.map((slug) => ({
+  slug,
+  data: (deMap.get(slug) ?? enMap.get(slug))!.data,
+}));
+
+const categories = [...new Set(ingredients.map((i) => i.data.category))].sort();
+
+const groups = [
+  { key: "category", label: t("filter.category"), values: categories.map((v) => ({ value: v, label: v })) },
+];
+
+const categoryColors: Record<string, string> = {
+  spice: "bg-amber-50 text-amber-700",
+  herb: "bg-emerald-50 text-emerald-700",
+  seed: "bg-stone-100 text-stone-600",
+  "dried-fruit": "bg-orange-50 text-orange-700",
+  salt: "bg-sky-50 text-sky-700",
+  acid: "bg-yellow-50 text-yellow-700",
+  allium: "bg-purple-50 text-purple-700",
+  other: "bg-stone-100 text-stone-600",
+};
+---
+
+<BaseLayout title={t("page.ingredients.title")} description={t("page.ingredients.description")}>
+  <main class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+    <header class="mb-10">
+      <p class="text-xs font-semibold uppercase tracking-[0.3em] text-stone-500">Spicemixer</p>
+      <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900 sm:text-6xl">
+        {t("page.ingredients.tagline")}
+      </h1>
+      <p class="mt-3 max-w-2xl text-lg text-stone-600">{t("page.ingredients.description")}</p>
+    </header>
+
+    <FilterBar groups={groups} totalCount={ingredients.length} />
+
+    <section class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
+      {
+        ingredients.map(({ slug, data }) => {
+          const href = `${prefix}/ingredients/${slug}/`;
+          const colorClass = categoryColors[data.category] ?? categoryColors.other;
+          return (
+            <article
+              data-filter-item
+              data-filter-category={data.category}
+              class="mb-6 break-inside-avoid rounded-2xl bg-white shadow-sm ring-1 ring-stone-200 transition hover:shadow-md hover:ring-stone-300"
+            >
+              <a href={href} class="group block overflow-hidden rounded-2xl">
+                {data.image ? (
+                  <>
+                    <figure class="overflow-hidden">
+                      <img src={data.image} alt={data.name} loading="lazy" class="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
+                    </figure>
+                    <div class="px-5 py-4">
+                      <span class:list={["inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", colorClass]}>
+                        {data.category}
+                      </span>
+                      <h3 class="mt-1 font-serif text-xl leading-tight text-stone-900">{data.name}</h3>
+                      {data.summary && <p class="mt-1 line-clamp-2 text-sm text-stone-600">{data.summary}</p>}
+                    </div>
+                  </>
+                ) : (
+                  <div class="bg-gradient-to-br from-amber-50 via-stone-50 to-rose-50 px-6 pb-5 pt-7">
+                    <span class:list={["inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", colorClass]}>
+                      {data.category}
+                    </span>
+                    <h3 class="mt-2 font-serif text-3xl leading-tight text-stone-900">{data.name}</h3>
+                    {data.summary && <p class="mt-2 line-clamp-3 text-sm italic text-stone-600">{data.summary}</p>}
+                    {data.flavorNotes.length > 0 && (
+                      <ul class="mt-3 flex flex-wrap gap-1">
+                        {data.flavorNotes.slice(0, 3).map((note) => (
+                          <li class="rounded-full bg-white/60 px-2 py-0.5 text-[10px] text-stone-500">{note}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </a>
+            </article>
+          );
+        })
+      }
+    </section>
+
+    <p data-empty-state hidden class="mt-16 text-center text-stone-500">{t("filter.empty")}</p>
+  </main>
+</BaseLayout>

@@ -1,0 +1,19 @@
+{
+  "name": "Sumach",
+  "summary": "Ein frisches, zitroniges Gewürz aus getrockneten Sumachbeeren — das wichtigste Säuerungsmittel der nahöstlichen und mediterranen Küche.",
+  "description": "Sumach bringt fruchtige Säure, ohne die Schärfe von Essig oder die blumige Süße von Zitrone. Er ist das Abschlussgewürz auf Fattoush, Hummus und gegrilltem Fleisch und eine Schlüsselnote in Za'atar-Mischungen. Das tiefburgunderfarbene Pulver verliert seine Frische schnell — in kleinen Mengen kaufen und innerhalb von 6 Monaten verbrauchen. Seine herbe, adstringierende Qualität ist ideal, um schwere Fette in Dressings und Marinaden aufzubrechen.",
+  "image": "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&q=80",
+  "category": "spice",
+  "origin": ["Libanon", "Türkei", "Sizilien"],
+  "flavorNotes": ["herb", "fruchtig", "adstringierend", "zitrusartig"],
+  "pairings": [
+    {
+      "slug": "cumin",
+      "note": "Gemeinsam erzeugen sie das charakteristische Aroma vieler Fattoush-Dressings und Kebab-Gewürzmischungen."
+    },
+    {
+      "slug": "fenugreek",
+      "note": "Sumachs Säure belebt und hebt die bittersüße Tiefe des Bockshornklees in Gewürzmischungen."
+    }
+  ]
+}

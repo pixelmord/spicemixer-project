@@ -1,0 +1,31 @@
+{
+  "name": { "en": "Cardamom", "de": "Kardamom" },
+  "summary": {
+    "en": "One of the world's most versatile spices — sweet, camphor-like, and floral. Equally at home in chai, coffee, biryanis, and Scandinavian bakes.",
+    "de": "Eines der vielseitigsten Gewürze der Welt — süß, kampferartig und blumig. Zu Hause in Chai, Kaffee, Biryanis und skandinavischem Gebäck."
+  },
+  "description": {
+    "en": "Green cardamom pods contain tiny black seeds with a warming, eucalyptus-like fragrance. Always buy whole pods and crack them fresh — pre-ground cardamom loses its character within weeks. Black cardamom (a different species) is smokier and used primarily in savoury cooking. Cardamom is defined by a tension between its sweetness and its cooling, almost menthol quality, making it uniquely adaptable across sweet and savoury applications.",
+    "de": "Grüne Kardamomkapseln enthalten winzige schwarze Samen mit einem wärmenden, eukalyptusartigen Duft. Immer ganze Kapseln kaufen und frisch aufbrechen — gemahlener Kardamom verliert sein Aroma innerhalb weniger Wochen. Schwarzer Kardamom (eine andere Art) ist rauchiger und wird vor allem in herzhaften Gerichten verwendet. Kardamom lebt von der Spannung zwischen seiner Süße und seiner kühlenden, fast mentholähnlichen Qualität."
+  },
+  "image": "https://images.unsplash.com/photo-1607189117789-2f40f68e96e5?w=800&q=80",
+  "category": "spice",
+  "origin": ["Guatemala", "India", "Sri Lanka"],
+  "flavorNotes": ["floral", "camphor", "warm", "citrusy"],
+  "pairings": [
+    {
+      "slug": "saffron",
+      "note": {
+        "en": "A Persian classic — the combination anchors many rice and dessert traditions from Iran to India.",
+        "de": "Ein persischer Klassiker — die Kombination prägt viele Reis- und Desserttraditionen von Iran bis Indien."
+      }
+    },
+    {
+      "slug": "cumin",
+      "note": {
+        "en": "Together they form the warm spine of many spice blends including ras el hanout and garam masala.",
+        "de": "Gemeinsam bilden sie die warme Basis vieler Gewürzmischungen, darunter Ras el Hanout und Garam Masala."
+      }
+    }
+  ]
+}

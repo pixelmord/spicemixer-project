@@ -1,0 +1,14 @@
+{
+  "kind": "spicemix",
+  "variants": [],
+  "goesWellWith": [],
+  "usesBase": [],
+  "ingredientLinks": [
+    { "pattern": "fenugreek seeds", "slug": "fenugreek" },
+    { "pattern": "fenugreek", "slug": "fenugreek" },
+    { "pattern": "cardamom pods, seeds only", "slug": "cardamom" },
+    { "pattern": "cardamom", "slug": "cardamom" }
+  ],
+  "externalSources": [],
+  "tags": ["signature", "ethiopian", "spicy"]
+}

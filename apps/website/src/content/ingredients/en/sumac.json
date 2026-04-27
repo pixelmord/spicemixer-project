@@ -1,0 +1,19 @@
+{
+  "name": "Sumac",
+  "summary": "A bright, lemony spice ground from dried sumac berries. The go-to souring agent across Middle Eastern and Mediterranean cuisines.",
+  "description": "Sumac brings fruity acidity without the sharpness of vinegar or the floral sweetness of lemon. It's the finishing spice on fattoush, hummus, and grilled meats, and a key flavour in za'atar blends. The deep burgundy powder loses its vibrancy quickly — buy in small quantities and use within 6 months. Its tart, astringent quality makes it ideal for cutting through rich fats in dressings and marinades.",
+  "image": "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&q=80",
+  "category": "spice",
+  "origin": ["Lebanon", "Turkey", "Sicily"],
+  "flavorNotes": ["tart", "fruity", "astringent", "citrusy"],
+  "pairings": [
+    {
+      "slug": "cumin",
+      "note": "Together they create the signature flavour of many fattoush dressings and kebab seasonings."
+    },
+    {
+      "slug": "fenugreek",
+      "note": "Sumac's tartness brightens and lifts the bitter-sweet depth of fenugreek in spice blends."
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+---
+import { useTranslations, type Lang } from "../i18n/translations.ts";
+
+const locale = (Astro.currentLocale ?? "en") as Lang;
+const t = useTranslations(locale);
+const prefix = locale === "de" ? "/de" : "";
+
+const sections = [
+  { href: `${prefix}/ingredients/`, key: "nav.ingredients" as const },
+  { href: `${prefix}/spicemixes/`, key: "nav.spicemixes" as const },
+  { href: `${prefix}/sauces/`, key: "nav.sauces" as const },
+  { href: `${prefix}/recipes/`, key: "nav.recipes" as const },
+];
+
+const pathname = Astro.url.pathname;
+
+function isActive(href: string) {
+  const normalized = href.replace(/\/$/, "");
+  return pathname === href || pathname === normalized || pathname.startsWith(href);
+}
+---
+
+<nav aria-label="Site sections" class="flex flex-wrap items-center gap-x-6 gap-y-2">
+  {
+    sections.map(({ href, key }) => (
+      <a
+        href={href}
+        aria-current={isActive(href) ? "page" : undefined}
+        class:list={[
+          "text-sm transition",
+          isActive(href)
+            ? "font-semibold text-stone-900"
+            : "text-stone-500 hover:text-stone-900",
+        ]}
+      >
+        {t(key)}
+      </a>
+    ))
+  }
+</nav>

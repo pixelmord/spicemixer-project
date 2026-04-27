@@ -1,0 +1,48 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "Harissa",
+  "description": "Smoky, fiery North African chile paste. The backbone of Tunisian cooking — use it in dressings, marinades, and anywhere heat and depth are needed.",
+  "image": "https://images.unsplash.com/photo-1599921841143-819065a55cc6?w=1200&q=80",
+  "author": { "@type": "Organization", "name": "Spicemixer" },
+  "datePublished": "2026-04-18",
+  "recipeYield": "about 300g",
+  "recipeCategory": "Sauce",
+  "recipeCuisine": "Tunisian",
+  "keywords": ["vegan", "spicy", "make-ahead", "north-african"],
+  "prepTime": "PT20M",
+  "cookTime": "PT10M",
+  "totalTime": "PT30M",
+  "recipeIngredient": [
+    "150g dried red chillies (ancho or New Mexico variety)",
+    "4 garlic cloves",
+    "1 tsp caraway seeds",
+    "1 tsp coriander seeds, ground",
+    "1 tsp cumin",
+    "3 tbsp extra-virgin olive oil",
+    "1 tsp salt",
+    "Juice of ½ lemon"
+  ],
+  "recipeInstructions": [
+    {
+      "@type": "HowToStep",
+      "name": "Rehydrate",
+      "text": "Remove stems and seeds from dried chillies. Soak in boiling water for 20 minutes until fully soft."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Toast",
+      "text": "Dry-toast caraway seeds in a small pan over medium heat for 1 minute until fragrant."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Blend",
+      "text": "Drain chillies and blend with garlic, caraway seeds, coriander, cumin, olive oil, salt, and lemon juice until smooth."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Store",
+      "text": "Transfer to a jar, cover with a thin layer of olive oil to seal. Refrigerate for up to 2 weeks."
+    }
+  ]
+}

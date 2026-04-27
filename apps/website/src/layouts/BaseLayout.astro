@@ -1,6 +1,7 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import LanguageSwitcher from "../components/LanguageSwitcher.astro";
+import SiteNav from "../components/SiteNav.astro";
 import "../styles/global.css";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 
 const { title, description } = Astro.props;
 const lang = Astro.currentLocale ?? "en";
+const homeHref = lang === "de" ? "/de/" : "/";
 ---
 
 <html lang={lang}>
@@ -36,10 +38,29 @@ const lang = Astro.currentLocale ?? "en";
       })();
     </script>
   </head>
-  <body class="min-h-screen bg-stone-50 text-stone-900 antialiased">
-    <div class="flex justify-end px-4 py-2 sm:px-6 lg:px-8">
+  <body class="flex min-h-screen flex-col bg-stone-50 text-stone-900 antialiased">
+    <div class="flex items-center justify-between px-4 py-2 sm:px-6 lg:px-8">
+      <a
+        href={homeHref}
+        class="text-xs font-semibold uppercase tracking-[0.3em] text-stone-500 transition hover:text-stone-900"
+      >
+        Spicemixer
+      </a>
       <LanguageSwitcher />
     </div>
-    <slot />
+    <div class="flex-1">
+      <slot />
+    </div>
+    <footer class="border-t border-stone-200 px-4 py-5 sm:px-6 lg:px-8">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4">
+        <SiteNav />
+        <a
+          href={homeHref}
+          class="shrink-0 text-xs font-semibold uppercase tracking-[0.3em] text-stone-400 transition hover:text-stone-600"
+        >
+          Spicemixer
+        </a>
+      </div>
+    </footer>
   </body>
 </html>

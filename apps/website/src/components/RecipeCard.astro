@@ -20,10 +20,10 @@ const href = locale === "de" ? `/de/recipes/${slug}/` : `/recipes/${slug}/`;
 const transitionName = `recipe-${slug}`;
 
 const filterAttrs = {
-  "data-recipe-card": "",
-  "data-category": data.recipeCategory ?? "",
-  "data-cuisine": data.recipeCuisine ?? "",
-  "data-tags": tags.join(","),
+  "data-filter-item": "",
+  "data-filter-category": data.recipeCategory ?? "",
+  "data-filter-cuisine": data.recipeCuisine ?? "",
+  "data-filter-tags": tags.join(","),
 };
 
 const fallbackLabel = [data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ") || t("recipe.fallback");

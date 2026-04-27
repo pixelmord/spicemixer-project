@@ -1,0 +1,28 @@
+---
+interface Props {
+  heading: string;
+  items: Array<{ name: string; href: string }>;
+}
+
+const { heading, items } = Astro.props;
+---
+
+{
+  items.length > 0 && (
+    <section class="mb-10">
+      <h2 class="mb-3 font-serif text-2xl text-stone-900">{heading}</h2>
+      <ul class="space-y-1.5">
+        {items.map(({ name, href }) => (
+          <li class="border-b border-dashed border-stone-200 pb-1.5">
+            <a
+              href={href}
+              class="text-amber-700 underline decoration-dotted underline-offset-2 hover:text-amber-900"
+            >
+              {name}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}

@@ -14,74 +14,71 @@ import {
 import { useTranslations } from "../../../i18n/translations.ts";
 
 export async function getStaticPaths() {
-  const recipes = await getCollection("recipes");
-  return recipes.map((recipe) => ({
-    params: { slug: recipe.id },
-    props: { recipe },
+  const sauces = await getCollection("sauces");
+  return sauces.map((sauce) => ({
+    params: { slug: sauce.id },
+    props: { sauce },
   }));
 }
 
 interface Props {
-  recipe: CollectionEntry<"recipes">;
+  sauce: CollectionEntry<"sauces">;
 }
 
-const { recipe } = Astro.props;
-const data = recipe.data;
-const slug = recipe.id;
-const image = firstImage(data.image);
-const tags = keywordList(data.keywords);
-const steps = normalizeInstructions(data.recipeInstructions);
-const transitionName = `recipe-${slug}`;
-const jsonLd = JSON.stringify(data);
+const { sauce } = Astro.props;
+const data = sauce.data;
+const slug = sauce.id;
 
 const t = useTranslations("de");
 const prefix = "/de";
 const ingredientBase = "/de/ingredients";
 
-const meta = await getMeta("recipes", slug);
+const image = firstImage(data.image);
+const tags = keywordList(data.keywords);
+const steps = normalizeInstructions(data.recipeInstructions);
+const transitionName = `sauce-${slug}`;
+const jsonLd = JSON.stringify(data);
+
+const meta = await getMeta("sauces", slug);
 const linkedIngredients = linkIngredients(data.recipeIngredient, meta.ingredientLinks);
-const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
+
+const [goesWellWithItems, usesBaseItems] = await Promise.all([
+  resolveRefs(meta.goesWellWith, prefix),
+  resolveRefs(meta.usesBase, prefix),
+]);
 ---
 
 <BaseLayout title={`${data.name} — Spicemixer`} description={data.description}>
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
     <nav class="mb-8 text-sm">
-      <a href="/de/recipes/" class="text-stone-500 transition hover:text-stone-900">
-        {t("nav.back")}
+      <a href="/de/sauces/" class="text-stone-500 transition hover:text-stone-900">
+        {t("nav.back.sauces")}
       </a>
     </nav>
 
     {
       image ? (
-        <figure
-          class="mb-8 overflow-hidden rounded-3xl"
-          style={`view-transition-name: ${transitionName};`}
-        >
+        <figure class="mb-8 overflow-hidden rounded-3xl" style={`view-transition-name: ${transitionName};`}>
           <img src={image} alt={data.name} class="aspect-[16/9] w-full object-cover" />
         </figure>
       ) : (
-        <div
-          class="mb-8 rounded-3xl bg-gradient-to-br from-amber-50 via-stone-50 to-emerald-50 p-10"
-          style={`view-transition-name: ${transitionName};`}
-        >
+        <div class="mb-8 rounded-3xl bg-gradient-to-br from-rose-50 via-stone-50 to-amber-50 p-10" style={`view-transition-name: ${transitionName};`}>
           <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
-            {[data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ") || t("recipe.fallback")}
+            {[data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ")}
           </p>
           <h1 class="mt-3 font-serif text-5xl leading-tight text-stone-900">{data.name}</h1>
         </div>
       )
     }
 
-    {
-      image && (
-        <header class="mb-6">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
-            {[data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ") || t("recipe.fallback")}
-          </p>
-          <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900">{data.name}</h1>
-        </header>
-      )
-    }
+    {image && (
+      <header class="mb-6">
+        <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
+          {[data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ")}
+        </p>
+        <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900">{data.name}</h1>
+      </header>
+    )}
 
     {data.description && <p class="mb-6 text-lg italic text-stone-700">{data.description}</p>}
 
@@ -126,6 +123,7 @@ const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
     </section>
 
     <RelatedList heading={t("section.goesWellWith")} items={goesWellWithItems} />
+    <RelatedList heading={t("section.usesBase")} items={usesBaseItems} />
     <ExternalSourceList heading={t("section.externalRecipes")} sources={meta.externalSources} />
 
     {tags.length > 0 && (

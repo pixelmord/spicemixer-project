@@ -10,45 +10,61 @@ import {
   linkIngredients,
   annotateTextHtml,
   resolveRefs,
+  resolveVariants,
 } from "../../lib/recipe-augment.ts";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 
 export async function getStaticPaths() {
-  const recipes = await getCollection("recipes");
-  return recipes.map((recipe) => ({
-    params: { slug: recipe.id },
-    props: { recipe },
+  const spicemixes = await getCollection("spicemixes");
+  return spicemixes.map((mix) => ({
+    params: { slug: mix.id },
+    props: { mix },
   }));
 }
 
 interface Props {
-  recipe: CollectionEntry<"recipes">;
+  mix: CollectionEntry<"spicemixes">;
 }
 
-const { recipe } = Astro.props;
-const data = recipe.data;
-const slug = recipe.id;
-const image = firstImage(data.image);
-const tags = keywordList(data.keywords);
-const steps = normalizeInstructions(data.recipeInstructions);
-const transitionName = `recipe-${slug}`;
-const jsonLd = JSON.stringify(data);
+const { mix } = Astro.props;
+const data = mix.data;
+const slug = mix.id;
 
 const t = useTranslations((Astro.currentLocale ?? "en") as Lang);
 const locale = Astro.currentLocale ?? "en";
 const prefix = locale === "de" ? "/de" : "";
 const ingredientBase = `${prefix}/ingredients`;
 
-const meta = await getMeta("recipes", slug);
+const image = firstImage(data.image);
+const tags = keywordList(data.keywords);
+const steps = normalizeInstructions(data.recipeInstructions);
+const transitionName = `spicemix-${slug}`;
+const jsonLd = JSON.stringify(data);
+
+const meta = await getMeta("spicemixes", slug);
 const linkedIngredients = linkIngredients(data.recipeIngredient, meta.ingredientLinks);
-const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
+
+const [goesWellWithItems, usesBaseItems, variantItems] = await Promise.all([
+  resolveRefs(meta.goesWellWith, prefix),
+  resolveRefs(meta.usesBase, prefix),
+  resolveVariants("spicemixes", meta.variants, prefix),
+]);
+
+let variantOfItem: { name: string; href: string } | null = null;
+if (meta.variantOf) {
+  const [item] = await resolveVariants("spicemixes", [meta.variantOf], prefix);
+  variantOfItem = item ?? null;
+}
 ---
 
 <BaseLayout title={`${data.name} — Spicemixer`} description={data.description}>
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
     <nav class="mb-8 text-sm">
-      <a href={locale === "de" ? "/de/recipes/" : "/recipes/"} class="text-stone-500 transition hover:text-stone-900">
-        {t("nav.back")}
+      <a
+        href={`${prefix}/spicemixes/`}
+        class="text-stone-500 transition hover:text-stone-900"
+      >
+        {t("nav.back.spicemixes")}
       </a>
     </nav>
 
@@ -66,11 +82,11 @@ const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
         </figure>
       ) : (
         <div
-          class="mb-8 rounded-3xl bg-gradient-to-br from-amber-50 via-stone-50 to-emerald-50 p-10"
+          class="mb-8 rounded-3xl bg-gradient-to-br from-amber-50 via-stone-50 to-orange-50 p-10"
           style={`view-transition-name: ${transitionName};`}
         >
           <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
-            {[data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ") || t("recipe.fallback")}
+            {[data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ")}
           </p>
           <h1 class="mt-3 font-serif text-5xl leading-tight text-stone-900">
             {data.name}
@@ -83,7 +99,7 @@ const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
       image && (
         <header class="mb-6">
           <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
-            {[data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ") || t("recipe.fallback")}
+            {[data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ")}
           </p>
           <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900">
             {data.name}
@@ -91,6 +107,18 @@ const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
         </header>
       )
     }
+
+    {variantOfItem && (
+      <p class="mb-4 text-sm text-stone-500">
+        {t("section.variantOf")}{" "}
+        <a
+          href={variantOfItem.href}
+          class="text-amber-700 underline decoration-dotted underline-offset-2 hover:text-amber-900"
+        >
+          {variantOfItem.name}
+        </a>
+      </p>
+    )}
 
     {
       data.description && (
@@ -109,7 +137,9 @@ const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
     </div>
 
     <section class="mb-10">
-      <h2 class="mb-3 font-serif text-2xl text-stone-900">{t("section.ingredients")}</h2>
+      <h2 class="mb-3 font-serif text-2xl text-stone-900">
+        {t("section.ingredients")}
+      </h2>
       <ul class="space-y-1.5">
         {
           linkedIngredients.map(({ text, slug: ingSlug }) => (
@@ -131,7 +161,9 @@ const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
     </section>
 
     <section class="mb-10">
-      <h2 class="mb-3 font-serif text-2xl text-stone-900">{t("section.instructions")}</h2>
+      <h2 class="mb-3 font-serif text-2xl text-stone-900">
+        {t("section.instructions")}
+      </h2>
       <ol class="space-y-4">
         {
           steps.map((step, i) => (
@@ -140,9 +172,15 @@ const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
                 {String(i + 1).padStart(2, "0")}
               </span>
               <p class="text-stone-800">
-                {step.name && <strong class="block text-stone-900">{step.name}</strong>}
+                {step.name && (
+                  <strong class="block text-stone-900">{step.name}</strong>
+                )}
                 <Fragment
-                  set:html={annotateTextHtml(step.text, meta.ingredientLinks, ingredientBase)}
+                  set:html={annotateTextHtml(
+                    step.text,
+                    meta.ingredientLinks,
+                    ingredientBase
+                  )}
                 />
               </p>
             </li>
@@ -152,7 +190,12 @@ const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
     </section>
 
     <RelatedList heading={t("section.goesWellWith")} items={goesWellWithItems} />
-    <ExternalSourceList heading={t("section.externalRecipes")} sources={meta.externalSources} />
+    <RelatedList heading={t("section.usesBase")} items={usesBaseItems} />
+    <RelatedList heading={t("section.variants")} items={variantItems} />
+    <ExternalSourceList
+      heading={t("section.externalRecipes")}
+      sources={meta.externalSources}
+    />
 
     {
       tags.length > 0 && (

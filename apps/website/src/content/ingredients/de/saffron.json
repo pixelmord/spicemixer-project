@@ -1,0 +1,19 @@
+{
+  "name": "Safran",
+  "summary": "Das kostbarste Gewürz der Welt, gewonnen aus den Narben der Safranblüte. Eine Prise genügt, um Reis, Saucen und Desserts mit goldener Farbe und honigsüßem Duft zu verwandeln.",
+  "description": "Safranfäden verströmen einen honigsüßen, blumigen Duft und verleihen Gerichten eine unverwechselbare goldene Farbe. Der hohe Preis spiegelt die arbeitsintensive Ernte wider: Jede Blüte liefert nur drei Narben, und alles wird per Hand gepflückt. Wenig genügt — die Fäden vor dem Kochen in warmer Flüssigkeit einweichen, um Farbe und Aroma vollständig zu entfalten. Hochwertiger Safran riecht intensiv blumig, nicht muffig. Tiefrote Fäden mit orangefarbenen Spitzen sind ein Zeichen für Frische.",
+  "image": "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=800&q=80",
+  "category": "spice",
+  "origin": ["Iran", "Spanien", "Kaschmir"],
+  "flavorNotes": ["blumig", "honigsüß", "erdig", "metallisch"],
+  "pairings": [
+    {
+      "slug": "cardamom",
+      "note": "Eine persische Klassiker-Kombination — gemeinsam prägen sie den Duft von Festlichkeiten in Reisgerichten und Gebäck."
+    },
+    {
+      "slug": "cumin",
+      "note": "Die Erdigkeit des Kreuzkümmels gleicht die Süße des Safrans in Schmorgerichten und Pilaw aus."
+    }
+  ]
+}
