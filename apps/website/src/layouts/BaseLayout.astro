@@ -1,0 +1,45 @@
+---
+import { ClientRouter } from "astro:transitions";
+import LanguageSwitcher from "../components/LanguageSwitcher.astro";
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const lang = Astro.currentLocale ?? "en";
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    {description && <meta name="description" content={description} />}
+    <title>{title}</title>
+    <ClientRouter />
+    <!-- Browser locale detection: redirect to /de on first visit when preferred -->
+    <script is:inline>
+      (function () {
+        var saved = localStorage.getItem("spicemixer-lang");
+        var detected = (navigator.language || "").split("-")[0] || "en";
+        var lang = saved || detected;
+        var onDe = location.pathname.startsWith("/de");
+        if (lang === "de" && !onDe && !saved) {
+          localStorage.setItem("spicemixer-lang", "de");
+          location.replace("/de" + location.pathname);
+        }
+      })();
+    </script>
+  </head>
+  <body class="min-h-screen bg-stone-50 text-stone-900 antialiased">
+    <div class="flex justify-end px-4 py-2 sm:px-6 lg:px-8">
+      <LanguageSwitcher />
+    </div>
+    <slot />
+  </body>
+</html>

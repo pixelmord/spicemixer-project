@@ -1,0 +1,50 @@
+---
+import { getRelativeLocaleUrl } from "astro:i18n";
+
+const curr = (Astro.currentLocale ?? "en") as "en" | "de";
+const canonical =
+  curr === "de" ? Astro.url.pathname.replace(/^\/de/, "") || "/" : Astro.url.pathname;
+
+const enHref = getRelativeLocaleUrl("en", canonical);
+const deHref = getRelativeLocaleUrl("de", canonical);
+---
+
+<nav aria-label="Language" class="flex items-center gap-1.5 text-xs font-semibold tracking-wide">
+  <a
+    href={enHref}
+    data-lang-save="en"
+    hreflang="en"
+    aria-current={curr === "en" ? "page" : undefined}
+    class:list={[
+      "rounded px-1.5 py-0.5 transition",
+      curr === "en"
+        ? "bg-stone-900 text-white"
+        : "text-stone-500 hover:text-stone-900",
+    ]}
+  >
+    EN
+  </a>
+  <span aria-hidden="true" class="text-stone-300">·</span>
+  <a
+    href={deHref}
+    data-lang-save="de"
+    hreflang="de"
+    aria-current={curr === "de" ? "page" : undefined}
+    class:list={[
+      "rounded px-1.5 py-0.5 transition",
+      curr === "de"
+        ? "bg-stone-900 text-white"
+        : "text-stone-500 hover:text-stone-900",
+    ]}
+  >
+    DE
+  </a>
+</nav>
+
+<script is:inline>
+  document.querySelectorAll("[data-lang-save]").forEach(function (el) {
+    el.addEventListener("click", function () {
+      localStorage.setItem("spicemixer-lang", el.dataset.langSave);
+    });
+  });
+</script>

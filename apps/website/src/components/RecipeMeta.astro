@@ -1,0 +1,40 @@
+---
+import { formatIsoDuration } from "../lib/duration.ts";
+import { useTranslations, type Lang } from "../i18n/translations.ts";
+
+interface Props {
+  prepTime?: string;
+  cookTime?: string;
+  totalTime?: string;
+  recipeYield?: string | number;
+  variant?: "card" | "page";
+}
+
+const { prepTime, cookTime, totalTime, recipeYield, variant = "card" } = Astro.props;
+const t = useTranslations((Astro.currentLocale ?? "en") as Lang);
+
+const items = [
+  recipeYield != null ? { label: t("meta.yield"), value: String(recipeYield) } : null,
+  formatIsoDuration(prepTime) ? { label: t("meta.prep"), value: formatIsoDuration(prepTime)! } : null,
+  formatIsoDuration(cookTime) ? { label: t("meta.cook"), value: formatIsoDuration(cookTime)! } : null,
+  formatIsoDuration(totalTime) ? { label: t("meta.total"), value: formatIsoDuration(totalTime)! } : null,
+].filter((x): x is { label: string; value: string } => x !== null);
+---
+
+{
+  items.length > 0 && (
+    <dl
+      class:list={[
+        "flex flex-wrap gap-x-4 gap-y-1 text-stone-600",
+        variant === "card" ? "text-xs" : "text-sm",
+      ]}
+    >
+      {items.map((item) => (
+        <div class="flex items-baseline gap-1">
+          <dt class="uppercase tracking-wide text-stone-400">{item.label}</dt>
+          <dd class="font-medium text-stone-700">{item.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}

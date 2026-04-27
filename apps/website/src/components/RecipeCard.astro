@@ -1,0 +1,116 @@
+---
+import type { CollectionEntry } from "astro:content";
+import RecipeMeta from "./RecipeMeta.astro";
+import { firstImage, keywordList } from "../lib/instructions.ts";
+import { useTranslations, type Lang } from "../i18n/translations.ts";
+
+interface Props {
+  recipe: CollectionEntry<"recipes">;
+}
+
+const { recipe } = Astro.props;
+const data = recipe.data;
+const slug = recipe.id;
+const image = firstImage(data.image);
+const tags = keywordList(data.keywords);
+const t = useTranslations((Astro.currentLocale ?? "en") as Lang);
+
+const locale = Astro.currentLocale ?? "en";
+const href = locale === "de" ? `/de/recipes/${slug}/` : `/recipes/${slug}/`;
+const transitionName = `recipe-${slug}`;
+
+const filterAttrs = {
+  "data-recipe-card": "",
+  "data-category": data.recipeCategory ?? "",
+  "data-cuisine": data.recipeCuisine ?? "",
+  "data-tags": tags.join(","),
+};
+
+const fallbackLabel = [data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ") || t("recipe.fallback");
+const moreLabel = (n: number) => t("recipe.more").replace("{n}", String(n));
+---
+
+<article
+  {...filterAttrs}
+  class="mb-6 break-inside-avoid rounded-2xl bg-white shadow-sm ring-1 ring-stone-200 transition hover:shadow-md hover:ring-stone-300"
+>
+  <a
+    href={href}
+    class="group block overflow-hidden rounded-2xl"
+    style={`view-transition-name: ${transitionName};`}
+  >
+    {
+      image ? (
+        <figure class="overflow-hidden">
+          <img
+            src={image}
+            alt={data.name}
+            loading="lazy"
+            class="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+          />
+        </figure>
+      ) : (
+        <div class="bg-gradient-to-br from-amber-50 via-stone-50 to-emerald-50 px-6 pt-7 pb-2">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-500">
+            {fallbackLabel}
+          </p>
+          <h3 class="mt-2 font-serif text-3xl leading-tight text-stone-900">
+            {data.name}
+          </h3>
+          {data.description && (
+            <p class="mt-2 text-sm italic text-stone-600">{data.description}</p>
+          )}
+          {data.recipeIngredient.length > 0 && (
+            <ul class="mt-4 space-y-1 text-sm text-stone-700">
+              {data.recipeIngredient.slice(0, 4).map((ing) => (
+                <li class="border-b border-dashed border-stone-300 pb-1 last:border-0">
+                  {ing}
+                </li>
+              ))}
+              {data.recipeIngredient.length > 4 && (
+                <li class="pt-1 text-xs text-stone-500">
+                  {moreLabel(data.recipeIngredient.length - 4)}
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+      )
+    }
+
+    <div class="space-y-2 px-5 py-4">
+      {
+        image && (
+          <>
+            <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-500">
+              {fallbackLabel}
+            </p>
+            <h3 class="font-serif text-xl leading-tight text-stone-900">
+              {data.name}
+            </h3>
+            {data.description && (
+              <p class="line-clamp-2 text-sm text-stone-600">{data.description}</p>
+            )}
+          </>
+        )
+      }
+      <RecipeMeta
+        prepTime={data.prepTime}
+        cookTime={data.cookTime}
+        totalTime={data.totalTime}
+        recipeYield={data.recipeYield as string | number | undefined}
+      />
+      {
+        tags.length > 0 && (
+          <ul class="flex flex-wrap gap-1.5 pt-1">
+            {tags.slice(0, 4).map((tag) => (
+              <li class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">
+                {tag}
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+  </a>
+</article>
