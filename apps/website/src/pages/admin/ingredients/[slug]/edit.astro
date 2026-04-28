@@ -4,8 +4,12 @@ import AdminShell from "@/components/admin/AdminShell.tsx";
 import IngredientForm from "@/components/admin/IngredientForm.tsx";
 import { createStore } from "@/lib/content-store.ts";
 
-const { locale, slug } = Astro.params;
-if (!locale || !slug) return Astro.redirect("/admin/ingredients");
+const { slug } = Astro.params;
+// Locale lives in ?locale=en|de to avoid Astro i18n routing stripping the default
+// locale ("en") from path segments like /admin/ingredients/en/sumac/edit → 404.
+const locale = (Astro.url.searchParams.get("locale") ?? "en") as "en" | "de";
+
+if (!slug) return Astro.redirect("/admin/ingredients");
 
 const store = await createStore();
 const item = await store.get("ingredients", `${locale}/${slug}`);
@@ -13,16 +17,18 @@ if (!item) return Astro.redirect("/admin/ingredients");
 
 const currentPath = Astro.url.pathname;
 ---
+
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="/src/styles/global.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{String((item.data as Record<string, unknown>).name ?? slug)} [{locale}] · Edit · Admin</title>
   </head>
   <body>
     <AdminShell currentPath={currentPath} client:load>
       <IngredientForm
-        locale={locale as "en" | "de"}
+        locale={locale}
         slug={slug}
         initialData={item.data as never}
         client:load

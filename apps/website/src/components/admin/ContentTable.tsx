@@ -49,8 +49,13 @@ export interface ContentRow {
 
 function editHref(row: ContentRow) {
   if (row.type === "ingredient") {
-    const [locale, slug] = row.id.split("/");
-    return `/admin/ingredients/${locale}/${slug}/edit`;
+    // id is "en/cardamom" or "de/sumac". Locale goes in a query param so Astro's
+    // i18n routing doesn't strip the default locale ("en") from the URL path.
+    const slashIdx = row.id.indexOf("/");
+    if (slashIdx === -1) return "#"; // malformed id — root-level file, skip
+    const locale = row.id.slice(0, slashIdx);
+    const slug = row.id.slice(slashIdx + 1);
+    return `/admin/ingredients/${slug}/edit?locale=${locale}`;
   }
   return `/admin/${row.collection}/${row.id}/edit`;
 }

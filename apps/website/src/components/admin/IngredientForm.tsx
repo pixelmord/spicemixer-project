@@ -107,7 +107,7 @@ export default function IngredientForm({ locale, slug: initialSlug, initialData,
 
       setCompleteness(scoreIngredient(payload as never));
       toast.success("Saved");
-      if (isNew) window.location.href = `/admin/ingredients/${locale}/${slug}/edit`;
+      if (isNew) window.location.href = `/admin/ingredients/${slug}/edit?locale=${locale}`;
     },
   });
 
