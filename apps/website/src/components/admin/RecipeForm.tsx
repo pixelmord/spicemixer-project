@@ -149,7 +149,8 @@ export default function RecipeForm({
   const meta = { ...emptyMeta(), ...initialMeta } as MetaData;
   const [slug, setSlug] = useState(initialSlug ?? "");
   const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState(meta.draft);
+  // New items default to draft=true; existing items default to false when field absent
+  const [draft, setDraft] = useState(initialMeta?.draft ?? (isNew ? true : false));
   const [completeness, setCompleteness] = useState(() =>
     scoreRecipe(recipe as never, meta as never),
   );

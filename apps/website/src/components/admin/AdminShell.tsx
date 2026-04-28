@@ -37,7 +37,10 @@ export default function AdminShell({ children, currentPath = "" }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+    <div
+      className="flex h-screen bg-background text-foreground overflow-hidden"
+      style={{ "--sidebar-w": sidebarOpen ? "224px" : "0px" } as React.CSSProperties}
+    >
       {/* Sidebar */}
       <aside
         className={cn(
@@ -52,24 +55,31 @@ export default function AdminShell({ children, currentPath = "" }: Props) {
           Admin
         </div>
         <nav className="flex-1 space-y-0.5 px-2">
-          {NAV.map((item) => {
-            const active = currentPath === item.href || currentPath.startsWith(item.href + "/");
-            return (
-              <a
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
-              >
-                {item.icon}
-                {item.label}
-              </a>
-            );
-          })}
+          {(() => {
+            const activeItem = NAV.reduce<NavItem | null>((best, nav) => {
+              const matches = currentPath === nav.href || currentPath.startsWith(nav.href + "/");
+              if (!matches) return best;
+              return !best || nav.href.length > best.href.length ? nav : best;
+            }, null);
+            return NAV.map((item) => {
+              const active = item === activeItem;
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                >
+                  {item.icon}
+                  {item.label}
+                </a>
+              );
+            });
+          })()}
         </nav>
         <div className="px-4 py-3 border-t border-border">
           <span className="text-xs text-muted-foreground">Local admin · FS mode</span>
