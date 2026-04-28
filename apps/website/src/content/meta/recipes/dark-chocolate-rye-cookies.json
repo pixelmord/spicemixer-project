@@ -1,9 +1,11 @@
 {
-  "kind": "recipe",
-  "variants": [],
-  "goesWellWith": [],
-  "usesBase": [],
+  "draft": false,
+  "tags": [],
   "ingredientLinks": [],
   "externalSources": [],
-  "tags": []
+  "goesWellWith": [],
+  "usesBase": [],
+  "variants": [],
+  "kind": "recipe",
+  "language": "en"
 }

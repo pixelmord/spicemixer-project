@@ -2,16 +2,6 @@
   "@context": "https://schema.org",
   "@type": "Recipe",
   "name": "Dark Chocolate Rye Cookies",
-  "description": "Deeply chocolatey, slightly malty cookies with crackled tops and a chewy centre. Rye flour does the heavy lifting.",
-  "author": { "@type": "Person", "name": "Inga Holm" },
-  "datePublished": "2026-04-19",
-  "recipeYield": "16 cookies",
-  "recipeCategory": "Dessert",
-  "recipeCuisine": "Scandinavian",
-  "keywords": ["chocolate", "vegetarian", "weekend", "make-ahead"],
-  "prepTime": "PT20M",
-  "cookTime": "PT12M",
-  "totalTime": "PT32M",
   "recipeIngredient": [
     "200g dark chocolate (70%), chopped",
     "100g unsalted butter",
@@ -23,12 +13,46 @@
     "1/2 tsp flaky sea salt"
   ],
   "recipeInstructions": [
-    "Melt chocolate and butter together over a bain-marie. Set aside to cool slightly.",
-    "Whisk eggs, sugar, and vanilla until thick and pale, about 3 minutes.",
-    "Fold the warm chocolate mixture into the eggs.",
-    "Sift over rye flour and baking powder, fold gently until just combined.",
-    "Chill the batter for 30 minutes — this is non-negotiable for the crackled top.",
-    "Scoop walnut-sized portions onto lined trays, leaving room to spread.",
-    "Bake at 180°C / 355°F for 11–12 minutes. Sprinkle with flaky salt while warm."
-  ]
+    {
+      "@type": "HowToStep",
+      "text": "Melt chocolate and butter together over a bain-marie. Set aside to cool slightly."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Whisk eggs, sugar, and vanilla until thick and pale, about 3 minutes."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Fold the warm chocolate mixture into the eggs."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Sift over rye flour and baking powder, fold gently until just combined."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Chill the batter for 30 minutes — this is non-negotiable for the crackled top."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Scoop walnut-sized portions onto lined trays, leaving room to spread."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Bake at 180°C / 355°F for 11–12 minutes. Sprinkle with flaky salt while warm."
+    }
+  ],
+  "description": "Deeply chocolatey, slightly malty cookies with crackled tops and a chewy centre. Rye flour does the heavy lifting.",
+  "author": {
+    "@type": "Person",
+    "name": "Inga Holm"
+  },
+  "recipeYield": "16 cookies",
+  "recipeCategory": "Dessert",
+  "recipeCuisine": "Scandinavian",
+  "keywords": ["chocolate", "vegetarian", "weekend", "make-ahead"],
+  "prepTime": "PT20M",
+  "cookTime": "PT12M",
+  "totalTime": "PT32M",
+  "datePublished": "2026-04-19"
 }
