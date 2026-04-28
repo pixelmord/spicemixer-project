@@ -8,6 +8,7 @@ import {
   flexRender,
   type ColumnDef,
   type SortingState,
+  type ColumnFiltersState,
 } from "@tanstack/react-table";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
@@ -47,12 +48,16 @@ export interface ContentRow {
   updatedAt?: string;
 }
 
+function getLocale(row: ContentRow): string | null {
+  if (row.type !== "ingredient") return null;
+  const slashIdx = row.id.indexOf("/");
+  return slashIdx !== -1 ? row.id.slice(0, slashIdx) : null;
+}
+
 function editHref(row: ContentRow) {
   if (row.type === "ingredient") {
-    // id is "en/cardamom" or "de/sumac". Locale goes in a query param so Astro's
-    // i18n routing doesn't strip the default locale ("en") from the URL path.
     const slashIdx = row.id.indexOf("/");
-    if (slashIdx === -1) return "#"; // malformed id — root-level file, skip
+    if (slashIdx === -1) return "#";
     const locale = row.id.slice(0, slashIdx);
     const slug = row.id.slice(slashIdx + 1);
     return `/admin/ingredients/${slug}/edit?locale=${locale}`;
@@ -64,13 +69,47 @@ function collectionLabel(c: string) {
   return c.charAt(0).toUpperCase() + c.slice(1);
 }
 
+const LOCALE_COLORS: Record<string, string> = {
+  en: "bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-950 dark:text-sky-300",
+  de: "bg-violet-100 text-violet-700 border-violet-300 dark:bg-violet-950 dark:text-violet-300",
+};
+
+function LocaleBadge({ locale }: { locale: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide border",
+        LOCALE_COLORS[locale] ?? "bg-muted text-muted-foreground border-border",
+      )}
+    >
+      {locale}
+    </span>
+  );
+}
+
 export default function ContentTable({ initialRows }: { initialRows: ContentRow[] }) {
   const [rows, setRows] = useState<ContentRow[]>(initialRows);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [localeFilter, setLocaleFilter] = useState<"all" | "en" | "de">("all");
+
+  // Derive whether the table has any ingredients so we show the locale filter
+  const hasIngredients = useMemo(() => rows.some((r) => r.type === "ingredient"), [rows]);
+
+  // Filtered rows: apply locale filter on top of TanStack's column filters
+  const filteredRows = useMemo(() => {
+    if (localeFilter === "all") return rows;
+    return rows.filter((r) => {
+      const locale = getLocale(r);
+      // Non-ingredients pass through unchanged when a locale filter is active
+      if (locale === null) return true;
+      return locale === localeFilter;
+    });
+  }, [rows, localeFilter]);
 
   async function handleToggleDraft(row: ContentRow) {
-    if (row.type === "ingredient") return; // ingredients have no draft
+    if (row.type === "ingredient") return;
     const action = row.draft ? actions.publish : actions.unpublish;
     const { error } = await action({
       collection: row.collection as "recipes" | "spicemixes" | "sauces",
@@ -121,14 +160,17 @@ export default function ContentTable({ initialRows }: { initialRows: ContentRow[
             )}
           </button>
         ),
-        cell: ({ row }) => (
-          <a
-            href={editHref(row.original)}
-            className="font-medium hover:underline truncate max-w-xs block"
-          >
-            {row.original.name as string}
-          </a>
-        ),
+        cell: ({ row }) => {
+          const locale = getLocale(row.original);
+          return (
+            <div className="flex items-center gap-2 min-w-0">
+              <a href={editHref(row.original)} className="font-medium hover:underline truncate">
+                {row.original.name as string}
+              </a>
+              {locale && <LocaleBadge locale={locale} />}
+            </div>
+          );
+        },
       },
       {
         accessorKey: "collection",
@@ -218,11 +260,12 @@ export default function ContentTable({ initialRows }: { initialRows: ContentRow[
   );
 
   const table = useReactTable({
-    data: rows,
+    data: filteredRows,
     columns,
-    state: { sorting, globalFilter },
+    state: { sorting, globalFilter, columnFilters },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -232,13 +275,38 @@ export default function ContentTable({ initialRows }: { initialRows: ContentRow[
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <Input
-          placeholder="Search content…"
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
-          className="max-w-sm"
-        />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Input
+            placeholder="Search content…"
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            className="w-56"
+          />
+          {/* Locale filter — only shown when ingredients are present */}
+          {hasIngredients && (
+            <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
+              {(["all", "en", "de"] as const).map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => setLocaleFilter(opt)}
+                  className={cn(
+                    "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                    localeFilter === opt
+                      ? opt === "en"
+                        ? "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"
+                        : opt === "de"
+                          ? "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300"
+                          : "bg-muted text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {opt === "all" ? "All locales" : opt.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <span className="text-sm text-muted-foreground">
           {table.getFilteredRowModel().rows.length} items
         </span>
