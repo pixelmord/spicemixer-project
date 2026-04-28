@@ -1,0 +1,61 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "Mojo rojo zu Kartoffelspalten von Chefkoch-Video",
+  "recipeIngredient": [
+    "4 EL Öl",
+    "Salz und Pfeffer",
+    "1.5 TL Paprikapulver, edelsüßes",
+    "0.5 TL Korianderpulver",
+    "800 g Kartoffeln, festkochende",
+    "200 g Paprikaschote(n) (geröstete, aus dem Glas)",
+    "1 Chilischote(n) (oder 2, je nach gewünschter Schärfe)",
+    "2 Knoblauchzehe(n)",
+    "1 TL Kreuzkümmelpulver",
+    "100 ml Olivenöl"
+  ],
+  "recipeInstructions": [
+    {
+      "@type": "HowToStep",
+      "text": "Backofen und Blech auf der mittleren Schiene auf 220 Grad Ober-/Unterhitze vorheizen. 4 EL Öl, etwas Salz und Pfeffer, 1⁄2 TL edelsüßes Paprikapulver und 1⁄2 TL gemahlenen Koriander mischen. Die Kartoffeln schälen, in lange Spalten schneiden und mit dem Würzöl vermengen. Anschließend das heiße Blech mit Backpapier auslegen und die Kartoffeln darauf verteilen. Für 30 Min. wandern sie in den Ofen."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Geröstete Paprika ohne Haut aus dem Glas nehmen und gut abtropfen lassen. 1 - 2 Chilischoten längs einschneiden, entkernen und mit den Knoblauchzehen grob hacken. Mit Kreuzkümmel, 1 TL edelsüßem Paprikapulver, 1⁄2 TL Salz fein pürieren Nach und nach 100 ml Olivenöl unter ständigem Mixen hinzufügen."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Jetzt noch einmal abschmecken und mit den Kartoffelspalten servieren."
+    }
+  ],
+  "description": "Mojo rojo zu Kartoffelspalten - Würziger Paprika-Chili-Dip zu Ofenkartoffeln. Über 43 Bewertungen und für mega befunden. Mit ► Portionsrechner ► Kochbuch ► Video-Tipps!",
+  "image": "https://img.chefkoch-cdn.de/rezepte/3043981457086610/bilder/883833/crop-960x540/mojo-rojo-zu-kartoffelspalten.jpg",
+  "author": {
+    "@type": "Person",
+    "name": "Chefkoch-Video"
+  },
+  "recipeYield": "4 Portionen",
+  "recipeCategory": "Kartoffeln",
+  "recipeCuisine": "Spanien",
+  "keywords": [
+    "Hauptspeise",
+    "Backen",
+    "Europa",
+    "Vegetarisch",
+    "Saucen",
+    "Dips",
+    "Party",
+    "einfach",
+    "Pasten",
+    "öl",
+    "gewürze",
+    "Essig",
+    "Grundrezepte",
+    "Paleo"
+  ],
+  "suitableForDiet": ["VegetarianDiet"],
+  "prepTime": "PT10M",
+  "cookTime": "PT30M",
+  "totalTime": "PT40M",
+  "datePublished": "2016-03-04"
+}

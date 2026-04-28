@@ -21,9 +21,17 @@ export function parseRecipe(html: string, url: string): IngestResult {
 
   const { recipe, warnings } = normalizeRecipe(rawRecipe, url, jsonLd);
 
+  // Extract language from inLanguage field (schema.org standard)
+  const rawLang = (rawRecipe as Record<string, unknown>)["inLanguage"];
+  let language: string | undefined;
+  if (typeof rawLang === "string" && rawLang.length >= 2) {
+    language = rawLang.slice(0, 2).toLowerCase();
+  }
+
   return {
     recipe,
     source: { url, fetchedAt: new Date().toISOString() },
     warnings,
+    language,
   };
 }

@@ -19,6 +19,8 @@ export interface IngestResult {
   recipe: Recipe;
   source: IngestSource;
   warnings: IngestWarning[];
+  /** BCP-47 language tag detected from JSON-LD inLanguage field, e.g. "en", "de". */
+  language?: string;
 }
 
 export interface FetchOptions {

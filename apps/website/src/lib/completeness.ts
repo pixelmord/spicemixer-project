@@ -27,8 +27,8 @@ function color(pct: number): "green" | "amber" | "red" {
   return "red";
 }
 
-const RECIPE_REQUIRED = ["name", "recipeIngredient", "recipeInstructions"] as const;
-const RECIPE_RECOMMENDED = [
+export const RECIPE_REQUIRED = ["name", "recipeIngredient", "recipeInstructions"] as const;
+export const RECIPE_RECOMMENDED = [
   "description",
   "image",
   "author",
@@ -42,8 +42,8 @@ const RECIPE_RECOMMENDED = [
   "datePublished",
 ] as const;
 
-const INGREDIENT_REQUIRED = ["name", "category"] as const;
-const INGREDIENT_RECOMMENDED = [
+export const INGREDIENT_REQUIRED = ["name", "category"] as const;
+export const INGREDIENT_RECOMMENDED = [
   "summary",
   "description",
   "image",

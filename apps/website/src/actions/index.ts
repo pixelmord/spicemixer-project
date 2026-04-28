@@ -164,14 +164,127 @@ export const server = {
    * Returns the normalised Recipe and IngestResult metadata for the import widget.
    */
   ingestUrl: defineAction({
-    input: z.object({ url: z.string().url() }),
+    input: z.object({ url: z.url() }),
     handler: async ({ url }) => {
       const result = await fetchRecipe(url);
       return {
         recipe: result.recipe,
         source: result.source,
         warnings: result.warnings,
+        language: result.language,
       };
+    },
+  }),
+
+  /** Return a flat list of ingredient slugs + names for use in combobox fields. */
+  listIngredientOptions: defineAction({
+    input: z.object({ locale: z.enum(["en", "de"]).default("en") }),
+    handler: async ({ locale }) => {
+      const store = await createStore();
+      const items = await store.list("ingredients");
+      return items
+        .filter((item) => item.id.startsWith(`${locale}/`))
+        .map((item) => ({
+          slug: item.id.slice(3),
+          name: String((item.data as Record<string, unknown>).name ?? item.id.slice(3)),
+        }));
+    },
+  }),
+
+  /** Return a flat list of recipe/spicemix/sauce slugs + names for use in combobox fields. */
+  listRecipeOptions: defineAction({
+    handler: async () => {
+      const store = await createStore();
+      const [recipes, spicemixes, sauces] = await Promise.all([
+        store.list("recipes"),
+        store.list("spicemixes"),
+        store.list("sauces"),
+      ]);
+      return [
+        ...recipes.map((item) => ({
+          collection: "recipes" as const,
+          slug: item.id,
+          name: String((item.data as Record<string, unknown>).name ?? item.id),
+        })),
+        ...spicemixes.map((item) => ({
+          collection: "spicemixes" as const,
+          slug: item.id,
+          name: String((item.data as Record<string, unknown>).name ?? item.id),
+        })),
+        ...sauces.map((item) => ({
+          collection: "sauces" as const,
+          slug: item.id,
+          name: String((item.data as Record<string, unknown>).name ?? item.id),
+        })),
+      ];
+    },
+  }),
+
+  /** Aggregate all tags from all meta sidecars for tag autocomplete suggestions. */
+  listAllTags: defineAction({
+    handler: async () => {
+      const store = await createStore();
+      const metas = await store.list("meta");
+      const tagSet = new Set<string>();
+      for (const meta of metas) {
+        const tags = (meta.data as Record<string, unknown>).tags;
+        if (Array.isArray(tags)) tags.forEach((t) => typeof t === "string" && tagSet.add(t));
+      }
+      return Array.from(tagSet).sort();
+    },
+  }),
+
+  /** Create a minimal ingredient stub (name + category) for inline "create new" flow. */
+  quickCreateIngredient: defineAction({
+    accept: "json",
+    input: z.object({
+      locale: z.enum(["en", "de"]),
+      slug: z.string().min(1),
+      name: z.string().min(1),
+      category: z.string().default("other"),
+    }),
+    handler: async ({ locale, slug, name, category }) => {
+      const store = await createStore();
+      await store.put("ingredients", `${locale}/${slug}`, {
+        name,
+        category,
+        origin: [],
+        flavorNotes: [],
+        pairings: [],
+      });
+      return { ok: true, slug };
+    },
+  }),
+
+  /** Create a minimal recipe stub (name only) for inline "create new" flow. */
+  quickCreateRecipe: defineAction({
+    accept: "json",
+    input: z.object({
+      collection: recipeCollectionEnum,
+      slug: z.string().min(1),
+      name: z.string().min(1),
+    }),
+    handler: async ({ collection, slug, name }) => {
+      const store = await createStore();
+      await store.put(collection, slug, {
+        "@context": "https://schema.org",
+        "@type": "Recipe",
+        name,
+        recipeIngredient: [""],
+        recipeInstructions: [{ "@type": "HowToStep", text: "" }],
+      });
+      await store.put("meta", `${collection}/${slug}`, {
+        draft: true,
+        kind:
+          collection === "recipes" ? "recipe" : collection === "spicemixes" ? "spicemix" : "sauce",
+        tags: [],
+        ingredientLinks: [],
+        externalSources: [],
+        goesWellWith: [],
+        usesBase: [],
+        variants: [],
+      });
+      return { ok: true, slug };
     },
   }),
 };
