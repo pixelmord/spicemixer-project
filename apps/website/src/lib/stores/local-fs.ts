@@ -17,6 +17,13 @@ export class LocalFsStore implements ContentStore {
     const dir = join(CONTENT_ROOT, collection);
     const items: ContentItem[] = [];
     await this.#walkDir(dir, collection, items, dir);
+
+    // Ingredients are stored under locale subdirs (en/, de/) — mirror Astro's
+    // glob pattern [a-z][a-z]/*.json and skip root-level files like cardamom.json.
+    if (collection === "ingredients") {
+      return items.filter((item) => /^[a-z]{2}\//.test(item.id));
+    }
+
     return items;
   }
 
