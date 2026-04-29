@@ -1,0 +1,34 @@
+---
+export const prerender = false;
+import AdminShell from "@/components/admin/AdminShell.tsx";
+import RecipeEnhancePage from "@/components/admin/RecipeEnhancePage.tsx";
+import { createStore } from "@/lib/content-store.ts";
+
+const { slug } = Astro.params;
+if (!slug) return Astro.redirect("/admin/spicemixes");
+
+const store = await createStore();
+const item = await store.get("spicemixes", slug);
+if (!item) return Astro.redirect("/admin/spicemixes");
+
+const currentPath = Astro.url.pathname;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="/src/styles/global.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Enhance · {String((item.data as Record<string, unknown>).name ?? slug)} · Admin</title>
+  </head>
+  <body>
+    <AdminShell currentPath={currentPath} client:load>
+      <RecipeEnhancePage
+        collection="spicemixes"
+        slug={slug}
+        existingRecipe={item.data as never}
+        client:load
+      />
+    </AdminShell>
+  </body>
+</html>
