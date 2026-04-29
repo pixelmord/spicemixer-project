@@ -12,7 +12,8 @@ const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown
 const rows = items.map((item) => {
   const meta = metaMap.get(`sauces/${item.id}`) ?? {};
   const completeness = scoreRecipe(item.data as never, meta as never);
-  return { type: "recipe" as const, collection: "sauces", id: item.id, name: String((item.data as Record<string, unknown>).name ?? item.id), draft: !!(meta as Record<string, unknown>).draft, completeness, updatedAt: item.updatedAt };
+  const language = String((meta as Record<string, unknown>).language ?? "") || undefined;
+  return { type: "recipe" as const, collection: "sauces", id: item.id, name: String((item.data as Record<string, unknown>).name ?? item.id), draft: !!(meta as Record<string, unknown>).draft, completeness, updatedAt: item.updatedAt, language };
 });
 
 const currentPath = Astro.url.pathname;

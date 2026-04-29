@@ -36,6 +36,11 @@ const ingredientPairings = allPairings
     };
   });
 
+// Check which other locales already have a translation of this ingredient
+const otherLocale = locale === "en" ? "de" : "en";
+const otherItem = await store.get("ingredients", `${otherLocale}/${slug}`);
+const existingTranslationLocales = otherItem ? [otherLocale] : [];
+
 const currentPath = Astro.url.pathname;
 ---
 
@@ -54,6 +59,7 @@ const currentPath = Astro.url.pathname;
         initialData={item.data as never}
         initialMeta={metaItem?.data as never ?? {}}
         initialPairings={ingredientPairings as never}
+        existingTranslationLocales={existingTranslationLocales}
         client:load
       />
     </AdminShell>

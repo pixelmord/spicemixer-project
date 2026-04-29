@@ -199,21 +199,37 @@ export const server = {
       ingredients: z.tuple([z.string(), z.string()]),
       description: z.string().min(1),
       locale: z.string().length(2).default("en"),
+      draft: z.boolean().optional(),
     }),
-    handler: async ({ id, ingredients, description, locale }) => {
+    handler: async ({ id, ingredients, description, locale, draft }) => {
       const store = await createStore();
       const canonical = [...ingredients].sort() as [string, string];
-      // Merge into existing descriptions map
       const existing = await store.get("pairings", id);
       const existingData = (existing?.data as Record<string, unknown>) ?? {};
       const existingDescriptions =
         (existingData["descriptions"] as Record<string, string>) ??
         (existingData["description"] ? { en: String(existingData["description"]) } : {});
+      const existingDraft = (existingData["draft"] as boolean) ?? false;
       await store.put("pairings", id, {
         ingredients: canonical,
         descriptions: { ...existingDescriptions, [locale]: description },
+        draft: draft !== undefined ? draft : existingDraft,
       });
       return { ok: true, id };
+    },
+  }),
+
+  /** Toggle draft/published state for a pairing. */
+  togglePairingDraft: defineAction({
+    accept: "json",
+    input: z.object({ id: z.string().min(1), draft: z.boolean() }),
+    handler: async ({ id, draft }) => {
+      const store = await createStore();
+      const existing = await store.get("pairings", id);
+      if (!existing)
+        throw new ActionError({ code: "NOT_FOUND", message: `Pairing ${id} not found.` });
+      await store.put("pairings", id, { ...(existing.data as Record<string, unknown>), draft });
+      return { ok: true };
     },
   }),
 

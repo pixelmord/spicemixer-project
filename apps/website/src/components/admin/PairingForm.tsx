@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, Languages, Loader2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Languages, Loader2, Trash2, Eye, EyeOff } from "lucide-react";
 import LinkButton from "@/components/admin/LinkButton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { cn } from "@/lib/utils.ts";
 import { scorePairing, resolvePairingDescription } from "@/lib/completeness.ts";
@@ -27,6 +26,7 @@ interface Props {
   initialIngredients?: [string, string];
   initialDescriptions?: Record<string, string>;
   initialMeta?: Record<string, unknown>;
+  initialDraft?: boolean;
   isNew?: boolean;
 }
 
@@ -40,12 +40,14 @@ export default function PairingForm({
   initialIngredients,
   initialDescriptions = {},
   initialMeta = {},
+  initialDraft = false,
   isNew,
 }: Props) {
   const [ingredient1, setIngredient1] = useState(initialIngredients?.[0] ?? "");
   const [ingredient2, setIngredient2] = useState(initialIngredients?.[1] ?? "");
   const [descriptions, setDescriptions] = useState<Record<string, string>>(initialDescriptions);
   const [activeLocale, setActiveLocale] = useState<string>("en");
+  const [draft, setDraft] = useState(initialDraft);
   const [saving, setSaving] = useState(false);
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
 
@@ -104,8 +106,6 @@ export default function PairingForm({
       .finally(() => setAiRefreshing(false));
   }, [activeLocale]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pairingId = initialId ?? [ingredient1, ingredient2].filter(Boolean).sort().join("--");
-
   async function handleSave() {
     if (!ingredient1 || !ingredient2) {
       toast.error("Both ingredients are required");
@@ -118,21 +118,23 @@ export default function PairingForm({
     }
     setSaving(true);
     try {
-      // Save all locales that have descriptions
+      const id = [ingredient1, ingredient2].sort().join("--");
+      // Save all locales that have descriptions; include draft on first save
+      let first = true;
       for (const [locale, desc] of Object.entries(descriptions)) {
         if (!desc) continue;
-        const id = [ingredient1, ingredient2].sort().join("--");
         const { error } = await actions.savePairing({
           id,
           ingredients: [ingredient1, ingredient2] as [string, string],
           description: desc,
           locale,
+          draft: first ? draft : undefined,
         });
         if (error) throw new Error(error.message);
+        first = false;
       }
       toast.success("Saved");
       if (isNew) {
-        const id = [ingredient1, ingredient2].sort().join("--");
         window.location.href = `/admin/pairings/${encodeURIComponent(id)}/edit`;
       }
     } catch (e) {
@@ -140,6 +142,31 @@ export default function PairingForm({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleToggleDraft() {
+    if (!initialId) return;
+    const newDraft = !draft;
+    const { error } = await actions.togglePairingDraft({ id: initialId, draft: newDraft });
+    if (error) {
+      toast.error("Failed to update draft status");
+      return;
+    }
+    setDraft(newDraft);
+    toast.success(newDraft ? "Moved to drafts" : "Published");
+  }
+
+  async function handleDelete() {
+    if (!initialId) return;
+    if (!confirm(`Delete pairing "${ingredient1} ↔ ${ingredient2}"? This cannot be undone.`))
+      return;
+    const { error } = await actions.deletePairing({ id: initialId });
+    if (error) {
+      toast.error("Delete failed");
+      return;
+    }
+    toast.success("Deleted");
+    window.location.href = "/admin/pairings";
   }
 
   const completeness = scorePairing(
@@ -210,6 +237,20 @@ export default function PairingForm({
           <>
             <button
               type="button"
+              onClick={handleToggleDraft}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
+                draft
+                  ? "border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
+                  : "border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400",
+              )}
+              title={draft ? "Click to publish" : "Click to unpublish"}
+            >
+              {draft ? <EyeOff size={13} /> : <Eye size={13} />}
+              {draft ? "Draft" : "Published"}
+            </button>
+            <button
+              type="button"
               onClick={() => setEnhanceOpen(true)}
               className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
             >
@@ -223,6 +264,14 @@ export default function PairingForm({
             >
               <Languages size={13} />
               Translate
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-destructive hover:bg-destructive/10 hover:border-destructive/30"
+            >
+              <Trash2 size={13} />
+              Delete
             </button>
           </>
         )}

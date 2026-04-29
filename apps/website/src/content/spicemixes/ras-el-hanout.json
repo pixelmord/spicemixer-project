@@ -2,15 +2,6 @@
   "@context": "https://schema.org",
   "@type": "Recipe",
   "name": "Ras el Hanout",
-  "description": "A warm, complex North African spice blend. The name means 'head of the shop' — the best the spice merchant has to offer.",
-  "author": { "@type": "Organization", "name": "Spicemixer" },
-  "datePublished": "2026-04-20",
-  "recipeYield": "about 60g",
-  "recipeCategory": "Spice Blend",
-  "recipeCuisine": "Moroccan",
-  "keywords": ["moroccan", "vegan", "pantry", "warm"],
-  "prepTime": "PT10M",
-  "totalTime": "PT10M",
   "recipeIngredient": [
     "2 tsp cumin seeds",
     "2 tsp coriander seeds",
@@ -26,9 +17,33 @@
     "⅛ tsp cloves"
   ],
   "recipeInstructions": [
-    "Toast cumin seeds, coriander seeds, and cardamom pods in a dry pan over medium heat for 1–2 minutes until fragrant. Let cool.",
-    "Grind toasted spices in a spice grinder or mortar until fine.",
-    "Combine with paprika, cinnamon, turmeric, ginger, pepper, cayenne, allspice, nutmeg, and cloves. Mix thoroughly.",
-    "Store in an airtight jar away from heat and light. Best used within 3 months."
-  ]
+    {
+      "@type": "HowToStep",
+      "text": "Toast cumin seeds, coriander seeds, and cardamom pods in a dry pan over medium heat for 1–2 minutes until fragrant. Let cool."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Grind toasted spices in a spice grinder or mortar until fine."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Combine with paprika, cinnamon, turmeric, ginger, pepper, cayenne, allspice, nutmeg, and cloves. Mix thoroughly."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Store in an airtight jar away from heat and light. Best used within 3 months."
+    }
+  ],
+  "description": "A warm, complex North African spice blend. The name means 'head of the shop' — the best the spice merchant has to offer.",
+  "author": {
+    "@type": "Organization",
+    "name": "Spicemixer"
+  },
+  "recipeYield": "about 60g",
+  "recipeCategory": "Spice Blend",
+  "recipeCuisine": "Moroccan",
+  "keywords": ["moroccan", "vegan", "pantry", "warm"],
+  "prepTime": "PT10M",
+  "totalTime": "PT10M",
+  "datePublished": "2026-04-20"
 }

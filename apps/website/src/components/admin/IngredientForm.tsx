@@ -67,6 +67,8 @@ interface Props {
   initialMeta?: Record<string, unknown>;
   initialPairings?: Pairing[];
   isNew?: boolean;
+  /** Locale codes for which a translation already exists (e.g. ["de"] if de/slug.json exists) */
+  existingTranslationLocales?: string[];
 }
 
 const CATEGORIES: Category[] = [
@@ -99,6 +101,7 @@ export default function IngredientForm({
   initialMeta,
   initialPairings = [],
   isNew,
+  existingTranslationLocales = [],
 }: Props) {
   const data = { ...emptyIngredient(), ...initialData } as IngredientData;
   const [slug, setSlug] = useState(initialSlug ?? "");
@@ -544,14 +547,17 @@ export default function IngredientForm({
               <Sparkles size={13} />
               Enhance
             </button>
-            <button
-              type="button"
-              onClick={() => setTranslateOpen(true)}
-              className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              <Languages size={13} />
-              Translate
-            </button>
+            {/* Only show translate button if no translation exists for the other locale */}
+            {!existingTranslationLocales.includes(locale === "en" ? "de" : "en") && (
+              <button
+                type="button"
+                onClick={() => setTranslateOpen(true)}
+                className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                <Languages size={13} />
+                Translate
+              </button>
+            )}
           </>
         )}
       </div>

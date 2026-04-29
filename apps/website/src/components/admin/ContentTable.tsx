@@ -46,6 +46,10 @@ export interface ContentRow {
   draft: boolean;
   completeness: { score: number; missing: string[]; color: "green" | "amber" | "red" };
   updatedAt?: string;
+  /** ISO-639-1 language code, shown for recipes that have meta.language set */
+  language?: string;
+  /** For items with multi-locale variants — list of available locale codes (e.g. ["en", "de"]) */
+  translations?: string[];
 }
 
 function getLocale(row: ContentRow): string | null {
@@ -162,12 +166,34 @@ export default function ContentTable({ initialRows }: { initialRows: ContentRow[
         ),
         cell: ({ row }) => {
           const locale = getLocale(row.original);
+          const lang = row.original.language;
+          const trans = row.original.translations;
           return (
-            <div className="flex items-center gap-2 min-w-0">
-              <a href={editHref(row.original)} className="font-medium hover:underline truncate">
-                {row.original.name as string}
-              </a>
-              {locale && <LocaleBadge locale={locale} />}
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <a href={editHref(row.original)} className="font-medium hover:underline truncate">
+                  {row.original.name as string}
+                </a>
+                {locale && <LocaleBadge locale={locale} />}
+                {!locale && lang && <LocaleBadge locale={lang} />}
+              </div>
+              {trans && trans.length > 0 && (
+                <div className="flex gap-0.5">
+                  {(["en", "de"] as const).map((l) => (
+                    <span
+                      key={l}
+                      className={cn(
+                        "text-[9px] font-mono px-1 py-0.5 rounded uppercase",
+                        trans.includes(l)
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                          : "bg-muted text-muted-foreground/60",
+                      )}
+                    >
+                      {l}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           );
         },

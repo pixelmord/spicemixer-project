@@ -8,9 +8,24 @@ import { scoreIngredient } from "@/lib/completeness.ts";
 const store = await createStore();
 const items = await store.list("ingredients");
 
+// Build a set of slugs per locale for translation status
+const slugsByLocale = new Map<string, Set<string>>();
+for (const item of items) {
+  const slash = item.id.indexOf("/");
+  if (slash === -1) continue;
+  const locale = item.id.slice(0, slash);
+  const slug = item.id.slice(slash + 1);
+  if (!slugsByLocale.has(locale)) slugsByLocale.set(locale, new Set());
+  slugsByLocale.get(locale)!.add(slug);
+}
+
 const rows = items.map((item) => {
   const completeness = scoreIngredient(item.data as never);
-  return { type: "ingredient" as const, collection: "ingredients", id: item.id, name: String((item.data as Record<string, unknown>).name ?? item.id), draft: false, completeness, updatedAt: item.updatedAt };
+  const slash = item.id.indexOf("/");
+  const slug = slash !== -1 ? item.id.slice(slash + 1) : item.id;
+  // Collect which locales have a version of this slug
+  const translations = ["en", "de"].filter((l) => slugsByLocale.get(l)?.has(slug));
+  return { type: "ingredient" as const, collection: "ingredients", id: item.id, name: String((item.data as Record<string, unknown>).name ?? item.id), draft: false, completeness, updatedAt: item.updatedAt, translations };
 });
 
 const currentPath = Astro.url.pathname;

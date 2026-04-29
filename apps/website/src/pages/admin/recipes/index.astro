@@ -13,6 +13,7 @@ const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown
 const rows = items.map((item) => {
   const meta = metaMap.get(`recipes/${item.id}`) ?? {};
   const completeness = scoreRecipe(item.data as never, meta as never);
+  const language = String((meta as Record<string, unknown>).language ?? "") || undefined;
   return {
     type: "recipe" as const,
     collection: "recipes",
@@ -21,6 +22,7 @@ const rows = items.map((item) => {
     draft: !!(meta as Record<string, unknown>).draft,
     completeness,
     updatedAt: item.updatedAt,
+    language,
   };
 });
 

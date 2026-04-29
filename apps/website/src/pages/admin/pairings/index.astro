@@ -14,6 +14,7 @@ const rows = items.map((item) => {
   const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
   const hasEn = !!descriptions["en"];
   const hasDe = !!descriptions["de"];
+  const isDraft = !!(d["draft"] as boolean);
   const completeness = scorePairing(d, locale);
   return {
     id: item.id,
@@ -22,6 +23,7 @@ const rows = items.map((item) => {
     description: descriptions[locale] ?? descriptions["en"] ?? String(d["description"] ?? ""),
     hasEn,
     hasDe,
+    isDraft,
     completeness,
     updatedAt: item.updatedAt,
   };
@@ -57,6 +59,7 @@ const currentPath = Astro.url.pathname;
                   <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Pairing</th>
                   <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Description</th>
                   <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Translations</th>
+                  <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Status</th>
                   <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Score</th>
                   <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Updated</th>
                 </tr>
@@ -89,6 +92,11 @@ const currentPath = Astro.url.pathname;
                           DE
                         </span>
                       </div>
+                    </td>
+                    <td class="py-2.5 px-4">
+                      <span class={`text-[10px] font-medium px-1.5 py-0.5 rounded ${row.isDraft ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"}`}>
+                        {row.isDraft ? "Draft" : "Published"}
+                      </span>
                     </td>
                     <td class="py-2.5 px-4">
                       <span class={`text-xs font-medium ${row.completeness.color === "green" ? "text-emerald-600" : row.completeness.color === "amber" ? "text-amber-600" : "text-red-500"}`}>

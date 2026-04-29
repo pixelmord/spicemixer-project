@@ -21,6 +21,7 @@ const ingredients = (d["ingredients"] as [string, string]) ?? ["", ""];
 const descriptions =
   (d["descriptions"] as Record<string, string>) ??
   (d["description"] ? { en: String(d["description"]) } : {});
+const isDraft = !!(d["draft"] as boolean);
 
 const currentPath = Astro.url.pathname;
 ---
@@ -38,6 +39,7 @@ const currentPath = Astro.url.pathname;
         initialIngredients={ingredients}
         initialDescriptions={descriptions}
         initialMeta={(metaItem?.data as Record<string, unknown>) ?? {}}
+        initialDraft={isDraft}
         client:load
       />
     </AdminShell>

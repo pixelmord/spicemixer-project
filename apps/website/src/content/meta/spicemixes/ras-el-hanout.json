@@ -1,16 +1,23 @@
 {
-  "kind": "spicemix",
-  "variants": [],
-  "goesWellWith": [
-    { "collection": "recipes", "slug": "preserved-lemon-couscous" },
-    { "collection": "sauces", "slug": "harissa" }
-  ],
-  "usesBase": [],
+  "draft": false,
+  "tags": ["signature", "moroccan"],
   "ingredientLinks": [
-    { "pattern": "cardamom pods, seeds only", "slug": "cardamom" },
-    { "pattern": "cardamom", "slug": "cardamom" },
-    { "pattern": "cumin seeds", "slug": "cumin" },
-    { "pattern": "cumin", "slug": "cumin" }
+    {
+      "pattern": "cardamom pods, seeds only",
+      "slug": "cardamom"
+    },
+    {
+      "pattern": "cardamom",
+      "slug": "cardamom"
+    },
+    {
+      "pattern": "cumin seeds",
+      "slug": "cumin"
+    },
+    {
+      "pattern": "cumin",
+      "slug": "cumin"
+    }
   ],
   "externalSources": [
     {
@@ -19,5 +26,82 @@
       "source": "Serious Eats"
     }
   ],
-  "tags": ["signature", "moroccan"]
+  "goesWellWith": [
+    {
+      "collection": "recipes",
+      "slug": "preserved-lemon-couscous"
+    },
+    {
+      "collection": "sauces",
+      "slug": "harissa"
+    }
+  ],
+  "usesBase": [],
+  "variants": [],
+  "translations": {},
+  "kind": "spicemix",
+  "aiSuggestions": {
+    "contentHash": "e668961d6bd982f2",
+    "generatedAt": "2026-04-29T15:04:10.945Z",
+    "improvements": [
+      {
+        "field": "cookTime",
+        "suggestion": "PT5M",
+        "rationale": "The spices in this blend are typically toasted briefly to enhance their flavors, which usually takes about 5 minutes."
+      }
+    ],
+    "tags": [
+      "spice-blend",
+      "moroccan",
+      "north-african",
+      "aromatic",
+      "homemade-spices",
+      "flavorful",
+      "cooking-essentials"
+    ],
+    "ingredientLinks": [
+      {
+        "pattern": "cumin",
+        "slug": "cumin",
+        "confidence": "high"
+      },
+      {
+        "pattern": "cardamom",
+        "slug": "cardamom",
+        "confidence": "high"
+      }
+    ],
+    "relations": [
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "preserved-lemon-couscous",
+        "name": "Preserved Lemon Couscous",
+        "rationale": "Ras el Hanout's warm spices complement the citrus flavors in preserved lemon, enhancing the dish's complexity."
+      },
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "vegetable-beef-skillet",
+        "name": "Vegetable and Beef Skillet",
+        "rationale": "The rich, aromatic spices of Ras el Hanout add depth to the savory flavors of beef and vegetables."
+      },
+      {
+        "kind": "usesBase",
+        "collection": "spicemixes",
+        "slug": "berbere",
+        "name": "Berbere",
+        "rationale": "Both spice blends share common warm spices and can be interchanged or used together for a unique flavor profile."
+      },
+      {
+        "kind": "usesBase",
+        "collection": "sauces",
+        "slug": "harissa",
+        "name": "Harissa",
+        "rationale": "Ras el Hanout can complement harissa's heat and spices, enhancing dishes that utilize this sauce."
+      }
+    ]
+  },
+  "language": "en",
+  "locale": "en"
 }
