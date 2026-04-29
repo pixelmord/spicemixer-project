@@ -1,0 +1,62 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "Original Mojo Verde from Tenerife",
+  "recipeIngredient": [
+    "1 cup fresh cilantro leaves",
+    "1/2 cup fresh parsley leaves",
+    "2 cloves garlic, peeled",
+    "1 tsp cumin seeds",
+    "1/2 tsp sea salt",
+    "1/4 tsp black pepper",
+    "1/2 tsp red pepper flakes",
+    "1/4 cup olive oil",
+    "2 tbsp white wine vinegar",
+    "2 tbsp fresh lemon juice"
+  ],
+  "recipeInstructions": [
+    {
+      "@type": "HowToStep",
+      "text": "In a food processor or blender, add the fresh cilantro and parsley leaves. Make sure to remove any tough stems.",
+      "name": "Prepare the herbs"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Add the peeled garlic cloves, cumin seeds, sea salt, black pepper, and red pepper flakes to the food processor.",
+      "name": "Add the garlic and spices"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Pulse the mixture until the herbs and garlic are finely chopped.",
+      "name": "Blend the mixture"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "While the processor is running, slowly drizzle in the olive oil until the mixture is well combined and a smooth paste forms.",
+      "name": "Incorporate olive oil"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Add the white wine vinegar and fresh lemon juice. Blend again until all ingredients are fully integrated.",
+      "name": "Mix in the vinegar and lemon juice"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Taste the sauce and adjust the seasoning if necessary by adding more salt or lemon juice to your liking.",
+      "name": "Adjust seasoning"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Transfer the mojo verde to a small bowl or jar. It can be served immediately, but for better flavor, let it sit for at least 30 minutes in the refrigerator before serving.",
+      "name": "Serve"
+    }
+  ],
+  "description": "A fresh, zesty green sauce from the Canary Islands, perfect for drizzling over grilled meats and vegetables.",
+  "recipeYield": "1 cup",
+  "recipeCategory": "Sauce",
+  "recipeCuisine": "Canarian",
+  "keywords": ["mojo verde", "sauce", "Canary Islands", "green sauce", "vegan sauce"],
+  "prepTime": "PT10M",
+  "cookTime": "PT0M",
+  "totalTime": "PT10M"
+}
