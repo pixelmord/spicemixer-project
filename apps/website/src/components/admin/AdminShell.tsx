@@ -6,6 +6,7 @@ import {
   Droplets,
   Leaf,
   Import,
+  Sparkles,
   Menu,
   X,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const NAV: NavItem[] = [
   { label: "Sauces", href: "/admin/sauces", icon: <Droplets size={16} /> },
   { label: "Ingredients", href: "/admin/ingredients", icon: <Leaf size={16} /> },
   { label: "Import from URL", href: "/admin/recipes/import", icon: <Import size={16} /> },
+  { label: "AI compose", href: "/admin/import", icon: <Sparkles size={16} /> },
 ];
 
 interface Props {
