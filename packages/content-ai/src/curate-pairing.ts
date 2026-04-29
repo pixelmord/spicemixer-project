@@ -46,9 +46,13 @@ Rules:
 - Write in ${locale} if locale is not "en"
 - Focus on WHY these ingredients pair well — flavor harmony, culinary tradition, texture contrast
 - Keep it to 1-2 sentences, vivid and informative
-- Do not suggest image URLs`,
+- Do not suggest image URLs
+- Always return field: "description"`,
     });
-    return output;
+    // Ensure field is always "description" regardless of model output
+    return {
+      fields: output.fields.map((f) => ({ ...f, field: "description" })),
+    };
   } catch (e) {
     throw new AiError("EXTRACTION_FAILED", `Pairing improvement failed: ${String(e)}`);
   }

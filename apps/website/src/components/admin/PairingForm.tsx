@@ -182,9 +182,8 @@ export default function PairingForm({
   );
 
   function handleApplySuggestion(field: string, value: string) {
-    if (field === "description") {
-      setDescriptions((prev) => ({ ...prev, [activeLocale]: value }));
-    }
+    // Pairings only have a description field — always apply to it
+    setDescriptions((prev) => ({ ...prev, [activeLocale]: value }));
     setDismissedSuggestions((prev) => new Set([...prev, `${activeLocale}:${field}`]));
   }
 
