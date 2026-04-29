@@ -1,6 +1,10 @@
 import { CheckCircle2, Circle, AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import type { CompletenessResult } from "@/lib/completeness.ts";
-import type { AiSuggestion } from "@/lib/recipe-augment.ts";
+interface AiSuggestion {
+  field: string;
+  suggestion: string;
+  rationale: string;
+}
 import { cn } from "@/lib/utils.ts";
 
 interface Field {

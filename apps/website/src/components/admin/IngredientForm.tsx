@@ -21,7 +21,6 @@ import {
   INGREDIENT_RECOMMENDED,
 } from "@/lib/completeness.ts";
 import { slugify } from "@/lib/slugify.ts";
-import { pairingId } from "@/lib/recipe-augment.ts";
 import type { EntityOption } from "./EntityCombobox.tsx";
 import SectionNav, { type SectionDef } from "./SectionNav.tsx";
 import TagInput from "./TagInput.tsx";
@@ -34,7 +33,12 @@ import TranslationCompanion, { FieldWithTranslation } from "./TranslationCompani
 import IngredientEnhanceModal from "./IngredientEnhanceModal.tsx";
 import IngredientTranslateModal from "./IngredientTranslateModal.tsx";
 import PairingEditor from "./PairingEditor.tsx";
-import type { AiSuggestion } from "@/lib/recipe-augment.ts";
+
+interface AiSuggestion {
+  field: string;
+  suggestion: string;
+  rationale: string;
+}
 
 type Category = "spice" | "herb" | "seed" | "dried-fruit" | "salt" | "acid" | "allium" | "other";
 

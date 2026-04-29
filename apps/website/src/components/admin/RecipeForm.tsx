@@ -20,7 +20,26 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { scoreRecipe, RECIPE_REQUIRED, RECIPE_RECOMMENDED } from "@/lib/completeness.ts";
 import { slugify } from "@/lib/slugify.ts";
 import type { RecipeCollection } from "@/lib/content-store.ts";
-import type { AiSuggestions, AiSuggestion } from "@/lib/recipe-augment.ts";
+interface AiSuggestion {
+  field: string;
+  suggestion: string;
+  rationale: string;
+}
+
+interface AiSuggestions {
+  contentHash: string;
+  generatedAt: string;
+  improvements: AiSuggestion[];
+  tags: string[];
+  ingredientLinks: Array<{ pattern: string; slug: string; confidence: "high" | "medium" | "low" }>;
+  relations: Array<{
+    kind: "goesWellWith" | "usesBase";
+    collection: string;
+    slug: string;
+    name: string;
+  }>;
+  detectedLanguage?: string;
+}
 import SortableArrayField from "./SortableArrayField.tsx";
 import TagInput from "./TagInput.tsx";
 import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
