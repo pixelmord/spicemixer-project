@@ -1,0 +1,8 @@
+{
+  "name": "chili powder",
+  "summary": "Chili powder is a spice blend made primarily from ground dried chilies and often includes other spices and herbs. It adds heat and depth of flavor to various dishes.",
+  "description": "Chili powder is commonly used in American, Mexican, and Indian cuisines. Its heat level can vary significantly based on the types of chilies used, making it versatile for different culinary applications. Typically, it includes ground varieties such as cayenne, jalapeño, or ancho peppers, along with other spices like cumin and garlic powder.",
+  "category": "spice",
+  "origin": ["Mexico", "United States"],
+  "flavorNotes": ["spicy", "smoky", "earthy"]
+}

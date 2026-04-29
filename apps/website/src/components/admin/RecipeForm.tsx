@@ -260,11 +260,20 @@ export default function RecipeForm({
     ((slug: string, label: string) => void) | null
   >(null);
 
-  useEffect(() => {
-    void actions.listIngredientOptions({ locale: "en" }).then(({ data }) => {
+  // listIngredientOptions only supports en/de — anything else falls back to en
+  function ingredientLocale(lang: string): "en" | "de" {
+    return lang === "de" ? "de" : "en";
+  }
+
+  function fetchIngredientOptions(lang: string) {
+    void actions.listIngredientOptions({ locale: ingredientLocale(lang) }).then(({ data }) => {
       if (data)
         setIngredientOptions(data.map((d) => ({ value: d.slug, label: d.name, sublabel: d.slug })));
     });
+  }
+
+  useEffect(() => {
+    fetchIngredientOptions(meta.language ?? "en");
     void actions.listRecipeOptions().then(({ data }) => {
       if (data)
         setRecipeOptions(
@@ -335,6 +344,12 @@ export default function RecipeForm({
       .catch(() => {})
       .finally(() => setAiRefreshing(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- intentional mount-only
+
+  // Re-fetch ingredient options when language changes to a different supported locale
+  useEffect(() => {
+    if (!language) return;
+    fetchIngredientOptions(language);
+  }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Slug availability check (new recipes only)
   useEffect(() => {
