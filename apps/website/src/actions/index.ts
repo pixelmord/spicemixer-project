@@ -113,15 +113,22 @@ async function buildListing() {
   const pairingItems = pairings.map((item) => {
     const d = item.data as Record<string, unknown>;
     const ings = (d["ingredients"] as string[]) ?? [];
+    const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
     const completeness = scorePairing(d, "en");
+    const translations = ["en", "de"].filter((l) => !!descriptions[l]);
+    const description = descriptions["en"] ?? String(d["description"] ?? "");
     return {
       type: "pairing" as const,
       collection: "pairings" as const,
       id: item.id,
-      name: ings.join(" ↔ "),
-      draft: false,
+      name: `${ings[0] ?? "?"} ↔ ${ings[1] ?? "?"}`,
+      draft: !!(d["draft"] as boolean),
       completeness,
       updatedAt: item.updatedAt,
+      translations,
+      subtitle: description
+        ? description.slice(0, 100) + (description.length > 100 ? "…" : "")
+        : undefined,
     };
   });
 

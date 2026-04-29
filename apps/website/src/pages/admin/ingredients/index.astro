@@ -6,26 +6,37 @@ import { createStore } from "@/lib/content-store.ts";
 import { scoreIngredient } from "@/lib/completeness.ts";
 
 const store = await createStore();
-const items = await store.list("ingredients");
+const allItems = await store.list("ingredients");
 
-// Build a set of slugs per locale for translation status
-const slugsByLocale = new Map<string, Set<string>>();
-for (const item of items) {
+// Group by slug, deduplicate to one row per ingredient
+const slugMap = new Map<string, typeof allItems[number][]>();
+for (const item of allItems) {
   const slash = item.id.indexOf("/");
   if (slash === -1) continue;
-  const locale = item.id.slice(0, slash);
   const slug = item.id.slice(slash + 1);
-  if (!slugsByLocale.has(locale)) slugsByLocale.set(locale, new Set());
-  slugsByLocale.get(locale)!.add(slug);
+  if (!slugMap.has(slug)) slugMap.set(slug, []);
+  slugMap.get(slug)!.push(item);
 }
 
-const rows = items.map((item) => {
-  const completeness = scoreIngredient(item.data as never);
-  const slash = item.id.indexOf("/");
-  const slug = slash !== -1 ? item.id.slice(slash + 1) : item.id;
-  // Collect which locales have a version of this slug
-  const translations = ["en", "de"].filter((l) => slugsByLocale.get(l)?.has(slug));
-  return { type: "ingredient" as const, collection: "ingredients", id: item.id, name: String((item.data as Record<string, unknown>).name ?? item.id), draft: false, completeness, updatedAt: item.updatedAt, translations };
+const rows = Array.from(slugMap.entries()).map(([slug, localeItems]) => {
+  // Primary: EN version, fall back to first available
+  const primary =
+    localeItems.find((i) => i.id.startsWith("en/")) ?? localeItems[0]!;
+  const completeness = scoreIngredient(primary.data as never);
+  const translations = localeItems
+    .map((i) => i.id.slice(0, i.id.indexOf("/")))
+    .filter(Boolean)
+    .sort();
+  return {
+    type: "ingredient" as const,
+    collection: "ingredients",
+    id: primary.id, // e.g. "en/cardamom" — editHref strips locale correctly
+    name: String((primary.data as Record<string, unknown>).name ?? slug),
+    draft: false,
+    completeness,
+    updatedAt: primary.updatedAt,
+    translations,
+  };
 });
 
 const currentPath = Astro.url.pathname;

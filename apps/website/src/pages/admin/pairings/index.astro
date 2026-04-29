@@ -1,31 +1,31 @@
 ---
 export const prerender = false;
 import AdminShell from "@/components/admin/AdminShell.tsx";
+import ContentTable from "@/components/admin/ContentTable.tsx";
 import { createStore } from "@/lib/content-store.ts";
 import { scorePairing } from "@/lib/completeness.ts";
 
 const store = await createStore();
 const items = await store.list("pairings");
-const locale = "en";
 
 const rows = items.map((item) => {
   const d = item.data as Record<string, unknown>;
   const ings = (d["ingredients"] as string[]) ?? [];
   const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
-  const hasEn = !!descriptions["en"];
-  const hasDe = !!descriptions["de"];
-  const isDraft = !!(d["draft"] as boolean);
-  const completeness = scorePairing(d, locale);
+  const translations = ["en", "de"].filter((l) => !!descriptions[l]);
+  const draft = !!(d["draft"] as boolean);
+  const completeness = scorePairing(d, "en");
+  const description = descriptions["en"] ?? String(d["description"] ?? "");
   return {
+    type: "pairing" as const,
+    collection: "pairings",
     id: item.id,
-    slug1: ings[0] ?? "",
-    slug2: ings[1] ?? "",
-    description: descriptions[locale] ?? descriptions["en"] ?? String(d["description"] ?? ""),
-    hasEn,
-    hasDe,
-    isDraft,
+    name: `${ings[0] ?? "?"} ↔ ${ings[1] ?? "?"}`,
+    draft,
     completeness,
     updatedAt: item.updatedAt,
+    translations,
+    subtitle: description ? description.slice(0, 100) + (description.length > 100 ? "…" : "") : undefined,
   };
 });
 
@@ -46,72 +46,7 @@ const currentPath = Astro.url.pathname;
             + New pairing
           </a>
         </div>
-
-        {rows.length === 0 ? (
-          <div class="rounded-lg border border-dashed border-border p-12 text-center text-sm text-muted-foreground">
-            No pairings yet. Run the migration script or create one above.
-          </div>
-        ) : (
-          <div class="rounded-lg border border-border overflow-hidden">
-            <table class="w-full text-sm">
-              <thead class="bg-muted/50 border-b border-border">
-                <tr>
-                  <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Pairing</th>
-                  <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Description</th>
-                  <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Translations</th>
-                  <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Status</th>
-                  <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Score</th>
-                  <th class="py-2.5 px-4 text-left font-medium text-muted-foreground">Updated</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-border">
-                {rows.map((row) => (
-                  <tr class="hover:bg-muted/30 transition-colors">
-                    <td class="py-2.5 px-4">
-                      <a
-                        href={`/admin/pairings/${encodeURIComponent(row.id)}/edit`}
-                        class="flex items-center gap-1 font-medium text-foreground hover:text-primary"
-                      >
-                        <span>{row.slug1}</span>
-                        <span class="text-muted-foreground">↔</span>
-                        <span>{row.slug2}</span>
-                      </a>
-                      <p class="text-[10px] text-muted-foreground font-mono mt-0.5">{row.id}</p>
-                    </td>
-                    <td class="py-2.5 px-4 max-w-xs">
-                      <p class="text-xs text-muted-foreground line-clamp-2">
-                        {row.description || <span class="italic opacity-50">No description</span>}
-                      </p>
-                    </td>
-                    <td class="py-2.5 px-4">
-                      <div class="flex gap-1">
-                        <span class={`text-[10px] font-mono px-1.5 py-0.5 rounded ${row.hasEn ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
-                          EN
-                        </span>
-                        <span class={`text-[10px] font-mono px-1.5 py-0.5 rounded ${row.hasDe ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
-                          DE
-                        </span>
-                      </div>
-                    </td>
-                    <td class="py-2.5 px-4">
-                      <span class={`text-[10px] font-medium px-1.5 py-0.5 rounded ${row.isDraft ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"}`}>
-                        {row.isDraft ? "Draft" : "Published"}
-                      </span>
-                    </td>
-                    <td class="py-2.5 px-4">
-                      <span class={`text-xs font-medium ${row.completeness.color === "green" ? "text-emerald-600" : row.completeness.color === "amber" ? "text-amber-600" : "text-red-500"}`}>
-                        {row.completeness.score}%
-                      </span>
-                    </td>
-                    <td class="py-2.5 px-4 text-xs text-muted-foreground">
-                      {row.updatedAt ? new Date(row.updatedAt).toLocaleDateString() : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <ContentTable initialRows={rows} client:load />
       </div>
     </AdminShell>
   </body>
