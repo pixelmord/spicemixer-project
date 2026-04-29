@@ -331,13 +331,20 @@ export default function RecipeForm({
             toast.success(
               `Auto-linked ${data.autoLinked} ingredient${data.autoLinked !== 1 ? "s" : ""}`,
             );
-            void actions.getItem({ collection, id: slug }).then(({ data: item }) => {
-              if (item?.meta) {
-                const updatedLinks = (item.meta as Record<string, unknown>)["ingredientLinks"];
-                if (Array.isArray(updatedLinks))
-                  setIngredientLinks(updatedLinks as IngredientLink[]);
-              }
-            });
+            // Merge auto-links into current client state — never replace, so
+            // any link the user added in-session isn't clobbered.
+            const autoLinks = ((data.aiSuggestions as AiSuggestions)?.ingredientLinks ?? []).filter(
+              (l) => l.confidence === "high",
+            );
+            if (autoLinks.length > 0) {
+              setIngredientLinks((prev) => {
+                const existingPatterns = new Set(prev.map((l) => l.pattern));
+                const toAdd = autoLinks
+                  .filter((l) => !existingPatterns.has(l.pattern))
+                  .map((l) => ({ pattern: l.pattern, slug: l.slug, kind: "ingredient" as const }));
+                return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+              });
+            }
           }
         }
       })
@@ -483,20 +490,26 @@ export default function RecipeForm({
         .then(({ data }) => {
           if (data) {
             setAiSuggestions(data.aiSuggestions as AiSuggestions);
-            // Reload ingredient links if auto-linked
             if (data.autoLinked > 0) {
               toast.success(
                 `Auto-linked ${data.autoLinked} ingredient${data.autoLinked !== 1 ? "s" : ""}`,
               );
-              // Re-fetch meta to get updated links
-              void actions.getItem({ collection, id: slug }).then(({ data: item }) => {
-                if (item?.meta) {
-                  const updatedLinks = (item.meta as Record<string, unknown>)["ingredientLinks"];
-                  if (Array.isArray(updatedLinks)) {
-                    setIngredientLinks(updatedLinks as IngredientLink[]);
-                  }
-                }
-              });
+              const autoLinks = (
+                (data.aiSuggestions as AiSuggestions)?.ingredientLinks ?? []
+              ).filter((l) => l.confidence === "high");
+              if (autoLinks.length > 0) {
+                setIngredientLinks((prev) => {
+                  const existingPatterns = new Set(prev.map((l) => l.pattern));
+                  const toAdd = autoLinks
+                    .filter((l) => !existingPatterns.has(l.pattern))
+                    .map((l) => ({
+                      pattern: l.pattern,
+                      slug: l.slug,
+                      kind: "ingredient" as const,
+                    }));
+                  return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+                });
+              }
             }
           }
         })
