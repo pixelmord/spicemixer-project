@@ -32,13 +32,17 @@ const pairingsResolved = pairingEntities.length > 0
       pairingEntities.map(async (pairing) => {
         const otherSlug = pairing.ingredients[0] === slug ? pairing.ingredients[1] : pairing.ingredients[0];
         const entry = await getIngredient(otherSlug, locale);
-        return { slug: otherSlug, name: entry?.data.name ?? otherSlug, description: pairing.description };
+        // Resolve locale-aware description with fallback
+        const descriptions = pairing.descriptions ?? {};
+        const description = descriptions[locale] ?? descriptions["en"] ?? pairing.description ?? "";
+        const isFallback = !descriptions[locale] && (!!descriptions["en"] || !!pairing.description);
+        return { slug: otherSlug, name: entry?.data.name ?? otherSlug, description, isFallback };
       })
     )
   : await Promise.all(
       (data.pairings ?? []).map(async ({ slug: pairSlug, note }) => {
         const entry = await getIngredient(pairSlug, locale);
-        return { slug: pairSlug, name: entry?.data.name ?? pairSlug, description: note ?? "" };
+        return { slug: pairSlug, name: entry?.data.name ?? pairSlug, description: note ?? "", isFallback: false };
       })
     );
 ---
@@ -143,7 +147,7 @@ const pairingsResolved = pairingEntities.length > 0
             {t("section.pairings")}
           </h2>
           <ul class="space-y-3">
-            {pairingsResolved.map(({ slug: pairSlug, name, description }) => (
+            {pairingsResolved.map(({ slug: pairSlug, name, description, isFallback }) => (
               <li class="rounded-xl bg-white p-4 ring-1 ring-stone-200">
                 <a
                   href={`${prefix}/ingredients/${pairSlug}/`}
@@ -151,7 +155,12 @@ const pairingsResolved = pairingEntities.length > 0
                 >
                   {name}
                 </a>
-                {description && <p class="mt-1 text-sm text-stone-600">{description}</p>}
+                {description && (
+                  <p class={`mt-1 text-sm ${isFallback ? "text-stone-400 italic" : "text-stone-600"}`}>
+                    {description}
+                    {isFallback && <span class="ml-1 text-xs not-italic">(EN)</span>}
+                  </p>
+                )}
               </li>
             ))}
           </ul>

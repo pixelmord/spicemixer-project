@@ -5,6 +5,7 @@ import {
   FlaskConical,
   Droplets,
   Leaf,
+  Link2,
   Import,
   Sparkles,
   Menu,
@@ -26,6 +27,7 @@ const NAV: NavItem[] = [
   { label: "Spicemixes", href: "/admin/spicemixes", icon: <FlaskConical size={16} /> },
   { label: "Sauces", href: "/admin/sauces", icon: <Droplets size={16} /> },
   { label: "Ingredients", href: "/admin/ingredients", icon: <Leaf size={16} /> },
+  { label: "Pairings", href: "/admin/pairings", icon: <Link2 size={16} /> },
   { label: "Import from URL", href: "/admin/recipes/import", icon: <Import size={16} /> },
   { label: "AI compose", href: "/admin/import", icon: <Sparkles size={16} /> },
 ];

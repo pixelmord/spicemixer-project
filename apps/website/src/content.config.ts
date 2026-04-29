@@ -142,7 +142,23 @@ const ingredientSchema = z.object({
 
 const pairingSchema = z.object({
   ingredients: z.tuple([z.string(), z.string()]),
-  description: z.string().min(1),
+  // Locale-keyed descriptions map (e.g. { en: "...", de: "..." })
+  descriptions: z.record(z.string(), z.string()).default({}),
+  // Legacy single-locale field — kept optional during migration window
+  description: z.string().optional(),
+});
+
+const pairingAiBlockSchema = z.object({
+  contentHash: z.string(),
+  generatedAt: z.string(),
+  improvements: z
+    .array(z.object({ field: z.string(), suggestion: z.string(), rationale: z.string() }))
+    .default([]),
+  detectedLanguage: z.string().length(2).optional(),
+});
+
+const pairingMetaSchema = z.object({
+  aiSuggestions: z.record(z.string(), pairingAiBlockSchema).optional(),
 });
 
 const aiIngredientSuggestionsSchema = z.object({
@@ -208,6 +224,11 @@ const ingredientMeta = defineCollection({
   schema: ingredientMetaSchema,
 });
 
+const pairingMeta = defineCollection({
+  loader: glob({ pattern: "*.json", base: "./src/content/pairing-meta" }),
+  schema: pairingMetaSchema,
+});
+
 export const collections = {
   recipes,
   spicemixes,
@@ -216,6 +237,7 @@ export const collections = {
   ingredients,
   pairings,
   ingredientMeta,
+  pairingMeta,
 };
 
 import type { CollectionEntry } from "astro:content";
@@ -224,3 +246,4 @@ export type Ingredient = CollectionEntry<"ingredients">["data"];
 export type RecipeMeta = CollectionEntry<"meta">["data"];
 export type Pairing = CollectionEntry<"pairings">["data"];
 export type IngredientMeta = CollectionEntry<"ingredientMeta">["data"];
+export type PairingMeta = CollectionEntry<"pairingMeta">["data"];

@@ -26,10 +26,13 @@ const ingredientPairings = allPairings
   })
   .map((p) => {
     const d = p.data as Record<string, unknown>;
+    const descriptions =
+      (d["descriptions"] as Record<string, string>) ??
+      (d["description"] ? { en: String(d["description"]) } : {});
     return {
       id: p.id,
       ingredients: d["ingredients"] as [string, string],
-      description: String(d["description"] ?? ""),
+      descriptions,
     };
   });
 

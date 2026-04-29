@@ -1,4 +1,6 @@
 {
   "ingredients": ["cumin", "fenugreek"],
-  "description": "Beide profitieren vom Rösten; eine grundlegende Paarung in der äthiopischen und indischen Küche."
+  "descriptions": {
+    "en": "Beide profitieren vom Rösten; eine grundlegende Paarung in der äthiopischen und indischen Küche."
+  }
 }

@@ -1,0 +1,26 @@
+{
+  "aiSuggestions": {
+    "contentHash": "cdf44862c6661cf2",
+    "generatedAt": "2026-04-29T13:56:50.653Z",
+    "improvements": [],
+    "pairings": [
+      {
+        "slug": "cumin",
+        "description": "Cumin's warm, nutty flavor complements caraway's earthy and slightly bitter notes, creating a harmonious blend in various dishes, especially in spice mixes and stews.",
+        "confidence": "high"
+      },
+      {
+        "slug": "fenugreek",
+        "description": "Fenugreek has a slightly sweet, nutty flavor that balances out the bitterness of caraway, making it a great addition in curry and bread recipes.",
+        "confidence": "medium"
+      },
+      {
+        "slug": "cardamom",
+        "description": "Cardamom's sweet and aromatic characteristics can soften caraway's earthiness, leading to a complex flavor profile in both sweet and savory dishes.",
+        "confidence": "medium"
+      }
+    ],
+    "detectedLanguage": "en",
+    "languageMismatch": false
+  }
+}

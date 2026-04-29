@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { cn } from "@/lib/utils.ts";
 import SourcePicker, { type Source, type SourceMode } from "./SourcePicker.tsx";
 
-type ContentType = "recipe" | "ingredient";
+type ContentType = "recipe" | "ingredient" | "pairing";
 type RecipeCollection = "recipes" | "spicemixes" | "sauces";
 type Locale = "en" | "de";
 
@@ -101,12 +101,18 @@ export default function AiComposeForm() {
           setResult(data.recipe as Record<string, unknown>);
           setWarnings(data.warnings);
           toast.success("Recipe extracted!");
-        } else {
+        } else if (contentType === "ingredient") {
           const { data, error: err } = await actions.aiExtractIngredient(formData);
           if (err || !data) throw new Error(err?.message ?? "Extraction failed");
           setResult(data.ingredient as Record<string, unknown>);
           setWarnings(data.warnings);
           toast.success("Ingredient extracted!");
+        } else {
+          const { data, error: err } = await actions.aiExtractPairing(formData);
+          if (err || !data) throw new Error(err?.message ?? "Extraction failed");
+          setResult(data.pairing as Record<string, unknown>);
+          setWarnings(data.warnings);
+          toast.success("Pairing extracted!");
         }
       }
     } catch (e) {
@@ -126,6 +132,9 @@ export default function AiComposeForm() {
         JSON.stringify({ recipe: result, source: { url: "" }, warnings }),
       );
       window.location.href = `/admin/${collection}/new?import=1`;
+    } else if (contentType === "pairing") {
+      sessionStorage.setItem("import-pairing", JSON.stringify({ pairing: result }));
+      window.location.href = `/admin/pairings/new?import=1&locale=${locale}`;
     } else {
       sessionStorage.setItem("import-ingredient", JSON.stringify({ ingredient: result, locale }));
       window.location.href = `/admin/ingredients/new?import=1&locale=${locale}`;
@@ -137,7 +146,9 @@ export default function AiComposeForm() {
       ? "Generate recipe"
       : contentType === "recipe"
         ? "Extract recipe"
-        : "Extract ingredient";
+        : contentType === "pairing"
+          ? "Extract pairing"
+          : "Extract ingredient";
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -197,6 +208,7 @@ export default function AiComposeForm() {
               <SelectContent>
                 <SelectItem value="recipe">Recipe</SelectItem>
                 {tab !== "prompt" && <SelectItem value="ingredient">Ingredient</SelectItem>}
+                {tab !== "prompt" && <SelectItem value="pairing">Pairing</SelectItem>}
               </SelectContent>
             </Select>
           </div>
@@ -279,31 +291,51 @@ export default function AiComposeForm() {
             <div className="flex items-center gap-2">
               <CheckCircle2 size={16} className="text-emerald-600" />
               <CardTitle className="text-base text-emerald-700 dark:text-emerald-400">
-                {contentType === "recipe" ? "Recipe" : "Ingredient"} ready
+                {contentType === "recipe"
+                  ? "Recipe"
+                  : contentType === "pairing"
+                    ? "Pairing"
+                    : "Ingredient"}{" "}
+                ready
               </CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1">
-              <h3 className="font-semibold">{String(result["name"] ?? "Untitled")}</h3>
-              {typeof result["description"] === "string" && result["description"] && (
-                <p className="text-sm text-muted-foreground line-clamp-2">
-                  {result["description"]}
-                </p>
-              )}
-              {contentType === "recipe" && Array.isArray(result["recipeIngredient"]) && (
-                <p className="text-xs text-muted-foreground">
-                  {(result["recipeIngredient"] as string[]).length} ingredients
-                </p>
-              )}
-              {contentType === "ingredient" && Array.isArray(result["flavorNotes"]) && (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {(result["flavorNotes"] as string[]).map((note) => (
-                    <Badge key={note} variant="secondary" className="text-xs">
-                      {note}
-                    </Badge>
-                  ))}
-                </div>
+              {contentType === "pairing" ? (
+                <>
+                  <h3 className="font-semibold">
+                    {String(result["ingredient1"] ?? "?")} ↔ {String(result["ingredient2"] ?? "?")}
+                  </h3>
+                  {typeof result["description"] === "string" && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {result["description"]}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <h3 className="font-semibold">{String(result["name"] ?? "Untitled")}</h3>
+                  {typeof result["description"] === "string" && result["description"] && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {result["description"]}
+                    </p>
+                  )}
+                  {contentType === "recipe" && Array.isArray(result["recipeIngredient"]) && (
+                    <p className="text-xs text-muted-foreground">
+                      {(result["recipeIngredient"] as string[]).length} ingredients
+                    </p>
+                  )}
+                  {contentType === "ingredient" && Array.isArray(result["flavorNotes"]) && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(result["flavorNotes"] as string[]).map((note) => (
+                        <Badge key={note} variant="secondary" className="text-xs">
+                          {note}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
             {warnings.length > 0 && (

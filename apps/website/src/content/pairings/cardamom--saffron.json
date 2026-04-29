@@ -1,4 +1,6 @@
 {
   "ingredients": ["cardamom", "saffron"],
-  "description": "Ein persischer Klassiker — die Kombination prägt viele Reis- und Desserttraditionen von Iran bis Indien."
+  "descriptions": {
+    "en": "Ein persischer Klassiker — die Kombination prägt viele Reis- und Desserttraditionen von Iran bis Indien."
+  }
 }

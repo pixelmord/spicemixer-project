@@ -85,6 +85,53 @@ export function scoreRecipe(recipe: AnyRecord, meta: AnyRecord): CompletenessRes
   return { score: pct, missing, color: color(pct) };
 }
 
+/**
+ * Helper: resolve a pairing's description for a given locale with fallback.
+ * Returns { description, locale, isFallback }.
+ */
+export function resolvePairingDescription(
+  pairing: AnyRecord,
+  locale: string,
+): { description: string; locale: string; isFallback: boolean } {
+  const descriptions = (pairing["descriptions"] as Record<string, string> | undefined) ?? {};
+  if (descriptions[locale]) return { description: descriptions[locale], locale, isFallback: false };
+  if (descriptions["en"])
+    return { description: descriptions["en"], locale: "en", isFallback: true };
+  const firstKey = Object.keys(descriptions)[0];
+  if (firstKey) return { description: descriptions[firstKey], locale: firstKey, isFallback: true };
+  // Legacy single-description field
+  const legacy = String(pairing["description"] ?? "");
+  return { description: legacy, locale: "en", isFallback: !!legacy };
+}
+
+export function scorePairing(pairing: AnyRecord, locale: string): CompletenessResult {
+  const descriptions = (pairing["descriptions"] as Record<string, string> | undefined) ?? {};
+  const legacy = pairing["description"] ? "en" : null;
+  const hasAny = Object.keys(descriptions).length > 0 || legacy;
+
+  if (!hasAny) return { score: 0, missing: ["descriptions"], color: "red" };
+
+  const missing: string[] = [];
+  const recommended = ["en", "de"];
+  let filled = 0;
+
+  for (const lang of recommended) {
+    if (descriptions[lang] || (lang === "en" && legacy)) {
+      filled++;
+    } else {
+      missing.push(`description.${lang}`);
+    }
+  }
+
+  if (!descriptions[locale] && !(locale === "en" && legacy)) {
+    // Ensure current locale is in missing
+    if (!missing.includes(`description.${locale}`)) missing.unshift(`description.${locale}`);
+  }
+
+  const pct = score(filled, recommended.length);
+  return { score: pct, missing, color: color(pct) };
+}
+
 export function scoreIngredient(ingredient: AnyRecord): CompletenessResult {
   for (const field of INGREDIENT_REQUIRED) {
     if (!has(ingredient, field)) {

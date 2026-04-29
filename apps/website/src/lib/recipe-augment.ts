@@ -149,7 +149,9 @@ export function pairingId(slugA: string, slugB: string): string {
 export interface PairingEntity {
   id: string;
   ingredients: [string, string];
-  description: string;
+  descriptions: Record<string, string>;
+  /** Legacy single-locale field, may be absent after migration */
+  description?: string;
 }
 
 /** Get all pairings that include a given ingredient slug. */
@@ -160,6 +162,7 @@ export async function getPairings(slug: string): Promise<PairingEntity[]> {
     .map((entry) => ({
       id: entry.id,
       ingredients: entry.data.ingredients as [string, string],
+      descriptions: (entry.data.descriptions ?? {}) as Record<string, string>,
       description: entry.data.description,
     }));
 }

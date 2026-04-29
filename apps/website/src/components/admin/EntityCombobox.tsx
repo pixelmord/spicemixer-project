@@ -16,6 +16,7 @@ interface Props {
   onCreateNew?: (name: string) => void;
   className?: string;
   id?: string;
+  disabled?: boolean;
 }
 
 export default function EntityCombobox({
@@ -26,6 +27,7 @@ export default function EntityCombobox({
   onCreateNew,
   className,
   id,
+  disabled = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -62,8 +64,9 @@ export default function EntityCombobox({
       <button
         id={id}
         type="button"
-        onClick={handleOpen}
-        className="flex h-8 w-full items-center justify-between rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        onClick={disabled ? undefined : handleOpen}
+        disabled={disabled}
+        className="flex h-8 w-full items-center justify-between rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <span className={cn(!selected && "text-muted-foreground")}>
           {selected ? selected.label : placeholder}

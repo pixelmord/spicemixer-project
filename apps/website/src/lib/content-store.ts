@@ -1,5 +1,11 @@
 export type RecipeCollection = "recipes" | "spicemixes" | "sauces";
-export type Collection = RecipeCollection | "ingredients" | "meta" | "ingredientMeta" | "pairings";
+export type Collection =
+  | RecipeCollection
+  | "ingredients"
+  | "meta"
+  | "ingredientMeta"
+  | "pairings"
+  | "pairingMeta";
 
 export interface ContentItem<T = unknown> {
   collection: Collection;

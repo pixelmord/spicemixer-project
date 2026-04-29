@@ -2,7 +2,7 @@ import { defineAction, ActionError } from "astro:actions";
 import { z } from "astro/zod";
 import { createStore } from "@/lib/content-store.ts";
 import { fetchRecipe } from "recipe-ingestion";
-import { scoreRecipe, scoreIngredient } from "@/lib/completeness.ts";
+import { scoreRecipe, scoreIngredient, scorePairing } from "@/lib/completeness.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -70,12 +70,13 @@ const recipeCollectionEnum = z.enum(["recipes", "spicemixes", "sauces"]);
 
 async function buildListing() {
   const store = await createStore();
-  const [recipes, spicemixes, sauces, metas, ingredients] = await Promise.all([
+  const [recipes, spicemixes, sauces, metas, ingredients, pairings] = await Promise.all([
     store.list("recipes"),
     store.list("spicemixes"),
     store.list("sauces"),
     store.list("meta"),
     store.list("ingredients"),
+    store.list("pairings"),
   ]);
 
   const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown>]));
@@ -109,7 +110,22 @@ async function buildListing() {
     };
   });
 
-  return [...recipeItems, ...ingredientItems];
+  const pairingItems = pairings.map((item) => {
+    const d = item.data as Record<string, unknown>;
+    const ings = (d["ingredients"] as string[]) ?? [];
+    const completeness = scorePairing(d, "en");
+    return {
+      type: "pairing" as const,
+      collection: "pairings" as const,
+      id: item.id,
+      name: ings.join(" ↔ "),
+      draft: false,
+      completeness,
+      updatedAt: item.updatedAt,
+    };
+  });
+
+  return [...recipeItems, ...ingredientItems, ...pairingItems];
 }
 
 // ──────────────────────────────────────────────
@@ -182,11 +198,21 @@ export const server = {
       id: z.string().min(1),
       ingredients: z.tuple([z.string(), z.string()]),
       description: z.string().min(1),
+      locale: z.string().length(2).default("en"),
     }),
-    handler: async ({ id, ingredients, description }) => {
+    handler: async ({ id, ingredients, description, locale }) => {
       const store = await createStore();
       const canonical = [...ingredients].sort() as [string, string];
-      await store.put("pairings", id, { ingredients: canonical, description });
+      // Merge into existing descriptions map
+      const existing = await store.get("pairings", id);
+      const existingData = (existing?.data as Record<string, unknown>) ?? {};
+      const existingDescriptions =
+        (existingData["descriptions"] as Record<string, string>) ??
+        (existingData["description"] ? { en: String(existingData["description"]) } : {});
+      await store.put("pairings", id, {
+        ingredients: canonical,
+        descriptions: { ...existingDescriptions, [locale]: description },
+      });
       return { ok: true, id };
     },
   }),
@@ -198,7 +224,27 @@ export const server = {
     handler: async ({ id }) => {
       const store = await createStore();
       await store.delete("pairings", id);
+      await store.delete("pairingMeta", id);
       return { ok: true };
+    },
+  }),
+
+  /** List all pairing entities (all locales' descriptions). */
+  listAllPairings: defineAction({
+    handler: async () => {
+      const store = await createStore();
+      const all = await store.list("pairings");
+      return all.map((item) => {
+        const d = item.data as Record<string, unknown>;
+        return {
+          id: item.id,
+          ingredients: d["ingredients"] as [string, string],
+          descriptions:
+            (d["descriptions"] as Record<string, string>) ??
+            (d["description"] ? { en: String(d["description"]) } : {}),
+          updatedAt: item.updatedAt,
+        };
+      });
     },
   }),
 
@@ -217,10 +263,13 @@ export const server = {
         })
         .map((item) => {
           const d = item.data as Record<string, unknown>;
+          const descriptions =
+            (d["descriptions"] as Record<string, string>) ??
+            (d["description"] ? { en: String(d["description"]) } : {});
           return {
             id: item.id,
             ingredients: d["ingredients"] as [string, string],
-            description: String(d["description"] ?? ""),
+            descriptions,
           };
         });
     },
@@ -809,6 +858,178 @@ export const server = {
       });
 
       return { ok: true, slug, targetLocale };
+    },
+  }),
+
+  /** Extract a Pairing from an uploaded file (PDF/image/text). */
+  aiExtractPairing: defineAction({
+    accept: "form",
+    input: fileOrTextInput,
+    handler: async (input) => {
+      const config = resolveAiConfig();
+      const { extractPairingFromFile } = await import("content-ai");
+      const resolved = await resolveFileInput(input);
+      if (resolved.kind === "pdf" || resolved.kind === "image") {
+        return extractPairingFromFile(resolved, config);
+      }
+      return extractPairingFromFile({ kind: "text", content: resolved.content }, config);
+    },
+  }),
+
+  /** Merge new content into an existing pairing description and return the proposed version. */
+  aiMergePairing: defineAction({
+    accept: "form",
+    input: z.object({
+      existing: z.string(),
+      locale: z.string().length(2).default("en"),
+      sourceKind: z.enum(["file", "text", "prompt"]),
+      file: z.instanceof(File).optional(),
+      mimeType: z.string().optional(),
+      text: z.string().optional(),
+      prompt: z.string().optional(),
+    }),
+    handler: async ({ existing, locale, sourceKind, file, mimeType, text, prompt }) => {
+      const config = resolveAiConfig();
+      const { mergePairing } = await import("content-ai");
+      const existingData = JSON.parse(existing) as Record<string, unknown>;
+
+      if (sourceKind === "prompt") {
+        if (!prompt) throw new ActionError({ code: "BAD_REQUEST", message: "Prompt required." });
+        return mergePairing(
+          { existing: { ...existingData, locale } as never, source: { kind: "prompt", prompt } },
+          config,
+        );
+      }
+      if (sourceKind === "text") {
+        if (!text) throw new ActionError({ code: "BAD_REQUEST", message: "Text required." });
+        return mergePairing(
+          {
+            existing: { ...existingData, locale } as never,
+            source: { kind: "text", content: text },
+          },
+          config,
+        );
+      }
+      if (!file || !mimeType)
+        throw new ActionError({ code: "BAD_REQUEST", message: "File required." });
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (mimeType === "text/plain" || mimeType === "text/markdown") {
+        return mergePairing(
+          {
+            existing: { ...existingData, locale } as never,
+            source: { kind: "text", content: await file.text() },
+          },
+          config,
+        );
+      }
+      const kind = mimeType === "application/pdf" ? "pdf" : "image";
+      const source =
+        kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
+      return mergePairing({ existing: { ...existingData, locale } as never, source }, config);
+    },
+  }),
+
+  /** Translate a pairing description into targetLocale and save it in the descriptions map. */
+  aiTranslatePairing: defineAction({
+    accept: "json",
+    input: z.object({
+      id: z.string().min(1),
+      sourceLocale: z.enum(["en", "de"]),
+      targetLocale: z.enum(["en", "de"]),
+    }),
+    handler: async ({ id, sourceLocale, targetLocale }) => {
+      const config = resolveAiConfig();
+      const { proposePairingTranslation } = await import("content-ai");
+      const store = await createStore();
+
+      const existing = await store.get("pairings", id);
+      if (!existing)
+        throw new ActionError({ code: "NOT_FOUND", message: `Pairing ${id} not found.` });
+
+      const d = existing.data as Record<string, unknown>;
+      const descriptions =
+        (d["descriptions"] as Record<string, string>) ??
+        (d["description"] ? { en: String(d["description"]) } : {});
+
+      if (descriptions[targetLocale]) {
+        throw new ActionError({
+          code: "CONFLICT",
+          message: `Translation for ${targetLocale} already exists.`,
+        });
+      }
+
+      const sourceDescription =
+        descriptions[sourceLocale] ?? descriptions["en"] ?? Object.values(descriptions)[0] ?? "";
+      const ings = d["ingredients"] as [string, string];
+
+      const result = await proposePairingTranslation(
+        { ingredient1: ings[0], ingredient2: ings[1], description: sourceDescription },
+        sourceLocale,
+        targetLocale,
+        config,
+      );
+
+      const updatedDescriptions = {
+        ...descriptions,
+        [targetLocale]: result.fields["description"] ?? sourceDescription,
+      };
+      await store.put("pairings", id, { ingredients: ings, descriptions: updatedDescriptions });
+      return { ok: true, description: updatedDescriptions[targetLocale] };
+    },
+  }),
+
+  /** Refresh AI improvement suggestions for a pairing description in a given locale. */
+  aiRefreshPairingSuggestions: defineAction({
+    accept: "json",
+    input: z.object({
+      id: z.string().min(1),
+      locale: z.string().length(2).default("en"),
+      pairing: z.record(z.string(), z.unknown()),
+    }),
+    handler: async ({ id, locale, pairing }) => {
+      const config = resolveAiConfig();
+      const { proposePairingImprovements } = await import("content-ai");
+      const store = await createStore();
+
+      const { createHash } = await import("node:crypto");
+      const contentHash = createHash("sha256")
+        .update(JSON.stringify({ pairing, locale }))
+        .digest("hex")
+        .slice(0, 16);
+
+      const existingMeta = (await store.get("pairingMeta", id))?.data as
+        | Record<string, unknown>
+        | undefined;
+      const existingAi = (existingMeta?.["aiSuggestions"] as Record<string, unknown> | undefined)?.[
+        locale
+      ] as Record<string, unknown> | undefined;
+      if (existingAi && existingAi["contentHash"] === contentHash) {
+        return { aiSuggestions: existingMeta?.["aiSuggestions"], skipped: true };
+      }
+
+      const descriptions = (pairing["descriptions"] as Record<string, string>) ?? {};
+      const description =
+        descriptions[locale] ?? descriptions["en"] ?? String(pairing["description"] ?? "");
+      const ings = pairing["ingredients"] as [string, string];
+
+      const improvements = await proposePairingImprovements(
+        { ingredient1: ings?.[0] ?? "", ingredient2: ings?.[1] ?? "", description },
+        locale,
+        config,
+      );
+
+      const aiBlock = {
+        contentHash,
+        generatedAt: new Date().toISOString(),
+        improvements: improvements.fields,
+      };
+      const updatedAi = {
+        ...((existingMeta?.["aiSuggestions"] as Record<string, unknown>) ?? {}),
+        [locale]: aiBlock,
+      };
+      await store.put("pairingMeta", id, { ...existingMeta, aiSuggestions: updatedAi });
+
+      return { aiSuggestions: updatedAi, skipped: false };
     },
   }),
 

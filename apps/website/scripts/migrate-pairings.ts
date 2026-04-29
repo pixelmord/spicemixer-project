@@ -85,7 +85,7 @@ async function main() {
 
       const pairingData = {
         ingredients: [slug, pairSlug].sort() as [string, string],
-        description: note || `${slug} and ${pairSlug} pair well together.`,
+        descriptions: { en: note || `${slug} and ${pairSlug} pair well together.` },
       };
       await writeFile(pairingFile, JSON.stringify(pairingData, null, 2) + "\n", "utf-8");
       console.log(`  ✓  Created ${id}`);
@@ -97,6 +97,23 @@ async function main() {
     await writeFile(file, JSON.stringify(cleaned, null, 2) + "\n", "utf-8");
     console.log(`  ✓  Removed inline pairings from ${localeSlug}`);
   }
+
+  // Phase 2: migrate legacy `description: string` → `descriptions: { en }` on existing pairing files
+  const pairingFiles = await walkDir(PAIRINGS_DIR);
+  let pairingsUpgraded = 0;
+  for (const file of pairingFiles) {
+    const raw = await readFile(file, "utf-8");
+    const data = JSON.parse(raw) as Record<string, unknown>;
+    if (data["description"] && !data["descriptions"]) {
+      data["descriptions"] = { en: data["description"] };
+      delete data["description"];
+      await writeFile(file, JSON.stringify(data, null, 2) + "\n", "utf-8");
+      console.log(`  ✓  Upgraded ${file.split("/").pop()} (description → descriptions.en)`);
+      pairingsUpgraded++;
+    }
+  }
+  if (pairingsUpgraded > 0)
+    console.log(`  ${pairingsUpgraded} pairings upgraded to descriptions map`);
 
   console.log(
     `\nDone. ${ingredientsProcessed} ingredients processed, ${pairingsCreated} pairings created, ${pairingsSkipped} skipped.`,

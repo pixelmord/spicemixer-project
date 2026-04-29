@@ -1,4 +1,6 @@
 {
   "ingredients": ["fenugreek", "sumac"],
-  "description": "Sumachs Säure belebt und hebt die bittere Note des Bockshornklees in nordafrikanischen Gewürzmischungen."
+  "descriptions": {
+    "en": "Sumachs Säure belebt und hebt die bittere Note des Bockshornklees in nordafrikanischen Gewürzmischungen."
+  }
 }

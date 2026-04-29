@@ -39,6 +39,17 @@ export type {
   MergeIngredientResult,
 } from "./merge-ingredient.ts";
 
+export { proposePairingImprovements, proposePairingTranslation } from "./curate-pairing.ts";
+export type { PairingSnapshot } from "./curate-pairing.ts";
+
+export { extractPairingFromFile } from "./extract-pairing.ts";
+export type { PairingFileInput, PairingExtractionResult } from "./extract-pairing.ts";
+
+export { mergePairing } from "./merge-pairing.ts";
+export type { MergePairingSource, MergePairingInput, MergePairingResult } from "./merge-pairing.ts";
+
+export type { PairingExtract } from "./schemas/pairing-extract.ts";
+
 export type { RecipeExtract } from "./schemas/recipe-extract.ts";
 export type { IngredientExtract } from "./schemas/ingredient-extract.ts";
 

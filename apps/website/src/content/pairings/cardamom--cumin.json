@@ -1,4 +1,6 @@
 {
   "ingredients": ["cardamom", "cumin"],
-  "description": "Gemeinsam bilden sie die warme Basis vieler Gewürzmischungen, darunter Ras el Hanout und Garam Masala."
+  "descriptions": {
+    "en": "Gemeinsam bilden sie die warme Basis vieler Gewürzmischungen, darunter Ras el Hanout und Garam Masala."
+  }
 }

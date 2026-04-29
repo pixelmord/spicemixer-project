@@ -10,10 +10,21 @@ import type { EntityOption } from "./EntityCombobox.tsx";
 import EntityCombobox from "./EntityCombobox.tsx";
 import IngredientLinkModal from "./IngredientLinkModal.tsx";
 
-interface Pairing {
+export interface Pairing {
   id: string;
   ingredients: [string, string];
-  description: string;
+  descriptions: Record<string, string>;
+}
+
+function resolveDescription(
+  pairing: Pairing,
+  locale: string,
+): { text: string; isFallback: boolean } {
+  if (pairing.descriptions[locale])
+    return { text: pairing.descriptions[locale], isFallback: false };
+  if (pairing.descriptions["en"]) return { text: pairing.descriptions["en"], isFallback: true };
+  const first = Object.values(pairing.descriptions)[0];
+  return { text: first ?? "", isFallback: !!first };
 }
 
 interface PairingProposal {
@@ -61,7 +72,8 @@ export default function PairingEditor({
 
   async function handleSaveDescription(pairing: Pairing) {
     const desc = editingDescriptions[pairing.id];
-    if (!desc || desc === pairing.description) {
+    const currentDesc = resolveDescription(pairing, locale).text;
+    if (!desc || desc === currentDesc) {
       setEditingDescriptions((prev) => {
         const n = { ...prev };
         delete n[pairing.id];
@@ -75,9 +87,12 @@ export default function PairingEditor({
         id: pairing.id,
         ingredients: pairing.ingredients,
         description: desc,
+        locale,
       });
       onPairingsChange(
-        pairings.map((p) => (p.id === pairing.id ? { ...p, description: desc } : p)),
+        pairings.map((p) =>
+          p.id === pairing.id ? { ...p, descriptions: { ...p.descriptions, [locale]: desc } } : p,
+        ),
       );
       setEditingDescriptions((prev) => {
         const n = { ...prev };
@@ -112,13 +127,14 @@ export default function PairingEditor({
         id,
         ingredients: [currentSlug, newSlug] as [string, string],
         description: newDescription,
+        locale,
       });
       onPairingsChange([
         ...pairings,
         {
           id,
           ingredients: [currentSlug, newSlug].sort() as [string, string],
-          description: newDescription,
+          descriptions: { [locale]: newDescription },
         },
       ]);
       setNewSlug("");
@@ -144,13 +160,14 @@ export default function PairingEditor({
         id,
         ingredients: [currentSlug, p.slug] as [string, string],
         description: p.description,
+        locale,
       });
       onPairingsChange([
         ...pairings,
         {
           id,
           ingredients: [currentSlug, p.slug].sort() as [string, string],
-          description: p.description,
+          descriptions: { [locale]: p.description },
         },
       ]);
       onApplyProposal(p);
@@ -264,18 +281,33 @@ export default function PairingEditor({
                 onBlur={() => handleSaveDescription(pairing)}
               />
             ) : (
-              <p
-                className="text-xs text-muted-foreground cursor-text hover:text-foreground"
-                onClick={() =>
-                  setEditingDescriptions((prev) => ({
-                    ...prev,
-                    [pairing.id]: pairing.description,
-                  }))
-                }
-                title="Click to edit description"
-              >
-                {pairing.description}
-              </p>
+              (() => {
+                const { text, isFallback } = resolveDescription(pairing, locale);
+                return (
+                  <div>
+                    <p
+                      className={cn(
+                        "text-xs cursor-text hover:text-foreground",
+                        isFallback ? "text-muted-foreground/60 italic" : "text-muted-foreground",
+                      )}
+                      onClick={() =>
+                        setEditingDescriptions((prev) => ({
+                          ...prev,
+                          [pairing.id]: text,
+                        }))
+                      }
+                      title="Click to edit description"
+                    >
+                      {text || <span className="italic opacity-50">No description yet</span>}
+                    </p>
+                    {isFallback && (
+                      <p className="text-[10px] text-amber-600 mt-0.5">
+                        ⚠ EN fallback — no {locale.toUpperCase()} translation
+                      </p>
+                    )}
+                  </div>
+                );
+              })()
             )}
           </div>
         );

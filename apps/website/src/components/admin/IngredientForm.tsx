@@ -32,7 +32,7 @@ import QuickCreateDialog from "./QuickCreateDialog.tsx";
 import TranslationCompanion, { FieldWithTranslation } from "./TranslationCompanion.tsx";
 import IngredientEnhanceModal from "./IngredientEnhanceModal.tsx";
 import IngredientTranslateModal from "./IngredientTranslateModal.tsx";
-import PairingEditor from "./PairingEditor.tsx";
+import PairingEditor, { type Pairing } from "./PairingEditor.tsx";
 
 interface AiSuggestion {
   field: string;
@@ -50,12 +50,6 @@ interface IngredientData {
   category: Category;
   origin: string[];
   flavorNotes: string[];
-}
-
-interface Pairing {
-  id: string;
-  ingredients: [string, string];
-  description: string;
 }
 
 interface AiSuggestionsState {
