@@ -2,15 +2,6 @@
   "@context": "https://schema.org",
   "@type": "Recipe",
   "name": "Berbere",
-  "description": "Ethiopia's essential spice blend — fiery, aromatic, deeply complex. Foundational for doro wat, misir wat, and marinades.",
-  "author": { "@type": "Organization", "name": "Spicemixer" },
-  "datePublished": "2026-04-22",
-  "recipeYield": "about 80g",
-  "recipeCategory": "Spice Blend",
-  "recipeCuisine": "Ethiopian",
-  "keywords": ["ethiopian", "vegan", "spicy", "pantry"],
-  "prepTime": "PT15M",
-  "totalTime": "PT15M",
   "recipeIngredient": [
     "3 tsp dried chilli flakes",
     "2 tsp sweet paprika",
@@ -26,9 +17,35 @@
     "1 tsp salt"
   ],
   "recipeInstructions": [
-    "Dry-toast fenugreek seeds, coriander seeds, and cardamom pods in a hot pan for 2 minutes until fragrant. Cool.",
-    "Grind toasted seeds to a fine powder.",
-    "Combine all spices and salt, mixing well. Adjust chilli heat to preference.",
-    "Store in an airtight container for up to 3 months."
-  ]
+    {
+      "@type": "HowToStep",
+      "text": "Dry-toast fenugreek seeds, coriander seeds, and cardamom pods in a hot pan for 2 minutes until fragrant. Cool."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Grind toasted seeds to a fine powder."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Combine all spices and salt, mixing well. Adjust chilli heat to preference."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Store in an airtight container for up to 3 months."
+    }
+  ],
+  "description": "Ethiopia's essential spice blend — fiery, aromatic, deeply complex. Foundational for doro wat, misir wat, and marinades.",
+  "image": "https://example.com/berbere-spice-blend.jpg",
+  "author": {
+    "@type": "Organization",
+    "name": "Spicemixer"
+  },
+  "recipeYield": "about 80g",
+  "recipeCategory": "Spice Blend",
+  "recipeCuisine": "Ethiopian",
+  "keywords": ["ethiopian", "vegan", "spicy", "pantry"],
+  "prepTime": "PT15M",
+  "cookTime": "10 minutes",
+  "totalTime": "PT15M",
+  "datePublished": "2026-04-22"
 }

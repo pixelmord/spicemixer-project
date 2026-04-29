@@ -33,6 +33,7 @@ import RecommendedHint from "./RecommendedHint.tsx";
 import EnhanceModal from "./EnhanceModal.tsx";
 import TranslateModal from "./TranslateModal.tsx";
 import InlineSuggestion from "./InlineSuggestion.tsx";
+import IngredientLinkModal from "./IngredientLinkModal.tsx";
 
 type Collection = RecipeCollection;
 
@@ -198,6 +199,27 @@ export default function RecipeForm({
     Array.isArray(recipe.suitableForDiet) ? recipe.suitableForDiet : [],
   );
 
+  // Image health check
+  const [imageBroken, setImageBroken] = useState(false);
+
+  // Ingredient link modal state
+  const [linkModalState, setLinkModalState] = useState<
+    | { open: false }
+    | {
+        open: true;
+        mode: "view";
+        slug: string;
+        ingredientIndex: number;
+      }
+    | {
+        open: true;
+        mode: "link";
+        ingredientIndex: number;
+        ingredientString: string;
+        aiSuggestion?: { pattern: string; slug: string; confidence: "high" | "medium" | "low" };
+      }
+  >({ open: false });
+
   // AI suggestions cache
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestions | undefined>(meta.aiSuggestions);
   const [aiRefreshing, setAiRefreshing] = useState(false);
@@ -257,6 +279,62 @@ export default function RecipeForm({
       if (data) setTagSuggestions(data);
     });
   }, []);
+
+  // Check image URL health on mount
+  useEffect(() => {
+    const imageUrl = getFirstImage(initialRecipe?.image);
+    if (!imageUrl) return;
+    const img = new window.Image();
+    img.onerror = () => setImageBroken(true);
+    img.onload = () => setImageBroken(false);
+    img.src = imageUrl;
+  }, []);
+
+  // Auto-run AI suggestions on first open if none cached
+  useEffect(() => {
+    if (isNew || !slug || aiSuggestions) return;
+    const snap = {
+      "@context": "https://schema.org",
+      "@type": "Recipe",
+      ...initialRecipe,
+    };
+    const metaSnap = { ...initialMeta } as Record<string, unknown>;
+    const missingKeys = RECIPE_RECOMMENDED.filter((k) => {
+      const v = (snap as Record<string, unknown>)[k];
+      if (!v) return true;
+      if (Array.isArray(v)) return (v as unknown[]).length === 0;
+      return false;
+    });
+    setAiRefreshing(true);
+    void actions
+      .aiRefreshSuggestions({
+        collection,
+        slug,
+        recipe: snap as never,
+        meta: metaSnap,
+        missingFields: missingKeys,
+        locale: (initialMeta?.language ?? "en") as "en" | "de",
+      })
+      .then(({ data }) => {
+        if (data) {
+          setAiSuggestions(data.aiSuggestions as AiSuggestions);
+          if (data.autoLinked > 0) {
+            toast.success(
+              `Auto-linked ${data.autoLinked} ingredient${data.autoLinked !== 1 ? "s" : ""}`,
+            );
+            void actions.getItem({ collection, id: slug }).then(({ data: item }) => {
+              if (item?.meta) {
+                const updatedLinks = (item.meta as Record<string, unknown>)["ingredientLinks"];
+                if (Array.isArray(updatedLinks))
+                  setIngredientLinks(updatedLinks as IngredientLink[]);
+              }
+            });
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setAiRefreshing(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- intentional mount-only
 
   // Slug availability check (new recipes only)
   useEffect(() => {
@@ -820,10 +898,26 @@ export default function RecipeForm({
                           id={field.name}
                           type="url"
                           value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
+                          onChange={(e) => {
+                            field.handleChange(e.target.value);
+                            // Re-check broken status when URL changes
+                            setImageBroken(false);
+                            if (e.target.value) {
+                              const img = new window.Image();
+                              img.onerror = () => setImageBroken(true);
+                              img.onload = () => setImageBroken(false);
+                              img.src = e.target.value;
+                            }
+                          }}
                           onBlur={field.handleBlur}
                           placeholder="https://example.com/image.jpg"
+                          className={imageBroken ? "border-amber-400" : ""}
                         />
+                        {imageBroken && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            ⚠ Image URL appears broken or unreachable
+                          </p>
+                        )}
                       </div>
                     )}
                   </form.Field>
@@ -991,27 +1085,57 @@ export default function RecipeForm({
                             placeholder="2 tsp cumin seeds"
                             className="flex-1"
                           />
-                          {/* Link badge */}
+                          {/* Link button — always shown, opens IngredientLinkModal */}
                           {existingLink ? (
-                            <Badge
-                              variant="outline"
-                              className="shrink-0 text-[10px] text-emerald-600 border-emerald-200 gap-1 cursor-default"
-                              title={`Linked → ${existingLink.slug}`}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setLinkModalState({
+                                  open: true,
+                                  mode: "view",
+                                  slug: existingLink.slug,
+                                  ingredientIndex: i,
+                                })
+                              }
+                              className="shrink-0 flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 text-[10px] text-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-950/40"
+                              title={`Linked → ${existingLink.slug} · click to view`}
                             >
                               <Link2 size={9} />
                               {existingLink.slug}
-                            </Badge>
-                          ) : aiSuggestion ? (
+                            </button>
+                          ) : (
                             <button
                               type="button"
-                              onClick={() => applyLinkSuggestion(aiSuggestion)}
-                              className="shrink-0 flex items-center gap-1 rounded border border-amber-200 bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 text-[10px] text-amber-700 hover:bg-amber-100"
-                              title={`AI suggests → ${aiSuggestion.slug} (${aiSuggestion.confidence})`}
+                              onClick={() =>
+                                setLinkModalState({
+                                  open: true,
+                                  mode: "link",
+                                  ingredientIndex: i,
+                                  ingredientString: ing,
+                                  aiSuggestion: aiSuggestion ?? undefined,
+                                })
+                              }
+                              className={
+                                aiSuggestion
+                                  ? "shrink-0 flex items-center gap-1 rounded border border-amber-200 bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 text-[10px] text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-950/40"
+                                  : "shrink-0 flex items-center gap-1 rounded border border-dashed border-border px-1.5 py-0.5 text-[10px] text-muted-foreground/50 hover:text-muted-foreground hover:border-border/80"
+                              }
+                              title={
+                                aiSuggestion
+                                  ? `AI suggests → ${aiSuggestion.slug} · click to link`
+                                  : "Click to link ingredient"
+                              }
                             >
-                              <Sparkles size={9} />
-                              {aiSuggestion.slug}
+                              {aiSuggestion ? (
+                                <>
+                                  <Sparkles size={9} />
+                                  {aiSuggestion.slug}
+                                </>
+                              ) : (
+                                <Link2 size={9} />
+                              )}
                             </button>
-                          ) : null}
+                          )}
                         </div>
                       );
                     }}
@@ -1612,6 +1736,51 @@ export default function RecipeForm({
           onCreated={(newSlug, newLabel) => {
             quickCreateCallback?.(newSlug, newLabel);
             setQuickCreateKind(null);
+          }}
+        />
+      )}
+
+      {/* Ingredient link modal */}
+      {linkModalState.open && linkModalState.mode === "view" && (
+        <IngredientLinkModal
+          open
+          onClose={() => setLinkModalState({ open: false })}
+          mode="view"
+          slug={linkModalState.slug}
+          locale={language || "en"}
+          onUnlink={() => {
+            const idx = linkModalState.ingredientIndex;
+            const ing = ingredients[idx] ?? "";
+            setIngredientLinks((prev) =>
+              prev.filter((l) => !ing.toLowerCase().includes(l.pattern.toLowerCase())),
+            );
+            setLinkModalState({ open: false });
+          }}
+        />
+      )}
+      {linkModalState.open && linkModalState.mode === "link" && (
+        <IngredientLinkModal
+          open
+          onClose={() => setLinkModalState({ open: false })}
+          mode="link"
+          ingredientString={linkModalState.ingredientString}
+          aiSuggestion={linkModalState.aiSuggestion}
+          ingredientOptions={ingredientOptions}
+          locale={language || "en"}
+          collection={collection}
+          onLinked={(newSlug, pattern) => {
+            setIngredientLinks((prev) => {
+              if (prev.some((l) => l.pattern === pattern)) return prev;
+              return [...prev, { pattern, slug: newSlug, kind: "ingredient" as const }];
+            });
+            // Also add to ingredientOptions cache if not present
+            if (!ingredientOptions.some((o) => o.value === newSlug)) {
+              setIngredientOptions((prev) => [
+                ...prev,
+                { value: newSlug, label: newSlug, sublabel: newSlug },
+              ]);
+            }
+            setLinkModalState({ open: false });
           }}
         />
       )}

@@ -165,7 +165,10 @@ ${context}
 
 Missing fields to fill: ${missingFields.join(", ")}
 
-For each field, provide a suggested value and a one-sentence rationale. Only suggest fields from the missing list.`,
+Rules:
+- Only suggest fields from the missing list
+- Do NOT suggest image URLs, placeholder images, or any URLs for the "image" field — leave image fields empty
+- Only fill text, number, or array fields you can infer from the recipe context`,
     });
     return output;
   } catch (e) {

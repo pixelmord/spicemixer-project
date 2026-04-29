@@ -665,10 +665,13 @@ export const server = {
         ? (recipe["recipeIngredient"] as string[])
         : [];
 
+      // Exclude "image" — AI cannot supply real image URLs, only placeholder guesses
+      const fieldsForAi = missingFields.filter((f) => f !== "image");
+
       const [improvementsResult, tagsResult, linksResult, relationsResult, langResult] =
         await Promise.allSettled([
-          missingFields.length
-            ? proposeRecipeImprovements(recipe as never, missingFields, config)
+          fieldsForAi.length
+            ? proposeRecipeImprovements(recipe as never, fieldsForAi, config)
             : Promise.resolve({ fields: [] }),
           proposeTags(recipe as never, [], config),
           recipeIngredients.length
@@ -680,11 +683,20 @@ export const server = {
             : Promise.resolve(null),
         ]);
 
+      const PLACEHOLDER_PATTERNS =
+        /example\.|placeholder\.|picsum\.|via\.placeholder\.|lorempixel\.|dummyimage\./i;
+      const rawImprovements =
+        improvementsResult.status === "fulfilled" ? improvementsResult.value.fields : [];
+      const filteredImprovements = rawImprovements.filter(
+        (f) =>
+          f.field !== "image" &&
+          !(typeof f.suggestion === "string" && PLACEHOLDER_PATTERNS.test(f.suggestion)),
+      );
+
       const aiSuggestions = {
         contentHash,
         generatedAt: new Date().toISOString(),
-        improvements:
-          improvementsResult.status === "fulfilled" ? improvementsResult.value.fields : [],
+        improvements: filteredImprovements,
         tags: tagsResult.status === "fulfilled" ? tagsResult.value.tags : [],
         ingredientLinks: linksResult.status === "fulfilled" ? linksResult.value : [],
         relations: relationsResult.status === "fulfilled" ? relationsResult.value : [],

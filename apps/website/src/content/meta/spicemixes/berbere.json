@@ -1,14 +1,84 @@
 {
-  "kind": "spicemix",
-  "variants": [],
-  "goesWellWith": [],
-  "usesBase": [],
+  "draft": true,
+  "tags": ["signature", "ethiopian", "spicy"],
   "ingredientLinks": [
-    { "pattern": "fenugreek seeds", "slug": "fenugreek" },
-    { "pattern": "fenugreek", "slug": "fenugreek" },
-    { "pattern": "cardamom pods, seeds only", "slug": "cardamom" },
-    { "pattern": "cardamom", "slug": "cardamom" }
+    {
+      "pattern": "fenugreek seeds",
+      "slug": "fenugreek"
+    },
+    {
+      "pattern": "fenugreek",
+      "slug": "fenugreek"
+    },
+    {
+      "pattern": "cardamom pods, seeds only",
+      "slug": "cardamom"
+    },
+    {
+      "pattern": "cardamom",
+      "slug": "cardamom"
+    }
   ],
   "externalSources": [],
-  "tags": ["signature", "ethiopian", "spicy"]
+  "goesWellWith": [],
+  "usesBase": [],
+  "variants": [],
+  "translations": {},
+  "kind": "spicemix",
+  "aiSuggestions": {
+    "contentHash": "f141656aa556a4df",
+    "generatedAt": "2026-04-29T11:41:58.204Z",
+    "improvements": [],
+    "tags": [
+      "ethiopian",
+      "spice-blend",
+      "fiery",
+      "aromatic",
+      "complex-flavors",
+      "homemade",
+      "berbere"
+    ],
+    "ingredientLinks": [
+      {
+        "pattern": "fenugreek",
+        "slug": "fenugreek",
+        "confidence": "high"
+      },
+      {
+        "pattern": "cardamom",
+        "slug": "cardamom",
+        "confidence": "high"
+      }
+    ],
+    "relations": [
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "vegetable-beef-skillet",
+        "name": "Vegetable and Beef Skillet",
+        "rationale": "Berbere's bold spices complement the flavors in the beef and vegetables, enhancing the overall dish with a spicy kick."
+      },
+      {
+        "kind": "usesBase",
+        "collection": "spicemixes",
+        "slug": "ras-el-hanout",
+        "name": "Ras el Hanout",
+        "rationale": "Both Berbere and Ras el Hanout are complex spice blends rooted in their respective cuisines, showcasing aromatic and spicy profiles that can be interchanged in various recipes."
+      },
+      {
+        "kind": "goesWellWith",
+        "collection": "sauces",
+        "slug": "harissa",
+        "name": "Harissa",
+        "rationale": "Harissa, like Berbere, is a spicy sauce that shares similar flavor profiles, making them great companions in dishes that require a kick."
+      },
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "miso-butter-ramen",
+        "name": "Miso Butter Ramen",
+        "rationale": "The rich umami of the miso combined with Berbere's complexity can create a unique fusion, adding depth to the ramen."
+      }
+    ]
+  }
 }

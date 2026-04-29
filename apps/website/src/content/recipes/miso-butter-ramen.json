@@ -2,17 +2,6 @@
   "@context": "https://schema.org",
   "@type": "Recipe",
   "name": "Miso Butter Ramen",
-  "description": "A ten-minute pantry ramen with a glossy miso-butter broth, soft egg, and crisp scallions.",
-  "image": "https://images.unsplash.com/photo-1623341214825-9f4f963727da?w=1200&q=80",
-  "author": { "@type": "Person", "name": "Kenji Watari" },
-  "datePublished": "2026-03-28",
-  "recipeYield": "2 servings",
-  "recipeCategory": "Main Course",
-  "recipeCuisine": "Japanese",
-  "keywords": ["weeknight", "comfort", "quick", "vegetarian"],
-  "prepTime": "PT5M",
-  "cookTime": "PT10M",
-  "totalTime": "PT15M",
   "recipeIngredient": [
     "2 packs fresh ramen noodles",
     "3 tbsp white miso paste",
@@ -41,5 +30,19 @@
       "@type": "HowToStep",
       "text": "Eat immediately, while the butter is still glossy on the broth."
     }
-  ]
+  ],
+  "description": "A ten-minute pantry ramen with a glossy miso-butter broth, soft egg, and crisp scallions.",
+  "image": "https://images.unsplash.com/photo-1623341214825-9f4f963727da?w=1200&q=80",
+  "author": {
+    "@type": "Person",
+    "name": "Kenji Watari"
+  },
+  "recipeYield": "2 servings",
+  "recipeCategory": "Main Course",
+  "recipeCuisine": "Japanese",
+  "keywords": ["weeknight", "comfort", "quick", "vegetarian", "pantry", "japanese"],
+  "prepTime": "PT5M",
+  "cookTime": "PT10M",
+  "totalTime": "PT15M",
+  "datePublished": "2026-03-28"
 }
