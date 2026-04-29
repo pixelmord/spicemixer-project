@@ -188,6 +188,7 @@ Missing fields to fill: ${missingFields.join(", ")}
 Rules:
 - Only suggest fields from the missing list
 - Do NOT suggest image URLs, placeholder images, or any URLs for the "image" field — leave image fields empty
+- For time fields (prepTime, cookTime, totalTime) use ISO 8601 duration format only, e.g. "PT15M" or "PT1H30M" — never plain English like "10 minutes"
 - Only fill text, number, or array fields you can infer from the recipe context`,
     });
     return output;

@@ -35,7 +35,6 @@
     }
   ],
   "description": "Ethiopia's essential spice blend — fiery, aromatic, deeply complex. Foundational for doro wat, misir wat, and marinades.",
-  "image": "https://example.com/berbere-spice-blend.jpg",
   "author": {
     "@type": "Organization",
     "name": "Spicemixer"
@@ -45,7 +44,7 @@
   "recipeCuisine": "Ethiopian",
   "keywords": ["ethiopian", "vegan", "spicy", "pantry"],
   "prepTime": "PT15M",
-  "cookTime": "10 minutes",
-  "totalTime": "PT15M",
+  "cookTime": "PT10M",
+  "totalTime": "PT25M",
   "datePublished": "2026-04-22"
 }
