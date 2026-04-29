@@ -46,9 +46,16 @@ const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
 
 <BaseLayout title={`${data.name} — Spicemixer`} description={data.description}>
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-    <nav class="mb-8 text-sm">
+    <nav class="mb-8 flex items-center justify-between text-sm">
       <a href={locale === "de" ? "/de/recipes/" : "/recipes/"} class="text-stone-500 transition hover:text-stone-900">
         {t("nav.back")}
+      </a>
+      <a
+        href={`/admin/recipes/${slug}/edit`}
+        data-admin-link
+        class="hidden text-xs text-stone-400 transition hover:text-stone-700"
+      >
+        Edit
       </a>
     </nav>
 

@@ -54,13 +54,27 @@ const homeHref = lang === "de" ? "/de/" : "/";
     <footer class="border-t border-stone-200 px-4 py-5 sm:px-6 lg:px-8">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-4">
         <SiteNav />
-        <a
-          href={homeHref}
-          class="shrink-0 text-xs font-semibold uppercase tracking-[0.3em] text-stone-400 transition hover:text-stone-600"
-        >
-          Spicemixer
-        </a>
+        <div class="flex items-center gap-4 shrink-0">
+          <a
+            href="/admin/"
+            data-admin-link
+            class="hidden text-xs text-stone-400 transition hover:text-stone-600"
+          >
+            Admin
+          </a>
+          <a
+            href={homeHref}
+            class="text-xs font-semibold uppercase tracking-[0.3em] text-stone-400 transition hover:text-stone-600"
+          >
+            Spicemixer
+          </a>
+        </div>
       </div>
     </footer>
+    <script>
+      if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+        document.querySelectorAll("[data-admin-link]").forEach((el) => el.classList.remove("hidden"));
+      }
+    </script>
   </body>
 </html>
