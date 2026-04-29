@@ -1,0 +1,41 @@
+export { resolveConfig, createProvider } from "./provider.ts";
+export type { AiConfig } from "./provider.ts";
+
+export { extractRecipeFromFile } from "./extract-recipe.ts";
+export type { RecipeFileInput, RecipeExtractionResult } from "./extract-recipe.ts";
+
+export { extractIngredientFromFile } from "./extract-ingredient.ts";
+export type { IngredientFileInput, IngredientExtractionResult } from "./extract-ingredient.ts";
+
+export {
+  proposeIngredientLinks,
+  proposeTags,
+  proposeRecipeImprovements,
+  proposeRecipeTranslation,
+} from "./curate-recipe.ts";
+export type {
+  RecipeSnapshot,
+  IngredientLinkProposal,
+  TagProposal,
+  ImprovementProposal,
+  TranslationDraft,
+} from "./curate-recipe.ts";
+
+export {
+  proposeIngredientPairings,
+  proposeIngredientImprovements,
+  proposeIngredientTranslation,
+} from "./curate-ingredient.ts";
+export type { IngredientSnapshot, PairingProposal } from "./curate-ingredient.ts";
+
+export type { RecipeExtract } from "./schemas/recipe-extract.ts";
+export type { IngredientExtract } from "./schemas/ingredient-extract.ts";
+
+export { generateRecipeFromPrompt } from "./generate-recipe.ts";
+export type { GenerateRecipeInput, GenerateRecipeResult } from "./generate-recipe.ts";
+
+export { mergeRecipe } from "./merge-recipe.ts";
+export type { MergeSource, MergeRecipeInput, MergeRecipeResult } from "./merge-recipe.ts";
+
+export { AiError } from "./errors.ts";
+export type { AiErrorCode } from "./errors.ts";

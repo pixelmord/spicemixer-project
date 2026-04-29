@@ -6,6 +6,7 @@ allowBuilds:
   esbuild: true
   msw: true
   sharp: true
+  canvas: true
 
 catalog:
   "@astrojs/react": ^5.0.4
