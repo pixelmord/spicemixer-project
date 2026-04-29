@@ -35,6 +35,13 @@ export interface TranslationDraft {
   fields: Record<string, string>;
 }
 
+function normalizeConfidence(v: string): "high" | "medium" | "low" {
+  const lower = v.toLowerCase().trim();
+  if (lower === "high" || lower.includes("high")) return "high";
+  if (lower === "medium" || lower.includes("medium") || lower === "moderate") return "medium";
+  return "low";
+}
+
 export async function proposeIngredientLinks(
   recipeIngredients: string[],
   inventory: Array<{ slug: string; name: string }>,
@@ -43,14 +50,17 @@ export async function proposeIngredientLinks(
   if (!recipeIngredients.length || !inventory.length) return [];
 
   const model = createProvider(config);
+  const inventorySet = new Set(inventory.map((i) => i.slug));
   const inventoryList = inventory.map((i) => `${i.slug}: ${i.name}`).join("\n");
 
+  // Use z.string() for confidence — strict enum causes AI_NoObjectGeneratedError on
+  // any casing variant ("High", "very high"). Normalize after.
   const schema = z.object({
     links: z.array(
       z.object({
         pattern: z.string(),
         slug: z.string(),
-        confidence: z.enum(["high", "medium", "low"]),
+        confidence: z.string(),
       }),
     ),
   });
@@ -60,7 +70,9 @@ export async function proposeIngredientLinks(
       model,
       output: Output.object({ schema }),
       providerOptions: PROVIDER_OPTIONS,
-      prompt: `Match each recipe ingredient string to the best slug from the inventory. Only match if you're reasonably confident.
+      prompt: `Match each recipe ingredient string to the best slug from the inventory below.
+
+IMPORTANT: Only use slugs that appear verbatim in the inventory list. Do not invent or guess slugs.
 
 Recipe ingredients:
 ${recipeIngredients.map((i, n) => `${n + 1}. ${i}`).join("\n")}
@@ -69,13 +81,21 @@ Ingredient inventory (slug: name):
 ${inventoryList}
 
 For each ingredient that has a clear match, return:
-- pattern: a substring of the ingredient string that identifies the ingredient (e.g. "flour", "olive oil")
-- slug: the matching inventory slug
-- confidence: high/medium/low
+- pattern: a lowercase substring of the ingredient string that identifies the ingredient (e.g. "cumin", "olive oil")
+- slug: the exact matching slug from the inventory list above
+- confidence: high / medium / low
 
-Skip ingredients with no reasonable match. Do not invent slugs.`,
+Return an empty links array if nothing matches confidently. Do not fabricate slugs.`,
     });
-    return output.links;
+
+    // Discard any suggested slug not in the provided inventory
+    return output.links
+      .filter((l) => inventorySet.has(l.slug))
+      .map((l) => ({
+        pattern: l.pattern,
+        slug: l.slug,
+        confidence: normalizeConfidence(l.confidence),
+      }));
   } catch (e) {
     throw new AiError("EXTRACTION_FAILED", `Ingredient link proposal failed: ${String(e)}`);
   }
