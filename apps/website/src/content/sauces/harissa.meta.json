@@ -1,0 +1,90 @@
+{
+  "draft": false,
+  "tags": ["signature", "fiery", "pantry"],
+  "ingredientLinks": [
+    {
+      "pattern": "caraway seeds",
+      "slug": "caraway"
+    },
+    {
+      "pattern": "caraway",
+      "slug": "caraway"
+    },
+    {
+      "pattern": "cumin",
+      "slug": "cumin"
+    }
+  ],
+  "externalSources": [
+    {
+      "url": "https://www.bonappetit.com/recipe/harissa-chicken",
+      "title": "Harissa Chicken with Spring Vegetables",
+      "source": "Bon Appétit"
+    }
+  ],
+  "goesWellWith": [
+    {
+      "collection": "recipes",
+      "slug": "preserved-lemon-couscous"
+    }
+  ],
+  "usesBase": [
+    {
+      "collection": "spicemixes",
+      "slug": "ras-el-hanout"
+    }
+  ],
+  "variants": [],
+  "translations": {},
+  "kind": "sauce",
+  "aiSuggestions": {
+    "contentHash": "02a83681be94c0ef",
+    "generatedAt": "2026-04-29T15:24:17.097Z",
+    "improvements": [],
+    "tags": ["spicy", "tunisian", "sauce", "homemade", "condiment", "smoky", "fiery"],
+    "ingredientLinks": [
+      {
+        "pattern": "caraway",
+        "slug": "caraway",
+        "confidence": "high"
+      },
+      {
+        "pattern": "cumin",
+        "slug": "cumin",
+        "confidence": "high"
+      }
+    ],
+    "relations": [
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "preserved-lemon-couscous",
+        "name": "Preserved Lemon Couscous",
+        "rationale": "The bright, zesty flavors of preserved lemon complement the smoky heat of harissa, creating a balance that enhances both dishes."
+      },
+      {
+        "kind": "usesBase",
+        "collection": "spicemixes",
+        "slug": "berbere",
+        "name": "Berbere",
+        "rationale": "Harissa and berbere both are spice blends that incorporate chili and earthy spices, making them suitable for use in similar dishes."
+      },
+      {
+        "kind": "usesBase",
+        "collection": "spicemixes",
+        "slug": "ras-el-hanout",
+        "name": "Ras el Hanout",
+        "rationale": "Like harissa, ras el hanout is a North African spice mix that adds depth and complexity to various dishes, allowing for creative culinary overlap."
+      },
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "vegetable-beef-skillet",
+        "name": "Vegetable and Beef Skillet",
+        "rationale": "The rich flavor of the vegetable and beef skillet can be enhanced with the spice and heat of harissa, providing a harmonious flavor profile."
+      }
+    ]
+  },
+  "language": "en",
+  "locale": "en"
+}

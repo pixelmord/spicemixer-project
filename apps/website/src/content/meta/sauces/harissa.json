@@ -1,53 +1,9 @@
 {
-  "kind": "sauce",
-  "variants": [],
-  "goesWellWith": [
-    {
-      "collection": "recipes",
-      "slug": "preserved-lemon-couscous"
-    }
-  ],
-  "usesBase": [
-    {
-      "collection": "spicemixes",
-      "slug": "ras-el-hanout"
-    }
-  ],
-  "ingredientLinks": [
-    {
-      "pattern": "caraway seeds",
-      "slug": "caraway"
-    },
-    {
-      "pattern": "caraway",
-      "slug": "caraway"
-    },
-    {
-      "pattern": "cumin",
-      "slug": "cumin"
-    }
-  ],
-  "externalSources": [
-    {
-      "url": "https://www.bonappetit.com/recipe/harissa-chicken",
-      "title": "Harissa Chicken with Spring Vegetables",
-      "source": "Bon Appétit"
-    }
-  ],
-  "tags": ["signature", "fiery", "pantry"],
   "aiSuggestions": {
-    "contentHash": "cf03b3a3e02fe92c",
-    "generatedAt": "2026-04-29T14:40:12.564Z",
+    "contentHash": "8d407ad716dbffe8",
+    "generatedAt": "2026-04-29T15:51:20.961Z",
     "improvements": [],
-    "tags": [
-      "harissa",
-      "north-african",
-      "spicy-sauce",
-      "tunisian-cuisine",
-      "vegan",
-      "homemade-condiment",
-      "fiery-flavor"
-    ],
+    "tags": ["spicy", "tunisian", "sauce", "homemade", "condiment", "vegan", "smoky", "harissa"],
     "ingredientLinks": [
       {
         "pattern": "caraway",
@@ -66,32 +22,44 @@
         "collection": "recipes",
         "slug": "preserved-lemon-couscous",
         "name": "Preserved Lemon Couscous",
-        "rationale": "The bright and tangy flavor of preserved lemon complements the smoky heat of Harissa, creating a balanced dish."
+        "rationale": "Harissa's smoky and spicy profile complements the tangy flavors of preserved lemon in couscous, creating a vibrant dish."
       },
       {
         "kind": "usesBase",
         "collection": "spicemixes",
         "slug": "berbere",
         "name": "Berbere",
-        "rationale": "Berbere, like Harissa, offers a spicy and aromatic profile that enhances the depth of flavor in a variety of dishes."
+        "rationale": "Harissa and berbere share similar spice profiles, making berbere a fitting base for recipes that enhance the depth of flavor in sauces and marinades."
       },
       {
         "kind": "usesBase",
         "collection": "spicemixes",
         "slug": "ras-el-hanout",
         "name": "Ras el Hanout",
-        "rationale": "Ras el Hanout is another spice blend that shares similar spices and complements the heat and complexity of Harissa."
+        "rationale": "Ras el Hanout's complex spice blend can be used alongside harissa for added depth and warmth in various dishes."
       },
       {
         "kind": "goesWellWith",
-        "collection": "recipes",
-        "slug": "vegetable-beef-skillet",
-        "name": "Vegetable and Beef Skillet",
-        "rationale": "The savory and hearty nature of the Vegetable and Beef Skillet pairs well with the spicy profile of Harissa, adding a kick to the dish."
+        "collection": "sauces",
+        "slug": "mojo-rojo",
+        "name": "Mojo rojo",
+        "rationale": "The spicy and tangy elements of mojo rojo pair well with the heat of harissa, making for dynamic flavor combinations in grilled meats or vegetables."
       }
     ],
     "detectedLanguage": "ar"
   },
+  "ingredientLinks": [
+    {
+      "pattern": "caraway",
+      "slug": "caraway",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "cumin",
+      "slug": "cumin",
+      "kind": "ingredient"
+    }
+  ],
   "language": "ar",
   "locale": "ar"
 }

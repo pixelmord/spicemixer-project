@@ -189,44 +189,60 @@ const ingredientMetaSchema = z.object({
 });
 
 const recipes = defineCollection({
-  loader: glob({ pattern: "**/*.json", base: "./src/content/recipes" }),
+  loader: glob({ pattern: "[^.]+.json", base: "./src/content/recipes" }),
   schema: recipeSchema,
 });
 
 const spicemixes = defineCollection({
-  loader: glob({ pattern: "**/*.json", base: "./src/content/spicemixes" }),
+  loader: glob({ pattern: "[^.]+.json", base: "./src/content/spicemixes" }),
   schema: recipeSchema,
 });
 
 const sauces = defineCollection({
-  loader: glob({ pattern: "**/*.json", base: "./src/content/sauces" }),
+  loader: glob({ pattern: "[^.]+.json", base: "./src/content/sauces" }),
   schema: recipeSchema,
 });
 
+// Meta files colocated with content: recipes/slug.meta.json, sauces/slug.meta.json, etc.
+// IDs are "recipes/slug", "sauces/slug", "spicemixes/slug" — same as before.
 const meta = defineCollection({
-  loader: glob({ pattern: "**/*.json", base: "./src/content/meta" }),
+  loader: glob({
+    pattern: "{recipes,sauces,spicemixes}/*.meta.json",
+    base: "./src/content",
+    generateId: ({ entry }) => entry.replace(".meta.json", ""),
+  }),
   schema: recipeMetaSchema,
 });
 
 const ingredients = defineCollection({
-  // Pattern matches only locale-prefixed subdirectories: en/slug.json, de/slug.json, etc.
-  // Root-level files are intentionally excluded.
-  loader: glob({ pattern: "[a-z][a-z]/*.json", base: "./src/content/ingredients" }),
+  loader: glob({ pattern: "[a-z][a-z]/[^.]+.json", base: "./src/content/ingredients" }),
   schema: ingredientSchema,
 });
 
 const pairings = defineCollection({
-  loader: glob({ pattern: "*.json", base: "./src/content/pairings" }),
+  loader: glob({ pattern: "[^.]+.json", base: "./src/content/pairings" }),
   schema: pairingSchema,
 });
 
+// Meta files colocated with ingredients: ingredients/en/slug.meta.json
+// IDs are "en/slug", "de/slug" — same as before.
 const ingredientMeta = defineCollection({
-  loader: glob({ pattern: "[a-z][a-z]/*.json", base: "./src/content/ingredient-meta" }),
+  loader: glob({
+    pattern: "ingredients/[a-z][a-z]/*.meta.json",
+    base: "./src/content",
+    generateId: ({ entry }) => entry.replace("ingredients/", "").replace(".meta.json", ""),
+  }),
   schema: ingredientMetaSchema,
 });
 
+// Meta files colocated with pairings: pairings/slug.meta.json
+// IDs are "slug1--slug2" — same as before.
 const pairingMeta = defineCollection({
-  loader: glob({ pattern: "*.json", base: "./src/content/pairing-meta" }),
+  loader: glob({
+    pattern: "pairings/*.meta.json",
+    base: "./src/content",
+    generateId: ({ entry }) => entry.replace("pairings/", "").replace(".meta.json", ""),
+  }),
   schema: pairingMetaSchema,
 });
 

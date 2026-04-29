@@ -1,23 +1,38 @@
 {
   "aiSuggestions": {
-    "contentHash": "cdf44862c6661cf2",
-    "generatedAt": "2026-04-29T13:56:50.653Z",
+    "contentHash": "0dbeb2e2c78834b3",
+    "generatedAt": "2026-04-29T15:55:07.955Z",
     "improvements": [],
     "pairings": [
       {
         "slug": "cumin",
-        "description": "Cumin's warm, nutty flavor complements caraway's earthy and slightly bitter notes, creating a harmonious blend in various dishes, especially in spice mixes and stews.",
+        "description": "Cumin's warm, earthy flavor complements the slightly bitter and sweet notes of caraway, enhancing the overall richness in dishes like stews and curries.",
         "confidence": "high"
       },
       {
-        "slug": "fenugreek",
-        "description": "Fenugreek has a slightly sweet, nutty flavor that balances out the bitterness of caraway, making it a great addition in curry and bread recipes.",
+        "slug": "cardamom",
+        "description": "Cardamom's aromatic sweetness and hint of citrus resonate well with the slight citrus note in caraway, making them a great duo in both savory and sweet applications.",
         "confidence": "medium"
       },
       {
-        "slug": "cardamom",
-        "description": "Cardamom's sweet and aromatic characteristics can soften caraway's earthiness, leading to a complex flavor profile in both sweet and savory dishes.",
+        "slug": "fenugreek",
+        "description": "Fenugreek's slightly sweet and nutty flavor matches well with caraway, creating a complex flavor profile that works well in spice blends and marinades.",
         "confidence": "medium"
+      },
+      {
+        "slug": "saffron",
+        "description": "The luxurious, slightly sweet flavor of saffron can enhance the earthy notes of caraway, perfect for rich dishes like risottos or paellas.",
+        "confidence": "low"
+      },
+      {
+        "slug": "sumac",
+        "description": "Sumac's tangy acidity can brighten the earthy flavors of caraway, making them compatible in salads and savory dishes where a contrasting flavor is needed.",
+        "confidence": "low"
+      },
+      {
+        "slug": "chili-powder",
+        "description": "Chili powder's heat and spice can balance out caraway's warmth, creating an interesting flavor profile in spicy dishes and rubs.",
+        "confidence": "low"
       }
     ],
     "detectedLanguage": "en",
