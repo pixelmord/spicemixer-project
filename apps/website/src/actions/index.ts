@@ -1,8 +1,35 @@
-import { defineAction } from "astro:actions";
+import { defineAction, ActionError } from "astro:actions";
 import { z } from "astro/zod";
 import { createStore } from "@/lib/content-store.ts";
 import { fetchRecipe } from "recipe-ingestion";
 import { scoreRecipe, scoreIngredient } from "@/lib/completeness.ts";
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+function resolveAiConfig() {
+  const apiKey =
+    process.env["AI_API_KEY"] ??
+    process.env["OPENAI_API_KEY"] ??
+    import.meta.env["AI_API_KEY"] ??
+    import.meta.env["OPENAI_API_KEY"] ??
+    "";
+  if (!apiKey) {
+    const visible =
+      Object.keys(process.env)
+        .filter((k) => k.includes("AI_") || k.includes("OPENAI"))
+        .join(", ") || "(none)";
+    throw new ActionError({
+      code: "FORBIDDEN",
+      message: `AI features require AI_API_KEY or OPENAI_API_KEY. Visible env keys: ${visible}`,
+    });
+  }
+  return {
+    baseUrl:
+      process.env["AI_BASE_URL"] ?? import.meta.env["AI_BASE_URL"] ?? "https://api.openai.com/v1",
+    apiKey,
+    model: process.env["AI_MODEL"] ?? import.meta.env["AI_MODEL"] ?? "gpt-4o-mini",
+  };
+}
 
 const recipeCollectionEnum = z.enum(["recipes", "spicemixes", "sauces"]);
 
@@ -253,6 +280,272 @@ export const server = {
         pairings: [],
       });
       return { ok: true, slug };
+    },
+  }),
+
+  // ──────────────────────────────────────────────
+  // AI: File ingestion
+  // ──────────────────────────────────────────────
+
+  /** Extract a Recipe from an uploaded file (PDF/image/text) or pasted text. */
+  aiExtractRecipe: defineAction({
+    accept: "form",
+    input: z.object({
+      file: z.instanceof(File).optional(),
+      mimeType: z.string().optional(),
+      text: z.string().optional(),
+    }),
+    handler: async ({ file, mimeType, text }) => {
+      const config = resolveAiConfig();
+      const { extractRecipeFromFile } = await import("content-ai");
+      if (text) {
+        return extractRecipeFromFile({ kind: "text", content: text }, config);
+      }
+      if (!file || !mimeType) {
+        throw new ActionError({ code: "BAD_REQUEST", message: "Provide a file or text." });
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        throw new ActionError({ code: "BAD_REQUEST", message: "File exceeds 10 MB limit." });
+      }
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      // Plain text files (.md, .txt) — send as text, not as a binary file
+      if (mimeType === "text/plain" || mimeType === "text/markdown") {
+        const content = await file.text();
+        return extractRecipeFromFile({ kind: "text", content }, config);
+      }
+      const kind = mimeType === "application/pdf" ? "pdf" : "image";
+      const input =
+        kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
+      return extractRecipeFromFile(input, config);
+    },
+  }),
+
+  /** Extract an Ingredient from an uploaded file (PDF/image/text) or pasted text. */
+  aiExtractIngredient: defineAction({
+    accept: "form",
+    input: z.object({
+      file: z.instanceof(File).optional(),
+      mimeType: z.string().optional(),
+      text: z.string().optional(),
+    }),
+    handler: async ({ file, mimeType, text }) => {
+      const config = resolveAiConfig();
+      const { extractIngredientFromFile } = await import("content-ai");
+      if (text) {
+        return extractIngredientFromFile({ kind: "text", content: text }, config);
+      }
+      if (!file || !mimeType) {
+        throw new ActionError({ code: "BAD_REQUEST", message: "Provide a file or text." });
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        throw new ActionError({ code: "BAD_REQUEST", message: "File exceeds 10 MB limit." });
+      }
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (mimeType === "text/plain" || mimeType === "text/markdown") {
+        const content = await file.text();
+        return extractIngredientFromFile({ kind: "text", content }, config);
+      }
+      const kind = mimeType === "application/pdf" ? "pdf" : "image";
+      const input =
+        kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
+      return extractIngredientFromFile(input, config);
+    },
+  }),
+
+  /** Generate a new Recipe from a prompt. */
+  aiGenerateRecipe: defineAction({
+    accept: "json",
+    input: z.object({
+      prompt: z.string().min(3),
+      locale: z.enum(["en", "de"]).default("en"),
+      style: z.enum(["recipe", "spicemix", "sauce"]).default("recipe"),
+    }),
+    handler: async ({ prompt, locale, style }) => {
+      const config = resolveAiConfig();
+      const { generateRecipeFromPrompt } = await import("content-ai");
+      return generateRecipeFromPrompt({ prompt, locale, style }, config);
+    },
+  }),
+
+  /** Merge new content into an existing recipe and return the proposed merged version. */
+  aiMergeRecipe: defineAction({
+    accept: "form",
+    input: z.object({
+      existing: z.string(), // JSON-stringified existing recipe
+      sourceKind: z.enum(["file", "text", "prompt"]),
+      file: z.instanceof(File).optional(),
+      mimeType: z.string().optional(),
+      text: z.string().optional(),
+      prompt: z.string().optional(),
+    }),
+    handler: async ({ existing, sourceKind, file, mimeType, text, prompt }) => {
+      const config = resolveAiConfig();
+      const { mergeRecipe } = await import("content-ai");
+      const existingRecipe = JSON.parse(existing) as Record<string, unknown>;
+
+      if (sourceKind === "prompt") {
+        if (!prompt) throw new ActionError({ code: "BAD_REQUEST", message: "Prompt required." });
+        return mergeRecipe(
+          { existing: existingRecipe as never, source: { kind: "prompt", prompt } },
+          config,
+        );
+      }
+      if (sourceKind === "text") {
+        if (!text) throw new ActionError({ code: "BAD_REQUEST", message: "Text required." });
+        return mergeRecipe(
+          { existing: existingRecipe as never, source: { kind: "text", content: text } },
+          config,
+        );
+      }
+      // file
+      if (!file || !mimeType) {
+        throw new ActionError({ code: "BAD_REQUEST", message: "File required." });
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        throw new ActionError({ code: "BAD_REQUEST", message: "File exceeds 10 MB limit." });
+      }
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (mimeType === "text/plain" || mimeType === "text/markdown") {
+        const content = await file.text();
+        return mergeRecipe(
+          { existing: existingRecipe as never, source: { kind: "text", content } },
+          config,
+        );
+      }
+      const kind = mimeType === "application/pdf" ? "pdf" : "image";
+      const source =
+        kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
+      return mergeRecipe({ existing: existingRecipe as never, source }, config);
+    },
+  }),
+
+  // ──────────────────────────────────────────────
+  // AI: Recipe curation
+  // ──────────────────────────────────────────────
+
+  /** Propose ingredientLinks by matching ingredient strings to the slug inventory. */
+  aiProposeIngredientLinks: defineAction({
+    accept: "json",
+    input: z.object({
+      recipeIngredients: z.array(z.string()),
+      locale: z.enum(["en", "de"]).default("en"),
+    }),
+    handler: async ({ recipeIngredients, locale }) => {
+      const config = resolveAiConfig();
+      const store = await createStore();
+      const items = await store.list("ingredients");
+      const inventory = items
+        .filter((i) => i.id.startsWith(`${locale}/`))
+        .map((i) => ({
+          slug: i.id.slice(3),
+          name: String((i.data as Record<string, unknown>)["name"] ?? i.id.slice(3)),
+        }));
+      const { proposeIngredientLinks } = await import("content-ai");
+      return proposeIngredientLinks(recipeIngredients, inventory, config);
+    },
+  }),
+
+  /** Propose tags for a recipe. */
+  aiProposeTags: defineAction({
+    accept: "json",
+    input: z.object({
+      recipe: z.record(z.string(), z.unknown()),
+    }),
+    handler: async ({ recipe }) => {
+      const config = resolveAiConfig();
+      const store = await createStore();
+      const metas = await store.list("meta");
+      const tagSet = new Set<string>();
+      for (const meta of metas) {
+        const tags = (meta.data as Record<string, unknown>)["tags"];
+        if (Array.isArray(tags)) tags.forEach((t) => typeof t === "string" && tagSet.add(t));
+      }
+      const { proposeTags } = await import("content-ai");
+      return proposeTags(recipe as never, Array.from(tagSet), config);
+    },
+  }),
+
+  /** Propose values for missing/weak recipe fields. */
+  aiProposeRecipeImprovements: defineAction({
+    accept: "json",
+    input: z.object({
+      recipe: z.record(z.string(), z.unknown()),
+      missingFields: z.array(z.string()),
+    }),
+    handler: async ({ recipe, missingFields }) => {
+      const config = resolveAiConfig();
+      const { proposeRecipeImprovements } = await import("content-ai");
+      return proposeRecipeImprovements(recipe as never, missingFields, config);
+    },
+  }),
+
+  /** Draft a translation of recipe text fields into targetLocale. */
+  aiTranslateRecipe: defineAction({
+    accept: "json",
+    input: z.object({
+      recipe: z.record(z.string(), z.unknown()),
+      sourceLocale: z.enum(["en", "de"]),
+      targetLocale: z.enum(["en", "de"]),
+    }),
+    handler: async ({ recipe, sourceLocale, targetLocale }) => {
+      const config = resolveAiConfig();
+      const { proposeRecipeTranslation } = await import("content-ai");
+      return proposeRecipeTranslation(recipe as never, sourceLocale, targetLocale, config);
+    },
+  }),
+
+  // ──────────────────────────────────────────────
+  // AI: Ingredient curation
+  // ──────────────────────────────────────────────
+
+  /** Propose pairings for an ingredient using the slug inventory. */
+  aiProposeIngredientPairings: defineAction({
+    accept: "json",
+    input: z.object({
+      ingredient: z.record(z.string(), z.unknown()),
+      locale: z.enum(["en", "de"]).default("en"),
+    }),
+    handler: async ({ ingredient, locale }) => {
+      const config = resolveAiConfig();
+      const store = await createStore();
+      const items = await store.list("ingredients");
+      const inventory = items
+        .filter((i) => i.id.startsWith(`${locale}/`))
+        .map((i) => ({
+          slug: i.id.slice(3),
+          name: String((i.data as Record<string, unknown>)["name"] ?? i.id.slice(3)),
+        }));
+      const { proposeIngredientPairings } = await import("content-ai");
+      return proposeIngredientPairings(ingredient as never, inventory, config);
+    },
+  }),
+
+  /** Propose values for missing ingredient fields. */
+  aiProposeIngredientImprovements: defineAction({
+    accept: "json",
+    input: z.object({
+      ingredient: z.record(z.string(), z.unknown()),
+      missingFields: z.array(z.string()),
+    }),
+    handler: async ({ ingredient, missingFields }) => {
+      const config = resolveAiConfig();
+      const { proposeIngredientImprovements } = await import("content-ai");
+      return proposeIngredientImprovements(ingredient as never, missingFields, config);
+    },
+  }),
+
+  /** Draft a translation of ingredient text fields into targetLocale. */
+  aiTranslateIngredient: defineAction({
+    accept: "json",
+    input: z.object({
+      ingredient: z.record(z.string(), z.unknown()),
+      sourceLocale: z.enum(["en", "de"]),
+      targetLocale: z.enum(["en", "de"]),
+    }),
+    handler: async ({ ingredient, sourceLocale, targetLocale }) => {
+      const config = resolveAiConfig();
+      const { proposeIngredientTranslation } = await import("content-ai");
+      return proposeIngredientTranslation(ingredient as never, sourceLocale, targetLocale, config);
     },
   }),
 
