@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import LinkButton from "@/components/admin/LinkButton.tsx";
+import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
@@ -27,6 +28,7 @@ import FormActionBar from "./FormActionBar.tsx";
 import SectionNav, { type SectionDef } from "./SectionNav.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
 import RecommendedHint from "./RecommendedHint.tsx";
+import AiAssistPanel from "./AiAssistPanel.tsx";
 
 type Collection = RecipeCollection;
 
@@ -397,12 +399,25 @@ export default function RecipeForm({
         <LinkButton variant="ghost" size="icon" href={`/admin/${collection}`}>
           <ArrowLeft size={16} />
         </LinkButton>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-bold">
             {isNew ? `New ${collection.slice(0, -1)}` : "Edit recipe"}
           </h1>
           {!isNew && <p className="text-sm text-muted-foreground">{slug}</p>}
         </div>
+        {!isNew && slug && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              window.location.href = `/admin/${collection}/${slug}/enhance`;
+            }}
+          >
+            <Sparkles size={14} className="mr-1.5" />
+            Enhance with AI
+          </Button>
+        )}
       </div>
 
       <form
@@ -961,13 +976,47 @@ export default function RecipeForm({
             </section>
           </div>
 
-          {/* Right: completeness panel */}
-          <aside className="sticky top-0 h-fit w-56 shrink-0 pt-1">
+          {/* Right: completeness + AI assist */}
+          <aside className="sticky top-0 h-fit w-56 shrink-0 pt-1 space-y-3">
             <CompletenessPanel
               result={completeness}
               requiredFields={requiredFields}
               recommendedFields={recommendedFields}
               bonusFields={bonusFields}
+            />
+            <AiAssistPanel
+              mode="recipe"
+              snapshot={{
+                name: formValues.name,
+                description: formValues.description,
+                recipeIngredient: ingredients.filter(Boolean),
+                recipeCategory: formValues.recipeCategory,
+                recipeCuisine: formValues.recipeCuisine,
+                keywords,
+                tags,
+              }}
+              missingFields={recommendedFields.filter((f) => !f.filled).map((f) => f.key)}
+              recipeIngredients={ingredients.filter(Boolean)}
+              locale={(meta.language ?? "en") as "en" | "de"}
+              targetLocale={meta.language === "de" ? "en" : "de"}
+              onApplyIngredientLinks={(links) =>
+                setIngredientLinks((prev) => {
+                  const existing = new Set(prev.map((l) => l.pattern));
+                  const newLinks = links.filter((l) => !existing.has(l.pattern));
+                  return [...prev, ...newLinks.map((l) => ({ pattern: l.pattern, slug: l.slug }))];
+                })
+              }
+              onApplyTags={(newTags) => setTags(newTags)}
+              onApplyField={(field, value) => {
+                if (field === "tags") setTags(value as string[]);
+                else if (field === "keywords") setKeywords(value as string[]);
+                else form.setFieldValue(field as never, value as never);
+              }}
+              onApplyTranslation={(fields) => {
+                for (const [field, value] of Object.entries(fields)) {
+                  form.setFieldValue(field as never, value as never);
+                }
+              }}
             />
           </aside>
         </div>

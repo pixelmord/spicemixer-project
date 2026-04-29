@@ -30,6 +30,7 @@ import SectionNav, { type SectionDef } from "./SectionNav.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
 import RecommendedHint from "./RecommendedHint.tsx";
 import TranslationCompanion, { FieldWithTranslation } from "./TranslationCompanion.tsx";
+import AiAssistPanel from "./AiAssistPanel.tsx";
 
 type Category = "spice" | "herb" | "seed" | "dried-fruit" | "salt" | "acid" | "allium" | "other";
 
@@ -424,12 +425,43 @@ export default function IngredientForm({ locale, slug: initialSlug, initialData,
                 </section>
               </div>
 
-              {/* Right: completeness panel */}
-              <aside className="sticky top-0 h-fit w-52 shrink-0 pt-1">
+              {/* Right: completeness + AI assist */}
+              <aside className="sticky top-0 h-fit w-52 shrink-0 pt-1 space-y-3">
                 <CompletenessPanel
                   result={completeness}
                   requiredFields={requiredFields}
                   recommendedFields={recommendedFields}
+                />
+                <AiAssistPanel
+                  mode="ingredient"
+                  snapshot={{
+                    name: formValues.name,
+                    summary: formValues.summary,
+                    description: formValues.description,
+                    category: formValues.category,
+                    origin: origins.filter(Boolean),
+                    flavorNotes: flavorNotes.filter(Boolean),
+                  }}
+                  missingFields={recommendedFields.filter((f) => !f.filled).map((f) => f.key)}
+                  locale={locale}
+                  targetLocale={locale === "en" ? "de" : "en"}
+                  onApplyPairings={(proposals) =>
+                    setPairings((prev) => {
+                      const existing = new Set(prev.map((p) => p.slug));
+                      const newItems = proposals.filter((p) => !existing.has(p.slug));
+                      return [...prev, ...newItems];
+                    })
+                  }
+                  onApplyField={(field, value) => {
+                    if (field === "flavorNotes") setFlavorNotes(value as string[]);
+                    else if (field === "origin") setOrigins(value as string[]);
+                    else form.setFieldValue(field as never, value as never);
+                  }}
+                  onApplyTranslation={(fields) => {
+                    for (const [field, value] of Object.entries(fields)) {
+                      form.setFieldValue(field as never, value as never);
+                    }
+                  }}
                 />
               </aside>
             </div>
