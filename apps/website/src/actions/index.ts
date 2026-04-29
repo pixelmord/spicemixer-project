@@ -175,6 +175,57 @@ export const server = {
     },
   }),
 
+  /** Upsert a pairing entity. id = slug-a--slug-b (alphabetical). */
+  savePairing: defineAction({
+    accept: "json",
+    input: z.object({
+      id: z.string().min(1),
+      ingredients: z.tuple([z.string(), z.string()]),
+      description: z.string().min(1),
+    }),
+    handler: async ({ id, ingredients, description }) => {
+      const store = await createStore();
+      const canonical = [...ingredients].sort() as [string, string];
+      await store.put("pairings", id, { ingredients: canonical, description });
+      return { ok: true, id };
+    },
+  }),
+
+  /** Delete a pairing entity by id. */
+  deletePairing: defineAction({
+    accept: "json",
+    input: z.object({ id: z.string().min(1) }),
+    handler: async ({ id }) => {
+      const store = await createStore();
+      await store.delete("pairings", id);
+      return { ok: true };
+    },
+  }),
+
+  /** List all pairing entities that include a given ingredient slug. */
+  listPairingsFor: defineAction({
+    accept: "json",
+    input: z.object({ slug: z.string().min(1) }),
+    handler: async ({ slug }) => {
+      const store = await createStore();
+      const all = await store.list("pairings");
+      return all
+        .filter((item) => {
+          const d = item.data as Record<string, unknown>;
+          const ings = d["ingredients"];
+          return Array.isArray(ings) && ings.includes(slug);
+        })
+        .map((item) => {
+          const d = item.data as Record<string, unknown>;
+          return {
+            id: item.id,
+            ingredients: d["ingredients"] as [string, string],
+            description: String(d["description"] ?? ""),
+          };
+        });
+    },
+  }),
+
   /** Delete a content item (and its meta sidecar if it's a recipe collection). */
   deleteItem: defineAction({
     input: z.object({
@@ -534,6 +585,230 @@ export const server = {
       const config = resolveAiConfig();
       const { proposeIngredientTranslation } = await import("content-ai");
       return proposeIngredientTranslation(ingredient as never, sourceLocale, targetLocale, config);
+    },
+  }),
+
+  /** Merge new content into an existing ingredient and return the proposed merged version. */
+  aiMergeIngredient: defineAction({
+    accept: "form",
+    input: z.object({
+      existing: z.string(), // JSON-stringified existing ingredient
+      sourceKind: z.enum(["file", "text", "prompt"]),
+      file: z.instanceof(File).optional(),
+      mimeType: z.string().optional(),
+      text: z.string().optional(),
+      prompt: z.string().optional(),
+    }),
+    handler: async ({ existing, sourceKind, file, mimeType, text, prompt }) => {
+      const config = resolveAiConfig();
+      const { mergeIngredient } = await import("content-ai");
+      const existingIngredient = JSON.parse(existing) as Record<string, unknown>;
+
+      if (sourceKind === "prompt") {
+        if (!prompt) throw new ActionError({ code: "BAD_REQUEST", message: "Prompt required." });
+        return mergeIngredient(
+          { existing: existingIngredient as never, source: { kind: "prompt", prompt } },
+          config,
+        );
+      }
+      if (sourceKind === "text") {
+        if (!text) throw new ActionError({ code: "BAD_REQUEST", message: "Text required." });
+        return mergeIngredient(
+          { existing: existingIngredient as never, source: { kind: "text", content: text } },
+          config,
+        );
+      }
+      if (!file || !mimeType) {
+        throw new ActionError({ code: "BAD_REQUEST", message: "File required." });
+      }
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (mimeType === "text/plain" || mimeType === "text/markdown") {
+        return mergeIngredient(
+          {
+            existing: existingIngredient as never,
+            source: { kind: "text", content: await file.text() },
+          },
+          config,
+        );
+      }
+      const kind = mimeType === "application/pdf" ? "pdf" : "image";
+      const source =
+        kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
+      return mergeIngredient({ existing: existingIngredient as never, source }, config);
+    },
+  }),
+
+  /**
+   * Run AI curation for an ingredient (improvements + pairings + language detection).
+   * Writes ingredientMeta; auto-applies high-confidence pairings.
+   */
+  aiRefreshIngredientSuggestions: defineAction({
+    accept: "json",
+    input: z.object({
+      locale: z.enum(["en", "de"]),
+      slug: z.string().min(1),
+      ingredient: z.record(z.string(), z.unknown()),
+      existingMeta: z.record(z.string(), z.unknown()).optional(),
+      missingFields: z.array(z.string()).default([]),
+    }),
+    handler: async ({ locale, slug, ingredient, existingMeta = {}, missingFields }) => {
+      const config = resolveAiConfig();
+      const { proposeIngredientImprovements, proposeIngredientPairings, detectLanguage } =
+        await import("content-ai");
+      const store = await createStore();
+
+      const { createHash } = await import("node:crypto");
+      const metaForHash = { ...existingMeta } as Record<string, unknown>;
+      delete metaForHash["aiSuggestions"];
+      const contentHash = createHash("sha256")
+        .update(JSON.stringify({ ingredient, meta: metaForHash }))
+        .digest("hex")
+        .slice(0, 16);
+
+      // Skip if unchanged
+      const existing = existingMeta["aiSuggestions"] as Record<string, unknown> | undefined;
+      if (existing && existing["contentHash"] === contentHash) {
+        return { aiSuggestions: existing, autoLinked: 0, skipped: true };
+      }
+
+      // Build inventory (exclude self)
+      const items = await store.list("ingredients");
+      const inventory = items
+        .filter((i) => i.id.startsWith(`${locale}/`) && i.id !== `${locale}/${slug}`)
+        .map((i) => ({
+          slug: i.id.slice(3),
+          name: String((i.data as Record<string, unknown>)["name"] ?? i.id.slice(3)),
+        }));
+
+      // Exclude image field from improvements
+      const fieldsForAi = missingFields.filter((f) => f !== "image");
+
+      const PLACEHOLDER_PATTERNS = /example\.|placeholder\.|picsum\.|via\.placeholder\./i;
+
+      const [improvementsResult, pairingsResult, langResult] = await Promise.allSettled([
+        fieldsForAi.length
+          ? proposeIngredientImprovements(ingredient as never, fieldsForAi, config)
+          : Promise.resolve({ fields: [] }),
+        inventory.length
+          ? proposeIngredientPairings(ingredient as never, inventory, config)
+          : Promise.resolve([]),
+        !existingMeta["locale"]
+          ? detectLanguage(String(ingredient["name"] ?? ""), config)
+          : Promise.resolve(null),
+      ]);
+
+      const rawImprovements =
+        improvementsResult.status === "fulfilled" ? improvementsResult.value.fields : [];
+      const filteredImprovements = rawImprovements.filter(
+        (f) =>
+          f.field !== "image" &&
+          !(typeof f.suggestion === "string" && PLACEHOLDER_PATTERNS.test(f.suggestion)),
+      );
+
+      const proposedPairings = pairingsResult.status === "fulfilled" ? pairingsResult.value : [];
+
+      const detectedLanguage =
+        langResult.status === "fulfilled" && langResult.value
+          ? langResult.value.language
+          : undefined;
+
+      // Language mismatch: check if detected lang differs from current locale
+      const languageMismatch = !!(detectedLanguage && detectedLanguage !== locale);
+
+      const aiSuggestions = {
+        contentHash,
+        generatedAt: new Date().toISOString(),
+        improvements: filteredImprovements,
+        pairings: proposedPairings.map((p) => ({
+          slug: p.slug,
+          description: p.description,
+          confidence: p.confidence as "high" | "medium" | "low",
+        })),
+        detectedLanguage,
+        languageMismatch,
+      };
+
+      // Auto-apply: high-confidence pairings (additive, never overwrites)
+      const highConf = proposedPairings.filter((p) => p.confidence === "high");
+      let autoLinked = 0;
+      if (highConf.length > 0) {
+        const existingPairings = await store.list("pairings");
+        const existingIds = new Set(existingPairings.map((p) => p.id));
+        for (const pairing of highConf) {
+          const id = [slug, pairing.slug].sort().join("--");
+          if (!existingIds.has(id)) {
+            await store.put("pairings", id, {
+              ingredients: [slug, pairing.slug].sort() as [string, string],
+              description: pairing.description,
+            });
+            autoLinked++;
+          }
+        }
+      }
+
+      const updatedMeta = { ...existingMeta, aiSuggestions };
+      await store.put("ingredientMeta", `${locale}/${slug}`, updatedMeta);
+
+      return { aiSuggestions, autoLinked, skipped: false };
+    },
+  }),
+
+  /**
+   * Translate an ingredient's text fields and save as locale-twin.
+   * Returns CONFLICT if the target locale file already exists.
+   */
+  aiCreateIngredientTranslation: defineAction({
+    accept: "json",
+    input: z.object({
+      slug: z.string().min(1),
+      ingredient: z.record(z.string(), z.unknown()),
+      sourceLocale: z.enum(["en", "de"]),
+      targetLocale: z.enum(["en", "de"]),
+    }),
+    handler: async ({ slug, ingredient, sourceLocale, targetLocale }) => {
+      const config = resolveAiConfig();
+      const { proposeIngredientTranslation } = await import("content-ai");
+      const store = await createStore();
+
+      const existing = await store.get("ingredients", `${targetLocale}/${slug}`);
+      if (existing) {
+        throw new ActionError({
+          code: "CONFLICT",
+          message: `Translation already exists at ${targetLocale}/${slug}.`,
+        });
+      }
+
+      const translation = await proposeIngredientTranslation(
+        ingredient as never,
+        sourceLocale,
+        targetLocale,
+        config,
+      );
+
+      const translatedIngredient = { ...ingredient, ...translation.fields };
+      await store.put("ingredients", `${targetLocale}/${slug}`, translatedIngredient);
+
+      // Create minimal ingredient meta for the translation
+      await store.put("ingredientMeta", `${targetLocale}/${slug}`, {
+        kind: "ingredient",
+        translationOf: `${sourceLocale}/${slug}`,
+        translations: {},
+      });
+
+      // Back-link: update source meta to record the translation
+      const sourceMeta = (await store.get("ingredientMeta", `${sourceLocale}/${slug}`))?.data as
+        | Record<string, unknown>
+        | undefined;
+      const currentTranslations =
+        typeof sourceMeta?.["translations"] === "object" && sourceMeta["translations"] !== null
+          ? (sourceMeta["translations"] as Record<string, string>)
+          : {};
+      await store.put("ingredientMeta", `${sourceLocale}/${slug}`, {
+        ...sourceMeta,
+        translations: { ...currentTranslations, [targetLocale]: `${targetLocale}/${slug}` },
+      });
+
+      return { ok: true, slug, targetLocale };
     },
   }),
 

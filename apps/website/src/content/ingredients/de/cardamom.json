@@ -5,15 +5,5 @@
   "image": "https://images.unsplash.com/photo-1607189117789-2f40f68e96e5?w=800&q=80",
   "category": "spice",
   "origin": ["Guatemala", "Indien", "Sri Lanka"],
-  "flavorNotes": ["blumig", "kampferartig", "warm", "zitrusartig"],
-  "pairings": [
-    {
-      "slug": "saffron",
-      "note": "Ein persischer Klassiker — die Kombination prägt viele Reis- und Desserttraditionen von Iran bis Indien."
-    },
-    {
-      "slug": "cumin",
-      "note": "Gemeinsam bilden sie die warme Basis vieler Gewürzmischungen, darunter Ras el Hanout und Garam Masala."
-    }
-  ]
+  "flavorNotes": ["blumig", "kampferartig", "warm", "zitrusartig"]
 }

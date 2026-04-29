@@ -5,15 +5,5 @@
   "image": "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&q=80",
   "category": "spice",
   "origin": ["Libanon", "Türkei", "Sizilien"],
-  "flavorNotes": ["herb", "fruchtig", "adstringierend", "zitrusartig"],
-  "pairings": [
-    {
-      "slug": "cumin",
-      "note": "Gemeinsam erzeugen sie das charakteristische Aroma vieler Fattoush-Dressings und Kebab-Gewürzmischungen."
-    },
-    {
-      "slug": "fenugreek",
-      "note": "Sumachs Säure belebt und hebt die bittersüße Tiefe des Bockshornklees in Gewürzmischungen."
-    }
-  ]
+  "flavorNotes": ["herb", "fruchtig", "adstringierend", "zitrusartig"]
 }

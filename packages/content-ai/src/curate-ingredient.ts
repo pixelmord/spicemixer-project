@@ -17,7 +17,15 @@ export type { ImprovementProposal, TranslationDraft };
 
 export interface PairingProposal {
   slug: string;
-  note?: string;
+  description: string;
+  confidence: string;
+}
+
+function normalizePairingConfidence(v: string): "high" | "medium" | "low" {
+  const lower = v.toLowerCase().trim();
+  if (lower === "high" || lower.includes("high")) return "high";
+  if (lower === "medium" || lower.includes("medium") || lower === "moderate") return "medium";
+  return "low";
 }
 
 export async function proposeIngredientPairings(
@@ -28,13 +36,15 @@ export async function proposeIngredientPairings(
   if (!inventory.length) return [];
 
   const model = createProvider(config);
+  const inventorySet = new Set(inventory.map((i) => i.slug));
   const inventoryList = inventory.map((i) => `${i.slug}: ${i.name}`).join("\n");
 
   const schema = z.object({
     pairings: z.array(
       z.object({
         slug: z.string(),
-        note: z.string().optional(),
+        description: z.string(),
+        confidence: z.string(),
       }),
     ),
   });
@@ -43,6 +53,7 @@ export async function proposeIngredientPairings(
     `Name: ${ingredient.name}`,
     ingredient.category ? `Category: ${ingredient.category}` : null,
     ingredient.flavorNotes?.length ? `Flavor notes: ${ingredient.flavorNotes.join(", ")}` : null,
+    ingredient.origin?.length ? `Origins: ${ingredient.origin.join(", ")}` : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -52,7 +63,7 @@ export async function proposeIngredientPairings(
       model,
       output: Output.object({ schema }),
       providerOptions: PROVIDER_OPTIONS,
-      prompt: `Suggest ingredient pairings for this spice/ingredient. Only select slugs from the inventory.
+      prompt: `Suggest ingredient pairings for this spice/ingredient. Only select slugs that exist verbatim in the inventory. Do not invent slugs.
 
 Ingredient:
 ${context}
@@ -60,9 +71,19 @@ ${context}
 Inventory (slug: name):
 ${inventoryList}
 
-Return up to 6 pairings with optional short pairing notes (e.g. "great in chai", "balances the heat").`,
+Return up to 6 pairings. For each:
+- slug: exact slug from the inventory
+- description: 1-2 sentences explaining why they pair well (culinary reason, flavor harmony)
+- confidence: high / medium / low`,
     });
-    return output.pairings;
+
+    return output.pairings
+      .filter((p) => inventorySet.has(p.slug))
+      .map((p) => ({
+        slug: p.slug,
+        description: p.description,
+        confidence: normalizePairingConfidence(p.confidence),
+      }));
   } catch (e) {
     throw new AiError("EXTRACTION_FAILED", `Pairing proposal failed: ${String(e)}`);
   }
@@ -107,6 +128,11 @@ Ingredient:
 ${context}
 
 Missing fields: ${missingFields.join(", ")}
+
+Rules:
+- Only suggest fields from the missing list
+- Do NOT suggest image URLs or placeholder images — leave image fields empty
+- Only fill text or array fields you can infer from culinary knowledge about this ingredient
 
 For each field, provide a suggested value and a one-sentence rationale.`,
     });

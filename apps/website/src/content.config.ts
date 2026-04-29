@@ -132,7 +132,43 @@ const ingredientSchema = z.object({
   category: z.enum(["spice", "herb", "seed", "dried-fruit", "salt", "acid", "allium", "other"]),
   origin: z.array(z.string()).default([]),
   flavorNotes: z.array(z.string()).default([]),
-  pairings: z.array(z.object({ slug: z.string(), note: z.string().optional() })).default([]),
+  // Legacy inline pairings — kept optional during migration window.
+  // Canonical pairings now live in the `pairings` collection.
+  pairings: z
+    .array(z.object({ slug: z.string(), note: z.string().optional() }))
+    .optional()
+    .default([]),
+});
+
+const pairingSchema = z.object({
+  ingredients: z.tuple([z.string(), z.string()]),
+  description: z.string().min(1),
+});
+
+const aiIngredientSuggestionsSchema = z.object({
+  contentHash: z.string(),
+  generatedAt: z.string(),
+  improvements: z
+    .array(z.object({ field: z.string(), suggestion: z.string(), rationale: z.string() }))
+    .default([]),
+  pairings: z
+    .array(
+      z.object({
+        slug: z.string(),
+        description: z.string(),
+        confidence: z.enum(["high", "medium", "low"]),
+      }),
+    )
+    .default([]),
+  detectedLanguage: z.string().length(2).optional(),
+  languageMismatch: z.boolean().default(false),
+});
+
+const ingredientMetaSchema = z.object({
+  kind: z.literal("ingredient").default("ingredient"),
+  translationOf: z.string().optional(),
+  translations: z.record(z.string(), z.string()).default({}),
+  aiSuggestions: aiIngredientSuggestionsSchema.optional(),
 });
 
 const recipes = defineCollection({
@@ -162,9 +198,29 @@ const ingredients = defineCollection({
   schema: ingredientSchema,
 });
 
-export const collections = { recipes, spicemixes, sauces, meta, ingredients };
+const pairings = defineCollection({
+  loader: glob({ pattern: "*.json", base: "./src/content/pairings" }),
+  schema: pairingSchema,
+});
+
+const ingredientMeta = defineCollection({
+  loader: glob({ pattern: "[a-z][a-z]/*.json", base: "./src/content/ingredient-meta" }),
+  schema: ingredientMetaSchema,
+});
+
+export const collections = {
+  recipes,
+  spicemixes,
+  sauces,
+  meta,
+  ingredients,
+  pairings,
+  ingredientMeta,
+};
 
 import type { CollectionEntry } from "astro:content";
 export type Recipe = CollectionEntry<"recipes">["data"];
 export type Ingredient = CollectionEntry<"ingredients">["data"];
 export type RecipeMeta = CollectionEntry<"meta">["data"];
+export type Pairing = CollectionEntry<"pairings">["data"];
+export type IngredientMeta = CollectionEntry<"ingredientMeta">["data"];

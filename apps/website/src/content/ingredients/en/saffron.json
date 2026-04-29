@@ -5,15 +5,5 @@
   "image": "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=800&q=80",
   "category": "spice",
   "origin": ["Iran", "Spain", "Kashmir"],
-  "flavorNotes": ["floral", "honeyed", "earthy", "metallic"],
-  "pairings": [
-    {
-      "slug": "cardamom",
-      "note": "A classic Persian pairing — together they define the scent of celebration in rice dishes and pastries."
-    },
-    {
-      "slug": "cumin",
-      "note": "Earthiness from cumin balances saffron's sweetness in slow-cooked dishes and pilafs."
-    }
-  ]
+  "flavorNotes": ["floral", "honeyed", "earthy", "metallic"]
 }

@@ -141,6 +141,34 @@ export function annotateTextHtml(
     .join("");
 }
 
+/** Canonical pairing id: sort both slugs alphabetically, join with --. */
+export function pairingId(slugA: string, slugB: string): string {
+  return [slugA, slugB].sort().join("--");
+}
+
+export interface PairingEntity {
+  id: string;
+  ingredients: [string, string];
+  description: string;
+}
+
+/** Get all pairings that include a given ingredient slug. */
+export async function getPairings(slug: string): Promise<PairingEntity[]> {
+  const all = await getCollection("pairings");
+  return all
+    .filter((entry) => entry.data.ingredients.includes(slug))
+    .map((entry) => ({
+      id: entry.id,
+      ingredients: entry.data.ingredients as [string, string],
+      description: entry.data.description,
+    }));
+}
+
+export async function getIngredientMeta(locale: string, slug: string) {
+  const entry = await getEntry("ingredientMeta", `${locale}/${slug}`);
+  return (entry?.data ?? null) as import("../content.config.ts").IngredientMeta | null;
+}
+
 export async function getRecipeUsedIn(
   recipeSlug: string,
   recipeCollection: RecipeKind,

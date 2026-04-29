@@ -15,6 +15,24 @@ const store = await createStore();
 const item = await store.get("ingredients", `${locale}/${slug}`);
 if (!item) return Astro.redirect("/admin/ingredients");
 
+// Load ingredient meta (AI suggestions cache) and pairings
+const metaItem = await store.get("ingredientMeta", `${locale}/${slug}`);
+const allPairings = await store.list("pairings");
+const ingredientPairings = allPairings
+  .filter((p) => {
+    const d = p.data as Record<string, unknown>;
+    const ings = d["ingredients"];
+    return Array.isArray(ings) && ings.includes(slug);
+  })
+  .map((p) => {
+    const d = p.data as Record<string, unknown>;
+    return {
+      id: p.id,
+      ingredients: d["ingredients"] as [string, string],
+      description: String(d["description"] ?? ""),
+    };
+  });
+
 const currentPath = Astro.url.pathname;
 ---
 
@@ -31,6 +49,8 @@ const currentPath = Astro.url.pathname;
         locale={locale}
         slug={slug}
         initialData={item.data as never}
+        initialMeta={metaItem?.data as never ?? {}}
+        initialPairings={ingredientPairings as never}
         client:load
       />
     </AdminShell>

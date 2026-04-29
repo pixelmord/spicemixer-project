@@ -32,6 +32,13 @@ export {
 } from "./curate-ingredient.ts";
 export type { IngredientSnapshot, PairingProposal } from "./curate-ingredient.ts";
 
+export { mergeIngredient } from "./merge-ingredient.ts";
+export type {
+  MergeIngredientSource,
+  MergeIngredientInput,
+  MergeIngredientResult,
+} from "./merge-ingredient.ts";
+
 export type { RecipeExtract } from "./schemas/recipe-extract.ts";
 export type { IngredientExtract } from "./schemas/ingredient-extract.ts";
 

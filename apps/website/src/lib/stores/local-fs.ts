@@ -23,6 +23,10 @@ export class LocalFsStore implements ContentStore {
     if (collection === "ingredients") {
       return items.filter((item) => /^[a-z]{2}\//.test(item.id));
     }
+    // ingredientMeta also partitioned by locale
+    if (collection === "ingredientMeta") {
+      return items.filter((item) => /^[a-z]{2}\//.test(item.id));
+    }
 
     return items;
   }

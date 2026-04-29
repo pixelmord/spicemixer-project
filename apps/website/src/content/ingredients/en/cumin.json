@@ -5,19 +5,5 @@
   "image": "https://images.unsplash.com/photo-1645112551428-5b1ee0ec7b4a?w=800&q=80",
   "category": "spice",
   "origin": ["Iran", "Turkey", "India"],
-  "flavorNotes": ["earthy", "warm", "nutty", "faintly citrusy"],
-  "pairings": [
-    {
-      "slug": "cardamom",
-      "note": "The earthy warmth of cumin and floral depth of cardamom are the cornerstone of ras el hanout and garam masala."
-    },
-    {
-      "slug": "sumac",
-      "note": "A classic North African and Levantine combination — cumin grounds sumac's bright tartness."
-    },
-    {
-      "slug": "fenugreek",
-      "note": "Both benefit from toasting; a foundational pairing in Ethiopian and Indian cooking."
-    }
-  ]
+  "flavorNotes": ["earthy", "warm", "nutty", "faintly citrusy"]
 }

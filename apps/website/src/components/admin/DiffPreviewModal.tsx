@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { Loader2, Check, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import {
@@ -8,6 +9,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog.tsx";
 import RecipeDiff from "./RecipeDiff.tsx";
+
+interface DiffComponentProps {
+  existing: Record<string, unknown>;
+  proposed: Record<string, unknown>;
+}
 
 interface Props {
   open: boolean;
@@ -20,6 +26,8 @@ interface Props {
   onBack?: () => void;
   backLabel?: string;
   warnings?: string[];
+  /** Override the diff renderer. Defaults to RecipeDiff. */
+  DiffComponent?: ComponentType<DiffComponentProps>;
 }
 
 export default function DiffPreviewModal({
@@ -33,6 +41,7 @@ export default function DiffPreviewModal({
   onBack,
   backLabel = "Back",
   warnings = [],
+  DiffComponent = RecipeDiff,
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -54,7 +63,7 @@ export default function DiffPreviewModal({
               ))}
             </div>
           )}
-          <RecipeDiff existing={existing} proposed={proposed} />
+          <DiffComponent existing={existing} proposed={proposed} />
         </div>
 
         <DialogFooter>

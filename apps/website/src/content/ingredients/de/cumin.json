@@ -5,19 +5,5 @@
   "image": "https://images.unsplash.com/photo-1645112551428-5b1ee0ec7b4a?w=800&q=80",
   "category": "spice",
   "origin": ["Iran", "Türkei", "Indien"],
-  "flavorNotes": ["erdig", "warm", "nussig", "leicht zitrusartig"],
-  "pairings": [
-    {
-      "slug": "cardamom",
-      "note": "Die erdige Wärme des Kreuzkümmels und die blumige Tiefe des Kardamoms bilden das Herzstück von Ras el Hanout und Garam Masala."
-    },
-    {
-      "slug": "sumac",
-      "note": "Eine klassische nordafrikanische und levantinische Kombination — Kreuzkümmel erdet Sumachs helle Säure."
-    },
-    {
-      "slug": "fenugreek",
-      "note": "Beide profitieren vom Rösten; eine grundlegende Paarung in der äthiopischen und indischen Küche."
-    }
-  ]
+  "flavorNotes": ["erdig", "warm", "nussig", "leicht zitrusartig"]
 }

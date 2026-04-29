@@ -5,15 +5,5 @@
   "image": "https://images.unsplash.com/photo-1607189117789-2f40f68e96e5?w=800&q=80",
   "category": "spice",
   "origin": ["Guatemala", "India", "Sri Lanka"],
-  "flavorNotes": ["floral", "camphor", "warm", "citrusy"],
-  "pairings": [
-    {
-      "slug": "saffron",
-      "note": "A Persian classic — the combination anchors many rice and dessert traditions from Iran to India."
-    },
-    {
-      "slug": "cumin",
-      "note": "Together they form the warm spine of many spice blends including ras el hanout and garam masala."
-    }
-  ]
+  "flavorNotes": ["floral", "camphor", "warm", "citrusy"]
 }

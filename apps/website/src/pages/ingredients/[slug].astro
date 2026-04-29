@@ -3,7 +3,7 @@ import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import RelatedList from "../../components/RelatedList.astro";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
-import { getUsedIn, getIngredient } from "../../lib/recipe-augment.ts";
+import { getUsedIn, getIngredient, getPairings } from "../../lib/recipe-augment.ts";
 
 export async function getStaticPaths() {
   const all = await getCollection("ingredients");
@@ -25,12 +25,22 @@ const prefix = locale === "de" ? "/de" : "";
 
 const usedIn = await getUsedIn(slug, prefix);
 
-const pairingsResolved = await Promise.all(
-  data.pairings.map(async ({ slug: pairSlug, note }) => {
-    const entry = await getIngredient(pairSlug, locale);
-    return { slug: pairSlug, name: entry?.data.name ?? pairSlug, note };
-  })
-);
+// Use pairings collection (bidirectional), fall back to legacy inline pairings
+const pairingEntities = await getPairings(slug);
+const pairingsResolved = pairingEntities.length > 0
+  ? await Promise.all(
+      pairingEntities.map(async (pairing) => {
+        const otherSlug = pairing.ingredients[0] === slug ? pairing.ingredients[1] : pairing.ingredients[0];
+        const entry = await getIngredient(otherSlug, locale);
+        return { slug: otherSlug, name: entry?.data.name ?? otherSlug, description: pairing.description };
+      })
+    )
+  : await Promise.all(
+      (data.pairings ?? []).map(async ({ slug: pairSlug, note }) => {
+        const entry = await getIngredient(pairSlug, locale);
+        return { slug: pairSlug, name: entry?.data.name ?? pairSlug, description: note ?? "" };
+      })
+    );
 ---
 
 <BaseLayout title={`${data.name} — Spicemixer`} description={data.summary}>
@@ -133,7 +143,7 @@ const pairingsResolved = await Promise.all(
             {t("section.pairings")}
           </h2>
           <ul class="space-y-3">
-            {pairingsResolved.map(({ slug: pairSlug, name, note }) => (
+            {pairingsResolved.map(({ slug: pairSlug, name, description }) => (
               <li class="rounded-xl bg-white p-4 ring-1 ring-stone-200">
                 <a
                   href={`${prefix}/ingredients/${pairSlug}/`}
@@ -141,7 +151,7 @@ const pairingsResolved = await Promise.all(
                 >
                   {name}
                 </a>
-                {note && <p class="mt-1 text-sm text-stone-600">{note}</p>}
+                {description && <p class="mt-1 text-sm text-stone-600">{description}</p>}
               </li>
             ))}
           </ul>
