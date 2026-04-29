@@ -143,6 +143,22 @@ const SECTIONS: SectionDef[] = [
   { id: "section-sources", label: "External sources" },
 ];
 
+const TIME_FIELDS = new Set(["prepTime", "cookTime", "totalTime"]);
+
+const ISO_DURATION_RE = /^PT(?:\d+H)?(?:\d+M)?(?:\d+S)?$/;
+
+function toIsoDuration(raw: string): string {
+  if (ISO_DURATION_RE.test(raw.trim())) return raw.trim();
+  // Convert plain-English patterns like "30 minutes", "1 hour 15 minutes", "1h30m"
+  const s = raw.toLowerCase().trim();
+  const hours = /(\d+)\s*(?:h(?:ours?)?|hr?)/.exec(s)?.[1];
+  const mins = /(\d+)\s*(?:m(?:in(?:utes?)?)?|min)/.exec(s)?.[1];
+  const h = hours ? parseInt(hours, 10) : 0;
+  const m = mins ? parseInt(mins, 10) : 0;
+  if (h || m) return `PT${h ? `${h}H` : ""}${m ? `${m}M` : ""}`;
+  return raw; // can't parse — return as-is, schema validation will catch it
+}
+
 const LANGUAGES = [
   { value: "en", label: "English" },
   { value: "de", label: "German" },
@@ -439,7 +455,7 @@ export default function RecipeForm({
         locale: language || undefined,
         tags,
         ingredientLinks,
-        externalSources,
+        externalSources: externalSources.filter((s) => s.url.trim()),
         goesWellWith,
         usesBase,
         kind:
@@ -615,9 +631,10 @@ export default function RecipeForm({
   );
 
   function handleApplySuggestion(field: string, value: string) {
-    if (field === "tags") setTags((prev) => [...new Set([...prev, value])]);
-    else if (field === "keywords") setKeywords((prev) => [...new Set([...prev, value])]);
-    else form.setFieldValue(field as never, value as never);
+    const coerced = TIME_FIELDS.has(field) ? toIsoDuration(value) : value;
+    if (field === "tags") setTags((prev) => [...new Set([...prev, coerced])]);
+    else if (field === "keywords") setKeywords((prev) => [...new Set([...prev, coerced])]);
+    else form.setFieldValue(field as never, coerced as never);
     setDismissedSuggestions((prev) => new Set([...prev, field]));
   }
 
@@ -1001,54 +1018,40 @@ export default function RecipeForm({
                   <CardTitle>Timing &amp; yield</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4">
-                  <form.Field name="prepTime">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>
-                          Prep time
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="PT15M"
-                        />
-                      </div>
-                    )}
-                  </form.Field>
-                  <form.Field name="cookTime">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>
-                          Cook time
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="PT30M"
-                        />
-                      </div>
-                    )}
-                  </form.Field>
-                  <form.Field name="totalTime">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>
-                          Total time
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="PT45M"
-                        />
-                      </div>
-                    )}
-                  </form.Field>
+                  {(["prepTime", "cookTime", "totalTime"] as const).map((name, idx) => (
+                    <form.Field key={name} name={name}>
+                      {(field) => {
+                        const hasValue = !!field.state.value;
+                        const invalid = hasValue && !ISO_DURATION_RE.test(field.state.value.trim());
+                        return (
+                          <div className="space-y-1.5">
+                            <Label htmlFor={field.name}>
+                              {["Prep time", "Cook time", "Total time"][idx]}
+                              <RecommendedHint show={!hasValue} />
+                            </Label>
+                            <Input
+                              id={field.name}
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              onBlur={(e) => {
+                                // Auto-coerce plain English → ISO 8601 on blur
+                                const coerced = toIsoDuration(e.target.value);
+                                if (coerced !== e.target.value) field.handleChange(coerced);
+                                field.handleBlur();
+                              }}
+                              placeholder={["PT15M", "PT30M", "PT45M"][idx]}
+                              className={invalid ? "border-amber-400" : ""}
+                            />
+                            {invalid && (
+                              <p className="text-xs text-amber-600 dark:text-amber-400">
+                                Use ISO 8601 format, e.g. PT15M or PT1H30M
+                              </p>
+                            )}
+                          </div>
+                        );
+                      }}
+                    </form.Field>
+                  ))}
                   <form.Field name="recipeYield">
                     {(field) => (
                       <div className="space-y-1.5">
