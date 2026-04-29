@@ -1,5 +1,6 @@
-import { CheckCircle2, Circle, AlertCircle } from "lucide-react";
+import { CheckCircle2, Circle, AlertCircle, Loader2, RefreshCw } from "lucide-react";
 import type { CompletenessResult } from "@/lib/completeness.ts";
+import type { AiSuggestion } from "@/lib/recipe-augment.ts";
 import { cn } from "@/lib/utils.ts";
 
 interface Field {
@@ -14,6 +15,11 @@ interface Props {
   requiredFields: { key: string; label: string; filled: boolean }[];
   recommendedFields: Field[];
   bonusFields?: { key: string; label: string; filled: boolean }[];
+  aiSuggestions?: AiSuggestion[];
+  aiRefreshing?: boolean;
+  onRefreshSuggestions?: () => void;
+  onApplySuggestion?: (field: string, value: string) => void;
+  onDismissSuggestion?: (field: string) => void;
 }
 
 const RING_MAP = { green: "#10b981", amber: "#f59e0b", red: "#ef4444" };
@@ -26,6 +32,11 @@ export default function CompletenessPanel({
   requiredFields,
   recommendedFields,
   bonusFields = [],
+  aiSuggestions = [],
+  aiRefreshing = false,
+  onRefreshSuggestions,
+  onApplySuggestion,
+  onDismissSuggestion,
 }: Props) {
   const offset = circumference - (result.score / 100) * circumference;
 
@@ -85,6 +96,72 @@ export default function CompletenessPanel({
       {/* Bonus */}
       {bonusFields.length > 0 && (
         <FieldGroup title="Bonus" fields={bonusFields} emptyColor="amber" onFocus={scrollTo} />
+      )}
+
+      {/* AI suggestions */}
+      {(aiSuggestions.length > 0 || aiRefreshing || onRefreshSuggestions) && (
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              AI suggestions
+            </p>
+            {onRefreshSuggestions && (
+              <button
+                type="button"
+                onClick={onRefreshSuggestions}
+                disabled={aiRefreshing}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                title="Refresh suggestions"
+              >
+                {aiRefreshing ? (
+                  <Loader2 size={11} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={11} />
+                )}
+              </button>
+            )}
+          </div>
+          {aiRefreshing && !aiSuggestions.length && (
+            <p className="text-xs text-muted-foreground italic">Computing…</p>
+          )}
+          <ul className="space-y-1">
+            {aiSuggestions.map((s) => (
+              <li key={s.field} className="rounded px-1 py-0.5 text-xs">
+                <div className="flex items-start gap-1.5">
+                  <span className="shrink-0 mt-0.5 text-primary">✦</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-foreground">{s.field}</span>
+                    <p className="text-muted-foreground truncate">{s.suggestion}</p>
+                  </div>
+                  {(onApplySuggestion || onDismissSuggestion) && (
+                    <div className="flex gap-0.5 shrink-0">
+                      {onApplySuggestion && (
+                        <button
+                          type="button"
+                          onClick={() => onApplySuggestion(s.field, s.suggestion)}
+                          className="text-emerald-500 hover:text-emerald-700"
+                          title="Apply"
+                        >
+                          <CheckCircle2 size={12} />
+                        </button>
+                      )}
+                      {onDismissSuggestion && (
+                        <button
+                          type="button"
+                          onClick={() => onDismissSuggestion(s.field)}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Dismiss"
+                        >
+                          <Circle size={12} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles, Link2, Tag, Loader2, Languages, Check, X } from "lucide-react";
 import LinkButton from "@/components/admin/LinkButton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -16,9 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
 import { scoreRecipe, RECIPE_REQUIRED, RECIPE_RECOMMENDED } from "@/lib/completeness.ts";
 import { slugify } from "@/lib/slugify.ts";
 import type { RecipeCollection } from "@/lib/content-store.ts";
+import type { AiSuggestions, AiSuggestion } from "@/lib/recipe-augment.ts";
 import SortableArrayField from "./SortableArrayField.tsx";
 import TagInput from "./TagInput.tsx";
 import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
@@ -28,7 +30,9 @@ import FormActionBar from "./FormActionBar.tsx";
 import SectionNav, { type SectionDef } from "./SectionNav.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
 import RecommendedHint from "./RecommendedHint.tsx";
-import AiAssistPanel from "./AiAssistPanel.tsx";
+import EnhanceModal from "./EnhanceModal.tsx";
+import TranslateModal from "./TranslateModal.tsx";
+import InlineSuggestion from "./InlineSuggestion.tsx";
 
 type Collection = RecipeCollection;
 
@@ -58,17 +62,28 @@ interface RecipeData {
   recipeInstructions: (string | HowToStep)[];
 }
 
+interface IngredientLink {
+  pattern: string;
+  slug: string;
+  kind?: "ingredient" | "recipe";
+  collection?: string;
+}
+
 interface MetaData {
   draft: boolean;
   language?: string;
+  locale?: string;
+  translationOf?: string;
+  translations?: Record<string, string>;
   kind?: string;
   variantOf?: string;
   tags: string[];
-  ingredientLinks: Array<{ pattern: string; slug: string }>;
+  ingredientLinks: IngredientLink[];
   externalSources: Array<{ url: string; title: string; source?: string }>;
   goesWellWith: Array<{ collection: string; slug: string }>;
   usesBase: Array<{ collection: string; slug: string }>;
   variants: string[];
+  aiSuggestions?: AiSuggestions;
 }
 
 interface Props {
@@ -100,6 +115,7 @@ function emptyMeta(): MetaData {
     goesWellWith: [],
     usesBase: [],
     variants: [],
+    translations: {},
   };
 }
 
@@ -122,7 +138,6 @@ const SECTIONS: SectionDef[] = [
   { id: "section-instructions", label: "Instructions" },
   { id: "section-classification", label: "Classification" },
   { id: "section-publishing", label: "Publishing" },
-  { id: "section-links", label: "Ingredient links" },
   { id: "section-relations", label: "Relations" },
   { id: "section-sources", label: "External sources" },
 ];
@@ -150,8 +165,9 @@ export default function RecipeForm({
   const recipe = { ...emptyRecipe(), ...initialRecipe } as RecipeData;
   const meta = { ...emptyMeta(), ...initialMeta } as MetaData;
   const [slug, setSlug] = useState(initialSlug ?? "");
+  const [slugChecking, setSlugChecking] = useState(false);
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
-  // New items default to draft=true; existing items default to false when field absent
   const [draft, setDraft] = useState(initialMeta?.draft ?? (isNew ? true : false));
   const [completeness, setCompleteness] = useState(() =>
     scoreRecipe(recipe as never, meta as never),
@@ -169,7 +185,7 @@ export default function RecipeForm({
       }),
     ),
   );
-  const [ingredientLinks, setIngredientLinks] = useState(meta.ingredientLinks);
+  const [ingredientLinks, setIngredientLinks] = useState<IngredientLink[]>(meta.ingredientLinks);
   const [externalSources, setExternalSources] = useState(meta.externalSources);
   const [goesWellWith, setGoesWellWith] = useState(meta.goesWellWith);
   const [usesBase, setUsesBase] = useState(meta.usesBase);
@@ -182,7 +198,35 @@ export default function RecipeForm({
     Array.isArray(recipe.suitableForDiet) ? recipe.suitableForDiet : [],
   );
 
-  // Entity options loaded from server
+  // AI suggestions cache
+  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestions | undefined>(meta.aiSuggestions);
+  const [aiRefreshing, setAiRefreshing] = useState(false);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+
+  // Per-section AI state
+  const [pendingTags, setPendingTags] = useState<string[] | null>(null);
+  const [pendingKeywords, setPendingKeywords] = useState<string[] | null>(null);
+  const [pendingLinks, setPendingLinks] = useState<Array<{
+    pattern: string;
+    slug: string;
+    confidence: "high" | "medium" | "low";
+  }> | null>(null);
+  const [pendingRelations, setPendingRelations] = useState<Array<{
+    kind: "goesWellWith" | "usesBase";
+    collection: string;
+    slug: string;
+    name: string;
+    rationale: string;
+  }> | null>(null);
+  const [aiTagsLoading, setAiTagsLoading] = useState(false);
+  const [aiKeywordsLoading, setAiKeywordsLoading] = useState(false);
+  const [aiLinksLoading, setAiLinksLoading] = useState(false);
+
+  // Modals
+  const [enhanceOpen, setEnhanceOpen] = useState(false);
+  const [translateOpen, setTranslateOpen] = useState(false);
+
+  // Entity options
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
   const [recipeOptions, setRecipeOptions] = useState<EntityOption[]>([]);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
@@ -214,6 +258,24 @@ export default function RecipeForm({
     });
   }, []);
 
+  // Slug availability check (new recipes only)
+  useEffect(() => {
+    if (!isNew || !slug) {
+      setSlugAvailable(null);
+      return;
+    }
+    setSlugChecking(true);
+    const t = setTimeout(() => {
+      void actions
+        .checkSlugAvailable({ collection, slug })
+        .then(({ data }) => {
+          if (data) setSlugAvailable(data.available);
+        })
+        .finally(() => setSlugChecking(false));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [slug, isNew, collection]);
+
   const form = useForm({
     defaultValues: {
       name: recipe.name,
@@ -238,6 +300,10 @@ export default function RecipeForm({
     onSubmit: async ({ value }) => {
       if (!slug) {
         toast.error("Slug is required");
+        return;
+      }
+      if (isNew && slugAvailable === false) {
+        toast.error(`Slug "${slug}" is already taken`);
         return;
       }
       setSaving(true);
@@ -270,6 +336,7 @@ export default function RecipeForm({
         ...meta,
         draft,
         language: language || undefined,
+        locale: language || undefined,
         tags,
         ingredientLinks,
         externalSources,
@@ -277,6 +344,8 @@ export default function RecipeForm({
         usesBase,
         kind:
           collection === "recipes" ? "recipe" : collection === "spicemixes" ? "spicemix" : "sauce",
+        // Preserve existing aiSuggestions — cleared by aiRefreshSuggestions when content changes
+        aiSuggestions,
       };
 
       const { error } = await actions.saveRecipe({
@@ -296,17 +365,59 @@ export default function RecipeForm({
       setCompleteness(scoreRecipe(recipePayload as never, metaPayload as never));
       toast.success("Saved");
 
-      if (isNew) window.location.href = `/admin/${collection}/${slug}/edit`;
+      if (isNew) {
+        window.location.href = `/admin/${collection}/${slug}/edit`;
+        return;
+      }
+
+      // After save: async refresh suggestions
+      const missingKeys = RECIPE_RECOMMENDED.filter((k) => {
+        const v = (recipePayload as never as Record<string, unknown>)[k];
+        if (!v) return true;
+        if (Array.isArray(v)) return v.length === 0;
+        return false;
+      });
+      setAiRefreshing(true);
+      void actions
+        .aiRefreshSuggestions({
+          collection,
+          slug,
+          recipe: recipePayload as never,
+          meta: metaPayload as never,
+          missingFields: missingKeys,
+          locale: (language || "en") as "en" | "de",
+        })
+        .then(({ data }) => {
+          if (data) {
+            setAiSuggestions(data.aiSuggestions as AiSuggestions);
+            // Reload ingredient links if auto-linked
+            if (data.autoLinked > 0) {
+              toast.success(
+                `Auto-linked ${data.autoLinked} ingredient${data.autoLinked !== 1 ? "s" : ""}`,
+              );
+              // Re-fetch meta to get updated links
+              void actions.getItem({ collection, id: slug }).then(({ data: item }) => {
+                if (item?.meta) {
+                  const updatedLinks = (item.meta as Record<string, unknown>)["ingredientLinks"];
+                  if (Array.isArray(updatedLinks)) {
+                    setIngredientLinks(updatedLinks as IngredientLink[]);
+                  }
+                }
+              });
+            }
+          }
+        })
+        .catch(() => {})
+        .finally(() => setAiRefreshing(false));
     },
   });
 
   function handleSave(asDraft: boolean) {
     setDraft(asDraft);
-    // Let state update propagate then submit
     setTimeout(() => void form.handleSubmit(), 0);
   }
 
-  // Live completeness — re-score on key state changes
+  // Live completeness
   const formValues = useStore(form.store, (s) => s.values);
   useEffect(() => {
     const recipeSnap = {
@@ -388,9 +499,158 @@ export default function RecipeForm({
       key: "ingredientLinks",
       label: "Ingredient links",
       filled: ingredientLinks.length > 0,
-      anchorId: "section-links",
+      anchorId: "section-ingredients",
     },
   ];
+
+  // Visible AI improvement suggestions (filtered by dismissed)
+  const visibleImprovements: AiSuggestion[] = (aiSuggestions?.improvements ?? []).filter(
+    (s) => !dismissedSuggestions.has(s.field),
+  );
+
+  function handleApplySuggestion(field: string, value: string) {
+    if (field === "tags") setTags((prev) => [...new Set([...prev, value])]);
+    else if (field === "keywords") setKeywords((prev) => [...new Set([...prev, value])]);
+    else form.setFieldValue(field as never, value as never);
+    setDismissedSuggestions((prev) => new Set([...prev, field]));
+  }
+
+  function handleDismissSuggestion(field: string) {
+    setDismissedSuggestions((prev) => new Set([...prev, field]));
+  }
+
+  async function handleManualRefresh() {
+    const missingKeys = RECIPE_RECOMMENDED.filter((k) => !recipeFieldHas(k));
+    setAiRefreshing(true);
+    setDismissedSuggestions(new Set());
+    const snap = {
+      "@context": "https://schema.org",
+      "@type": "Recipe",
+      name: formValues.name,
+      description: formValues.description,
+      recipeIngredient: ingredients.filter(Boolean),
+      recipeCategory: formValues.recipeCategory,
+      recipeCuisine: formValues.recipeCuisine,
+      keywords,
+    };
+    const metaSnap = {
+      ...meta,
+      language,
+      tags,
+      ingredientLinks,
+      aiSuggestions,
+    };
+    try {
+      const { data } = await actions.aiRefreshSuggestions({
+        collection,
+        slug,
+        recipe: snap as never,
+        meta: metaSnap as never,
+        missingFields: missingKeys,
+        locale: (language || "en") as "en" | "de",
+      });
+      if (data) setAiSuggestions(data.aiSuggestions as AiSuggestions);
+    } catch {
+      toast.error("Could not refresh suggestions");
+    } finally {
+      setAiRefreshing(false);
+    }
+  }
+
+  // Per-section AI helpers
+  async function runProposeTags(forKeywords = false) {
+    const setter = forKeywords ? setAiKeywordsLoading : setAiTagsLoading;
+    setter(true);
+    try {
+      const { data, error } = await actions.aiProposeTags({
+        recipe: {
+          name: formValues.name,
+          description: formValues.description,
+          recipeCategory: formValues.recipeCategory,
+          recipeCuisine: formValues.recipeCuisine,
+          recipeIngredient: ingredients.filter(Boolean),
+          keywords,
+        },
+      });
+      if (error) throw new Error(error.message);
+      if (forKeywords) setPendingKeywords(data?.tags ?? []);
+      else setPendingTags(data?.tags ?? []);
+    } catch (e) {
+      toast.error(String(e instanceof Error ? e.message : e));
+    } finally {
+      setter(false);
+    }
+  }
+
+  async function runProposeLinks() {
+    setAiLinksLoading(true);
+    try {
+      const { data, error } = await actions.aiProposeIngredientLinks({
+        recipeIngredients: ingredients.filter(Boolean),
+        locale: (language || "en") as "en" | "de",
+      });
+      if (error) throw new Error(error.message);
+      // Filter out already-linked
+      const existing = new Set(ingredientLinks.map((l) => l.pattern));
+      const newLinks = (data ?? []).filter((l) => !existing.has(l.pattern));
+      setPendingLinks(newLinks);
+    } catch (e) {
+      toast.error(String(e instanceof Error ? e.message : e));
+    } finally {
+      setAiLinksLoading(false);
+    }
+  }
+
+  function applyLinkSuggestion(link: { pattern: string; slug: string }) {
+    setIngredientLinks((prev) => {
+      if (prev.some((l) => l.pattern === link.pattern)) return prev;
+      return [...prev, { pattern: link.pattern, slug: link.slug, kind: "ingredient" as const }];
+    });
+  }
+
+  function buildRecipeSnapshot(): Record<string, unknown> {
+    return {
+      "@context": "https://schema.org",
+      "@type": "Recipe",
+      name: formValues.name,
+      description: formValues.description,
+      recipeIngredient: ingredients.filter(Boolean),
+      recipeCategory: formValues.recipeCategory,
+      recipeCuisine: formValues.recipeCuisine,
+      keywords,
+      tags,
+    };
+  }
+
+  function buildMetaSnapshot(): Record<string, unknown> {
+    return {
+      ...meta,
+      draft,
+      language: language || undefined,
+      locale: language || undefined,
+      tags,
+      ingredientLinks,
+      externalSources,
+      goesWellWith,
+      usesBase,
+      aiSuggestions,
+    };
+  }
+
+  // Map ingredient string → link for badge display
+  const linkedPatterns = new Map(ingredientLinks.map((l) => [l.pattern.toLowerCase(), l]));
+  function findLinkForIngredient(ing: string): IngredientLink | undefined {
+    const lower = ing.toLowerCase();
+    for (const [pattern, link] of linkedPatterns.entries()) {
+      if (lower.includes(pattern)) return link;
+    }
+    return undefined;
+  }
+  function findAiLinkSuggestion(ing: string) {
+    if (!pendingLinks) return undefined;
+    const lower = ing.toLowerCase();
+    return pendingLinks.find((l) => lower.includes(l.pattern.toLowerCase()));
+  }
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -406,14 +666,7 @@ export default function RecipeForm({
           {!isNew && <p className="text-sm text-muted-foreground">{slug}</p>}
         </div>
         {!isNew && slug && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              window.location.href = `/admin/${collection}/${slug}/enhance`;
-            }}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={() => setEnhanceOpen(true)}>
             <Sparkles size={14} className="mr-1.5" />
             Enhance with AI
           </Button>
@@ -426,7 +679,6 @@ export default function RecipeForm({
           void form.handleSubmit();
         }}
       >
-        {/* 3-col layout */}
         <div className="flex gap-6">
           {/* Left: section nav */}
           <aside className="sticky top-0 h-fit w-40 shrink-0 pt-1">
@@ -445,11 +697,58 @@ export default function RecipeForm({
                   {isNew && (
                     <div className="space-y-1.5">
                       <Label>Slug</Label>
-                      <Input
-                        value={slug}
-                        onChange={(e) => setSlug(e.target.value)}
-                        placeholder="my-recipe"
-                      />
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            value={slug}
+                            onChange={(e) => setSlug(e.target.value)}
+                            placeholder="my-recipe"
+                          />
+                          {slug && isNew && (
+                            <span
+                              className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium ${
+                                slugChecking
+                                  ? "text-muted-foreground"
+                                  : slugAvailable === true
+                                    ? "text-emerald-600"
+                                    : slugAvailable === false
+                                      ? "text-red-500"
+                                      : ""
+                              }`}
+                            >
+                              {slugChecking
+                                ? "…"
+                                : slugAvailable === true
+                                  ? "✓ available"
+                                  : slugAvailable === false
+                                    ? "✗ taken"
+                                    : ""}
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          title="AI suggest slug"
+                          onClick={async () => {
+                            const name = form.getFieldValue("name" as never) as string;
+                            if (!name) return;
+                            try {
+                              const { data } = await actions.aiSuggestSlug({
+                                name,
+                                locale: language || "en",
+                                collection,
+                              });
+                              if (data) setSlug(data.slug);
+                            } catch {
+                              toast.error("Could not suggest slug");
+                            }
+                          }}
+                        >
+                          <Sparkles size={12} />
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -474,10 +773,12 @@ export default function RecipeForm({
                   <form.Field name="description">
                     {(field) => (
                       <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>
-                          Description
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor={field.name}>
+                            Description
+                            <RecommendedHint show={!field.state.value} />
+                          </Label>
+                        </div>
                         <Textarea
                           id={field.name}
                           value={field.state.value}
@@ -486,6 +787,24 @@ export default function RecipeForm({
                           rows={3}
                           placeholder="A warming North African spice blend…"
                         />
+                        {/* Inline suggestion from completeness panel */}
+                        {(() => {
+                          const s = visibleImprovements.find((s) => s.field === "description");
+                          if (!s || field.state.value) return null;
+                          return (
+                            <InlineSuggestion
+                              label="AI suggestion"
+                              current={field.state.value}
+                              suggested={s.suggestion}
+                              rationale={s.rationale}
+                              onAccept={(v) => {
+                                field.handleChange(v);
+                                handleDismissSuggestion("description");
+                              }}
+                              onDismiss={() => handleDismissSuggestion("description")}
+                            />
+                          );
+                        })()}
                       </div>
                     )}
                   </form.Field>
@@ -632,26 +951,165 @@ export default function RecipeForm({
             <section id="section-ingredients" className="scroll-mt-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Ingredients</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Ingredients</CardTitle>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={runProposeLinks}
+                      disabled={aiLinksLoading || ingredients.filter(Boolean).length === 0}
+                      className="h-7 text-xs gap-1"
+                    >
+                      {aiLinksLoading ? (
+                        <Loader2 size={11} className="animate-spin" />
+                      ) : (
+                        <Link2 size={11} />
+                      )}
+                      Auto-link
+                    </Button>
+                  </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-2">
                   <SortableArrayField
                     items={ingredients}
                     onChange={setIngredients}
                     onAdd={() => setIngredients((prev) => [...prev, ""])}
                     addLabel="Add ingredient"
-                    renderItem={(ing, i) => (
-                      <Input
-                        value={ing}
-                        onChange={(e) =>
-                          setIngredients((prev) =>
-                            prev.map((v, j) => (j === i ? e.target.value : v)),
-                          )
-                        }
-                        placeholder="2 tsp cumin seeds"
-                      />
-                    )}
+                    renderItem={(ing, i) => {
+                      const existingLink = findLinkForIngredient(ing);
+                      const aiSuggestion = findAiLinkSuggestion(ing);
+                      return (
+                        <div className="flex items-center gap-1.5 flex-1">
+                          <Input
+                            value={ing}
+                            onChange={(e) =>
+                              setIngredients((prev) =>
+                                prev.map((v, j) => (j === i ? e.target.value : v)),
+                              )
+                            }
+                            placeholder="2 tsp cumin seeds"
+                            className="flex-1"
+                          />
+                          {/* Link badge */}
+                          {existingLink ? (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 text-[10px] text-emerald-600 border-emerald-200 gap-1 cursor-default"
+                              title={`Linked → ${existingLink.slug}`}
+                            >
+                              <Link2 size={9} />
+                              {existingLink.slug}
+                            </Badge>
+                          ) : aiSuggestion ? (
+                            <button
+                              type="button"
+                              onClick={() => applyLinkSuggestion(aiSuggestion)}
+                              className="shrink-0 flex items-center gap-1 rounded border border-amber-200 bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 text-[10px] text-amber-700 hover:bg-amber-100"
+                              title={`AI suggests → ${aiSuggestion.slug} (${aiSuggestion.confidence})`}
+                            >
+                              <Sparkles size={9} />
+                              {aiSuggestion.slug}
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    }}
                   />
+
+                  {/* Pending link suggestions summary */}
+                  {pendingLinks && pendingLinks.length > 0 && (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-amber-800 dark:text-amber-300">
+                          {pendingLinks.length} link{pendingLinks.length !== 1 ? "s" : ""} suggested
+                        </span>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              pendingLinks.forEach(applyLinkSuggestion);
+                              setPendingLinks(null);
+                            }}
+                            className="flex items-center gap-1 rounded bg-amber-700 px-2 py-0.5 text-white hover:opacity-90"
+                          >
+                            <Check size={9} />
+                            Apply all
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPendingLinks(null)}
+                            className="flex items-center gap-1 rounded px-2 py-0.5 text-amber-700 hover:bg-amber-100"
+                          >
+                            <X size={9} />
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual link management */}
+                  <details className="group">
+                    <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none list-none flex items-center gap-1 pt-1">
+                      <Link2 size={11} />
+                      Ingredient links ({ingredientLinks.length})
+                      <span className="ml-auto group-open:rotate-180 transition-transform">▾</span>
+                    </summary>
+                    <div className="mt-2">
+                      <SortableArrayField
+                        items={ingredientLinks}
+                        onChange={setIngredientLinks}
+                        onAdd={() =>
+                          setIngredientLinks((prev) => [
+                            ...prev,
+                            { pattern: "", slug: "", kind: "ingredient" },
+                          ])
+                        }
+                        addLabel="Add link"
+                        getKey={(_, i) => `ilink-${i}`}
+                        renderItem={(link, i) => (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={link.pattern}
+                              onChange={(e) =>
+                                setIngredientLinks((prev) =>
+                                  prev.map((l, j) =>
+                                    j === i ? { ...l, pattern: e.target.value } : l,
+                                  ),
+                                )
+                              }
+                              placeholder="cumin seeds"
+                              className="flex-1"
+                            />
+                            <span className="shrink-0 text-sm text-muted-foreground">→</span>
+                            <EntityCombobox
+                              value={link.slug}
+                              onChange={(v) =>
+                                setIngredientLinks((prev) =>
+                                  prev.map((l, j) => (j === i ? { ...l, slug: v } : l)),
+                                )
+                              }
+                              options={ingredientOptions}
+                              placeholder="ingredient"
+                              className="flex-1"
+                              onCreateNew={(name) =>
+                                openQuickCreate("ingredient", name, (newSlug, newLabel) => {
+                                  setIngredientOptions((prev) => [
+                                    ...prev,
+                                    { value: newSlug, label: newLabel, sublabel: newSlug },
+                                  ]);
+                                  setIngredientLinks((prev) =>
+                                    prev.map((l, j) => (j === i ? { ...l, slug: newSlug } : l)),
+                                  );
+                                })
+                              }
+                            />
+                          </div>
+                        )}
+                      />
+                    </div>
+                  </details>
                 </CardContent>
               </Card>
             </section>
@@ -742,16 +1200,65 @@ export default function RecipeForm({
                     )}
                   </form.Field>
                   <div className="col-span-2 space-y-1.5">
-                    <Label>
-                      Keywords
-                      <RecommendedHint show={keywords.length === 0} />
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label>
+                        Keywords
+                        <RecommendedHint show={keywords.length === 0} />
+                      </Label>
+                      <button
+                        type="button"
+                        onClick={() => runProposeTags(true)}
+                        disabled={aiKeywordsLoading}
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        {aiKeywordsLoading ? (
+                          <Loader2 size={11} className="animate-spin" />
+                        ) : (
+                          <Sparkles size={11} />
+                        )}
+                        AI suggest
+                      </button>
+                    </div>
                     <TagInput
                       value={keywords}
                       onChange={setKeywords}
                       suggestions={tagSuggestions}
                       placeholder="vegan, pantry, quick"
                     />
+                    {pendingKeywords && pendingKeywords.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {pendingKeywords
+                          .filter((t) => !keywords.includes(t))
+                          .map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setKeywords((prev) => [...prev, t])}
+                              className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
+                            >
+                              + {t}
+                            </button>
+                          ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const toAdd = pendingKeywords.filter((t) => !keywords.includes(t));
+                            setKeywords((prev) => [...new Set([...prev, ...toAdd])]);
+                            setPendingKeywords(null);
+                          }}
+                          className="text-xs text-muted-foreground hover:text-foreground px-1"
+                        >
+                          Add all
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPendingKeywords(null)}
+                          className="text-xs text-muted-foreground hover:text-foreground px-1"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="col-span-2 space-y-1.5">
                     <Label>Suitable for diet</Label>
@@ -795,16 +1302,77 @@ export default function RecipeForm({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label>Tags</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Tags</Label>
+                      <button
+                        type="button"
+                        onClick={() => runProposeTags(false)}
+                        disabled={aiTagsLoading}
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        {aiTagsLoading ? (
+                          <Loader2 size={11} className="animate-spin" />
+                        ) : (
+                          <Tag size={11} />
+                        )}
+                        AI suggest
+                      </button>
+                    </div>
                     <TagInput
                       value={tags}
                       onChange={setTags}
                       suggestions={tagSuggestions}
                       placeholder="weeknight, make-ahead"
                     />
+                    {pendingTags && pendingTags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {pendingTags
+                          .filter((t) => !tags.includes(t))
+                          .map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setTags((prev) => [...prev, t])}
+                              className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
+                            >
+                              + {t}
+                            </button>
+                          ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const toAdd = pendingTags.filter((t) => !tags.includes(t));
+                            setTags((prev) => [...new Set([...prev, ...toAdd])]);
+                            setPendingTags(null);
+                          }}
+                          className="text-xs text-muted-foreground hover:text-foreground px-1"
+                        >
+                          Add all
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPendingTags(null)}
+                          className="text-xs text-muted-foreground hover:text-foreground px-1"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Language</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Language</Label>
+                      {!isNew && (
+                        <button
+                          type="button"
+                          onClick={() => setTranslateOpen(true)}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          <Languages size={11} />
+                          Create translation
+                        </button>
+                      )}
+                    </div>
                     <Select value={language} onValueChange={(v) => v && setLanguage(v)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select language…" />
@@ -817,62 +1385,32 @@ export default function RecipeForm({
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            {/* ── Ingredient links ── */}
-            <section id="section-links" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ingredient links</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SortableArrayField
-                    items={ingredientLinks}
-                    onChange={setIngredientLinks}
-                    onAdd={() => setIngredientLinks((prev) => [...prev, { pattern: "", slug: "" }])}
-                    addLabel="Add link"
-                    getKey={(_, i) => `ilink-${i}`}
-                    renderItem={(link, i) => (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={link.pattern}
-                          onChange={(e) =>
-                            setIngredientLinks((prev) =>
-                              prev.map((l, j) => (j === i ? { ...l, pattern: e.target.value } : l)),
-                            )
-                          }
-                          placeholder="cumin seeds, ground"
-                          className="flex-1"
-                        />
-                        <span className="shrink-0 text-sm text-muted-foreground">→</span>
-                        <EntityCombobox
-                          value={link.slug}
-                          onChange={(v) =>
-                            setIngredientLinks((prev) =>
-                              prev.map((l, j) => (j === i ? { ...l, slug: v } : l)),
-                            )
-                          }
-                          options={ingredientOptions}
-                          placeholder="ingredient"
-                          className="flex-1"
-                          onCreateNew={(name) =>
-                            openQuickCreate("ingredient", name, (newSlug, newLabel) => {
-                              setIngredientOptions((prev) => [
-                                ...prev,
-                                { value: newSlug, label: newLabel, sublabel: newSlug },
-                              ]);
-                              setIngredientLinks((prev) =>
-                                prev.map((l, j) => (j === i ? { ...l, slug: newSlug } : l)),
-                              );
-                            })
-                          }
-                        />
+                    {/* Show detected language suggestion */}
+                    {!language && aiSuggestions?.detectedLanguage && (
+                      <button
+                        type="button"
+                        onClick={() => setLanguage(aiSuggestions.detectedLanguage!)}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        ✦ AI detected: {aiSuggestions.detectedLanguage}
+                      </button>
+                    )}
+                    {/* Show linked translations */}
+                    {meta.translations && Object.entries(meta.translations).length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {Object.entries(meta.translations).map(([locale, tSlug]) => (
+                          <a
+                            key={locale}
+                            href={`/admin/${collection}/${tSlug}/edit`}
+                            className="flex items-center gap-1 rounded border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                          >
+                            <Languages size={9} />
+                            {locale}: {tSlug}
+                          </a>
+                        ))}
                       </div>
                     )}
-                  />
+                  </div>
                 </CardContent>
               </Card>
             </section>
@@ -881,9 +1419,50 @@ export default function RecipeForm({
             <section id="section-relations" className="scroll-mt-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Relations</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Relations</CardTitle>
+                    {aiSuggestions?.relations && aiSuggestions.relations.length > 0 && (
+                      <span className="text-xs text-primary">
+                        {aiSuggestions.relations.length} AI suggestion
+                        {aiSuggestions.relations.length !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* AI relation suggestions */}
+                  {aiSuggestions?.relations && aiSuggestions.relations.length > 0 && (
+                    <div className="rounded-md border border-primary/20 bg-primary/5 p-2 space-y-1.5">
+                      {aiSuggestions.relations.map((r, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs">
+                          <span className="text-muted-foreground capitalize shrink-0">
+                            {r.kind === "goesWellWith" ? "Pairs with" : "Uses base"}
+                          </span>
+                          <span className="font-medium">{r.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const ref = { collection: r.collection, slug: r.slug };
+                              if (r.kind === "goesWellWith") {
+                                setGoesWellWith((prev) =>
+                                  prev.some((x) => x.slug === r.slug) ? prev : [...prev, ref],
+                                );
+                              } else {
+                                setUsesBase((prev) =>
+                                  prev.some((x) => x.slug === r.slug) ? prev : [...prev, ref],
+                                );
+                              }
+                            }}
+                            className="ml-auto flex items-center gap-1 rounded border border-primary/20 px-1.5 py-0.5 text-primary hover:bg-primary/10"
+                          >
+                            <Check size={9} />
+                            Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="space-y-1.5">
                     <Label>Goes well with</Label>
                     <EntityMultiCombobox
@@ -976,47 +1555,18 @@ export default function RecipeForm({
             </section>
           </div>
 
-          {/* Right: completeness + AI assist */}
-          <aside className="sticky top-0 h-fit w-56 shrink-0 pt-1 space-y-3">
+          {/* Right: completeness */}
+          <aside className="sticky top-0 h-fit w-56 shrink-0 pt-1">
             <CompletenessPanel
               result={completeness}
               requiredFields={requiredFields}
               recommendedFields={recommendedFields}
               bonusFields={bonusFields}
-            />
-            <AiAssistPanel
-              mode="recipe"
-              snapshot={{
-                name: formValues.name,
-                description: formValues.description,
-                recipeIngredient: ingredients.filter(Boolean),
-                recipeCategory: formValues.recipeCategory,
-                recipeCuisine: formValues.recipeCuisine,
-                keywords,
-                tags,
-              }}
-              missingFields={recommendedFields.filter((f) => !f.filled).map((f) => f.key)}
-              recipeIngredients={ingredients.filter(Boolean)}
-              locale={(meta.language ?? "en") as "en" | "de"}
-              targetLocale={meta.language === "de" ? "en" : "de"}
-              onApplyIngredientLinks={(links) =>
-                setIngredientLinks((prev) => {
-                  const existing = new Set(prev.map((l) => l.pattern));
-                  const newLinks = links.filter((l) => !existing.has(l.pattern));
-                  return [...prev, ...newLinks.map((l) => ({ pattern: l.pattern, slug: l.slug }))];
-                })
-              }
-              onApplyTags={(newTags) => setTags(newTags)}
-              onApplyField={(field, value) => {
-                if (field === "tags") setTags(value as string[]);
-                else if (field === "keywords") setKeywords(value as string[]);
-                else form.setFieldValue(field as never, value as never);
-              }}
-              onApplyTranslation={(fields) => {
-                for (const [field, value] of Object.entries(fields)) {
-                  form.setFieldValue(field as never, value as never);
-                }
-              }}
+              aiSuggestions={visibleImprovements}
+              aiRefreshing={aiRefreshing}
+              onRefreshSuggestions={!isNew ? handleManualRefresh : undefined}
+              onApplySuggestion={handleApplySuggestion}
+              onDismissSuggestion={handleDismissSuggestion}
             />
           </aside>
         </div>
@@ -1030,6 +1580,27 @@ export default function RecipeForm({
           onSave={handleSave}
         />
       </form>
+
+      {/* Enhance modal */}
+      <EnhanceModal
+        open={enhanceOpen}
+        onClose={() => setEnhanceOpen(false)}
+        collection={collection}
+        slug={slug}
+        existingRecipe={buildRecipeSnapshot()}
+        onApplied={() => window.location.reload()}
+      />
+
+      {/* Translate modal */}
+      <TranslateModal
+        open={translateOpen}
+        onClose={() => setTranslateOpen(false)}
+        collection={collection}
+        slug={slug}
+        recipe={buildRecipeSnapshot()}
+        meta={buildMetaSnapshot()}
+        currentLocale={language || "en"}
+      />
 
       {/* Quick create dialog */}
       {quickCreateKind && (

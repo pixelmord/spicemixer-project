@@ -537,6 +537,276 @@ export const server = {
     },
   }),
 
+  /** Check whether a slug is available in a given collection. */
+  checkSlugAvailable: defineAction({
+    accept: "json",
+    input: z.object({
+      collection: z.enum(["recipes", "spicemixes", "sauces", "ingredients"]),
+      slug: z.string().min(1),
+    }),
+    handler: async ({ collection, slug }) => {
+      const store = await createStore();
+      type C = Parameters<typeof store.get>[0];
+      const existing = await store.get(collection as C, slug);
+      return { available: !existing };
+    },
+  }),
+
+  /** Suggest a URL-safe slug derived from a recipe name via AI, with duplicate avoidance. */
+  aiSuggestSlug: defineAction({
+    accept: "json",
+    input: z.object({
+      name: z.string().min(1),
+      locale: z.string().length(2).default("en"),
+      collection: recipeCollectionEnum,
+    }),
+    handler: async ({ name, locale, collection }) => {
+      const config = resolveAiConfig();
+      const { proposeSlug } = await import("content-ai");
+      const store = await createStore();
+
+      const proposal = await proposeSlug(name, locale, config);
+      let slug = proposal.slug
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      const existing = await store.get(collection, slug);
+      if (existing) {
+        let i = 2;
+        while (await store.get(collection, `${slug}-${i}`)) i++;
+        slug = `${slug}-${i}`;
+      }
+      return { slug };
+    },
+  }),
+
+  /**
+   * Run all AI curation passes for a recipe (improvements, tags, ingredient links, relations,
+   * language detection) and persist the result in meta.aiSuggestions. Auto-applies
+   * high-confidence ingredient links and detected language (when unset).
+   */
+  aiRefreshSuggestions: defineAction({
+    accept: "json",
+    input: z.object({
+      collection: recipeCollectionEnum,
+      slug: z.string().min(1),
+      recipe: z.record(z.string(), z.unknown()),
+      meta: z.record(z.string(), z.unknown()),
+      missingFields: z.array(z.string()).default([]),
+      locale: z.enum(["en", "de"]).default("en"),
+    }),
+    handler: async ({ collection, slug, recipe, meta, missingFields, locale }) => {
+      const config = resolveAiConfig();
+      const {
+        proposeRecipeImprovements,
+        proposeTags,
+        proposeIngredientLinks,
+        proposeRelations,
+        detectLanguage,
+      } = await import("content-ai");
+      const store = await createStore();
+
+      const { createHash } = await import("node:crypto");
+      const metaForHash = { ...meta } as Record<string, unknown>;
+      delete metaForHash["aiSuggestions"];
+      const contentHash = createHash("sha256")
+        .update(JSON.stringify({ recipe, meta: metaForHash }))
+        .digest("hex")
+        .slice(0, 16);
+
+      // Skip regen if content hasn't changed
+      const existing = (meta["aiSuggestions"] as Record<string, unknown> | undefined) ?? null;
+      if (existing && existing["contentHash"] === contentHash) {
+        return {
+          aiSuggestions: existing,
+          autoLinked: 0,
+          skipped: true,
+        };
+      }
+
+      // Build inventories
+      const ingredientItems = await store.list("ingredients");
+      const inventory = ingredientItems
+        .filter((i) => i.id.startsWith(`${locale}/`))
+        .map((i) => ({
+          slug: i.id.slice(3),
+          name: String((i.data as Record<string, unknown>)["name"] ?? i.id.slice(3)),
+        }));
+
+      const [recipes, spicemixes, sauces] = await Promise.all([
+        store.list("recipes"),
+        store.list("spicemixes"),
+        store.list("sauces"),
+      ]);
+      const existingRecipes = [
+        ...recipes.map((r) => ({
+          collection: "recipes" as const,
+          slug: r.id,
+          name: String((r.data as Record<string, unknown>).name ?? r.id),
+          recipeIngredient: (r.data as Record<string, unknown>).recipeIngredient as
+            | string[]
+            | undefined,
+        })),
+        ...spicemixes.map((r) => ({
+          collection: "spicemixes" as const,
+          slug: r.id,
+          name: String((r.data as Record<string, unknown>).name ?? r.id),
+        })),
+        ...sauces.map((r) => ({
+          collection: "sauces" as const,
+          slug: r.id,
+          name: String((r.data as Record<string, unknown>).name ?? r.id),
+        })),
+      ].filter((r) => r.slug !== slug);
+
+      const recipeIngredients = Array.isArray(recipe["recipeIngredient"])
+        ? (recipe["recipeIngredient"] as string[])
+        : [];
+
+      const [improvementsResult, tagsResult, linksResult, relationsResult, langResult] =
+        await Promise.allSettled([
+          missingFields.length
+            ? proposeRecipeImprovements(recipe as never, missingFields, config)
+            : Promise.resolve({ fields: [] }),
+          proposeTags(recipe as never, [], config),
+          recipeIngredients.length
+            ? proposeIngredientLinks(recipeIngredients, inventory, config)
+            : Promise.resolve([]),
+          proposeRelations(recipe as never, existingRecipes, config),
+          !meta["language"]
+            ? detectLanguage(String(recipe["name"] ?? ""), config)
+            : Promise.resolve(null),
+        ]);
+
+      const aiSuggestions = {
+        contentHash,
+        generatedAt: new Date().toISOString(),
+        improvements:
+          improvementsResult.status === "fulfilled" ? improvementsResult.value.fields : [],
+        tags: tagsResult.status === "fulfilled" ? tagsResult.value.tags : [],
+        ingredientLinks: linksResult.status === "fulfilled" ? linksResult.value : [],
+        relations: relationsResult.status === "fulfilled" ? relationsResult.value : [],
+        detectedLanguage:
+          langResult.status === "fulfilled" && langResult.value
+            ? langResult.value.language
+            : undefined,
+      };
+
+      // Auto-apply: high-confidence ingredient links (additive only)
+      const existingLinks = Array.isArray(meta["ingredientLinks"])
+        ? (meta["ingredientLinks"] as Array<Record<string, unknown>>)
+        : [];
+      const existingPatterns = new Set(existingLinks.map((l) => String(l["pattern"] ?? "")));
+      const highConf = aiSuggestions.ingredientLinks.filter(
+        (l) => l.confidence === "high" && !existingPatterns.has(l.pattern),
+      );
+
+      const updatedMeta: Record<string, unknown> = {
+        ...meta,
+        aiSuggestions,
+      };
+
+      if (highConf.length > 0) {
+        updatedMeta["ingredientLinks"] = [
+          ...existingLinks,
+          ...highConf.map((l) => ({ pattern: l.pattern, slug: l.slug, kind: "ingredient" })),
+        ];
+      }
+
+      // Auto-apply: detected language when none is set
+      if (!meta["language"] && aiSuggestions.detectedLanguage) {
+        updatedMeta["language"] = aiSuggestions.detectedLanguage;
+        updatedMeta["locale"] = aiSuggestions.detectedLanguage;
+      }
+
+      await store.put("meta", `${collection}/${slug}`, updatedMeta);
+
+      return {
+        aiSuggestions,
+        autoLinked: highConf.length,
+        detectedLanguage: aiSuggestions.detectedLanguage,
+        skipped: false,
+      };
+    },
+  }),
+
+  /**
+   * Translate a recipe into a target locale and save it as a new linked document.
+   * Also updates the original's meta.translations map.
+   */
+  aiCreateTranslation: defineAction({
+    accept: "json",
+    input: z.object({
+      collection: recipeCollectionEnum,
+      slug: z.string().min(1),
+      recipe: z.record(z.string(), z.unknown()),
+      meta: z.record(z.string(), z.unknown()),
+      sourceLocale: z.enum(["en", "de"]),
+      targetLocale: z.enum(["en", "de"]),
+      translationSlug: z.string().min(1),
+    }),
+    handler: async ({
+      collection,
+      slug,
+      recipe,
+      meta,
+      sourceLocale,
+      targetLocale,
+      translationSlug,
+    }) => {
+      const config = resolveAiConfig();
+      const { proposeRecipeTranslation } = await import("content-ai");
+      const store = await createStore();
+
+      const existing = await store.get(collection, translationSlug);
+      if (existing) {
+        throw new ActionError({
+          code: "CONFLICT",
+          message: `Slug "${translationSlug}" is already taken.`,
+        });
+      }
+
+      const translation = await proposeRecipeTranslation(
+        recipe as never,
+        sourceLocale,
+        targetLocale,
+        config,
+      );
+
+      const translatedRecipe = { ...recipe, ...translation.fields };
+
+      await store.put(collection, translationSlug, translatedRecipe);
+
+      // Strip aiSuggestions from translation meta
+      const translationMeta: Record<string, unknown> = {
+        ...meta,
+        draft: true,
+        language: targetLocale,
+        locale: targetLocale,
+        translationOf: slug,
+        aiSuggestions: undefined,
+        translations: {},
+        variants: [],
+      };
+      delete translationMeta["aiSuggestions"];
+      await store.put("meta", `${collection}/${translationSlug}`, translationMeta);
+
+      // Back-link original → translation
+      const currentTranslations =
+        typeof meta["translations"] === "object" && meta["translations"] !== null
+          ? (meta["translations"] as Record<string, string>)
+          : {};
+      await store.put("meta", `${collection}/${slug}`, {
+        ...meta,
+        translations: { ...currentTranslations, [targetLocale]: translationSlug },
+      });
+
+      return { ok: true, translationSlug };
+    },
+  }),
+
   /** Create a minimal recipe stub (name only) for inline "create new" flow. */
   quickCreateRecipe: defineAction({
     accept: "json",

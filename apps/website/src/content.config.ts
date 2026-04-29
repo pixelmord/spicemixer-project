@@ -57,15 +57,60 @@ const recipeLinkRef = z.object({
   slug: z.string(),
 });
 
+const ingredientLinkItem = z.object({
+  pattern: z.string(),
+  kind: z.enum(["ingredient", "recipe"]).default("ingredient"),
+  slug: z.string(),
+  collection: z.enum(["recipes", "spicemixes", "sauces"]).optional(),
+});
+
+const aiSuggestionsSchema = z.object({
+  contentHash: z.string(),
+  generatedAt: z.string(),
+  improvements: z
+    .array(
+      z.object({
+        field: z.string(),
+        suggestion: z.string(),
+        rationale: z.string(),
+      }),
+    )
+    .default([]),
+  tags: z.array(z.string()).default([]),
+  ingredientLinks: z
+    .array(
+      z.object({
+        pattern: z.string(),
+        slug: z.string(),
+        confidence: z.enum(["high", "medium", "low"]),
+      }),
+    )
+    .default([]),
+  relations: z
+    .array(
+      z.object({
+        kind: z.enum(["goesWellWith", "usesBase"]),
+        collection: z.enum(["recipes", "spicemixes", "sauces"]),
+        slug: z.string(),
+        name: z.string(),
+      }),
+    )
+    .default([]),
+  detectedLanguage: z.string().length(2).optional(),
+});
+
 const recipeMetaSchema = z.object({
   kind: z.enum(["recipe", "spicemix", "sauce"]).optional(),
   draft: z.boolean().default(false),
   language: z.string().length(2).optional(),
+  locale: z.string().length(2).optional(),
+  translationOf: z.string().optional(),
+  translations: z.record(z.string(), z.string()).default({}),
   variantOf: z.string().optional(),
   variants: z.array(z.string()).default([]),
   goesWellWith: z.array(recipeLinkRef).default([]),
   usesBase: z.array(recipeLinkRef).default([]),
-  ingredientLinks: z.array(z.object({ pattern: z.string(), slug: z.string() })).default([]),
+  ingredientLinks: z.array(ingredientLinkItem).default([]),
   externalSources: z
     .array(
       z.object({
@@ -76,6 +121,7 @@ const recipeMetaSchema = z.object({
     )
     .default([]),
   tags: z.array(z.string()).default([]),
+  aiSuggestions: aiSuggestionsSchema.optional(),
 });
 
 const ingredientSchema = z.object({

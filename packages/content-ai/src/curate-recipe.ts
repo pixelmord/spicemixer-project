@@ -173,6 +173,134 @@ For each field, provide a suggested value and a one-sentence rationale. Only sug
   }
 }
 
+export interface RelationProposal {
+  kind: "goesWellWith" | "usesBase";
+  collection: "recipes" | "spicemixes" | "sauces";
+  slug: string;
+  name: string;
+  rationale: string;
+}
+
+export async function detectLanguage(
+  text: string,
+  config: AiConfig,
+): Promise<{ language: string }> {
+  const model = createProvider(config);
+  const schema = z.object({ language: z.string().length(2) });
+
+  try {
+    const { output } = await generateText({
+      model,
+      output: Output.object({ schema }),
+      providerOptions: PROVIDER_OPTIONS,
+      prompt: `Identify the language of the following text and return only its ISO 639-1 two-letter code (e.g. "en", "de", "fr").
+
+Text: "${text.slice(0, 500)}"`,
+    });
+    return output;
+  } catch (e) {
+    throw new AiError("EXTRACTION_FAILED", `Language detection failed: ${String(e)}`);
+  }
+}
+
+export async function proposeRelations(
+  recipe: RecipeSnapshot,
+  existingRecipes: Array<{
+    collection: string;
+    slug: string;
+    name: string;
+    recipeIngredient?: string[];
+  }>,
+  config: AiConfig,
+): Promise<RelationProposal[]> {
+  if (!existingRecipes.length) return [];
+
+  const model = createProvider(config);
+  const schema = z.object({
+    relations: z.array(
+      z.object({
+        kind: z.enum(["goesWellWith", "usesBase"]),
+        collection: z.enum(["recipes", "spicemixes", "sauces"]),
+        slug: z.string(),
+        name: z.string(),
+        rationale: z.string(),
+      }),
+    ),
+  });
+
+  const recipeContext = [
+    `Name: ${recipe.name}`,
+    recipe.description ? `Description: ${recipe.description}` : null,
+    recipe.recipeCategory ? `Category: ${recipe.recipeCategory}` : null,
+    recipe.recipeCuisine ? `Cuisine: ${recipe.recipeCuisine}` : null,
+    recipe.recipeIngredient?.length
+      ? `Key ingredients: ${recipe.recipeIngredient.slice(0, 8).join(", ")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const candidatesList = existingRecipes
+    .slice(0, 50)
+    .map((r) => `${r.collection}/${r.slug}: ${r.name}`)
+    .join("\n");
+
+  try {
+    const { output } = await generateText({
+      model,
+      output: Output.object({ schema }),
+      providerOptions: PROVIDER_OPTIONS,
+      prompt: `Based on this recipe, suggest related recipes from the catalog below.
+
+Current recipe:
+${recipeContext}
+
+Available recipes (collection/slug: name):
+${candidatesList}
+
+Return up to 4 relations:
+- "goesWellWith": recipes this pairs or serves well alongside
+- "usesBase": recipes/spicemixes this recipe uses as a base ingredient (e.g. a spice blend used in a dish)
+
+Only suggest relations with clear culinary logic. Return empty if nothing fits.`,
+    });
+    return output.relations;
+  } catch (e) {
+    throw new AiError("EXTRACTION_FAILED", `Relation proposal failed: ${String(e)}`);
+  }
+}
+
+export async function proposeSlug(
+  name: string,
+  locale: string,
+  config: AiConfig,
+): Promise<{ slug: string }> {
+  const model = createProvider(config);
+  const schema = z.object({ slug: z.string() });
+
+  try {
+    const { output } = await generateText({
+      model,
+      output: Output.object({ schema }),
+      providerOptions: PROVIDER_OPTIONS,
+      prompt: `Generate a clean URL slug for the recipe name below. Rules:
+- Lowercase only
+- Hyphens as separators (no underscores)
+- Transliterate or translate non-ASCII characters to their Latin equivalents
+- Keep it short (2-5 words max)
+- No stop words unless they aid clarity
+- Locale hint: ${locale}
+
+Recipe name: "${name}"
+
+Return only the slug string, e.g. "ras-el-hanout" or "marokkanische-gewuerzmischung".`,
+    });
+    return output;
+  } catch (e) {
+    throw new AiError("EXTRACTION_FAILED", `Slug proposal failed: ${String(e)}`);
+  }
+}
+
 export async function proposeRecipeTranslation(
   recipe: RecipeSnapshot,
   sourceLocale: string,

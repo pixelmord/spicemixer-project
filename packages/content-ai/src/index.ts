@@ -12,6 +12,9 @@ export {
   proposeTags,
   proposeRecipeImprovements,
   proposeRecipeTranslation,
+  detectLanguage,
+  proposeRelations,
+  proposeSlug,
 } from "./curate-recipe.ts";
 export type {
   RecipeSnapshot,
@@ -19,6 +22,7 @@ export type {
   TagProposal,
   ImprovementProposal,
   TranslationDraft,
+  RelationProposal,
 } from "./curate-recipe.ts";
 
 export {
