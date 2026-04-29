@@ -6,6 +6,37 @@ import { scoreRecipe, scoreIngredient } from "@/lib/completeness.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
+const fileOrTextInput = z.object({
+  file: z.instanceof(File).optional(),
+  mimeType: z.string().optional(),
+  text: z.string().optional(),
+});
+
+type ContentAiFileInput =
+  | { kind: "text"; content: string }
+  | { kind: "pdf"; bytes: Uint8Array }
+  | { kind: "image"; bytes: Uint8Array; mimeType: string };
+
+async function resolveFileInput({
+  file,
+  mimeType,
+  text,
+}: z.infer<typeof fileOrTextInput>): Promise<ContentAiFileInput> {
+  if (text) return { kind: "text", content: text };
+  if (!file || !mimeType) {
+    throw new ActionError({ code: "BAD_REQUEST", message: "Provide a file or text." });
+  }
+  if (file.size > MAX_FILE_BYTES) {
+    throw new ActionError({ code: "BAD_REQUEST", message: "File exceeds 10 MB limit." });
+  }
+  if (mimeType === "text/plain" || mimeType === "text/markdown") {
+    return { kind: "text", content: await file.text() };
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (mimeType === "application/pdf") return { kind: "pdf", bytes };
+  return { kind: "image", bytes, mimeType };
+}
+
 function resolveAiConfig() {
   const apiKey =
     process.env["AI_API_KEY"] ??
@@ -290,65 +321,22 @@ export const server = {
   /** Extract a Recipe from an uploaded file (PDF/image/text) or pasted text. */
   aiExtractRecipe: defineAction({
     accept: "form",
-    input: z.object({
-      file: z.instanceof(File).optional(),
-      mimeType: z.string().optional(),
-      text: z.string().optional(),
-    }),
-    handler: async ({ file, mimeType, text }) => {
+    input: fileOrTextInput,
+    handler: async (input) => {
       const config = resolveAiConfig();
       const { extractRecipeFromFile } = await import("content-ai");
-      if (text) {
-        return extractRecipeFromFile({ kind: "text", content: text }, config);
-      }
-      if (!file || !mimeType) {
-        throw new ActionError({ code: "BAD_REQUEST", message: "Provide a file or text." });
-      }
-      if (file.size > MAX_FILE_BYTES) {
-        throw new ActionError({ code: "BAD_REQUEST", message: "File exceeds 10 MB limit." });
-      }
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      // Plain text files (.md, .txt) — send as text, not as a binary file
-      if (mimeType === "text/plain" || mimeType === "text/markdown") {
-        const content = await file.text();
-        return extractRecipeFromFile({ kind: "text", content }, config);
-      }
-      const kind = mimeType === "application/pdf" ? "pdf" : "image";
-      const input =
-        kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
-      return extractRecipeFromFile(input, config);
+      return extractRecipeFromFile(await resolveFileInput(input), config);
     },
   }),
 
   /** Extract an Ingredient from an uploaded file (PDF/image/text) or pasted text. */
   aiExtractIngredient: defineAction({
     accept: "form",
-    input: z.object({
-      file: z.instanceof(File).optional(),
-      mimeType: z.string().optional(),
-      text: z.string().optional(),
-    }),
-    handler: async ({ file, mimeType, text }) => {
+    input: fileOrTextInput,
+    handler: async (input) => {
       const config = resolveAiConfig();
       const { extractIngredientFromFile } = await import("content-ai");
-      if (text) {
-        return extractIngredientFromFile({ kind: "text", content: text }, config);
-      }
-      if (!file || !mimeType) {
-        throw new ActionError({ code: "BAD_REQUEST", message: "Provide a file or text." });
-      }
-      if (file.size > MAX_FILE_BYTES) {
-        throw new ActionError({ code: "BAD_REQUEST", message: "File exceeds 10 MB limit." });
-      }
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      if (mimeType === "text/plain" || mimeType === "text/markdown") {
-        const content = await file.text();
-        return extractIngredientFromFile({ kind: "text", content }, config);
-      }
-      const kind = mimeType === "application/pdf" ? "pdf" : "image";
-      const input =
-        kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
-      return extractIngredientFromFile(input, config);
+      return extractIngredientFromFile(await resolveFileInput(input), config);
     },
   }),
 

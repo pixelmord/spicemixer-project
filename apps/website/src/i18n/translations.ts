@@ -1,6 +1,6 @@
-export const defaultLang = "en";
+const defaultLang = "en";
 
-export const ui = {
+const ui = {
   en: {
     "page.home.title": "Spicemixer — Spices & Sauces",
     "page.home.tagline": "Spices, blends & sauces.",

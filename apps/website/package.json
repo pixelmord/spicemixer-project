@@ -30,13 +30,11 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "recipe-ingestion": "workspace:*",
-    "shadcn": "catalog:",
     "sonner": "catalog:",
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "catalog:",
     "tw-animate-css": "catalog:",
-    "utils": "workspace:*",
-    "zod": "catalog:"
+    "utils": "workspace:*"
   },
   "engines": {
     "node": ">=22.12.0"

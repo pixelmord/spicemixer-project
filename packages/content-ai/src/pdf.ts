@@ -15,7 +15,7 @@ export type PdfContent = ({ kind: "text" } & PdfTextResult) | ({ kind: "file" } 
 
 const SPARSE_TEXT_THRESHOLD = 50;
 
-export async function extractTextFromPdf(bytes: Uint8Array): Promise<PdfTextResult> {
+async function extractTextFromPdf(bytes: Uint8Array): Promise<PdfTextResult> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   if (!pdfjs.GlobalWorkerOptions.workerSrc) {

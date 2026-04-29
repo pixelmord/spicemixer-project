@@ -65,7 +65,7 @@ export function diffWords(before: string, after: string): WordToken[] {
 // ── Array item diff ──────────────────────────────────────────────────────────
 
 /** Match array items: exact set diff (unchanged if text present in both, else added/removed). */
-export function diffStringItems(before: string[], after: string[]): ItemDiff[] {
+function diffStringItems(before: string[], after: string[]): ItemDiff[] {
   const beforeSet = new Set(before.map((s) => s.trim()));
   const afterSet = new Set(after.map((s) => s.trim()));
 
@@ -91,7 +91,7 @@ function stepText(step: unknown): string {
   return "";
 }
 
-export function diffInstructionItems(before: unknown[], after: unknown[]): ItemDiff[] {
+function diffInstructionItems(before: unknown[], after: unknown[]): ItemDiff[] {
   const beforeTexts = new Set(before.map((s) => stepText(s).trim()));
   const afterTexts = new Set(after.map((s) => stepText(s).trim()));
   const result: ItemDiff[] = [];
@@ -194,6 +194,6 @@ export function hasChanges(diffs: FieldDiff[]): boolean {
 }
 
 /** Extract changed field names for preview highlighting. */
-export function changedFields(diffs: FieldDiff[]): Set<string> {
+function changedFields(diffs: FieldDiff[]): Set<string> {
   return new Set(diffs.filter((d) => d.kind !== "unchanged").map((d) => d.field));
 }
