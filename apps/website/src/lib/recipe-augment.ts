@@ -84,6 +84,20 @@ export async function getPublished<K extends RecipeKind>(kind: K) {
   return entries.filter((e) => !drafts.has(`${kind}/${e.id}`));
 }
 
+/**
+ * Return ingredient entries (optionally scoped to a locale) with
+ * `ingredientMeta.draft === true` filtered out. Missing meta is published.
+ */
+export async function getPublishedIngredients(locale?: string) {
+  const [entries, allMeta] = await Promise.all([
+    getCollection("ingredients"),
+    getCollection("ingredientMeta"),
+  ]);
+  const drafts = new Set(allMeta.filter((m) => m.data.draft === true).map((m) => m.id));
+  const scoped = locale ? entries.filter((e) => e.id.startsWith(`${locale}/`)) : entries;
+  return scoped.filter((e) => !drafts.has(e.id));
+}
+
 export type LinkedIngredient = { text: string; slug?: string };
 
 export function linkIngredients(

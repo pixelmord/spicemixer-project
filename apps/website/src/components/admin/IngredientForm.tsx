@@ -112,6 +112,9 @@ export default function IngredientForm({
   const [slugChecking, setSlugChecking] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<boolean>(
+    isNew ? true : !!(initialMeta?.["draft"] as boolean | undefined),
+  );
   const [origins, setOrigins] = useState<string[]>(data.origin.length > 0 ? data.origin : []);
   const [flavorNotes, setFlavorNotes] = useState<string[]>(
     data.flavorNotes.length > 0 ? data.flavorNotes : [],
@@ -276,6 +279,7 @@ export default function IngredientForm({
         locale,
         slug,
         ingredient: payload as never,
+        meta: { draft },
       });
 
       if (error) {
@@ -345,8 +349,9 @@ export default function IngredientForm({
     },
   });
 
-  function handleSave(_asDraft: boolean) {
-    void form.handleSubmit();
+  function handleSave(asDraft: boolean) {
+    setDraft(asDraft);
+    setTimeout(() => void form.handleSubmit(), 0);
   }
 
   const formValues = useStore(form.store, (s) => s.values);
@@ -1002,7 +1007,7 @@ export default function IngredientForm({
         {/* Sticky footer */}
         <FormActionBar
           saving={saving}
-          isDraft={false}
+          isDraft={draft}
           backHref="/admin/ingredients"
           onSave={handleSave}
         />

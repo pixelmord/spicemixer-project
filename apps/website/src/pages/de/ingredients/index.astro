@@ -1,13 +1,13 @@
 ---
-import { getCollection } from "astro:content";
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import FilterBar from "../../../components/FilterBar.astro";
 import { useTranslations } from "../../../i18n/translations.ts";
+import { getPublishedIngredients } from "../../../lib/recipe-augment.ts";
 
 const t = useTranslations("de");
 const prefix = "/de";
 
-const allIngredients = await getCollection("ingredients");
+const allIngredients = await getPublishedIngredients();
 const enMap = new Map(
   allIngredients.filter((e) => e.id.startsWith("en/")).map((e) => [e.id.replace(/^en\//, ""), e]),
 );

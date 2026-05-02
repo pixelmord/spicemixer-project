@@ -162,6 +162,7 @@ const aiIngredientSuggestionsSchema = z.object({
 
 const ingredientMetaSchema = z.object({
   kind: z.literal("ingredient").default("ingredient"),
+  draft: z.boolean().default(false),
   translationOf: z.string().optional(),
   translations: z.record(z.string(), z.string()).default({}),
   aiSuggestions: aiIngredientSuggestionsSchema.optional(),

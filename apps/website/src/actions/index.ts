@@ -3,6 +3,27 @@ import { z } from "astro/zod";
 import { createStore } from "@/lib/content-store.ts";
 import { fetchRecipe } from "recipe-ingestion";
 import { scoreRecipe, scoreIngredient, scorePairing } from "@/lib/completeness.ts";
+import {
+  saveRecipe as libSaveRecipe,
+  deleteRecipe as libDeleteRecipe,
+  publishRecipe as libPublishRecipe,
+  unpublishRecipe as libUnpublishRecipe,
+} from "@/lib/recipes.ts";
+import {
+  saveIngredient as libSaveIngredient,
+  quickCreateIngredient as libQuickCreateIngredient,
+  saveIngredientMeta as libSaveIngredientMeta,
+  deleteIngredient as libDeleteIngredient,
+  publishIngredient as libPublishIngredient,
+  unpublishIngredient as libUnpublishIngredient,
+} from "@/lib/ingredients.ts";
+import {
+  savePairing as libSavePairing,
+  togglePairingDraft as libTogglePairingDraft,
+  deletePairing as libDeletePairing,
+  savePairingMeta as libSavePairingMeta,
+} from "@/lib/pairings.ts";
+import { NotFoundError } from "@/lib/errors.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -70,16 +91,21 @@ const recipeCollectionEnum = z.enum(["recipes", "spicemixes", "sauces"]);
 
 async function buildListing() {
   const store = await createStore();
-  const [recipes, spicemixes, sauces, metas, ingredients, pairings] = await Promise.all([
-    store.list("recipes"),
-    store.list("spicemixes"),
-    store.list("sauces"),
-    store.list("meta"),
-    store.list("ingredients"),
-    store.list("pairings"),
-  ]);
+  const [recipes, spicemixes, sauces, metas, ingredients, ingredientMetas, pairings] =
+    await Promise.all([
+      store.list("recipes"),
+      store.list("spicemixes"),
+      store.list("sauces"),
+      store.list("meta"),
+      store.list("ingredients"),
+      store.list("ingredientMeta"),
+      store.list("pairings"),
+    ]);
 
   const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown>]));
+  const ingredientMetaMap = new Map(
+    ingredientMetas.map((m) => [m.id, m.data as Record<string, unknown>]),
+  );
 
   const recipeItems = [...recipes, ...spicemixes, ...sauces].map((item) => {
     const collection = item.collection as "recipes" | "spicemixes" | "sauces";
@@ -99,12 +125,13 @@ async function buildListing() {
 
   const ingredientItems = ingredients.map((item) => {
     const completeness = scoreIngredient(item.data as Record<string, unknown>);
+    const meta = ingredientMetaMap.get(item.id) ?? {};
     return {
       type: "ingredient" as const,
       collection: "ingredients" as const,
       id: item.id,
       name: (item.data as Record<string, unknown>).name ?? item.id,
-      draft: false,
+      draft: !!(meta as Record<string, unknown>).draft,
       completeness,
       updatedAt: item.updatedAt,
     };
@@ -175,11 +202,8 @@ export const server = {
     }),
     handler: async ({ collection, slug, recipe, meta }) => {
       const store = await createStore();
-      await store.put(collection, slug, recipe);
-      if (meta !== undefined) {
-        await store.put("meta", `${collection}/${slug}`, meta);
-      }
-      return { ok: true, slug };
+      const result = await libSaveRecipe(store, { collection, slug, recipe, meta });
+      return { ok: true, slug: result.slug };
     },
   }),
 
@@ -190,11 +214,12 @@ export const server = {
       locale: z.enum(["en", "de"]),
       slug: z.string().min(1),
       ingredient: z.record(z.string(), z.unknown()),
+      meta: z.record(z.string(), z.unknown()).optional(),
     }),
-    handler: async ({ locale, slug, ingredient }) => {
+    handler: async ({ locale, slug, ingredient, meta }) => {
       const store = await createStore();
-      await store.put("ingredients", `${locale}/${slug}`, ingredient);
-      return { ok: true, slug };
+      const result = await libSaveIngredient(store, { locale, slug, ingredient, meta });
+      return { ok: true, slug: result.slug };
     },
   }),
 
@@ -211,24 +236,15 @@ export const server = {
     }),
     handler: async ({ id, ingredients, description, locale, draft, image }) => {
       const store = await createStore();
-      const canonical = [...ingredients].sort() as [string, string];
-      const existing = await store.get("pairings", id);
-      const existingData = (existing?.data as Record<string, unknown>) ?? {};
-      const existingDescriptions =
-        (existingData["descriptions"] as Record<string, string>) ??
-        (existingData["description"] ? { en: String(existingData["description"]) } : {});
-      const existingDraft = (existingData["draft"] as boolean) ?? false;
-      // image: explicit value wins; undefined = preserve existing; "" = clear
-      const imageValue =
-        image !== undefined ? image : (existingData["image"] as string | undefined);
-      const pairingData: Record<string, unknown> = {
-        ingredients: canonical,
-        descriptions: { ...existingDescriptions, [locale]: description },
-        draft: draft !== undefined ? draft : existingDraft,
-      };
-      if (imageValue) pairingData["image"] = imageValue;
-      await store.put("pairings", id, pairingData);
-      return { ok: true, id };
+      const result = await libSavePairing(store, {
+        id,
+        ingredients,
+        description,
+        locale,
+        draft,
+        image,
+      });
+      return { ok: true, id: result.id };
     },
   }),
 
@@ -238,10 +254,14 @@ export const server = {
     input: z.object({ id: z.string().min(1), draft: z.boolean() }),
     handler: async ({ id, draft }) => {
       const store = await createStore();
-      const existing = await store.get("pairings", id);
-      if (!existing)
-        throw new ActionError({ code: "NOT_FOUND", message: `Pairing ${id} not found.` });
-      await store.put("pairings", id, { ...(existing.data as Record<string, unknown>), draft });
+      try {
+        await libTogglePairingDraft(store, { id, draft });
+      } catch (err) {
+        if (err instanceof NotFoundError) {
+          throw new ActionError({ code: "NOT_FOUND", message: err.message });
+        }
+        throw err;
+      }
       return { ok: true };
     },
   }),
@@ -252,8 +272,7 @@ export const server = {
     input: z.object({ id: z.string().min(1) }),
     handler: async ({ id }) => {
       const store = await createStore();
-      await store.delete("pairings", id);
-      await store.delete("pairingMeta", id);
+      await libDeletePairing(store, { id });
       return { ok: true };
     },
   }),
@@ -312,9 +331,10 @@ export const server = {
     }),
     handler: async ({ collection, id }) => {
       const store = await createStore();
-      await store.delete(collection, id);
-      if (collection !== "ingredients") {
-        await store.delete("meta", `${collection}/${id}`);
+      if (collection === "ingredients") {
+        await libDeleteIngredient(store, { id });
+      } else {
+        await libDeleteRecipe(store, { collection, id });
       }
       return { ok: true };
     },
@@ -325,10 +345,7 @@ export const server = {
     input: z.object({ collection: recipeCollectionEnum, id: z.string() }),
     handler: async ({ collection, id }) => {
       const store = await createStore();
-      const metaId = `${collection}/${id}`;
-      const existing = await store.get("meta", metaId);
-      const meta = (existing?.data as Record<string, unknown>) ?? {};
-      await store.put("meta", metaId, { ...meta, draft: false });
+      await libPublishRecipe(store, { collection, id });
       return { ok: true };
     },
   }),
@@ -338,10 +355,27 @@ export const server = {
     input: z.object({ collection: recipeCollectionEnum, id: z.string() }),
     handler: async ({ collection, id }) => {
       const store = await createStore();
-      const metaId = `${collection}/${id}`;
-      const existing = await store.get("meta", metaId);
-      const meta = (existing?.data as Record<string, unknown>) ?? {};
-      await store.put("meta", metaId, { ...meta, draft: true });
+      await libUnpublishRecipe(store, { collection, id });
+      return { ok: true };
+    },
+  }),
+
+  /** Set ingredientMeta.draft = false (publish). */
+  publishIngredient: defineAction({
+    input: z.object({ locale: z.enum(["en", "de"]), slug: z.string().min(1) }),
+    handler: async ({ locale, slug }) => {
+      const store = await createStore();
+      await libPublishIngredient(store, { locale, slug });
+      return { ok: true };
+    },
+  }),
+
+  /** Set ingredientMeta.draft = true (unpublish). */
+  unpublishIngredient: defineAction({
+    input: z.object({ locale: z.enum(["en", "de"]), slug: z.string().min(1) }),
+    handler: async ({ locale, slug }) => {
+      const store = await createStore();
+      await libUnpublishIngredient(store, { locale, slug });
       return { ok: true };
     },
   }),
@@ -432,14 +466,8 @@ export const server = {
     }),
     handler: async ({ locale, slug, name, category }) => {
       const store = await createStore();
-      await store.put("ingredients", `${locale}/${slug}`, {
-        name,
-        category,
-        origin: [],
-        flavorNotes: [],
-        pairings: [],
-      });
-      return { ok: true, slug };
+      const result = await libQuickCreateIngredient(store, { locale, slug, name, category });
+      return { ok: true, slug: result.slug };
     },
   }),
 
@@ -1107,12 +1135,7 @@ export const server = {
     }),
     handler: async ({ locale, slug, patch }) => {
       const store = await createStore();
-      const key = `${locale}/${slug}`;
-      const existing = await store.get("ingredientMeta", key);
-      await store.put("ingredientMeta", key, {
-        ...((existing?.data as Record<string, unknown>) ?? {}),
-        ...patch,
-      });
+      await libSaveIngredientMeta(store, { locale, slug, patch });
       return { ok: true };
     },
   }),
@@ -1126,11 +1149,7 @@ export const server = {
     }),
     handler: async ({ id, patch }) => {
       const store = await createStore();
-      const existing = await store.get("pairingMeta", id);
-      await store.put("pairingMeta", id, {
-        ...((existing?.data as Record<string, unknown>) ?? {}),
-        ...patch,
-      });
+      await libSavePairingMeta(store, { id, patch });
       return { ok: true };
     },
   }),

@@ -1,15 +1,13 @@
 ---
-import { getCollection } from "astro:content";
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import RelatedList from "../../../components/RelatedList.astro";
 import { useTranslations } from "../../../i18n/translations.ts";
-import { getUsedIn, getIngredient } from "../../../lib/recipe-augment.ts";
+import { getUsedIn, getIngredient, getPublishedIngredients } from "../../../lib/recipe-augment.ts";
 
 export async function getStaticPaths() {
-  const all = await getCollection("ingredients");
+  const all = await getPublishedIngredients();
   const enEntries = all.filter((e) => e.id.startsWith("en/"));
   const deEntries = all.filter((e) => e.id.startsWith("de/"));
-  const deSlugs = new Set(deEntries.map((e) => e.id.replace(/^de\//, "")));
 
   return enEntries.map((en) => {
     const slug = en.id.replace(/^en\//, "");
