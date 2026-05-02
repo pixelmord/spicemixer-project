@@ -2,8 +2,8 @@
   "name": "Kreuzkümmel",
   "summary": "Eines der meistverwendeten Gewürze der Welt. Warm, erdig und leicht zitrusartig — in nahezu jeder großen Gewürztradition von Mexiko bis Marokko vertreten.",
   "description": "Kreuzkümmelsamen sind halbmondförmig, gerippt und gelbbraun. Ganze Samen entwickeln ein reicheres, nussigeres Aroma, wenn sie vor dem Mahlen trocken geröstet werden. Gemahlener Kreuzkümmel ist ein Basisgewürz in mexikanischen, indischen, nordafrikanischen und nahöstlichen Mischungen. Schwarzer Kreuzkümmel (Kala Zeera) ist davon verschieden — länger, dunkler, mit einem anisartigen Profil. Ganze Samen lagern sich besser; gemahlener Kreuzkümmel verliert sein Aroma schnell.",
-  "image": "https://images.unsplash.com/photo-1645112551428-5b1ee0ec7b4a?w=800&q=80",
   "category": "spice",
   "origin": ["Iran", "Türkei", "Indien"],
-  "flavorNotes": ["erdig", "warm", "nussig", "leicht zitrusartig"]
+  "flavorNotes": ["erdig", "warm", "nussig", "leicht zitrusartig"],
+  "images": ["https://images.unsplash.com/photo-1645112551428-5b1ee0ec7b4a?w=800&q=80"]
 }

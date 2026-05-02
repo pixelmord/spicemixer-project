@@ -68,10 +68,10 @@ const pairingsResolved = pairingEntities.length > 0
     </nav>
 
     {
-      data.image ? (
+      data.images[0] ? (
         <figure class="mb-8 overflow-hidden rounded-3xl">
           <img
-            src={data.image}
+            src={data.images[0]}
             alt={data.name}
             class="aspect-[16/9] w-full object-cover"
           />
@@ -89,7 +89,7 @@ const pairingsResolved = pairingEntities.length > 0
     }
 
     {
-      data.image && (
+      data.images[0] && (
         <header class="mb-6">
           <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
             {data.category}

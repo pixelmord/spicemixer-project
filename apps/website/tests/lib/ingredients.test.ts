@@ -107,6 +107,7 @@ describe("quickCreateIngredient", () => {
     expect(stored?.data).toEqual({
       name: "Kardamom",
       category: "spice",
+      images: [],
       origin: [],
       flavorNotes: [],
       pairings: [],

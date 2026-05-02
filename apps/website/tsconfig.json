@@ -4,7 +4,8 @@
   "exclude": ["dist"],
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "recipe-ingestion": ["../../packages/recipe-ingestion/src/index.ts"]
     },
     "jsx": "react-jsx",
     "jsxImportSource": "react"

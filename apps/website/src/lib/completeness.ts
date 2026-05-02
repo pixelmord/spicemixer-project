@@ -46,7 +46,7 @@ export const INGREDIENT_REQUIRED = ["name", "category"] as const;
 export const INGREDIENT_RECOMMENDED = [
   "summary",
   "description",
-  "image",
+  "images",
   "origin",
   "flavorNotes",
   "pairings",

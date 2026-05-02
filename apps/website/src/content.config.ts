@@ -105,7 +105,7 @@ const ingredientSchema = z.object({
   name: z.string(),
   summary: z.string().optional(),
   description: z.string().optional(),
-  image: z.string().url().optional(),
+  images: z.array(z.string().url()).default([]),
   category: z.enum(["spice", "herb", "seed", "dried-fruit", "salt", "acid", "allium", "other"]),
   origin: z.array(z.string()).default([]),
   flavorNotes: z.array(z.string()).default([]),

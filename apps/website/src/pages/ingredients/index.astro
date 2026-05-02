@@ -55,10 +55,10 @@ const categoryColors: Record<string, string> = {
               class="mb-6 break-inside-avoid rounded-2xl bg-white shadow-sm ring-1 ring-stone-200 transition hover:shadow-md hover:ring-stone-300"
             >
               <a href={href} class="group block overflow-hidden rounded-2xl">
-                {data.image ? (
+                {data.images[0] ? (
                   <>
                     <figure class="overflow-hidden">
-                      <img src={data.image} alt={data.name} loading="lazy" class="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
+                      <img src={data.images[0]} alt={data.name} loading="lazy" class="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.02]" />
                     </figure>
                     <div class="px-5 py-4">
                       <span class:list={["inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", colorClass]}>

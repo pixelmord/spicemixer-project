@@ -2,8 +2,8 @@
   "name": "Kardamom",
   "summary": "Eines der vielseitigsten Gewürze der Welt — süß, kampferartig und blumig. Zu Hause in Chai, Kaffee, Biryanis und skandinavischem Gebäck.",
   "description": "Grüne Kardamomkapseln enthalten winzige schwarze Samen mit einem wärmenden, eukalyptusartigen Duft. Immer ganze Kapseln kaufen und frisch aufbrechen — gemahlener Kardamom verliert sein Aroma innerhalb weniger Wochen. Schwarzer Kardamom (eine andere Art) ist rauchiger und wird vor allem in herzhaften Gerichten verwendet. Kardamom lebt von der Spannung zwischen seiner Süße und seiner kühlenden, fast mentholähnlichen Qualität — das macht ihn in süßen wie herzhaften Gerichten gleich wertvoll.",
-  "image": "https://images.unsplash.com/photo-1607189117789-2f40f68e96e5?w=800&q=80",
   "category": "spice",
   "origin": ["Guatemala", "Indien", "Sri Lanka"],
-  "flavorNotes": ["blumig", "kampferartig", "warm", "zitrusartig"]
+  "flavorNotes": ["blumig", "kampferartig", "warm", "zitrusartig"],
+  "images": ["https://images.unsplash.com/photo-1607189117789-2f40f68e96e5?w=800&q=80"]
 }

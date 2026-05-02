@@ -50,7 +50,7 @@ interface IngredientData {
   name: string;
   summary?: string;
   description?: string;
-  image?: string;
+  images?: string[];
   category: Category;
   origin: string[];
   flavorNotes: string[];
@@ -91,8 +91,6 @@ const SECTIONS: SectionDef[] = [
   { id: "section-profile", label: "Origin & Flavor" },
   { id: "section-pairings", label: "Pairings" },
 ];
-
-const ISO_DURATION_RE = /^PT(?:\d+H)?(?:\d+M)?(?:\d+S)?$/;
 
 function emptyIngredient(): IngredientData {
   return { name: "", category: "spice", origin: [], flavorNotes: [] };
@@ -161,15 +159,21 @@ export default function IngredientForm({
   const [translateOpen, setTranslateOpen] = useState(false);
 
   useEffect(() => {
-    void actions.listIngredientOptions({ locale }).then(({ data: opts }) => {
-      if (opts)
-        setIngredientOptions(opts.map((d) => ({ value: d.slug, label: d.name, sublabel: d.slug })));
+    void actions.listIngredientOptions({ locale }).then((r: { data?: unknown }) => {
+      if (r.data)
+        setIngredientOptions(
+          (r.data as { slug: string; name: string }[]).map((d) => ({
+            value: d.slug,
+            label: d.name,
+            sublabel: d.slug,
+          })),
+        );
     });
   }, [locale]);
 
   // Check image URL health on mount
   useEffect(() => {
-    const imageUrl = data.image;
+    const imageUrl = data.images?.[0];
     if (!imageUrl) return;
     const img = new window.Image();
     img.onerror = () => setImageBroken(true);
@@ -185,6 +189,7 @@ export default function IngredientForm({
       if (k === "origin") return origins.length === 0;
       if (k === "flavorNotes") return flavorNotes.length === 0;
       if (k === "pairings") return pairings.length === 0;
+      if (k === "images") return !data.images?.length;
       const v = (data as unknown as Record<string, unknown>)[k];
       return !v;
     });
@@ -197,7 +202,8 @@ export default function IngredientForm({
         existingMeta: initialMeta ?? {},
         missingFields: missingKeys,
       })
-      .then(({ data: result }) => {
+      .then((r: { data?: unknown }) => {
+        const result = r.data as Record<string, unknown> | undefined;
         if (result) {
           setAiSuggestions({
             improvements: (result.aiSuggestions as Record<string, unknown>)[
@@ -213,13 +219,13 @@ export default function IngredientForm({
               "languageMismatch"
             ] as boolean,
           });
-          if (result.autoLinked > 0) {
+          if ((result.autoLinked as number) > 0) {
             toast.success(
-              `Auto-paired ${result.autoLinked} ingredient${result.autoLinked !== 1 ? "s" : ""}`,
+              `Auto-paired ${result.autoLinked as number} ingredient${(result.autoLinked as number) !== 1 ? "s" : ""}`,
             );
             // Reload pairings from server
-            void actions.listPairingsFor({ slug: initialSlug }).then(({ data: ps }) => {
-              if (ps) setPairings(ps as Pairing[]);
+            void actions.listPairingsFor({ slug: initialSlug }).then((pr: { data?: unknown }) => {
+              if (pr.data) setPairings(pr.data as Pairing[]);
             });
           }
         }
@@ -238,8 +244,8 @@ export default function IngredientForm({
     const t = setTimeout(() => {
       void actions
         .checkSlugAvailable({ collection: "ingredients", slug: `${locale}/${slug}` })
-        .then(({ data }) => {
-          if (data) setSlugAvailable(data.available);
+        .then((r: { data?: unknown }) => {
+          if (r.data) setSlugAvailable((r.data as { available: boolean }).available);
         })
         .finally(() => setSlugChecking(false));
     }, 400);
@@ -251,7 +257,7 @@ export default function IngredientForm({
       name: data.name,
       summary: data.summary ?? "",
       description: data.description ?? "",
-      image: data.image ?? "",
+      image: data.images?.[0] ?? "",
       category: data.category,
     },
     onSubmit: async ({ value }) => {
@@ -273,7 +279,7 @@ export default function IngredientForm({
       };
       if (value.summary) payload.summary = value.summary;
       if (value.description) payload.description = value.description;
-      if (value.image) payload.image = value.image;
+      if (value.image) payload.images = [value.image];
 
       const { error } = await actions.saveIngredient({
         locale,
@@ -307,6 +313,7 @@ export default function IngredientForm({
         if (k === "origin") return origins.filter(Boolean).length === 0;
         if (k === "flavorNotes") return flavorNotes.filter(Boolean).length === 0;
         if (k === "pairings") return pairings.length === 0;
+        if (k === "images") return !payload.images?.length;
         return !(payload as unknown as Record<string, unknown>)[k];
       });
       setAiRefreshing(true);
@@ -318,7 +325,8 @@ export default function IngredientForm({
           existingMeta: {},
           missingFields: missingKeys,
         })
-        .then(({ data: result }) => {
+        .then((r: { data?: unknown }) => {
+          const result = r.data as Record<string, unknown> | undefined;
           if (result) {
             setAiSuggestions({
               improvements: (result.aiSuggestions as Record<string, unknown>)[
@@ -334,12 +342,12 @@ export default function IngredientForm({
                 "languageMismatch"
               ] as boolean,
             });
-            if (result.autoLinked > 0) {
+            if ((result.autoLinked as number) > 0) {
               toast.success(
-                `Auto-paired ${result.autoLinked} ingredient${result.autoLinked !== 1 ? "s" : ""}`,
+                `Auto-paired ${result.autoLinked as number} ingredient${(result.autoLinked as number) !== 1 ? "s" : ""}`,
               );
-              void actions.listPairingsFor({ slug }).then(({ data: ps }) => {
-                if (ps) setPairings(ps as Pairing[]);
+              void actions.listPairingsFor({ slug }).then((pr: { data?: unknown }) => {
+                if (pr.data) setPairings(pr.data as Pairing[]);
               });
             }
           }
@@ -362,7 +370,7 @@ export default function IngredientForm({
         category: formValues.category,
         summary: formValues.summary,
         description: formValues.description,
-        image: formValues.image,
+        images: formValues.image ? [formValues.image] : [],
         origin: origins.filter(Boolean),
         flavorNotes: flavorNotes.filter(Boolean),
         pairings: pairings.map((p) => ({
@@ -387,7 +395,7 @@ export default function IngredientForm({
         ? !!formValues.summary
         : key === "description"
           ? !!formValues.description
-          : key === "image"
+          : key === "images"
             ? !!formValues.image
             : key === "origin"
               ? origins.filter(Boolean).length > 0
@@ -425,6 +433,7 @@ export default function IngredientForm({
       if (k === "origin") return origins.length === 0;
       if (k === "flavorNotes") return flavorNotes.length === 0;
       if (k === "pairings") return pairings.length === 0;
+      if (k === "images") return !formValues.image;
       const v = formValues[k as keyof typeof formValues];
       return !v;
     });
@@ -480,11 +489,12 @@ export default function IngredientForm({
         missingFields: ["origin"],
       });
       if (error) throw new Error(error.message);
-      const originField = result?.fields.find((f) => f.field === "origin");
+      const fields = result?.fields as Array<{ field: string; suggestion: string }> | undefined;
+      const originField = fields?.find((f) => f.field === "origin");
       if (originField) {
         const vals = originField.suggestion
           .split(/[,;]\s*/)
-          .map((s) => s.trim())
+          .map((s: string) => s.trim())
           .filter(Boolean);
         setPendingOrigins(vals);
       }
@@ -508,11 +518,14 @@ export default function IngredientForm({
         missingFields: ["flavorNotes"],
       });
       if (error) throw new Error(error.message);
-      const field = result?.fields.find((f) => f.field === "flavorNotes");
+      const flavorFields = result?.fields as
+        | Array<{ field: string; suggestion: string }>
+        | undefined;
+      const field = flavorFields?.find((f) => f.field === "flavorNotes");
       if (field) {
         const vals = field.suggestion
           .split(/[,;]\s*/)
-          .map((s) => s.trim().toLowerCase())
+          .map((s: string) => s.trim().toLowerCase())
           .filter(Boolean);
         setPendingFlavors(vals);
       }

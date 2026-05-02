@@ -39,6 +39,7 @@ export async function quickCreateIngredient(
   await store.put("ingredients", `${input.locale}/${input.slug}`, {
     name: input.name,
     category: input.category,
+    images: [],
     origin: [],
     flavorNotes: [],
     pairings: [],
