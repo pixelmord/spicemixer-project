@@ -1,11 +1,13 @@
 import type { Recipe } from "../content.config.ts";
 
-export type Step = { text: string; name?: string };
+export type Step = { text: string; name?: string; image?: string };
 
 export function normalizeInstructions(instructions: Recipe["recipeInstructions"]): Step[] {
-  const items = instructions as Array<string | { text: string; name?: string }>;
+  const items = instructions as Array<string | { text: string; name?: string; image?: string }>;
   return items.map((step) =>
-    typeof step === "string" ? { text: step } : { text: step.text, name: step.name },
+    typeof step === "string"
+      ? { text: step }
+      : { text: step.text, name: step.name, image: step.image },
   );
 }
 

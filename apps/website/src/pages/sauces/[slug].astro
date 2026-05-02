@@ -5,6 +5,8 @@ import RecipeMeta from "../../components/RecipeMeta.astro";
 import RelatedList from "../../components/RelatedList.astro";
 import ExternalSourceList from "../../components/ExternalSourceList.astro";
 import { firstImage, keywordList, normalizeInstructions } from "../../lib/instructions.ts";
+import StepImage from "../../components/StepImage.astro";
+import StepsLightbox from "../../components/StepsLightbox.astro";
 import {
   getMeta,
   linkIngredients,
@@ -47,6 +49,10 @@ const [goesWellWithItems, usesBaseItems] = await Promise.all([
   resolveRefs(meta.goesWellWith, prefix),
   resolveRefs(meta.usesBase, prefix),
 ]);
+const lightboxSteps = steps.map((step) => ({
+  ...step,
+  html: annotateTextHtml(step.text, meta.ingredientLinks, ingredientBase),
+}));
 ---
 
 <BaseLayout title={`${data.name} — Spicemixer`} description={data.description}>
@@ -158,18 +164,21 @@ const [goesWellWithItems, usesBaseItems] = await Promise.all([
               <span class="flex-none font-serif text-2xl text-stone-300">
                 {String(i + 1).padStart(2, "0")}
               </span>
-              <p class="text-stone-800">
-                {step.name && (
-                  <strong class="block text-stone-900">{step.name}</strong>
-                )}
-                <Fragment
-                  set:html={annotateTextHtml(
-                    step.text,
-                    meta.ingredientLinks,
-                    ingredientBase
+              <div class="flex flex-1 items-start gap-3">
+                <p class="flex-1 text-stone-800">
+                  {step.name && (
+                    <strong class="block text-stone-900">{step.name}</strong>
                   )}
-                />
-              </p>
+                  <Fragment
+                    set:html={annotateTextHtml(
+                      step.text,
+                      meta.ingredientLinks,
+                      ingredientBase
+                    )}
+                  />
+                </p>
+                {step.image && <StepImage src={step.image} alt={step.name ?? ""} stepIndex={i} />}
+              </div>
             </li>
           ))
         }
@@ -198,5 +207,6 @@ const [goesWellWithItems, usesBaseItems] = await Promise.all([
     }
   </main>
 
+  <StepsLightbox steps={lightboxSteps} />
   <script type="application/ld+json" set:html={jsonLd} />
 </BaseLayout>
