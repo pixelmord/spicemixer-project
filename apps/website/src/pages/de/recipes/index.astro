@@ -1,14 +1,14 @@
 ---
-import { getCollection } from "astro:content";
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import FilterBar from "../../../components/FilterBar.astro";
 import RecipeCard from "../../../components/RecipeCard.astro";
 import { keywordList } from "../../../lib/instructions.ts";
+import { getPublished } from "../../../lib/recipe-augment.ts";
 import { useTranslations } from "../../../i18n/translations.ts";
 
 const t = useTranslations("de");
 
-const recipes = (await getCollection("recipes")).sort((a, b) => {
+const recipes = (await getPublished("recipes")).sort((a, b) => {
   const da = a.data.datePublished ?? "";
   const db = b.data.datePublished ?? "";
   return db.localeCompare(da);

@@ -1,0 +1,26 @@
+{
+  "aiSuggestions": {
+    "en": {
+      "contentHash": "829c3cecfc790919",
+      "generatedAt": "2026-04-29T14:31:41.675Z",
+      "improvements": [
+        {
+          "field": "caraway ↔ cumin",
+          "suggestion": "Caraway and cumin are essential companions in Harissa, where the warm, earthy notes of cumin meld beautifully with the distinct, slightly sweet anise flavor of caraway, creating a complex and inviting spice blend that enhances the depth of various dishes.",
+          "rationale": "Their harmonious balance of warmth and brightness not only heightens flavors but also reflects a rich culinary tradition that celebrates the interplay of spices."
+        }
+      ]
+    },
+    "de": {
+      "contentHash": "ff94e347dd940d59",
+      "generatedAt": "2026-04-29T14:39:36.291Z",
+      "improvements": [
+        {
+          "field": "description",
+          "suggestion": "Die Kombination aus Kümmel und Anis ist in der Harissa essentiell, wobei die warmen, erdigen Noten des Kümmels die einzigartigen, leicht süßlichen Anis-Aromen des Kümmels harmonisch ergänzen. Diese Verbindung schafft ein komplexes Geschmacksprofil, das die kulinarische Tradition bereichert und der Vielfalt der Gerichte eine tiefe, einladende Note verleiht.",
+          "rationale": "Die Harmonie zwischen den warmen, erdigen Geschmäckern des Kümmels und den süßlichen, anisartigen Noten des Caraway sorgt für eine ausgewogene Geschmackserfahrung, während die Verwendung in traditionellen Gerichten das kulturelle Erbe dieser Gewürze verdeutlicht."
+        }
+      ]
+    }
+  }
+}

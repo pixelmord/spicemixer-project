@@ -73,6 +73,17 @@ export async function getMeta(kind: RecipeKind, slug: string): Promise<Meta> {
   return entry.data as Meta;
 }
 
+/**
+ * Return entries from a recipe-shaped collection with `meta.draft === true`
+ * filtered out. Missing meta is treated as published (default behavior for
+ * legacy entries without a sidecar).
+ */
+export async function getPublished<K extends RecipeKind>(kind: K) {
+  const [entries, allMeta] = await Promise.all([getCollection(kind), getCollection("meta")]);
+  const drafts = new Set(allMeta.filter((m) => m.data.draft === true).map((m) => m.id));
+  return entries.filter((e) => !drafts.has(`${kind}/${e.id}`));
+}
+
 export type LinkedIngredient = { text: string; slug?: string };
 
 export function linkIngredients(

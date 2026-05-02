@@ -1,15 +1,15 @@
 ---
-import { getCollection } from "astro:content";
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import FilterBar from "../../../components/FilterBar.astro";
 import RecipeMeta from "../../../components/RecipeMeta.astro";
 import { firstImage, keywordList } from "../../../lib/instructions.ts";
+import { getPublished } from "../../../lib/recipe-augment.ts";
 import { useTranslations } from "../../../i18n/translations.ts";
 
 const t = useTranslations("de");
 const prefix = "/de";
 
-const sauces = (await getCollection("sauces")).sort((a, b) =>
+const sauces = (await getPublished("sauces")).sort((a, b) =>
   (b.data.datePublished ?? "").localeCompare(a.data.datePublished ?? ""),
 );
 

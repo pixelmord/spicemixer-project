@@ -1,5 +1,5 @@
 ---
-import { getCollection, type CollectionEntry } from "astro:content";
+import { type CollectionEntry } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import RecipeMeta from "../../components/RecipeMeta.astro";
 import RelatedList from "../../components/RelatedList.astro";
@@ -9,6 +9,7 @@ import StepImage from "../../components/StepImage.astro";
 import StepsLightbox from "../../components/StepsLightbox.astro";
 import {
   getMeta,
+  getPublished,
   linkIngredients,
   annotateTextHtml,
   resolveRefs,
@@ -17,7 +18,7 @@ import {
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 
 export async function getStaticPaths() {
-  const spicemixes = await getCollection("spicemixes");
+  const spicemixes = await getPublished("spicemixes");
   return spicemixes.map((mix) => ({
     params: { slug: mix.id },
     props: { mix },
