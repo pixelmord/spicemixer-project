@@ -33,6 +33,10 @@ import TranslationCompanion, { FieldWithTranslation } from "./TranslationCompani
 import IngredientEnhanceModal from "./IngredientEnhanceModal.tsx";
 import IngredientTranslateModal from "./IngredientTranslateModal.tsx";
 import PairingEditor, { type Pairing } from "./PairingEditor.tsx";
+import ImageSearchModal, {
+  type ImageAttribution,
+  type SelectedImage,
+} from "./ImageSearchModal.tsx";
 
 interface AiSuggestion {
   field: string;
@@ -122,6 +126,10 @@ export default function IngredientForm({
 
   // Image health check
   const [imageBroken, setImageBroken] = useState(false);
+  const [imageAttribution, setImageAttribution] = useState<ImageAttribution | undefined>(
+    initialMeta?.["imageAttribution"] as ImageAttribution | undefined,
+  );
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
 
   // AI state
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestionsState>(() => {
@@ -269,12 +277,18 @@ export default function IngredientForm({
         slug,
         ingredient: payload as never,
       });
-      setSaving(false);
 
       if (error) {
+        setSaving(false);
         toast.error("Save failed: " + error.message);
         return;
       }
+
+      if (imageAttribution) {
+        await actions.saveIngredientMeta({ locale, slug, patch: { imageAttribution } });
+      }
+
+      setSaving(false);
 
       setCompleteness(scoreIngredient(payload as never));
       toast.success("Saved");
@@ -759,16 +773,26 @@ export default function IngredientForm({
                       <form.Field name="image">
                         {(field) => (
                           <div className="space-y-1.5">
-                            <Label htmlFor={field.name}>
-                              Image URL
-                              <RecommendedHint show={!field.state.value} />
-                            </Label>
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor={field.name}>
+                                Image URL
+                                <RecommendedHint show={!field.state.value} />
+                              </Label>
+                              <button
+                                type="button"
+                                onClick={() => setImageSearchOpen(true)}
+                                className="text-xs text-primary hover:underline"
+                              >
+                                Search image…
+                              </button>
+                            </div>
                             <Input
                               type="url"
                               id={field.name}
                               value={field.state.value}
                               onChange={(e) => {
                                 field.handleChange(e.target.value);
+                                if (!e.target.value) setImageAttribution(undefined);
                                 setImageBroken(false);
                                 if (e.target.value) {
                                   const img = new window.Image();
@@ -783,6 +807,11 @@ export default function IngredientForm({
                             {imageBroken && (
                               <p className="text-xs text-amber-600 dark:text-amber-400">
                                 ⚠ Image URL appears broken or unreachable
+                              </p>
+                            )}
+                            {imageAttribution && (
+                              <p className="text-[11px] text-muted-foreground">
+                                {imageAttribution.attribution}
                               </p>
                             )}
                           </div>
@@ -1010,6 +1039,18 @@ export default function IngredientForm({
           }}
         />
       )}
+
+      {/* Image search modal */}
+      <ImageSearchModal
+        open={imageSearchOpen}
+        onClose={() => setImageSearchOpen(false)}
+        defaultQuery={form.getFieldValue("name" as never) as string}
+        onSelect={(selected: SelectedImage) => {
+          form.setFieldValue("image" as never, selected.url as never);
+          setImageBroken(false);
+          setImageAttribution(selected.attribution);
+        }}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Sparkles, Languages, Loader2, Trash2, Eye, EyeOff } from "lucide-react";
 import LinkButton from "@/components/admin/LinkButton.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Input } from "@/components/ui/input.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
@@ -14,6 +15,10 @@ import CompletenessPanel from "./CompletenessPanel.tsx";
 import InlineSuggestion from "./InlineSuggestion.tsx";
 import PairingEnhanceModal from "./PairingEnhanceModal.tsx";
 import PairingTranslateModal from "./PairingTranslateModal.tsx";
+import ImageSearchModal, {
+  type ImageAttribution,
+  type SelectedImage,
+} from "./ImageSearchModal.tsx";
 
 interface AiSuggestion {
   field: string;
@@ -27,6 +32,7 @@ interface Props {
   initialDescriptions?: Record<string, string>;
   initialMeta?: Record<string, unknown>;
   initialDraft?: boolean;
+  initialImage?: string;
   isNew?: boolean;
 }
 
@@ -41,6 +47,7 @@ export default function PairingForm({
   initialDescriptions = {},
   initialMeta = {},
   initialDraft = false,
+  initialImage = "",
   isNew,
 }: Props) {
   const [ingredient1, setIngredient1] = useState(initialIngredients?.[0] ?? "");
@@ -50,6 +57,11 @@ export default function PairingForm({
   const [draft, setDraft] = useState(initialDraft);
   const [saving, setSaving] = useState(false);
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
+  const [image, setImage] = useState(initialImage);
+  const [imageAttribution, setImageAttribution] = useState<ImageAttribution | undefined>(
+    initialMeta["imageAttribution"] as ImageAttribution | undefined,
+  );
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
 
   // AI state
   const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiSuggestion[]>>(() => {
@@ -129,9 +141,13 @@ export default function PairingForm({
           description: desc,
           locale,
           draft: first ? draft : undefined,
+          image: image || "",
         });
         if (error) throw new Error(error.message);
         first = false;
+      }
+      if (imageAttribution) {
+        await actions.savePairingMeta({ id, patch: { imageAttribution } });
       }
       toast.success("Saved");
       if (isNew) {
@@ -316,6 +332,49 @@ export default function PairingForm({
             </Card>
           </section>
 
+          {/* Image */}
+          <section id="section-image">
+            <Card>
+              <CardHeader>
+                <CardTitle>Image</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="pairing-image">Image URL</Label>
+                  <button
+                    type="button"
+                    onClick={() => setImageSearchOpen(true)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Search image…
+                  </button>
+                </div>
+                <Input
+                  id="pairing-image"
+                  type="url"
+                  value={image}
+                  onChange={(e) => {
+                    setImage(e.target.value);
+                    if (!e.target.value) setImageAttribution(undefined);
+                  }}
+                  placeholder="https://example.com/image.jpg"
+                />
+                {image && (
+                  <img
+                    src={image}
+                    alt=""
+                    className="mt-2 h-24 rounded border border-border object-cover"
+                  />
+                )}
+                {imageAttribution && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {imageAttribution.attribution}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
           {/* Description with locale tabs */}
           <section id="section-description">
             <Card>
@@ -453,6 +512,17 @@ export default function PairingForm({
           </Button>
         </div>
       </div>
+
+      {/* Image search modal */}
+      <ImageSearchModal
+        open={imageSearchOpen}
+        onClose={() => setImageSearchOpen(false)}
+        defaultQuery={`${ingredient1} ${ingredient2}`.trim()}
+        onSelect={(selected: SelectedImage) => {
+          setImage(selected.url);
+          setImageAttribution(selected.attribution);
+        }}
+      />
 
       {/* Modals */}
       {!isNew && initialId && (

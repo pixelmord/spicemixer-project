@@ -61,3 +61,6 @@ export type { MergeSource, MergeRecipeInput, MergeRecipeResult } from "./merge-r
 
 export { AiError } from "./errors.ts";
 export type { AiErrorCode } from "./errors.ts";
+
+export { searchImages } from "./search-images.ts";
+export type { ImageResult, SearchImagesOptions } from "./search-images.ts";

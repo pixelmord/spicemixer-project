@@ -53,6 +53,10 @@ import EnhanceModal from "./EnhanceModal.tsx";
 import TranslateModal from "./TranslateModal.tsx";
 import InlineSuggestion from "./InlineSuggestion.tsx";
 import IngredientLinkModal from "./IngredientLinkModal.tsx";
+import ImageSearchModal, {
+  type ImageAttribution,
+  type SelectedImage,
+} from "./ImageSearchModal.tsx";
 
 type Collection = RecipeCollection;
 
@@ -60,6 +64,7 @@ interface HowToStep {
   "@type": "HowToStep";
   text: string;
   name?: string;
+  image?: string;
 }
 
 interface RecipeData {
@@ -104,6 +109,8 @@ interface MetaData {
   usesBase: Array<{ collection: string; slug: string }>;
   variants: string[];
   aiSuggestions?: AiSuggestions;
+  imageAttribution?: ImageAttribution;
+  recipeInstructionsAttribution?: Array<{ index: number } & ImageAttribution>;
 }
 
 interface Props {
@@ -150,6 +157,9 @@ function stepText(step: string | HowToStep): string {
 function stepName(step: string | HowToStep): string {
   return typeof step === "string" ? "" : (step.name ?? "");
 }
+function stepImage(step: string | HowToStep): string {
+  return typeof step === "string" ? "" : (step.image ?? "");
+}
 
 const SECTIONS: SectionDef[] = [
   { id: "section-basic", label: "Basic info" },
@@ -178,17 +188,23 @@ function toIsoDuration(raw: string): string {
   return raw; // can't parse — return as-is, schema validation will catch it
 }
 
+function parseDurationMinutes(iso: string): number {
+  if (!ISO_DURATION_RE.test((iso ?? "").trim())) return 0;
+  const h = /(\d+)H/.exec(iso)?.[1];
+  const m = /(\d+)M/.exec(iso)?.[1];
+  return (h ? parseInt(h, 10) * 60 : 0) + (m ? parseInt(m, 10) : 0);
+}
+
+function minutesToIsoDuration(min: number): string {
+  if (min <= 0) return "";
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `PT${h ? `${h}H` : ""}${m ? `${m}M` : ""}`;
+}
+
 const LANGUAGES = [
   { value: "en", label: "English" },
   { value: "de", label: "German" },
-  { value: "fr", label: "French" },
-  { value: "es", label: "Spanish" },
-  { value: "it", label: "Italian" },
-  { value: "pt", label: "Portuguese" },
-  { value: "nl", label: "Dutch" },
-  { value: "ar", label: "Arabic" },
-  { value: "zh", label: "Chinese" },
-  { value: "ja", label: "Japanese" },
 ];
 
 export default function RecipeForm({
@@ -218,6 +234,7 @@ export default function RecipeForm({
         "@type": "HowToStep",
         text: stepText(s),
         name: stepName(s) || undefined,
+        image: stepImage(s) || undefined,
       }),
     ),
   );
@@ -259,6 +276,21 @@ export default function RecipeForm({
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestions | undefined>(meta.aiSuggestions);
   const [aiRefreshing, setAiRefreshing] = useState(false);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+
+  // Image attribution
+  const [imageAttribution, setImageAttribution] = useState<ImageAttribution | undefined>(
+    meta.imageAttribution,
+  );
+  const [stepAttributions, setStepAttributions] = useState<Map<number, ImageAttribution>>(() => {
+    const map = new Map<number, ImageAttribution>();
+    for (const entry of meta.recipeInstructionsAttribution ?? []) {
+      const { index, ...rest } = entry;
+      map.set(index, rest as ImageAttribution);
+    }
+    return map;
+  });
+  // null = closed; "main" = main image; number = step index
+  const [imageSearchTarget, setImageSearchTarget] = useState<"main" | number | null>(null);
 
   // Per-section AI state
   const [pendingTags, setPendingTags] = useState<string[] | null>(null);
@@ -464,8 +496,19 @@ export default function RecipeForm({
       if (dietTags.length) recipePayload.suitableForDiet = dietTags;
       if (value.prepTime) recipePayload.prepTime = value.prepTime;
       if (value.cookTime) recipePayload.cookTime = value.cookTime;
-      if (value.totalTime) recipePayload.totalTime = value.totalTime;
+      // Ensure totalTime >= prepTime + cookTime
+      const minTotal =
+        parseDurationMinutes(value.prepTime ?? "") + parseDurationMinutes(value.cookTime ?? "");
+      const currentTotal = parseDurationMinutes(value.totalTime ?? "");
+      const resolvedTotal =
+        minTotal > 0 && currentTotal < minTotal ? minutesToIsoDuration(minTotal) : value.totalTime;
+      if (resolvedTotal) recipePayload.totalTime = resolvedTotal;
       if (value.datePublished) recipePayload.datePublished = value.datePublished;
+
+      const recipeInstructionsAttribution: Array<{ index: number } & ImageAttribution> = [];
+      stepAttributions.forEach((attr, index) => {
+        recipeInstructionsAttribution.push({ index, ...attr });
+      });
 
       const metaPayload: MetaData = {
         ...meta,
@@ -481,6 +524,9 @@ export default function RecipeForm({
           collection === "recipes" ? "recipe" : collection === "spicemixes" ? "spicemix" : "sauce",
         // Preserve existing aiSuggestions — cleared by aiRefreshSuggestions when content changes
         aiSuggestions,
+        imageAttribution: imageAttribution || undefined,
+        recipeInstructionsAttribution:
+          recipeInstructionsAttribution.length > 0 ? recipeInstructionsAttribution : undefined,
       };
 
       const { error } = await actions.saveRecipe({
@@ -653,7 +699,30 @@ export default function RecipeForm({
     const coerced = TIME_FIELDS.has(field) ? toIsoDuration(value) : value;
     if (field === "tags") setTags((prev) => [...new Set([...prev, coerced])]);
     else if (field === "keywords") setKeywords((prev) => [...new Set([...prev, coerced])]);
-    else form.setFieldValue(field as never, coerced as never);
+    else {
+      // Clamp totalTime suggestions to at least prep+cook
+      if (field === "totalTime") {
+        const sumMin =
+          parseDurationMinutes(formValues.prepTime ?? "") +
+          parseDurationMinutes(formValues.cookTime ?? "");
+        const clamped =
+          sumMin > 0 && parseDurationMinutes(coerced) < sumMin
+            ? minutesToIsoDuration(sumMin)
+            : coerced;
+        form.setFieldValue("totalTime" as never, clamped as never);
+      } else {
+        form.setFieldValue(field as never, coerced as never);
+        // After applying prepTime/cookTime, cascade to totalTime if needed
+        if (field === "prepTime" || field === "cookTime") {
+          const prep = field === "prepTime" ? coerced : (formValues.prepTime ?? "");
+          const cook = field === "cookTime" ? coerced : (formValues.cookTime ?? "");
+          const sumMin = parseDurationMinutes(prep) + parseDurationMinutes(cook);
+          if (sumMin > 0 && parseDurationMinutes(formValues.totalTime ?? "") < sumMin) {
+            form.setFieldValue("totalTime" as never, minutesToIsoDuration(sumMin) as never);
+          }
+        }
+      }
+    }
     setDismissedSuggestions((prev) => new Set([...prev, field]));
   }
 
@@ -954,16 +1023,26 @@ export default function RecipeForm({
                   <form.Field name="image">
                     {(field) => (
                       <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>
-                          Image URL
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor={field.name}>
+                            Image URL
+                            <RecommendedHint show={!field.state.value} />
+                          </Label>
+                          <button
+                            type="button"
+                            onClick={() => setImageSearchTarget("main")}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            Search image…
+                          </button>
+                        </div>
                         <Input
                           id={field.name}
                           type="url"
                           value={field.state.value}
                           onChange={(e) => {
                             field.handleChange(e.target.value);
+                            if (!e.target.value) setImageAttribution(undefined);
                             // Re-check broken status when URL changes
                             setImageBroken(false);
                             if (e.target.value) {
@@ -980,6 +1059,11 @@ export default function RecipeForm({
                         {imageBroken && (
                           <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                             ⚠ Image URL appears broken or unreachable
+                          </p>
+                        )}
+                        {imageAttribution && (
+                          <p className="text-[11px] text-muted-foreground">
+                            {imageAttribution.attribution}
                           </p>
                         )}
                       </div>
@@ -1042,6 +1126,15 @@ export default function RecipeForm({
                       {(field) => {
                         const hasValue = !!field.state.value;
                         const invalid = hasValue && !ISO_DURATION_RE.test(field.state.value.trim());
+                        const minTotalMin =
+                          parseDurationMinutes(formValues.prepTime ?? "") +
+                          parseDurationMinutes(formValues.cookTime ?? "");
+                        const totalTooShort =
+                          name === "totalTime" &&
+                          minTotalMin > 0 &&
+                          hasValue &&
+                          !invalid &&
+                          parseDurationMinutes(field.state.value) < minTotalMin;
                         return (
                           <div className="space-y-1.5">
                             <Label htmlFor={field.name}>
@@ -1053,17 +1146,39 @@ export default function RecipeForm({
                               value={field.state.value}
                               onChange={(e) => field.handleChange(e.target.value)}
                               onBlur={(e) => {
-                                // Auto-coerce plain English → ISO 8601 on blur
                                 const coerced = toIsoDuration(e.target.value);
                                 if (coerced !== e.target.value) field.handleChange(coerced);
                                 field.handleBlur();
+                                // Auto-fill totalTime when it's empty or below prep+cook sum
+                                if (name !== "totalTime") {
+                                  const prep =
+                                    name === "prepTime" ? coerced : (formValues.prepTime ?? "");
+                                  const cook =
+                                    name === "cookTime" ? coerced : (formValues.cookTime ?? "");
+                                  const sumMin =
+                                    parseDurationMinutes(prep) + parseDurationMinutes(cook);
+                                  if (sumMin > 0) {
+                                    const currentTotal = formValues.totalTime ?? "";
+                                    if (parseDurationMinutes(currentTotal) < sumMin) {
+                                      form.setFieldValue(
+                                        "totalTime" as never,
+                                        minutesToIsoDuration(sumMin) as never,
+                                      );
+                                    }
+                                  }
+                                }
                               }}
                               placeholder={["PT15M", "PT30M", "PT45M"][idx]}
-                              className={invalid ? "border-amber-400" : ""}
+                              className={invalid || totalTooShort ? "border-amber-400" : ""}
                             />
                             {invalid && (
                               <p className="text-xs text-amber-600 dark:text-amber-400">
                                 Use ISO 8601 format, e.g. PT15M or PT1H30M
+                              </p>
+                            )}
+                            {totalTooShort && (
+                              <p className="text-xs text-amber-600 dark:text-amber-400">
+                                Must be at least {minutesToIsoDuration(minTotalMin)} (prep + cook)
                               </p>
                             )}
                           </div>
@@ -1305,9 +1420,18 @@ export default function RecipeForm({
                     getKey={(_, i) => `step-${i}`}
                     renderItem={(step, i) => (
                       <div className="space-y-2 rounded-md border border-border p-3">
-                        <span className="text-xs font-semibold text-muted-foreground">
-                          Step {i + 1}
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            Step {i + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setImageSearchTarget(i)}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            {step.image ? "Change image" : "Add image"}
+                          </button>
+                        </div>
                         <Input
                           value={step.name ?? ""}
                           onChange={(e) =>
@@ -1327,6 +1451,36 @@ export default function RecipeForm({
                           rows={2}
                           placeholder="Description of this step…"
                         />
+                        {step.image && (
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={step.image}
+                              alt=""
+                              className="h-12 w-12 rounded object-cover border border-border"
+                            />
+                            {stepAttributions.get(i) && (
+                              <p className="text-[11px] text-muted-foreground flex-1 truncate">
+                                {stepAttributions.get(i)?.attribution}
+                              </p>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setInstructions((prev) =>
+                                  prev.map((s, j) => (j === i ? { ...s, image: undefined } : s)),
+                                );
+                                setStepAttributions((prev) => {
+                                  const next = new Map(prev);
+                                  next.delete(i);
+                                  return next;
+                                });
+                              }}
+                              className="text-xs text-muted-foreground hover:text-destructive shrink-0"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   />
@@ -1834,6 +1988,28 @@ export default function RecipeForm({
           }}
         />
       )}
+
+      {/* Image search modal */}
+      <ImageSearchModal
+        open={imageSearchTarget !== null}
+        onClose={() => setImageSearchTarget(null)}
+        defaultQuery={
+          imageSearchTarget === "main" ? (form.getFieldValue("name" as never) as string) : undefined
+        }
+        onSelect={(selected: SelectedImage) => {
+          if (imageSearchTarget === "main") {
+            form.setFieldValue("image" as never, selected.url as never);
+            setImageBroken(false);
+            setImageAttribution(selected.attribution);
+          } else if (typeof imageSearchTarget === "number") {
+            const i = imageSearchTarget;
+            setInstructions((prev) =>
+              prev.map((s, j) => (j === i ? { ...s, image: selected.url } : s)),
+            );
+            setStepAttributions((prev) => new Map(prev).set(i, selected.attribution));
+          }
+        }}
+      />
     </div>
   );
 }

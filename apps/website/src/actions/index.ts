@@ -207,8 +207,9 @@ export const server = {
       description: z.string().min(1),
       locale: z.string().length(2).default("en"),
       draft: z.boolean().optional(),
+      image: z.string().optional(),
     }),
-    handler: async ({ id, ingredients, description, locale, draft }) => {
+    handler: async ({ id, ingredients, description, locale, draft, image }) => {
       const store = await createStore();
       const canonical = [...ingredients].sort() as [string, string];
       const existing = await store.get("pairings", id);
@@ -217,11 +218,16 @@ export const server = {
         (existingData["descriptions"] as Record<string, string>) ??
         (existingData["description"] ? { en: String(existingData["description"]) } : {});
       const existingDraft = (existingData["draft"] as boolean) ?? false;
-      await store.put("pairings", id, {
+      // image: explicit value wins; undefined = preserve existing; "" = clear
+      const imageValue =
+        image !== undefined ? image : (existingData["image"] as string | undefined);
+      const pairingData: Record<string, unknown> = {
         ingredients: canonical,
         descriptions: { ...existingDescriptions, [locale]: description },
         draft: draft !== undefined ? draft : existingDraft,
-      });
+      };
+      if (imageValue) pairingData["image"] = imageValue;
+      await store.put("pairings", id, pairingData);
       return { ok: true, id };
     },
   }),
@@ -765,7 +771,13 @@ export const server = {
           ? proposeIngredientPairings(ingredient as never, inventory, config)
           : Promise.resolve([]),
         !existingMeta["locale"]
-          ? detectLanguage(String(ingredient["name"] ?? ""), config)
+          ? detectLanguage(
+              [ingredient["name"], ingredient["summary"], ingredient["description"]]
+                .filter(Boolean)
+                .map(String)
+                .join(" — "),
+              config,
+            )
           : Promise.resolve(null),
       ]);
 
@@ -1071,6 +1083,58 @@ export const server = {
     },
   }),
 
+  /** Search CC-licensed images via Openverse. */
+  searchImages: defineAction({
+    accept: "json",
+    input: z.object({
+      query: z.string().min(1),
+      page: z.number().int().min(1).default(1),
+      licenseType: z.enum(["commercial", "modification", "commercial,modification"]).optional(),
+    }),
+    handler: async ({ query, page, licenseType }) => {
+      const { searchImages } = await import("content-ai");
+      return searchImages(query, { page, licenseType });
+    },
+  }),
+
+  /** Merge-patch an ingredient's meta sidecar (e.g. to store imageAttribution). */
+  saveIngredientMeta: defineAction({
+    accept: "json",
+    input: z.object({
+      locale: z.enum(["en", "de"]),
+      slug: z.string().min(1),
+      patch: z.record(z.string(), z.unknown()),
+    }),
+    handler: async ({ locale, slug, patch }) => {
+      const store = await createStore();
+      const key = `${locale}/${slug}`;
+      const existing = await store.get("ingredientMeta", key);
+      await store.put("ingredientMeta", key, {
+        ...((existing?.data as Record<string, unknown>) ?? {}),
+        ...patch,
+      });
+      return { ok: true };
+    },
+  }),
+
+  /** Merge-patch a pairing's meta sidecar (e.g. to store imageAttribution). */
+  savePairingMeta: defineAction({
+    accept: "json",
+    input: z.object({
+      id: z.string().min(1),
+      patch: z.record(z.string(), z.unknown()),
+    }),
+    handler: async ({ id, patch }) => {
+      const store = await createStore();
+      const existing = await store.get("pairingMeta", id);
+      await store.put("pairingMeta", id, {
+        ...((existing?.data as Record<string, unknown>) ?? {}),
+        ...patch,
+      });
+      return { ok: true };
+    },
+  }),
+
   /** Suggest a URL-safe slug derived from a recipe name via AI, with duplicate avoidance. */
   aiSuggestSlug: defineAction({
     accept: "json",
@@ -1198,7 +1262,10 @@ export const server = {
             : Promise.resolve([]),
           proposeRelations(recipe as never, existingRecipes, config),
           !meta["language"]
-            ? detectLanguage(String(recipe["name"] ?? ""), config)
+            ? detectLanguage(
+                [recipe["name"], recipe["description"]].filter(Boolean).map(String).join(" — "),
+                config,
+              )
             : Promise.resolve(null),
         ]);
 

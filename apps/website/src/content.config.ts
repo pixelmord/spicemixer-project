@@ -99,6 +99,18 @@ const aiSuggestionsSchema = z.object({
   detectedLanguage: z.string().length(2).optional(),
 });
 
+const imageAttributionSchema = z
+  .object({
+    source: z.string(),
+    sourceUrl: z.string().url(),
+    creator: z.string(),
+    creatorUrl: z.string().url().optional(),
+    license: z.string(),
+    licenseUrl: z.string().url(),
+    attribution: z.string(),
+  })
+  .optional();
+
 const recipeMetaSchema = z.object({
   kind: z.enum(["recipe", "spicemix", "sauce"]).optional(),
   draft: z.boolean().default(false),
@@ -122,6 +134,21 @@ const recipeMetaSchema = z.object({
     .default([]),
   tags: z.array(z.string()).default([]),
   aiSuggestions: aiSuggestionsSchema.optional(),
+  imageAttribution: imageAttributionSchema,
+  recipeInstructionsAttribution: z
+    .array(
+      z.object({
+        index: z.number().int(),
+        source: z.string(),
+        sourceUrl: z.string().url(),
+        creator: z.string(),
+        creatorUrl: z.string().url().optional(),
+        license: z.string(),
+        licenseUrl: z.string().url(),
+        attribution: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 const ingredientSchema = z.object({
@@ -147,6 +174,7 @@ const pairingSchema = z.object({
   // Legacy single-locale field — kept optional during migration window
   description: z.string().optional(),
   draft: z.boolean().default(false),
+  image: z.string().url().optional(),
 });
 
 const pairingAiBlockSchema = z.object({
@@ -160,6 +188,7 @@ const pairingAiBlockSchema = z.object({
 
 const pairingMetaSchema = z.object({
   aiSuggestions: z.record(z.string(), pairingAiBlockSchema).optional(),
+  imageAttribution: imageAttributionSchema,
 });
 
 const aiIngredientSuggestionsSchema = z.object({
@@ -186,6 +215,7 @@ const ingredientMetaSchema = z.object({
   translationOf: z.string().optional(),
   translations: z.record(z.string(), z.string()).default({}),
   aiSuggestions: aiIngredientSuggestionsSchema.optional(),
+  imageAttribution: imageAttributionSchema,
 });
 
 const recipes = defineCollection({
