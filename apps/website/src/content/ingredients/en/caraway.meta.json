@@ -1,22 +1,37 @@
 {
   "aiSuggestions": {
     "contentHash": "19aa45276afaa91e",
-    "generatedAt": "2026-04-29T17:40:27.597Z",
+    "generatedAt": "2026-05-02T12:08:40.131Z",
     "improvements": [],
     "pairings": [
       {
         "slug": "cumin",
-        "description": "Cumin's warm, earthy notes complement the slightly bitter and earthy flavors of caraway, creating a harmonious spice blend often used in North African and Middle Eastern dishes.",
+        "description": "Cumin has earthy and warm flavors that complement the slightly bitter and anise notes of caraway, enhancing the overall depth of spice in dishes like stews and curries.",
         "confidence": "high"
       },
       {
         "slug": "fenugreek",
-        "description": "Fenugreek's sweet and nutty flavor balances caraway's peppery and slightly bitter notes, making them a great pairing in savory dishes like stews and curries.",
+        "description": "Fenugreek's sweet, nutty flavor works harmoniously with the slight sweetness of caraway, making them a great combination in spice blends for savory dishes.",
         "confidence": "medium"
       },
       {
         "slug": "cardamom",
-        "description": "The sweet and aromatic qualities of cardamom enhance caraway's earthy, slightly sweet profile, making them a delightful combination in baked goods and spiced desserts.",
+        "description": "Cardamom's aromatic and slightly sweet flavor can add a fragrant layer to the earthy tones of caraway, creating a well-rounded spice profile in baked goods or savory mixes.",
+        "confidence": "medium"
+      },
+      {
+        "slug": "saffron",
+        "description": "The floral and luxurious notes of saffron contrast beautifully with caraway's earthy quality, enhancing dishes like rice or roasted vegetables with a unique flavor combination.",
+        "confidence": "low"
+      },
+      {
+        "slug": "chili-powder",
+        "description": "The heat from chili powder can complement caraway's warm and slightly bitter notes, providing a balanced flavor in spicy stews or tacos.",
+        "confidence": "medium"
+      },
+      {
+        "slug": "sumac",
+        "description": "Sumac brings a tangy citrus note that can brighten up the earthy flavor of caraway, making it a nice addition to salads or roasted meats.",
         "confidence": "medium"
       }
     ],

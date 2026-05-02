@@ -1,0 +1,41 @@
+{
+  "aiSuggestions": {
+    "contentHash": "5bea455305a3fd3e",
+    "generatedAt": "2026-05-02T12:32:10.138Z",
+    "improvements": [],
+    "pairings": [
+      {
+        "slug": "cumin",
+        "description": "Cumin's warm, earthy flavor complements the smokiness of chili powder, enhancing the overall depth of spice blends and savory dishes.",
+        "confidence": "high"
+      },
+      {
+        "slug": "cardamom",
+        "description": "Cardamom adds a fragrant, slightly sweet note that contrasts nicely with the heat from chili powder, making it suitable for spicing up stews and desserts.",
+        "confidence": "medium"
+      },
+      {
+        "slug": "caraway",
+        "description": "Caraway's unique anise-like flavor can balance the spiciness of chili powder in richer dishes, especially in savory breads and meats.",
+        "confidence": "medium"
+      },
+      {
+        "slug": "fenugreek",
+        "description": "Fenugreek's maple-like sweetness can soften the intensity of chili powder, making it a great addition to curries and sauces for a complex flavor profile.",
+        "confidence": "medium"
+      },
+      {
+        "slug": "saffron",
+        "description": "Though distinct, saffron can work well with chili powder in gourmet dishes, adding a luxurious touch and a unique aroma that enhances overall flavor.",
+        "confidence": "low"
+      },
+      {
+        "slug": "sumac",
+        "description": "Sumac's tangy, lemony notes provide a refreshing contrast to the heat of chili powder, brightening up dishes like salads and grilled meats.",
+        "confidence": "medium"
+      }
+    ],
+    "detectedLanguage": "en",
+    "languageMismatch": false
+  }
+}
