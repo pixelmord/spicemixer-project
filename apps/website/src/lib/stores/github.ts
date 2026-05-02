@@ -1,12 +1,18 @@
 import type { Collection, ContentItem, ContentStore } from "../content-store.ts";
 
 /**
- * GitHub API-backed content store.
+ * GitHub API-backed content store. Phase 2 — see ADR 0006.
  *
- * TODO: implement using `@octokit/rest` with env vars:
- *   GITHUB_TOKEN    — personal access token
- *   GITHUB_REPO     — "owner/repo"
- *   GITHUB_BRANCH   — target branch (default: "main")
+ * In Phase 1 the admin runs local-only via `LocalFsStore`; this store
+ * stays a stub. In Phase 2 the admin ships hosted; community writes
+ * land on a per-contributor branch via the GitHub API and the lead
+ * curator reviews via PR. Single-step `put` from the interface
+ * encapsulates the commit-to-branch step internally.
+ *
+ * Env vars (Phase 2):
+ *   GITHUB_TOKEN     — personal access token / GitHub App token
+ *   GITHUB_REPO      — "owner/repo"
+ *   GITHUB_BRANCH    — base branch (default: "main")
  *   GITHUB_BASE_PATH — path prefix inside repo (e.g. "apps/website/src/content")
  */
 export class GitHubStore implements ContentStore {
