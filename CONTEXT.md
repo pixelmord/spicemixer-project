@@ -95,10 +95,10 @@ A terminal preparation — something you make and eat, not something you
 store to use later. Distinct from a mixture by intent: a recipe's output
 is a meal; a mixture's output is something that goes into _other_ things.
 
-Recipes may be authored on-site (full content) or sourced third-party (link
-
-- attribution + minimal local metadata). Third-party recipes are _examples_
-  of how to use the ingredients the site features; they are not owned content.
+Recipes may be authored on-site (full content) or sourced third-party
+(link + attribution + minimal local metadata). Third-party recipes are
+_examples_ of how to use the ingredients the site features; they are not
+owned content.
 
 ### Pairing
 

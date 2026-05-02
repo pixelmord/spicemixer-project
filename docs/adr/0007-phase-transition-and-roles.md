@@ -125,8 +125,8 @@ write is always suggestion-only.
   - **Wave 1 (Phase 2.0):** community pairings. Self-contained
     relation, two endpoints + description. Low blast radius.
   - **Wave 2 (Phase 2.1):** community recipes (linked third-party
-    - on-site). Recipe-bearing but already a "secondary" content
-      type per ADR 0005's IA.
+    plus on-site). Recipe-bearing but already a "secondary"
+    content type per ADR 0005's IA.
   - **Wave 3 (Phase 2.2):** community mixtures. Recipe-bearing
     AND encyclopedia content; both axes need moderation
     discipline.
