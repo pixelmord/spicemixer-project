@@ -96,6 +96,16 @@ function emptyIngredient(): IngredientData {
   return { name: "", category: "spice", origin: [], flavorNotes: [] };
 }
 
+function parseAiSuggestions(result: Record<string, unknown>): AiSuggestionsState {
+  const ai = result.aiSuggestions as Record<string, unknown>;
+  return {
+    improvements: ai["improvements"] as AiSuggestion[],
+    pairings: ai["pairings"] as AiSuggestionsState["pairings"],
+    detectedLanguage: ai["detectedLanguage"] as string | undefined,
+    languageMismatch: ai["languageMismatch"] as boolean,
+  };
+}
+
 export default function IngredientForm({
   locale,
   slug: initialSlug,
@@ -158,6 +168,17 @@ export default function IngredientForm({
   const [enhanceOpen, setEnhanceOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
 
+  function handleAiRefreshResult(result: Record<string, unknown>, pairingSlug: string) {
+    setAiSuggestions(parseAiSuggestions(result));
+    const autoLinked = result.autoLinked as number;
+    if (autoLinked > 0) {
+      toast.success(`Auto-paired ${autoLinked} ingredient${autoLinked !== 1 ? "s" : ""}`);
+      void actions.listPairingsFor({ slug: pairingSlug }).then((pr: { data?: unknown }) => {
+        if (pr.data) setPairings(pr.data as Pairing[]);
+      });
+    }
+  }
+
   useEffect(() => {
     void actions.listIngredientOptions({ locale }).then((r: { data?: unknown }) => {
       if (r.data)
@@ -204,31 +225,7 @@ export default function IngredientForm({
       })
       .then((r: { data?: unknown }) => {
         const result = r.data as Record<string, unknown> | undefined;
-        if (result) {
-          setAiSuggestions({
-            improvements: (result.aiSuggestions as Record<string, unknown>)[
-              "improvements"
-            ] as AiSuggestion[],
-            pairings: (result.aiSuggestions as Record<string, unknown>)[
-              "pairings"
-            ] as AiSuggestionsState["pairings"],
-            detectedLanguage: (result.aiSuggestions as Record<string, unknown>)[
-              "detectedLanguage"
-            ] as string | undefined,
-            languageMismatch: (result.aiSuggestions as Record<string, unknown>)[
-              "languageMismatch"
-            ] as boolean,
-          });
-          if ((result.autoLinked as number) > 0) {
-            toast.success(
-              `Auto-paired ${result.autoLinked as number} ingredient${(result.autoLinked as number) !== 1 ? "s" : ""}`,
-            );
-            // Reload pairings from server
-            void actions.listPairingsFor({ slug: initialSlug }).then((pr: { data?: unknown }) => {
-              if (pr.data) setPairings(pr.data as Pairing[]);
-            });
-          }
-        }
+        if (result) handleAiRefreshResult(result, initialSlug);
       })
       .catch(() => {})
       .finally(() => setAiRefreshing(false));
@@ -327,30 +324,7 @@ export default function IngredientForm({
         })
         .then((r: { data?: unknown }) => {
           const result = r.data as Record<string, unknown> | undefined;
-          if (result) {
-            setAiSuggestions({
-              improvements: (result.aiSuggestions as Record<string, unknown>)[
-                "improvements"
-              ] as AiSuggestion[],
-              pairings: (result.aiSuggestions as Record<string, unknown>)[
-                "pairings"
-              ] as AiSuggestionsState["pairings"],
-              detectedLanguage: (result.aiSuggestions as Record<string, unknown>)[
-                "detectedLanguage"
-              ] as string | undefined,
-              languageMismatch: (result.aiSuggestions as Record<string, unknown>)[
-                "languageMismatch"
-              ] as boolean,
-            });
-            if ((result.autoLinked as number) > 0) {
-              toast.success(
-                `Auto-paired ${result.autoLinked as number} ingredient${(result.autoLinked as number) !== 1 ? "s" : ""}`,
-              );
-              void actions.listPairingsFor({ slug }).then((pr: { data?: unknown }) => {
-                if (pr.data) setPairings(pr.data as Pairing[]);
-              });
-            }
-          }
+          if (result) handleAiRefreshResult(result, slug);
         })
         .catch(() => {})
         .finally(() => setAiRefreshing(false));
@@ -387,28 +361,27 @@ export default function IngredientForm({
     anchorId: "section-basic",
   }));
 
-  const recommendedFields = INGREDIENT_RECOMMENDED.map((key) => ({
-    key,
-    label: key,
-    filled:
-      key === "summary"
-        ? !!formValues.summary
-        : key === "description"
-          ? !!formValues.description
-          : key === "images"
-            ? !!formValues.image
-            : key === "origin"
-              ? origins.filter(Boolean).length > 0
-              : key === "flavorNotes"
-                ? flavorNotes.filter(Boolean).length > 0
-                : pairings.length > 0,
-    anchorId:
-      key === "origin" || key === "flavorNotes"
-        ? "section-profile"
-        : key === "pairings"
-          ? "section-pairings"
-          : "section-basic",
-  }));
+  const recommendedFields = INGREDIENT_RECOMMENDED.map((key) => {
+    let filled: boolean;
+    if (key === "summary") filled = !!formValues.summary;
+    else if (key === "description") filled = !!formValues.description;
+    else if (key === "images") filled = !!formValues.image;
+    else if (key === "origin") filled = origins.filter(Boolean).length > 0;
+    else if (key === "flavorNotes") filled = flavorNotes.filter(Boolean).length > 0;
+    else filled = pairings.length > 0;
+
+    return {
+      key,
+      label: key,
+      filled,
+      anchorId:
+        key === "origin" || key === "flavorNotes"
+          ? "section-profile"
+          : key === "pairings"
+            ? "section-pairings"
+            : "section-basic",
+    };
+  });
 
   // Visible AI improvements (filtered by dismissed)
   const visibleImprovements: AiSuggestion[] = aiSuggestions.improvements.filter(
@@ -454,20 +427,7 @@ export default function IngredientForm({
         missingFields: missingKeys,
       });
       if (result) {
-        setAiSuggestions({
-          improvements: (result.aiSuggestions as Record<string, unknown>)[
-            "improvements"
-          ] as AiSuggestion[],
-          pairings: (result.aiSuggestions as Record<string, unknown>)[
-            "pairings"
-          ] as AiSuggestionsState["pairings"],
-          detectedLanguage: (result.aiSuggestions as Record<string, unknown>)[
-            "detectedLanguage"
-          ] as string | undefined,
-          languageMismatch: (result.aiSuggestions as Record<string, unknown>)[
-            "languageMismatch"
-          ] as boolean,
-        });
+        setAiSuggestions(parseAiSuggestions(result));
       }
     } catch {
       toast.error("Could not refresh suggestions");
