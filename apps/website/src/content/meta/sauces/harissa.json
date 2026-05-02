@@ -1,9 +1,37 @@
 {
+  "draft": false,
+  "tags": [],
+  "ingredientLinks": [
+    {
+      "pattern": "caraway",
+      "slug": "caraway",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "cumin",
+      "slug": "cumin",
+      "kind": "ingredient"
+    }
+  ],
+  "externalSources": [],
+  "goesWellWith": [],
+  "usesBase": [],
+  "variants": [],
+  "translations": {},
   "aiSuggestions": {
-    "contentHash": "8d407ad716dbffe8",
-    "generatedAt": "2026-04-29T15:51:20.961Z",
+    "contentHash": "dc1705607938fa3a",
+    "generatedAt": "2026-04-29T20:08:15.932Z",
     "improvements": [],
-    "tags": ["spicy", "tunisian", "sauce", "homemade", "condiment", "vegan", "smoky", "harissa"],
+    "tags": [
+      "harissa",
+      "tunisia",
+      "spicy-sauce",
+      "smoky-flavors",
+      "condiment",
+      "chile-paste",
+      "homemade",
+      "vegan"
+    ],
     "ingredientLinks": [
       {
         "pattern": "caraway",
@@ -22,44 +50,40 @@
         "collection": "recipes",
         "slug": "preserved-lemon-couscous",
         "name": "Preserved Lemon Couscous",
-        "rationale": "Harissa's smoky and spicy profile complements the tangy flavors of preserved lemon in couscous, creating a vibrant dish."
+        "rationale": "The bright, zesty flavors of preserved lemon complement the smoky heat of harissa, making them a delightful pairing in Middle Eastern-inspired dishes."
+      },
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "mojo-rojo",
+        "name": "Mojo Rojo",
+        "rationale": "Both harissa and mojo rojo share a spicy and smoky profile, making them excellent accompaniments to grilled meats and vegetables."
       },
       {
         "kind": "usesBase",
         "collection": "spicemixes",
         "slug": "berbere",
         "name": "Berbere",
-        "rationale": "Harissa and berbere share similar spice profiles, making berbere a fitting base for recipes that enhance the depth of flavor in sauces and marinades."
+        "rationale": "Harissa and berbere both use a variety of spices, including chili, and can be interchangeably used to enhance the depth of flavor in similar dishes."
       },
       {
         "kind": "usesBase",
         "collection": "spicemixes",
         "slug": "ras-el-hanout",
         "name": "Ras el Hanout",
-        "rationale": "Ras el Hanout's complex spice blend can be used alongside harissa for added depth and warmth in various dishes."
-      },
-      {
-        "kind": "goesWellWith",
-        "collection": "sauces",
-        "slug": "mojo-rojo",
-        "name": "Mojo rojo",
-        "rationale": "The spicy and tangy elements of mojo rojo pair well with the heat of harissa, making for dynamic flavor combinations in grilled meats or vegetables."
+        "rationale": "Ras el Hanout is a versatile spice blend used in North African cuisine, just like harissa, making them complementary in recipes requiring complex flavors."
       }
-    ],
-    "detectedLanguage": "ar"
+    ]
   },
-  "ingredientLinks": [
-    {
-      "pattern": "caraway",
-      "slug": "caraway",
-      "kind": "ingredient"
-    },
-    {
-      "pattern": "cumin",
-      "slug": "cumin",
-      "kind": "ingredient"
-    }
-  ],
-  "language": "ar",
-  "locale": "ar"
+  "language": "en",
+  "locale": "en",
+  "kind": "sauce",
+  "imageAttribution": {
+    "source": "wikimedia",
+    "sourceUrl": "https://commons.wikimedia.org/w/index.php?curid=89467260",
+    "creator": "Jules (jules:stonesoup)",
+    "license": "by",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+    "attribution": "\"Harissa in a jar (vertical)\" by Jules (jules:stonesoup) is licensed under CC BY 3.0. To view a copy of this license, visit https://creativecommons.org/licenses/by/3.0/."
+  }
 }

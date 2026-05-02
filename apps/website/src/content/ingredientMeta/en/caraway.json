@@ -1,38 +1,23 @@
 {
   "aiSuggestions": {
-    "contentHash": "0dbeb2e2c78834b3",
-    "generatedAt": "2026-04-29T15:55:07.955Z",
+    "contentHash": "19aa45276afaa91e",
+    "generatedAt": "2026-04-29T17:40:27.597Z",
     "improvements": [],
     "pairings": [
       {
         "slug": "cumin",
-        "description": "Cumin's warm, earthy flavor complements the slightly bitter and sweet notes of caraway, enhancing the overall richness in dishes like stews and curries.",
+        "description": "Cumin's warm, earthy notes complement the slightly bitter and earthy flavors of caraway, creating a harmonious spice blend often used in North African and Middle Eastern dishes.",
         "confidence": "high"
       },
       {
-        "slug": "cardamom",
-        "description": "Cardamom's aromatic sweetness and hint of citrus resonate well with the slight citrus note in caraway, making them a great duo in both savory and sweet applications.",
-        "confidence": "medium"
-      },
-      {
         "slug": "fenugreek",
-        "description": "Fenugreek's slightly sweet and nutty flavor matches well with caraway, creating a complex flavor profile that works well in spice blends and marinades.",
+        "description": "Fenugreek's sweet and nutty flavor balances caraway's peppery and slightly bitter notes, making them a great pairing in savory dishes like stews and curries.",
         "confidence": "medium"
       },
       {
-        "slug": "saffron",
-        "description": "The luxurious, slightly sweet flavor of saffron can enhance the earthy notes of caraway, perfect for rich dishes like risottos or paellas.",
-        "confidence": "low"
-      },
-      {
-        "slug": "sumac",
-        "description": "Sumac's tangy acidity can brighten the earthy flavors of caraway, making them compatible in salads and savory dishes where a contrasting flavor is needed.",
-        "confidence": "low"
-      },
-      {
-        "slug": "chili-powder",
-        "description": "Chili powder's heat and spice can balance out caraway's warmth, creating an interesting flavor profile in spicy dishes and rubs.",
-        "confidence": "low"
+        "slug": "cardamom",
+        "description": "The sweet and aromatic qualities of cardamom enhance caraway's earthy, slightly sweet profile, making them a delightful combination in baked goods and spiced desserts.",
+        "confidence": "medium"
       }
     ],
     "detectedLanguage": "en",

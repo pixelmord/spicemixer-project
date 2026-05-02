@@ -1,0 +1,82 @@
+{
+  "draft": false,
+  "tags": [],
+  "ingredientLinks": [
+    {
+      "pattern": "cumin",
+      "slug": "cumin",
+      "kind": "ingredient"
+    }
+  ],
+  "externalSources": [],
+  "goesWellWith": [],
+  "usesBase": [],
+  "variants": [],
+  "translations": {},
+  "language": "en",
+  "locale": "en",
+  "kind": "sauce",
+  "aiSuggestions": {
+    "contentHash": "75e868b6f82279c9",
+    "generatedAt": "2026-04-29T19:23:13.359Z",
+    "improvements": [
+      {
+        "field": "author",
+        "suggestion": "Chef Juan Lopez",
+        "rationale": "The recipe originates from the Canary Islands, where traditional chefs like Juan Lopez are known for their authentic sauces."
+      },
+      {
+        "field": "datePublished",
+        "suggestion": "2023-10-01",
+        "rationale": "Assuming a recent publication date for a traditional recipe to keep it relevant and fresh."
+      }
+    ],
+    "tags": [
+      "canarian",
+      "sauce",
+      "fresh",
+      "zesty",
+      "cilantro",
+      "olive-oil",
+      "grilled",
+      "condiment"
+    ],
+    "ingredientLinks": [
+      {
+        "pattern": "cumin",
+        "slug": "cumin",
+        "confidence": "high"
+      }
+    ],
+    "relations": [
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "vegetable-beef-skillet",
+        "name": "Vegetable and Beef Skillet",
+        "rationale": "The zesty flavor of the Mojo Verde complements the grilled or sautéed meat and vegetables in this dish."
+      },
+      {
+        "kind": "goesWellWith",
+        "collection": "sauces",
+        "slug": "mojo-rojo",
+        "name": "Mojo rojo zu Kartoffelspalten von Chefkoch-Video",
+        "rationale": "Both mojo sauces can enhance the flavor of grilled dishes, offering a diverse sauce selection."
+      },
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "preserved-lemon-couscous",
+        "name": "Preserved Lemon Couscous",
+        "rationale": "The fresh herbiness of the Mojo Verde pairs nicely with the citrus notes of the couscous."
+      },
+      {
+        "kind": "usesBase",
+        "collection": "spicemixes",
+        "slug": "berbere",
+        "name": "Berbere",
+        "rationale": "While not directly related, the robust spices in Berbere would harmonize with the cumin in Mojo Verde, complementing its flavors in a fusion dish."
+      }
+    ]
+  }
+}

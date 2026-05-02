@@ -1,0 +1,44 @@
+{
+  "draft": false,
+  "tags": [],
+  "ingredientLinks": [],
+  "externalSources": [],
+  "goesWellWith": [],
+  "usesBase": [],
+  "variants": [],
+  "translations": {},
+  "language": "en",
+  "locale": "en",
+  "kind": "recipe",
+  "aiSuggestions": {
+    "contentHash": "efea77f6cb81ab8d",
+    "generatedAt": "2026-04-29T20:07:21.442Z",
+    "improvements": [],
+    "tags": [
+      "dark-chocolate",
+      "rye-flour",
+      "scandinavian",
+      "chewy-cookies",
+      "dessert",
+      "baking",
+      "sweet-treats"
+    ],
+    "ingredientLinks": [],
+    "relations": [
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "preserved-lemon-couscous",
+        "name": "Preserved Lemon Couscous",
+        "rationale": "The bright acidity of preserved lemon in the couscous complements the rich, chocolatey flavor of the Dark Chocolate Rye Cookies, creating a balanced dessert and side pairing."
+      },
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "miso-butter-ramen",
+        "name": "Miso Butter Ramen",
+        "rationale": "The umami flavors of miso butter ramen provide a savory contrast to the sweet, deep chocolate cookies, making for an interesting and varied meal."
+      }
+    ]
+  }
+}

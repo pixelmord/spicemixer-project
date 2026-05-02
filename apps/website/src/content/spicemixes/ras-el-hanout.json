@@ -19,7 +19,8 @@
   "recipeInstructions": [
     {
       "@type": "HowToStep",
-      "text": "Toast cumin seeds, coriander seeds, and cardamom pods in a dry pan over medium heat for 1–2 minutes until fragrant. Let cool."
+      "text": "Toast cumin seeds, coriander seeds, and cardamom pods in a dry pan over medium heat for 1–2 minutes until fragrant. Let cool.",
+      "image": "https://live.staticflickr.com/2694/5820870380_5c0dc379cc_b.jpg"
     },
     {
       "@type": "HowToStep",
@@ -27,14 +28,17 @@
     },
     {
       "@type": "HowToStep",
-      "text": "Combine with paprika, cinnamon, turmeric, ginger, pepper, cayenne, allspice, nutmeg, and cloves. Mix thoroughly."
+      "text": "Combine with paprika, cinnamon, turmeric, ginger, pepper, cayenne, allspice, nutmeg, and cloves. Mix thoroughly.",
+      "image": "https://live.staticflickr.com/8636/16567328706_f6bd562c72_b.jpg"
     },
     {
       "@type": "HowToStep",
-      "text": "Store in an airtight jar away from heat and light. Best used within 3 months."
+      "text": "Store in an airtight jar away from heat and light. Best used within 3 months.",
+      "image": "https://live.staticflickr.com/7300/12031464384_04da9ef772_b.jpg"
     }
   ],
   "description": "A warm, complex North African spice blend. The name means 'head of the shop' — the best the spice merchant has to offer.",
+  "image": "https://live.staticflickr.com/4009/4490866682_513d932618_b.jpg",
   "author": {
     "@type": "Organization",
     "name": "Spicemixer"
@@ -44,6 +48,7 @@
   "recipeCuisine": "Moroccan",
   "keywords": ["moroccan", "vegan", "pantry", "warm"],
   "prepTime": "PT10M",
-  "totalTime": "PT10M",
+  "cookTime": "PT5M",
+  "totalTime": "PT15M",
   "datePublished": "2026-04-20"
 }

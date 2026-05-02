@@ -1,0 +1,65 @@
+{
+  "draft": false,
+  "tags": [],
+  "ingredientLinks": [],
+  "externalSources": [],
+  "goesWellWith": [
+    {
+      "collection": "recipes",
+      "slug": "preserved-lemon-couscous"
+    }
+  ],
+  "usesBase": [],
+  "variants": [],
+  "translations": {},
+  "kind": "recipe",
+  "aiSuggestions": {
+    "contentHash": "944e5ff4fd241ccb",
+    "generatedAt": "2026-04-29T19:22:21.350Z",
+    "improvements": [],
+    "tags": [
+      "slow-cooked",
+      "italian",
+      "vegan",
+      "garlic",
+      "tomato",
+      "comfort-food",
+      "pasta-sauce",
+      "toast-topper"
+    ],
+    "ingredientLinks": [],
+    "relations": [
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "preserved-lemon-couscous",
+        "name": "Preserved Lemon Couscous",
+        "rationale": "The bright and tangy flavors of preserved lemon complement the sweet, slow-cooked tomatoes, making it a refreshing side dish."
+      },
+      {
+        "kind": "goesWellWith",
+        "collection": "sauces",
+        "slug": "mojo-rojo",
+        "name": "Mojo rojo",
+        "rationale": "The smoky and spicy notes of mojo rojo enhance the sweet and savory characteristics of the tomato confit."
+      },
+      {
+        "kind": "goesWellWith",
+        "collection": "sauces",
+        "slug": "mojo-verde",
+        "name": "Original Mojo Verde from Tenerife",
+        "rationale": "The herbal and citrusy flavors of mojo verde pair nicely with the garlicky tomato confit, adding depth."
+      },
+      {
+        "kind": "goesWellWith",
+        "collection": "recipes",
+        "slug": "miso-butter-ramen",
+        "name": "Miso Butter Ramen",
+        "rationale": "The umami-rich miso in the ramen can be balanced by the sweetness of the tomato confit, offering a delicious contrast."
+      }
+    ],
+    "detectedLanguage": "en"
+  },
+  "language": "en",
+  "locale": "en"
+}
