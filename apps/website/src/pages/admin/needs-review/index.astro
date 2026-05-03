@@ -2,7 +2,7 @@
 export const prerender = false;
 import AdminShell from "@/components/admin/AdminShell.tsx";
 import { createStore } from "@/lib/content-store.ts";
-import { clearStaleFlag, listStaleEntries } from "@/lib/translation-sync.ts";
+import { clearStaleFlag, listStaleEntries, type StaleEntry } from "@/lib/translation-sync.ts";
 
 const store = await createStore();
 
@@ -22,7 +22,7 @@ if (Astro.request.method === "POST") {
 
 const entries = await listStaleEntries(store);
 
-function openHref(entry: (typeof entries)[number]): string {
+function openHref(entry: StaleEntry): string {
   if (entry.collection === "ingredients") {
     return `/admin/ingredients/${entry.slug}/edit?locale=${entry.locale}`;
   }
