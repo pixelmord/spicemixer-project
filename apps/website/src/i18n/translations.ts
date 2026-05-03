@@ -81,6 +81,9 @@ const ui = {
     "page.pairings.recentlyAdded": "Recently Added",
     "filter.region": "Region",
     "filter.flavorProfile": "Flavor Profile",
+    "page.home.worldmapPlaceholder": "Worldmap arriving",
+    "page.home.featuredPairing": "Featured Pairing",
+    "page.home.recentlyAdded": "Recently Added",
   },
   de: {
     "page.home.title": "Spicemixer — Gewürze & Saucen",
@@ -162,6 +165,9 @@ const ui = {
     "page.pairings.recentlyAdded": "Kürzlich hinzugefügt",
     "filter.region": "Region",
     "filter.flavorProfile": "Aromaprofil",
+    "page.home.worldmapPlaceholder": "Weltkarte folgt",
+    "page.home.featuredPairing": "Empfohlene Kombination",
+    "page.home.recentlyAdded": "Kürzlich hinzugefügt",
   },
 } as const;
 

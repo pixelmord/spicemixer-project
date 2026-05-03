@@ -1,182 +1,94 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import FilterBar from "../../components/FilterBar.astro";
-import RecipeMeta from "../../components/RecipeMeta.astro";
-import { firstImage, keywordList } from "../../lib/instructions.ts";
-import { getPublished } from "../../lib/recipe-augment.ts";
+import WorldmapPlaceholder from "../../components/WorldmapPlaceholder.astro";
+import FeaturedPairingBlock from "../../components/FeaturedPairingBlock.astro";
+import RecentlyAddedFeed from "../../components/RecentlyAddedFeed.astro";
+import { getPublished, getPublishedIngredients, getPublishedPairings } from "../../lib/recipe-augment.ts";
+import { recentlyAdded } from "../../lib/recently-added.ts";
+import type { RecentEntry } from "../../lib/recently-added.ts";
+import { FEATURED_PAIRING_SLUG } from "../../lib/homepage.config.ts";
 import { getCollection } from "astro:content";
 import { useTranslations } from "../../i18n/translations.ts";
 
-const t = useTranslations("de");
+const locale = "de";
+const t = useTranslations(locale);
 const prefix = "/de";
 
-const [mixtures, allMeta] = await Promise.all([
+const [mixtures, rawIngredients, pairings] = await Promise.all([
   getPublished("mixtures"),
-  getCollection("meta"),
+  getPublishedIngredients("de"),
+  getPublishedPairings(),
 ]);
-const metaMap = new Map(allMeta.map((m) => [m.id, m.data]));
 
-const items = mixtures
-  .map((e) => {
-    const meta = metaMap.get(`mixtures/${e.id}`);
-    const kind = (meta?.kind ?? "spicemix") as "spicemix" | "sauce";
-    return { entry: e, kind };
-  })
-  .sort((a, b) =>
-    (b.entry.data.datePublished ?? "").localeCompare(a.entry.data.datePublished ?? ""),
-  );
+const allIngredientsMeta = await getCollection("ingredientMeta");
+const draftSlugs = new Set(
+  (allIngredientsMeta as Array<{ id: string; data: { draft?: boolean } }>)
+    .filter((m) => m.data.draft === true)
+    .map((m) => m.id),
+);
+const ingredients = (rawIngredients as Array<{ id: string; data: { name: string } }>).filter(
+  (e) => !draftSlugs.has(e.id),
+);
 
-const cuisines = [
-  ...new Set(items.map((i) => i.entry.data.recipeCuisine).filter((c): c is string => Boolean(c))),
-].sort();
-const tags = [
-  ...new Set(items.flatMap((i) => keywordList(i.entry.data.keywords))),
-].sort();
+const mixtureEntries: RecentEntry[] = mixtures.map((e) => ({
+  type: "mixture",
+  slug: e.id,
+  name: (e.data as { name: string }).name,
+  href: `${prefix}/mixtures/${e.id}/`,
+  datePublished: (e.data as { datePublished?: string }).datePublished,
+}));
 
-const groups = [
-  {
-    key: "kind",
-    label: t("filter.kind"),
-    values: [
-      { value: "spicemix", label: t("badge.spicemix") },
-      { value: "sauce", label: t("badge.sauce") },
-    ],
-  },
-  { key: "cuisine", label: t("filter.cuisine"), values: cuisines.map((v) => ({ value: v, label: v })) },
-  { key: "tags", label: t("filter.tag"), values: tags.map((v) => ({ value: v, label: v })) },
-];
+const ingredientEntries: RecentEntry[] = ingredients.map((e) => ({
+  type: "ingredient",
+  slug: e.id.replace(/^[a-z]{2}\//, ""),
+  name: e.data.name,
+  href: `${prefix}/ingredients/${e.id.replace(/^[a-z]{2}\//, "")}/`,
+}));
 
-const badgeClass = {
-  spicemix: "bg-amber-100 text-amber-800",
-  sauce: "bg-rose-100 text-rose-800",
-};
+const pairingEntries: RecentEntry[] = pairings.map((p) => ({
+  type: "pairing",
+  slug: p.id,
+  name: `${p.ingredients[0]} & ${p.ingredients[1]}`,
+  href: `${prefix}/pairings/${p.id}/`,
+}));
 
-const gradientClass = {
-  spicemix: "from-amber-50 via-stone-50 to-orange-50",
-  sauce: "from-rose-50 via-stone-50 to-amber-50",
-};
+const feedEntries = recentlyAdded([...mixtureEntries, ...ingredientEntries, ...pairingEntries], {
+  excludeRecipes: true,
+  limit: 12,
+});
+
+const featuredPairing = pairings.find((p) => p.id === FEATURED_PAIRING_SLUG) ?? pairings[0];
 ---
 
 <BaseLayout title={t("page.home.title")} description={t("page.home.description")}>
   <main class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
     <header class="mb-10">
-      <h1 class="font-serif text-5xl leading-tight text-stone-900 sm:text-6xl">
+      <p class="text-xs font-semibold uppercase tracking-[0.3em] text-stone-500">Spicemixer</p>
+      <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900 sm:text-6xl">
         {t("page.home.tagline")}
       </h1>
       <p class="mt-3 max-w-2xl text-lg text-stone-600">{t("page.home.description")}</p>
     </header>
 
-    <FilterBar groups={groups} totalCount={items.length} />
+    <WorldmapPlaceholder caption={t("page.home.worldmapPlaceholder")} />
 
-    <section class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
-      {
-        items.map(({ entry, kind }) => {
-          const data = entry.data;
-          const slug = entry.id;
-          const href = `${prefix}/mixtures/${slug}/`;
-          const image = firstImage(data.image);
-          const tags = keywordList(data.keywords);
-          const transitionName = `${kind}-${slug}`;
-          const badge = t(kind === "spicemix" ? "badge.spicemix" : "badge.sauce");
+    {
+      featuredPairing && (
+        <FeaturedPairingBlock
+          label={t("page.home.featuredPairing")}
+          ingredientA={featuredPairing.ingredients[0]}
+          ingredientB={featuredPairing.ingredients[1]}
+          description={
+            featuredPairing.descriptions[locale] ??
+            featuredPairing.descriptions["en"] ??
+            ""
+          }
+          href={`${prefix}/pairings/${featuredPairing.id}/`}
+          locale={locale}
+        />
+      )
+    }
 
-          return (
-            <article
-              data-filter-item
-              data-filter-kind={kind}
-              data-filter-cuisine={data.recipeCuisine ?? ""}
-              data-filter-tags={tags.join(",")}
-              class="mb-6 break-inside-avoid rounded-2xl bg-white shadow-sm ring-1 ring-stone-200 transition hover:shadow-md hover:ring-stone-300"
-            >
-              <a
-                href={href}
-                class="group block overflow-hidden rounded-2xl"
-                style={`view-transition-name: ${transitionName};`}
-              >
-                {image ? (
-                  <>
-                    <figure class="overflow-hidden">
-                      <img
-                        src={image}
-                        alt={data.name}
-                        loading="lazy"
-                        class="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-                      />
-                    </figure>
-                    <div class="space-y-1 px-5 py-4">
-                      <span
-                        class:list={[
-                          "inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                          badgeClass[kind],
-                        ]}
-                      >
-                        {badge}
-                      </span>
-                      <h3 class="font-serif text-xl leading-tight text-stone-900">{data.name}</h3>
-                      {data.description && (
-                        <p class="line-clamp-2 text-sm text-stone-600">{data.description}</p>
-                      )}
-                      <RecipeMeta
-                        prepTime={data.prepTime}
-                        totalTime={data.totalTime}
-                        recipeYield={data.recipeYield as string | number | undefined}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div class:list={["bg-gradient-to-br px-6 pb-2 pt-7", gradientClass[kind]]}>
-                    <span
-                      class:list={[
-                        "inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                        badgeClass[kind],
-                      ]}
-                    >
-                      {badge}
-                    </span>
-                    <h3 class="mt-2 font-serif text-3xl leading-tight text-stone-900">{data.name}</h3>
-                    {data.description && (
-                      <p class="mt-2 text-sm italic text-stone-600">{data.description}</p>
-                    )}
-                    {data.recipeIngredient.length > 0 && (
-                      <ul class="mt-4 space-y-1 text-sm text-stone-700">
-                        {data.recipeIngredient.slice(0, 4).map((ing) => (
-                          <li class="border-b border-dashed border-stone-300 pb-1 last:border-0">
-                            {ing}
-                          </li>
-                        ))}
-                        {data.recipeIngredient.length > 4 && (
-                          <li class="pt-1 text-xs text-stone-500">
-                            {t("recipe.more").replace("{n}", String(data.recipeIngredient.length - 4))}
-                          </li>
-                        )}
-                      </ul>
-                    )}
-                    <div class="py-4">
-                      <RecipeMeta
-                        prepTime={data.prepTime}
-                        totalTime={data.totalTime}
-                        recipeYield={data.recipeYield as string | number | undefined}
-                      />
-                    </div>
-                  </div>
-                )}
-                {tags.length > 0 && (
-                  <ul class="flex flex-wrap gap-1.5 px-5 pb-4 pt-0">
-                    {tags.slice(0, 4).map((tag) => (
-                      <li class="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] text-stone-600">
-                        {tag}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </a>
-            </article>
-          );
-        })
-      }
-    </section>
-
-    <p data-empty-state hidden class="mt-16 text-center text-stone-500">
-      {t("filter.empty")}
-    </p>
+    <RecentlyAddedFeed label={t("page.home.recentlyAdded")} entries={feedEntries} />
   </main>
 </BaseLayout>
