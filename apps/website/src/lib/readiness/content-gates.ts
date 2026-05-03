@@ -96,10 +96,15 @@ function gateRegionCoverage(corpus: Corpus): GateResult {
     }
   }
 
+  let status: GateStatus;
+  if (passCount === REGIONS.length) status = "pass";
+  else if (hasZero) status = "fail";
+  else status = "warn";
+
   return {
     key: "region-coverage",
     label: "Region coverage",
-    status: passCount === REGIONS.length ? "pass" : hasZero ? "fail" : "warn",
+    status,
     current: passCount,
     target: REGIONS.length,
     failingItems: failing.length > 0 ? failing : undefined,
@@ -127,10 +132,15 @@ function gateMixtureKindCoverage(corpus: Corpus): GateResult {
     }
   }
 
+  let status: GateStatus;
+  if (passCount === MIXTURE_KINDS.length) status = "pass";
+  else if (hasZero) status = "fail";
+  else status = "warn";
+
   return {
     key: "mixture-kind-coverage",
     label: "Mixture kind coverage",
-    status: passCount === MIXTURE_KINDS.length ? "pass" : hasZero ? "fail" : "warn",
+    status,
     current: passCount,
     target: MIXTURE_KINDS.length,
     failingItems: failing.length > 0 ? failing : undefined,
@@ -158,10 +168,15 @@ function gateIngredientCategoryCoverage(corpus: Corpus): GateResult {
     }
   }
 
+  let status: GateStatus;
+  if (passCount === INGREDIENT_CATEGORIES.length) status = "pass";
+  else if (hasZero) status = "fail";
+  else status = "warn";
+
   return {
     key: "ingredient-category-coverage",
     label: "Ingredient category coverage",
-    status: passCount === INGREDIENT_CATEGORIES.length ? "pass" : hasZero ? "fail" : "warn",
+    status,
     current: passCount,
     target: INGREDIENT_CATEGORIES.length,
     failingItems: failing.length > 0 ? failing : undefined,
@@ -213,8 +228,10 @@ function gatePairingDensity(corpus: Corpus): GateResult {
   const target = mixtureCount * DENSITY_PASS_RATIO;
   const warnThreshold = mixtureCount * DENSITY_WARN_RATIO;
 
-  const status: GateStatus =
-    pairingCount >= target ? "pass" : pairingCount >= warnThreshold ? "warn" : "fail";
+  let status: GateStatus;
+  if (pairingCount >= target) status = "pass";
+  else if (pairingCount >= warnThreshold) status = "warn";
+  else status = "fail";
 
   return {
     key: "pairing-density",
@@ -250,8 +267,10 @@ function gateIngredientCompleteness(corpus: Corpus): GateResult {
   }
 
   const pct = Math.round((completeCount / total) * 100);
-  const status: GateStatus =
-    pct >= COMPLETENESS_PASS_PCT ? "pass" : pct >= COMPLETENESS_WARN_PCT ? "warn" : "fail";
+  let status: GateStatus;
+  if (pct >= COMPLETENESS_PASS_PCT) status = "pass";
+  else if (pct >= COMPLETENESS_WARN_PCT) status = "warn";
+  else status = "fail";
 
   return {
     key: "ingredient-completeness",

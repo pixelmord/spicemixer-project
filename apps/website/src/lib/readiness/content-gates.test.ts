@@ -422,4 +422,87 @@ describe("computeContentGates", () => {
       "ingredient-completeness",
     ]);
   });
+
+  test("empty corpus produces expected gate pass/fail counts", () => {
+    const gates = computeContentGates(emptyCorpus());
+    expect(gates).toHaveLength(6);
+
+    const statuses = Object.fromEntries(gates.map((g) => [g.key, g.status]));
+    expect(statuses["region-coverage"]).toBe("fail");
+    expect(statuses["mixture-kind-coverage"]).toBe("fail");
+    expect(statuses["ingredient-category-coverage"]).toBe("fail");
+    expect(statuses["graph-connectivity"]).toBe("pass");
+    expect(statuses["pairing-density"]).toBe("pass");
+    expect(statuses["ingredient-completeness"]).toBe("pass");
+
+    const passCount = gates.filter((g) => g.status === "pass").length;
+    const failCount = gates.filter((g) => g.status === "fail").length;
+    expect(passCount).toBe(3);
+    expect(failCount).toBe(3);
+  });
+
+  test("fully seeded corpus passes all 6 gates", () => {
+    const corpus = emptyCorpus();
+
+    let regionIdx = 0;
+    for (const kind of MIXTURE_KINDS) {
+      for (let i = 0; i < 3; i++) {
+        corpus.mixtures.push(
+          mixture(`mixture-${kind}-${i}`, {
+            kind,
+            regions: [
+              REGIONS[regionIdx % REGIONS.length],
+              REGIONS[(regionIdx + 1) % REGIONS.length],
+            ],
+          }),
+        );
+        regionIdx += 2;
+      }
+    }
+
+    const regionCounts = new Map<string, number>(REGIONS.map((r) => [r, 0]));
+    for (const m of corpus.mixtures) {
+      for (const r of m.regions) regionCounts.set(r, (regionCounts.get(r) ?? 0) + 1);
+    }
+    let iIdx = 0;
+    for (const region of REGIONS) {
+      while ((regionCounts.get(region) ?? 0) < 3) {
+        corpus.ingredients.push(
+          ingredient(`fill-region-${region}-${iIdx++}`, {
+            category: INGREDIENT_CATEGORIES[iIdx % INGREDIENT_CATEGORIES.length],
+            flavorProfile: ["warm"],
+            regions: [region],
+            culinaryUse: "Used in cooking",
+            hasImage: true,
+          }),
+        );
+        regionCounts.set(region, (regionCounts.get(region) ?? 0) + 1);
+      }
+    }
+
+    for (const category of INGREDIENT_CATEGORIES) {
+      for (let i = 0; i < 5; i++) {
+        corpus.ingredients.push(
+          ingredient(`ingredient-${category}-${i}`, {
+            category,
+            flavorProfile: ["warm"],
+            regions: ["north-africa"],
+            culinaryUse: "Used in cooking",
+            hasImage: true,
+          }),
+        );
+      }
+    }
+
+    const allMixtureSlugs = corpus.mixtures.map((m) => m.slug);
+    for (const slug of allMixtureSlugs) {
+      for (let i = 0; i < 3; i++) {
+        corpus.pairings.push(pairing(slug, `ingredient-spice-${i}`));
+      }
+    }
+
+    const gates = computeContentGates(corpus);
+    const passCount = gates.filter((g) => g.status === "pass").length;
+    expect(passCount).toBe(6);
+  });
 });
