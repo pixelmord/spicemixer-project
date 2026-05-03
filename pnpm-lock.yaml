@@ -67,7 +67,7 @@ catalogs:
       specifier: latest
       version: 0.1.19
     zod:
-      specifier: ^4
+      specifier: ^4.3.6
       version: 4.3.6
 
 overrides:
@@ -168,6 +168,9 @@ importers:
       utils:
         specifier: workspace:*
         version: link:../../packages/utils
+      zod:
+        specifier: 'catalog:'
+        version: 4.3.6
 
   packages/content-ai:
     dependencies:
