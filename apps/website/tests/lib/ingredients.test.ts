@@ -120,7 +120,6 @@ describe("saveIngredient — canonicalLocale", () => {
       ingredient: { name: "Kardamom", category: "spice" },
       meta: { draft: true },
     });
-    // Second save of the same entry — canonicalLocale must remain "de"
     await saveIngredient(store, {
       locale: "de",
       slug: "kardamom",
@@ -131,15 +130,13 @@ describe("saveIngredient — canonicalLocale", () => {
     expect((meta?.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
   });
 
-  test("stamps canonicalLocale even when meta object is not provided", async () => {
+  test("does not write meta sidecar when meta is omitted", async () => {
     const store = new InMemoryStore();
-    // meta omitted — no sidecar written, so canonicalLocale check is skipped
     await saveIngredient(store, {
       locale: "en",
       slug: "cardamom",
       ingredient: { name: "Cardamom", category: "spice" },
     });
-    // No meta sidecar → no canonicalLocale (meta not written at all)
     expect(await store.get("ingredientMeta", "en/cardamom")).toBeNull();
   });
 });

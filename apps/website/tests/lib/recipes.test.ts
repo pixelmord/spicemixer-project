@@ -72,7 +72,6 @@ describe("saveRecipe — canonicalLocale", () => {
       recipe: { name: "Miso Ramen" },
       meta: { locale: "de", draft: true },
     });
-    // Second save — locale changes to "en", but canonicalLocale must stay "de"
     await saveRecipe(store, {
       collection: "recipes",
       slug: "miso-ramen",

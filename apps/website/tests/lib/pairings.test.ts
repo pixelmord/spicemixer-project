@@ -163,7 +163,6 @@ describe("savePairing", () => {
       locale: "en",
     });
     const pairingMeta = await store.get("pairingMeta", "anise--cardamom");
-    // pairingMeta is not written by savePairing at all
     expect(pairingMeta).toBeNull();
   });
 
