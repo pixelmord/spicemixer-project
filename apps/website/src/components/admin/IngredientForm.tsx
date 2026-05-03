@@ -1332,20 +1332,15 @@ export default function IngredientForm({
                       >
                         + Add source
                       </button>
-                      {hasLiabilityScope({
-                        medicinalUses: formValues.medicinalUses,
-                        healthBenefits: formValues.healthBenefits,
-                        safetyNotes: formValues.safetyNotes,
-                      }) &&
-                        sources.length === 0 && (
-                          <div
-                            data-testid="liability-warning"
-                            className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2.5 text-xs text-amber-800 dark:text-amber-300"
-                          >
-                            ⚠ This ingredient has medicinal, health, or safety content. Add at least
-                            one source to support these claims.
-                          </div>
-                        )}
+                      {hasLiabilityScope(formValues) && sources.length === 0 && (
+                        <div
+                          data-testid="liability-warning"
+                          className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2.5 text-xs text-amber-800 dark:text-amber-300"
+                        >
+                          ⚠ This ingredient has medicinal, health, or safety content. Add at least
+                          one source to support these claims.
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </section>
