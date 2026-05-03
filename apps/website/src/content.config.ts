@@ -4,6 +4,7 @@ import { recipeSchema } from "recipe-ingestion";
 import { REGIONS } from "./lib/regions.ts";
 import { aiEventSchema } from "content-ai";
 import { INGREDIENT_PARTS, INGREDIENT_FLAVOR_PROFILE } from "./lib/ingredient-schema.ts";
+import { MIXTURE_KINDS } from "./lib/mixture-schema.ts";
 
 const recipeLinkRef = z.object({
   collection: z.enum(["recipes", "ingredients", "mixtures"]),
@@ -30,7 +31,7 @@ const imageAttributionSchema = z
   .optional();
 
 const recipeMetaSchema = z.object({
-  kind: z.enum(["recipe", "spicemix", "sauce"]).optional(),
+  kind: z.enum(["recipe", ...MIXTURE_KINDS]).optional(),
   draft: z.boolean().default(false),
   region: z.array(z.enum(REGIONS)).default([]),
   language: z.string().length(2).optional(),

@@ -1,4 +1,5 @@
 import { getEntry, getCollection } from "astro:content";
+import type { MixtureKind } from "./mixture-schema.ts";
 
 /** Locale-aware ingredient lookup with EN fallback. */
 export async function getIngredient(slug: string, locale: string) {
@@ -20,7 +21,7 @@ export type IngredientLink = {
 export type ExternalSource = { url: string; title: string; source?: string };
 
 export type Meta = {
-  kind?: "recipe" | "spicemix" | "sauce";
+  kind?: "recipe" | MixtureKind;
   draft?: boolean;
   language?: string;
   locale?: string;
