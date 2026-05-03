@@ -63,17 +63,8 @@ export default function PairingForm({
   );
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
 
-  // AI state
-  const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiSuggestion[]>>(() => {
-    const s = initialMeta["aiSuggestions"] as Record<string, unknown> | undefined;
-    if (!s) return {};
-    const result: Record<string, AiSuggestion[]> = {};
-    for (const [locale, block] of Object.entries(s)) {
-      const b = block as Record<string, unknown>;
-      result[locale] = (b["improvements"] as AiSuggestion[]) ?? [];
-    }
-    return result;
-  });
+  // AI state (transient — not persisted in meta)
+  const [aiSuggestions, setAiSuggestions] = useState<Record<string, AiSuggestion[]>>({});
   const [aiRefreshing, setAiRefreshing] = useState(false);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
 
@@ -82,10 +73,14 @@ export default function PairingForm({
   const [translateOpen, setTranslateOpen] = useState(false);
 
   useEffect(() => {
-    void actions.listIngredientOptions({ locale: "en" }).then(({ data: opts }) => {
-      if (opts)
-        setIngredientOptions(opts.map((d) => ({ value: d.slug, label: d.name, sublabel: d.slug })));
-    });
+    void actions
+      .listIngredientOptions({ locale: "en" })
+      .then(({ data: opts }: { data?: { slug: string; name: string }[] }) => {
+        if (opts)
+          setIngredientOptions(
+            opts.map((d) => ({ value: d.slug, label: d.name, sublabel: d.slug })),
+          );
+      });
   }, []);
 
   // Auto-run suggestions on mount
@@ -102,9 +97,9 @@ export default function PairingForm({
         locale: activeLocale,
         pairing: { ingredients: [ingredient1, ingredient2], descriptions },
       })
-      .then(({ data }) => {
-        if (data?.aiSuggestions) {
-          const s = data.aiSuggestions as Record<string, unknown>;
+      .then(({ data }: { data?: Record<string, unknown> }) => {
+        if (data?.["aiSuggestions"]) {
+          const s = data["aiSuggestions"] as Record<string, unknown>;
           const block = s[activeLocale] as Record<string, unknown> | undefined;
           if (block?.["improvements"]) {
             setAiSuggestions((prev) => ({
@@ -473,8 +468,11 @@ export default function PairingForm({
                         locale: activeLocale,
                         pairing: { ingredients: [ingredient1, ingredient2], descriptions },
                       });
-                      if (data?.aiSuggestions) {
-                        const s = data.aiSuggestions as Record<string, unknown>;
+                      if ((data as Record<string, unknown> | undefined)?.["aiSuggestions"]) {
+                        const s = (data as Record<string, unknown>)["aiSuggestions"] as Record<
+                          string,
+                          unknown
+                        >;
                         const block = s[activeLocale] as Record<string, unknown> | undefined;
                         if (block?.["improvements"]) {
                           setAiSuggestions((prev) => ({

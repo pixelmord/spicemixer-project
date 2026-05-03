@@ -97,12 +97,12 @@ function emptyIngredient(): IngredientData {
 }
 
 function parseAiSuggestions(result: Record<string, unknown>): AiSuggestionsState {
-  const ai = result.aiSuggestions as Record<string, unknown>;
+  const ai = (result["aiSuggestions"] ?? result) as Record<string, unknown>;
   return {
-    improvements: ai["improvements"] as AiSuggestion[],
-    pairings: ai["pairings"] as AiSuggestionsState["pairings"],
+    improvements: (ai["improvements"] as AiSuggestion[]) ?? [],
+    pairings: (ai["pairings"] as AiSuggestionsState["pairings"]) ?? [],
     detectedLanguage: ai["detectedLanguage"] as string | undefined,
-    languageMismatch: ai["languageMismatch"] as boolean,
+    languageMismatch: (ai["languageMismatch"] as boolean) ?? false,
   };
 }
 
@@ -130,7 +130,7 @@ export default function IngredientForm({
   const [pairings, setPairings] = useState<Pairing[]>(initialPairings);
   const [completeness, setCompleteness] = useState(() => scoreIngredient(data as never));
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
-  const [quickCreateName, setQuickCreateName] = useState("");
+  const [quickCreateName, _setQuickCreateName] = useState("");
   const [quickCreateCallback, setQuickCreateCallback] = useState<
     ((slug: string, label: string) => void) | null
   >(null);
@@ -142,15 +142,12 @@ export default function IngredientForm({
   );
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
 
-  // AI state
-  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestionsState>(() => {
-    const s = initialMeta?.["aiSuggestions"] as Record<string, unknown> | undefined;
-    return {
-      improvements: (s?.["improvements"] as AiSuggestion[]) ?? [],
-      pairings: (s?.["pairings"] as AiSuggestionsState["pairings"]) ?? [],
-      detectedLanguage: s?.["detectedLanguage"] as string | undefined,
-      languageMismatch: (s?.["languageMismatch"] as boolean) ?? false,
-    };
+  // AI state (transient — not persisted in meta)
+  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestionsState>({
+    improvements: [],
+    pairings: [],
+    detectedLanguage: undefined,
+    languageMismatch: false,
   });
   const [aiRefreshing, setAiRefreshing] = useState(false);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());

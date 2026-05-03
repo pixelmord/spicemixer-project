@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
 import { scoreRecipe, RECIPE_REQUIRED, RECIPE_RECOMMENDED } from "@/lib/completeness.ts";
 import { slugify } from "@/lib/slugify.ts";
 import type { RecipeCollection } from "@/lib/content-store.ts";
@@ -27,8 +26,6 @@ interface AiSuggestion {
 }
 
 interface AiSuggestions {
-  contentHash: string;
-  generatedAt: string;
   improvements: AiSuggestion[];
   tags: string[];
   ingredientLinks: Array<{ pattern: string; slug: string; confidence: "high" | "medium" | "low" }>;
@@ -108,7 +105,6 @@ interface MetaData {
   goesWellWith: Array<{ collection: string; slug: string }>;
   usesBase: Array<{ collection: string; slug: string }>;
   variants: string[];
-  aiSuggestions?: AiSuggestions;
   imageAttribution?: ImageAttribution;
   recipeInstructionsAttribution?: Array<{ index: number } & ImageAttribution>;
 }
@@ -272,8 +268,8 @@ export default function RecipeForm({
       }
   >({ open: false });
 
-  // AI suggestions cache
-  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestions | undefined>(meta.aiSuggestions);
+  // AI suggestions cache (transient — not persisted in meta)
+  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestions | undefined>(undefined);
   const [aiRefreshing, setAiRefreshing] = useState(false);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
 
@@ -300,7 +296,7 @@ export default function RecipeForm({
     slug: string;
     confidence: "high" | "medium" | "low";
   }> | null>(null);
-  const [pendingRelations, setPendingRelations] = useState<Array<{
+  const [_pendingRelations, _setPendingRelations] = useState<Array<{
     kind: "goesWellWith" | "usesBase";
     collection: string;
     slug: string;
@@ -522,8 +518,6 @@ export default function RecipeForm({
         usesBase,
         kind:
           collection === "recipes" ? "recipe" : collection === "spicemixes" ? "spicemix" : "sauce",
-        // Preserve existing aiSuggestions — cleared by aiRefreshSuggestions when content changes
-        aiSuggestions,
         imageAttribution: imageAttribution || undefined,
         recipeInstructionsAttribution:
           recipeInstructionsAttribution.length > 0 ? recipeInstructionsAttribution : undefined,
@@ -749,7 +743,6 @@ export default function RecipeForm({
       language,
       tags,
       ingredientLinks,
-      aiSuggestions,
     };
     try {
       const { data } = await actions.aiRefreshSuggestions({
@@ -844,7 +837,6 @@ export default function RecipeForm({
       externalSources,
       goesWellWith,
       usesBase,
-      aiSuggestions,
     };
   }
 

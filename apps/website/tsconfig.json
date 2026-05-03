@@ -5,7 +5,8 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"],
-      "recipe-ingestion": ["../../packages/recipe-ingestion/src/index.ts"]
+      "recipe-ingestion": ["../../packages/recipe-ingestion/src/index.ts"],
+      "content-ai": ["../../packages/content-ai/src/index.ts"]
     },
     "jsx": "react-jsx",
     "jsxImportSource": "react"

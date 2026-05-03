@@ -29,59 +29,6 @@
   "variants": [],
   "translations": {},
   "kind": "spicemix",
-  "aiSuggestions": {
-    "contentHash": "b570ed00e0a4c1d6",
-    "generatedAt": "2026-04-29T20:06:11.110Z",
-    "improvements": [],
-    "tags": ["ethiopian", "spice-blend", "hearty-flavors", "fiery", "vegan", "cooking-essential"],
-    "ingredientLinks": [
-      {
-        "pattern": "chilli flakes",
-        "slug": "chili-powder",
-        "confidence": "medium"
-      },
-      {
-        "pattern": "fenugreek",
-        "slug": "fenugreek",
-        "confidence": "high"
-      },
-      {
-        "pattern": "cardamom",
-        "slug": "cardamom",
-        "confidence": "high"
-      }
-    ],
-    "relations": [
-      {
-        "kind": "goesWellWith",
-        "collection": "recipes",
-        "slug": "vegetable-beef-skillet",
-        "name": "Vegetable and Beef Skillet",
-        "rationale": "The robust flavors of Berbere complement the savory and hearty ingredients in the Vegetable and Beef Skillet."
-      },
-      {
-        "kind": "usesBase",
-        "collection": "spicemixes",
-        "slug": "ras-el-hanout",
-        "name": "Ras el Hanout",
-        "rationale": "Both Berbere and Ras el Hanout are complex spice blends that can be swapped in similar savory dishes or used to enhance marinades."
-      },
-      {
-        "kind": "goesWellWith",
-        "collection": "sauces",
-        "slug": "harissa",
-        "name": "Harissa",
-        "rationale": "Both Berbere and Harissa are spicy blends; they can be used together to elevate the heat and flavor in various dishes."
-      },
-      {
-        "kind": "goesWellWith",
-        "collection": "recipes",
-        "slug": "miso-butter-ramen",
-        "name": "Miso Butter Ramen",
-        "rationale": "Using Berbere as a spice can add an interesting twist to the umami-rich broth of the Miso Butter Ramen, enhancing its complexity."
-      }
-    ]
-  },
   "imageAttribution": {
     "source": "flickr",
     "sourceUrl": "https://www.flickr.com/photos/14125170@N02/8202081190",

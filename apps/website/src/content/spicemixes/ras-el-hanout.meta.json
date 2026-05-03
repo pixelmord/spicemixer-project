@@ -19,62 +19,6 @@
   "variants": [],
   "translations": {},
   "kind": "spicemix",
-  "aiSuggestions": {
-    "contentHash": "2ee6644a525da887",
-    "generatedAt": "2026-04-29T20:05:54.481Z",
-    "improvements": [],
-    "tags": [
-      "spice-blend",
-      "moroccan",
-      "north-african",
-      "aromatic",
-      "homemade",
-      "cooking-essentials",
-      "flavorful"
-    ],
-    "ingredientLinks": [
-      {
-        "pattern": "cumin",
-        "slug": "cumin",
-        "confidence": "high"
-      },
-      {
-        "pattern": "cardamom",
-        "slug": "cardamom",
-        "confidence": "high"
-      }
-    ],
-    "relations": [
-      {
-        "kind": "goesWellWith",
-        "collection": "recipes",
-        "slug": "preserved-lemon-couscous",
-        "name": "Preserved Lemon Couscous",
-        "rationale": "The brightness of preserved lemon complements the warm spices in Ras el Hanout, making for a harmonious dish."
-      },
-      {
-        "kind": "usesBase",
-        "collection": "spicemixes",
-        "slug": "berbere",
-        "name": "Berbere",
-        "rationale": "Berbere is another North African spice blend that shares some similar spices, making it a logical base for dishes that can also incorporate Ras el Hanout."
-      },
-      {
-        "kind": "goesWellWith",
-        "collection": "recipes",
-        "slug": "vegetable-beef-skillet",
-        "name": "Vegetable and Beef Skillet",
-        "rationale": "The hearty flavors of the vegetable and beef skillet can be enhanced by the complex spices in Ras el Hanout."
-      },
-      {
-        "kind": "goesWellWith",
-        "collection": "sauces",
-        "slug": "harissa",
-        "name": "Harissa",
-        "rationale": "Harissa, a spicy North African sauce, pairs well with the warm flavors of Ras el Hanout, enhancing the overall dish."
-      }
-    ]
-  },
   "imageAttribution": {
     "source": "flickr",
     "sourceUrl": "https://www.flickr.com/photos/16287002@N00/4490866682",

@@ -54,7 +54,6 @@ export type Meta = {
   ingredientLinks: IngredientLink[];
   externalSources: ExternalSource[];
   tags: string[];
-  aiSuggestions?: AiSuggestions;
 };
 
 const EMPTY_META: Meta = {

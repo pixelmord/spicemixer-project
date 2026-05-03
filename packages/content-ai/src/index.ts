@@ -64,3 +64,13 @@ export type { AiErrorCode } from "./errors.ts";
 
 export { searchImages } from "./search-images.ts";
 export type { ImageResult, SearchImagesOptions } from "./search-images.ts";
+
+export { aiEventSchema } from "./schemas/ai-events.ts";
+export type { AiEvent } from "./schemas/ai-events.ts";
+
+export { normalizePayload, hashSuggestion, hashContent } from "./hash.ts";
+
+export { ALLOWLIST, isAllowedAutoApply, assertAutoApplyAllowed } from "./auto-apply.ts";
+export type { AutoApplyKind, Confidence } from "./auto-apply.ts";
+
+export { prune, isSuppressed, filterSuggestions, appendEvent, recordAiEvent } from "./events.ts";

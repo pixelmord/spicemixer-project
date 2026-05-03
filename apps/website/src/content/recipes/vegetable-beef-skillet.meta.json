@@ -16,56 +16,5 @@
   "usesBase": [],
   "variants": [],
   "kind": "recipe",
-  "language": "en",
-  "aiSuggestions": {
-    "contentHash": "6b9b9e43c6cc2827",
-    "generatedAt": "2026-04-29T12:37:13.447Z",
-    "improvements": [
-      {
-        "field": "author",
-        "suggestion": "Jane Doe",
-        "rationale": "Common naming convention for recipe authors, suggesting a familiar and relatable name."
-      }
-    ],
-    "tags": [
-      "hearty-meal",
-      "ground-beef",
-      "vegetable-skillet",
-      "one-pan-dinner",
-      "cheesy",
-      "american-cuisine",
-      "simple-recipe"
-    ],
-    "ingredientLinks": [],
-    "relations": [
-      {
-        "kind": "goesWellWith",
-        "collection": "recipes",
-        "slug": "preserved-lemon-couscous",
-        "name": "Preserved Lemon Couscous",
-        "rationale": "The brightness of preserved lemon in the couscous complements the heartiness of the vegetable and beef skillet, adding a refreshing contrast."
-      },
-      {
-        "kind": "goesWellWith",
-        "collection": "recipes",
-        "slug": "miso-butter-ramen",
-        "name": "Miso Butter Ramen",
-        "rationale": "The umami from the miso butter ramen offers a rich flavor profile that pairs well with the savory beef and vegetables in the skillet."
-      },
-      {
-        "kind": "usesBase",
-        "collection": "spicemixes",
-        "slug": "berbere",
-        "name": "Berbere",
-        "rationale": "Using berbere spice can enhance the flavor of the beef and vegetables, bringing additional warmth and complexity to the dish."
-      },
-      {
-        "kind": "usesBase",
-        "collection": "spicemixes",
-        "slug": "ras-el-hanout",
-        "name": "Ras el Hanout",
-        "rationale": "Ras el Hanout can add depth and aromatic flavors to the vegetable and beef skillet, enriching the overall taste."
-      }
-    ]
-  }
+  "language": "en"
 }

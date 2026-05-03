@@ -763,20 +763,6 @@ export const server = {
         await import("content-ai");
       const store = await createStore();
 
-      const { createHash } = await import("node:crypto");
-      const metaForHash = { ...existingMeta } as Record<string, unknown>;
-      delete metaForHash["aiSuggestions"];
-      const contentHash = createHash("sha256")
-        .update(JSON.stringify({ ingredient, meta: metaForHash }))
-        .digest("hex")
-        .slice(0, 16);
-
-      // Skip if unchanged
-      const existing = existingMeta["aiSuggestions"] as Record<string, unknown> | undefined;
-      if (existing && existing["contentHash"] === contentHash) {
-        return { aiSuggestions: existing, autoLinked: 0, skipped: true };
-      }
-
       // Build inventory (exclude self)
       const items = await store.list("ingredients");
       const inventory = items
@@ -828,8 +814,6 @@ export const server = {
       const languageMismatch = !!(detectedLanguage && detectedLanguage !== locale);
 
       const aiSuggestions = {
-        contentHash,
-        generatedAt: new Date().toISOString(),
         improvements: filteredImprovements,
         pairings: proposedPairings.map((p) => ({
           slug: p.slug,
@@ -857,9 +841,6 @@ export const server = {
           }
         }
       }
-
-      const updatedMeta = { ...existingMeta, aiSuggestions };
-      await store.put("ingredientMeta", `${locale}/${slug}`, updatedMeta);
 
       return { aiSuggestions, autoLinked, skipped: false };
     },
@@ -1049,26 +1030,9 @@ export const server = {
       locale: z.string().length(2).default("en"),
       pairing: z.record(z.string(), z.unknown()),
     }),
-    handler: async ({ id, locale, pairing }) => {
+    handler: async ({ id: _id, locale, pairing }) => {
       const config = resolveAiConfig();
       const { proposePairingImprovements } = await import("content-ai");
-      const store = await createStore();
-
-      const { createHash } = await import("node:crypto");
-      const contentHash = createHash("sha256")
-        .update(JSON.stringify({ pairing, locale }))
-        .digest("hex")
-        .slice(0, 16);
-
-      const existingMeta = (await store.get("pairingMeta", id))?.data as
-        | Record<string, unknown>
-        | undefined;
-      const existingAi = (existingMeta?.["aiSuggestions"] as Record<string, unknown> | undefined)?.[
-        locale
-      ] as Record<string, unknown> | undefined;
-      if (existingAi && existingAi["contentHash"] === contentHash) {
-        return { aiSuggestions: existingMeta?.["aiSuggestions"], skipped: true };
-      }
 
       const descriptions = (pairing["descriptions"] as Record<string, string>) ?? {};
       const description =
@@ -1081,18 +1045,11 @@ export const server = {
         config,
       );
 
-      const aiBlock = {
-        contentHash,
-        generatedAt: new Date().toISOString(),
-        improvements: improvements.fields,
+      const aiSuggestions = {
+        [locale]: { improvements: improvements.fields },
       };
-      const updatedAi = {
-        ...((existingMeta?.["aiSuggestions"] as Record<string, unknown>) ?? {}),
-        [locale]: aiBlock,
-      };
-      await store.put("pairingMeta", id, { ...existingMeta, aiSuggestions: updatedAi });
 
-      return { aiSuggestions: updatedAi, skipped: false };
+      return { aiSuggestions, skipped: false };
     },
   }),
 
@@ -1210,24 +1167,6 @@ export const server = {
       } = await import("content-ai");
       const store = await createStore();
 
-      const { createHash } = await import("node:crypto");
-      const metaForHash = { ...meta } as Record<string, unknown>;
-      delete metaForHash["aiSuggestions"];
-      const contentHash = createHash("sha256")
-        .update(JSON.stringify({ recipe, meta: metaForHash }))
-        .digest("hex")
-        .slice(0, 16);
-
-      // Skip regen if content hasn't changed
-      const existing = (meta["aiSuggestions"] as Record<string, unknown> | undefined) ?? null;
-      if (existing && existing["contentHash"] === contentHash) {
-        return {
-          aiSuggestions: existing,
-          autoLinked: 0,
-          skipped: true,
-        };
-      }
-
       // Build inventories
       const ingredientItems = await store.list("ingredients");
       const inventory = ingredientItems
@@ -1298,17 +1237,18 @@ export const server = {
           !(typeof f.suggestion === "string" && PLACEHOLDER_PATTERNS.test(f.suggestion)),
       );
 
+      const detectedLanguage =
+        langResult.status === "fulfilled" && langResult.value
+          ? langResult.value.language
+          : undefined;
+      const ingredientLinks = linksResult.status === "fulfilled" ? linksResult.value : [];
+
       const aiSuggestions = {
-        contentHash,
-        generatedAt: new Date().toISOString(),
         improvements: filteredImprovements,
         tags: tagsResult.status === "fulfilled" ? tagsResult.value.tags : [],
-        ingredientLinks: linksResult.status === "fulfilled" ? linksResult.value : [],
+        ingredientLinks,
         relations: relationsResult.status === "fulfilled" ? relationsResult.value : [],
-        detectedLanguage:
-          langResult.status === "fulfilled" && langResult.value
-            ? langResult.value.language
-            : undefined,
+        detectedLanguage,
       };
 
       // Auto-apply: high-confidence ingredient links (additive only)
@@ -1316,14 +1256,11 @@ export const server = {
         ? (meta["ingredientLinks"] as Array<Record<string, unknown>>)
         : [];
       const existingPatterns = new Set(existingLinks.map((l) => String(l["pattern"] ?? "")));
-      const highConf = aiSuggestions.ingredientLinks.filter(
+      const highConf = ingredientLinks.filter(
         (l) => l.confidence === "high" && !existingPatterns.has(l.pattern),
       );
 
-      const updatedMeta: Record<string, unknown> = {
-        ...meta,
-        aiSuggestions,
-      };
+      const updatedMeta: Record<string, unknown> = { ...meta };
 
       if (highConf.length > 0) {
         updatedMeta["ingredientLinks"] = [
@@ -1333,9 +1270,9 @@ export const server = {
       }
 
       // Auto-apply: detected language when none is set
-      if (!meta["language"] && aiSuggestions.detectedLanguage) {
-        updatedMeta["language"] = aiSuggestions.detectedLanguage;
-        updatedMeta["locale"] = aiSuggestions.detectedLanguage;
+      if (!meta["language"] && detectedLanguage) {
+        updatedMeta["language"] = detectedLanguage;
+        updatedMeta["locale"] = detectedLanguage;
       }
 
       await store.put("meta", `${collection}/${slug}`, updatedMeta);
@@ -1396,18 +1333,15 @@ export const server = {
 
       await store.put(collection, translationSlug, translatedRecipe);
 
-      // Strip aiSuggestions from translation meta
       const translationMeta: Record<string, unknown> = {
         ...meta,
         draft: true,
         language: targetLocale,
         locale: targetLocale,
         translationOf: slug,
-        aiSuggestions: undefined,
         translations: {},
         variants: [],
       };
-      delete translationMeta["aiSuggestions"];
       await store.put("meta", `${collection}/${translationSlug}`, translationMeta);
 
       // Back-link original → translation

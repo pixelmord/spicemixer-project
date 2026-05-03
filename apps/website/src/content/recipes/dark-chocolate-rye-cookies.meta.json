@@ -9,49 +9,5 @@
   "translations": {},
   "language": "en",
   "locale": "en",
-  "kind": "recipe",
-  "aiSuggestions": {
-    "contentHash": "efea77f6cb81ab8d",
-    "generatedAt": "2026-05-02T12:31:26.562Z",
-    "improvements": [],
-    "tags": [
-      "dark-chocolate",
-      "rye-flour",
-      "chewy-cookies",
-      "scandinavian-dessert",
-      "baking",
-      "sweet-treats"
-    ],
-    "ingredientLinks": [],
-    "relations": [
-      {
-        "kind": "goesWellWith",
-        "collection": "recipes",
-        "slug": "preserved-lemon-couscous",
-        "name": "Preserved Lemon Couscous",
-        "rationale": "The zesty and bright flavors of preserved lemon in the couscous complement the deep chocolate notes of the cookies, providing a refreshing contrast."
-      },
-      {
-        "kind": "goesWellWith",
-        "collection": "recipes",
-        "slug": "miso-butter-ramen",
-        "name": "Miso Butter Ramen",
-        "rationale": "The umami richness of miso butter ramen can balance the sweetness of the dark chocolate rye cookies, making for an interesting flavor pairing."
-      },
-      {
-        "kind": "goesWellWith",
-        "collection": "sauces",
-        "slug": "mojo-rojo",
-        "name": "Mojo rojo zu Kartoffelspalten von Chefkoch-Video",
-        "rationale": "The tangy and spicy profile of mojo rojo can create an unexpected but delightful contrast to the sweetness of the cookies."
-      },
-      {
-        "kind": "goesWellWith",
-        "collection": "sauces",
-        "slug": "mojo-verde",
-        "name": "Original Mojo Verde from Tenerife",
-        "rationale": "Similar to mojo rojo, the herbaceous and slightly tangy flavor of mojo verde can pair surprisingly well with the richness of the cookies."
-      }
-    ]
-  }
+  "kind": "recipe"
 }

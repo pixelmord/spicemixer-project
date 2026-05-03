@@ -1,6 +1,7 @@
 import { defineCollection, z } from "astro:content";
 import { glob } from "astro/loaders";
 import { recipeSchema } from "recipe-ingestion";
+import { aiEventSchema } from "content-ai";
 
 const recipeLinkRef = z.object({
   collection: z.enum(["recipes", "spicemixes", "sauces"]),
@@ -12,41 +13,6 @@ const ingredientLinkItem = z.object({
   kind: z.enum(["ingredient", "recipe"]).default("ingredient"),
   slug: z.string(),
   collection: z.enum(["recipes", "spicemixes", "sauces"]).optional(),
-});
-
-const aiSuggestionsSchema = z.object({
-  contentHash: z.string(),
-  generatedAt: z.string(),
-  improvements: z
-    .array(
-      z.object({
-        field: z.string(),
-        suggestion: z.string(),
-        rationale: z.string(),
-      }),
-    )
-    .default([]),
-  tags: z.array(z.string()).default([]),
-  ingredientLinks: z
-    .array(
-      z.object({
-        pattern: z.string(),
-        slug: z.string(),
-        confidence: z.enum(["high", "medium", "low"]),
-      }),
-    )
-    .default([]),
-  relations: z
-    .array(
-      z.object({
-        kind: z.enum(["goesWellWith", "usesBase"]),
-        collection: z.enum(["recipes", "spicemixes", "sauces"]),
-        slug: z.string(),
-        name: z.string(),
-      }),
-    )
-    .default([]),
-  detectedLanguage: z.string().length(2).optional(),
 });
 
 const imageAttributionSchema = z
@@ -83,7 +49,7 @@ const recipeMetaSchema = z.object({
     )
     .default([]),
   tags: z.array(z.string()).default([]),
-  aiSuggestions: aiSuggestionsSchema.optional(),
+  aiEvents: z.array(aiEventSchema).default([]),
   imageAttribution: imageAttributionSchema,
   recipeInstructionsAttribution: z
     .array(
@@ -127,37 +93,9 @@ const pairingSchema = z.object({
   image: z.string().url().optional(),
 });
 
-const pairingAiBlockSchema = z.object({
-  contentHash: z.string(),
-  generatedAt: z.string(),
-  improvements: z
-    .array(z.object({ field: z.string(), suggestion: z.string(), rationale: z.string() }))
-    .default([]),
-  detectedLanguage: z.string().length(2).optional(),
-});
-
 const pairingMetaSchema = z.object({
-  aiSuggestions: z.record(z.string(), pairingAiBlockSchema).optional(),
+  aiEvents: z.array(aiEventSchema).default([]),
   imageAttribution: imageAttributionSchema,
-});
-
-const aiIngredientSuggestionsSchema = z.object({
-  contentHash: z.string(),
-  generatedAt: z.string(),
-  improvements: z
-    .array(z.object({ field: z.string(), suggestion: z.string(), rationale: z.string() }))
-    .default([]),
-  pairings: z
-    .array(
-      z.object({
-        slug: z.string(),
-        description: z.string(),
-        confidence: z.enum(["high", "medium", "low"]),
-      }),
-    )
-    .default([]),
-  detectedLanguage: z.string().length(2).optional(),
-  languageMismatch: z.boolean().default(false),
 });
 
 const ingredientMetaSchema = z.object({
@@ -165,7 +103,7 @@ const ingredientMetaSchema = z.object({
   draft: z.boolean().default(false),
   translationOf: z.string().optional(),
   translations: z.record(z.string(), z.string()).default({}),
-  aiSuggestions: aiIngredientSuggestionsSchema.optional(),
+  aiEvents: z.array(aiEventSchema).default([]),
   imageAttribution: imageAttributionSchema,
 });
 
