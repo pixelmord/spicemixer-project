@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils.ts";
 import SourcePicker, { type Source, type SourceMode } from "./SourcePicker.tsx";
 
 type ContentType = "recipe" | "ingredient" | "pairing";
-type RecipeCollection = "recipes" | "spicemixes" | "sauces";
+type RecipeCollection = "recipes" | "mixtures";
 type Locale = "en" | "de";
 
 const TABS: Array<{ id: SourceMode; label: string; icon: React.ReactNode }> = [
@@ -72,12 +72,7 @@ export default function AiComposeForm() {
         const { data, error: err } = await actions.aiGenerateRecipe({
           prompt: (source as { prompt: string }).prompt,
           locale,
-          style:
-            collection === "recipes"
-              ? "recipe"
-              : collection === "spicemixes"
-                ? "spicemix"
-                : "sauce",
+          style: collection === "recipes" ? "recipe" : "mixture",
         });
         if (err || !data) throw new Error(err?.message ?? "Generation failed");
         setResult(data.recipe as Record<string, unknown>);
@@ -226,8 +221,7 @@ export default function AiComposeForm() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="recipes">Recipes</SelectItem>
-                  <SelectItem value="spicemixes">Spicemixes</SelectItem>
-                  <SelectItem value="sauces">Sauces</SelectItem>
+                  <SelectItem value="mixtures">Mixtures</SelectItem>
                 </SelectContent>
               </Select>
             </div>

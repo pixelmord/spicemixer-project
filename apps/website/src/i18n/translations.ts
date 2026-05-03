@@ -10,6 +10,10 @@ const ui = {
     "page.ingredients.tagline": "Know your spices.",
     "page.ingredients.description":
       "In-depth guides to the spices, seeds, and aromatics that make great cooking possible.",
+    "page.mixtures.title": "Spicemixer — Mixtures",
+    "page.mixtures.tagline": "Built from scratch.",
+    "page.mixtures.description":
+      "Spice blends, sauces, rubs, and condiments made from whole spices.",
     "page.spicemixes.title": "Spicemixer — Spice Blends",
     "page.spicemixes.tagline": "Built from scratch.",
     "page.spicemixes.description":
@@ -44,9 +48,11 @@ const ui = {
     "section.externalRecipes": "Recipes using this",
     "nav.back": "← All recipes",
     "nav.back.ingredients": "← All ingredients",
+    "nav.back.mixtures": "← All mixtures",
     "nav.back.spicemixes": "← All spice blends",
     "nav.back.sauces": "← All sauces",
     "nav.ingredients": "Ingredients",
+    "nav.mixtures": "Mixtures",
     "nav.spicemixes": "Spice Blends",
     "nav.sauces": "Sauces",
     "nav.recipes": "Recipes",
@@ -67,6 +73,10 @@ const ui = {
     "page.ingredients.tagline": "Kenn deine Gewürze.",
     "page.ingredients.description":
       "Ausführliche Guides zu den Gewürzen, Samen und Aromen, die gutes Kochen erst möglich machen.",
+    "page.mixtures.title": "Spicemixer — Mischungen",
+    "page.mixtures.tagline": "Von Grund auf neu.",
+    "page.mixtures.description":
+      "Gewürzmischungen, Saucen, Rubs und Würzmittel aus ganzen Gewürzen.",
     "page.spicemixes.title": "Spicemixer — Gewürzmischungen",
     "page.spicemixes.tagline": "Von Grund auf neu.",
     "page.spicemixes.description":
@@ -101,9 +111,11 @@ const ui = {
     "section.externalRecipes": "Rezepte mit dieser Zutat",
     "nav.back": "← Alle Rezepte",
     "nav.back.ingredients": "← Alle Zutaten",
+    "nav.back.mixtures": "← Alle Mischungen",
     "nav.back.spicemixes": "← Alle Gewürzmischungen",
     "nav.back.sauces": "← Alle Saucen",
     "nav.ingredients": "Zutaten",
+    "nav.mixtures": "Mischungen",
     "nav.spicemixes": "Gewürzmischungen",
     "nav.sauces": "Saucen",
     "nav.recipes": "Rezepte",

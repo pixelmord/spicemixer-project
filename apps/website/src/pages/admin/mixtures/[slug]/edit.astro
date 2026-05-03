@@ -5,11 +5,11 @@ import RecipeForm from "@/components/admin/RecipeForm.tsx";
 import { createStore } from "@/lib/content-store.ts";
 
 const { slug } = Astro.params;
-if (!slug) return Astro.redirect("/admin/spicemixes");
+if (!slug) return Astro.redirect("/admin/mixtures");
 
 const store = await createStore();
-const [item, metaItem] = await Promise.all([store.get("spicemixes", slug), store.get("meta", `spicemixes/${slug}`)]);
-if (!item) return Astro.redirect("/admin/spicemixes");
+const [item, metaItem] = await Promise.all([store.get("mixtures", slug), store.get("meta", `mixtures/${slug}`)]);
+if (!item) return Astro.redirect("/admin/mixtures");
 
 const currentPath = Astro.url.pathname;
 ---
@@ -18,7 +18,7 @@ const currentPath = Astro.url.pathname;
     <link rel="stylesheet" href="/src/styles/global.css" /><title>{String((item.data as Record<string, unknown>).name ?? slug)} · Edit · Admin</title></head>
   <body>
     <AdminShell currentPath={currentPath} client:load>
-      <RecipeForm collection="spicemixes" slug={slug} initialRecipe={item.data as never} initialMeta={metaItem?.data as never} client:load />
+      <RecipeForm collection="mixtures" slug={slug} initialRecipe={item.data as never} initialMeta={metaItem?.data as never} client:load />
     </AdminShell>
   </body>
 </html>

@@ -17,12 +17,12 @@ describe("saveRecipe", () => {
   test("writes the meta sidecar when meta is provided", async () => {
     const store = new InMemoryStore();
     await saveRecipe(store, {
-      collection: "sauces",
+      collection: "mixtures",
       slug: "harissa",
       recipe: { name: "Harissa" },
       meta: { tags: ["spicy"] },
     });
-    const meta = await store.get("meta", "sauces/harissa");
+    const meta = await store.get("meta", "mixtures/harissa");
     expect(meta?.data).toEqual({ tags: ["spicy"] });
   });
 
@@ -66,7 +66,7 @@ describe("deleteRecipe", () => {
   test("is idempotent for nonexistent items", async () => {
     const store = new InMemoryStore();
     await expect(
-      deleteRecipe(store, { collection: "sauces", id: "ghost" }),
+      deleteRecipe(store, { collection: "mixtures", id: "ghost" }),
     ).resolves.toBeUndefined();
   });
 });
@@ -105,7 +105,7 @@ describe("unpublishRecipe", () => {
 });
 
 describe("save as draft (parameterized over recipe-shaped collections)", () => {
-  for (const collection of ["recipes", "spicemixes", "sauces"] as const) {
+  for (const collection of ["recipes", "mixtures"] as const) {
     test(`${collection}: saveRecipe with meta.draft=true persists draft state`, async () => {
       const store = new InMemoryStore();
       await saveRecipe(store, {

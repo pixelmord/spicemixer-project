@@ -1,55 +1,62 @@
 ---
 import { type CollectionEntry } from "astro:content";
-import BaseLayout from "../../layouts/BaseLayout.astro";
-import RecipeMeta from "../../components/RecipeMeta.astro";
-import RelatedList from "../../components/RelatedList.astro";
-import ExternalSourceList from "../../components/ExternalSourceList.astro";
-import { firstImage, keywordList, normalizeInstructions } from "../../lib/instructions.ts";
-import StepImage from "../../components/StepImage.astro";
-import StepsLightbox from "../../components/StepsLightbox.astro";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import RecipeMeta from "../../../components/RecipeMeta.astro";
+import RelatedList from "../../../components/RelatedList.astro";
+import ExternalSourceList from "../../../components/ExternalSourceList.astro";
+import { firstImage, keywordList, normalizeInstructions } from "../../../lib/instructions.ts";
+import StepImage from "../../../components/StepImage.astro";
+import StepsLightbox from "../../../components/StepsLightbox.astro";
 import {
   getMeta,
   getPublished,
   linkIngredients,
   annotateTextHtml,
   resolveRefs,
-} from "../../lib/recipe-augment.ts";
-import { useTranslations, type Lang } from "../../i18n/translations.ts";
+  resolveVariants,
+} from "../../../lib/recipe-augment.ts";
+import { useTranslations } from "../../../i18n/translations.ts";
 
 export async function getStaticPaths() {
-  const sauces = await getPublished("sauces");
-  return sauces.map((sauce) => ({
-    params: { slug: sauce.id },
-    props: { sauce },
+  const mixtures = await getPublished("mixtures");
+  return mixtures.map((mix) => ({
+    params: { slug: mix.id },
+    props: { mix },
   }));
 }
 
 interface Props {
-  sauce: CollectionEntry<"sauces">;
+  mix: CollectionEntry<"mixtures">;
 }
 
-const { sauce } = Astro.props;
-const data = sauce.data;
-const slug = sauce.id;
+const { mix } = Astro.props;
+const data = mix.data;
+const slug = mix.id;
 
-const t = useTranslations((Astro.currentLocale ?? "en") as Lang);
-const locale = Astro.currentLocale ?? "en";
-const prefix = locale === "de" ? "/de" : "";
-const ingredientBase = `${prefix}/ingredients`;
+const t = useTranslations("de");
+const prefix = "/de";
+const ingredientBase = "/de/ingredients";
 
 const image = firstImage(data.image);
 const tags = keywordList(data.keywords);
 const steps = normalizeInstructions(data.recipeInstructions);
-const transitionName = `sauce-${slug}`;
+const transitionName = `mixture-${slug}`;
 const jsonLd = JSON.stringify(data);
 
-const meta = await getMeta("sauces", slug);
+const meta = await getMeta("mixtures", slug);
 const linkedIngredients = linkIngredients(data.recipeIngredient, meta.ingredientLinks);
 
-const [goesWellWithItems, usesBaseItems] = await Promise.all([
+const [goesWellWithItems, usesBaseItems, variantItems] = await Promise.all([
   resolveRefs(meta.goesWellWith, prefix),
   resolveRefs(meta.usesBase, prefix),
+  resolveVariants("mixtures", meta.variants, prefix),
 ]);
+
+let variantOfItem: { name: string; href: string } | null = null;
+if (meta.variantOf) {
+  const [item] = await resolveVariants("mixtures", [meta.variantOf], prefix);
+  variantOfItem = item ?? null;
+}
 const lightboxSteps = steps.map((step) => ({
   ...step,
   html: annotateTextHtml(step.text, meta.ingredientLinks, ingredientBase),
@@ -58,19 +65,9 @@ const lightboxSteps = steps.map((step) => ({
 
 <BaseLayout title={`${data.name} — Spicemixer`} description={data.description}>
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-    <nav class="mb-8 flex items-center justify-between text-sm">
-      <a
-        href={`${prefix}/sauces/`}
-        class="text-stone-500 transition hover:text-stone-900"
-      >
-        {t("nav.back.sauces")}
-      </a>
-      <a
-        href={`/admin/sauces/${slug}/edit`}
-        data-admin-link
-        class="hidden text-xs text-stone-400 transition hover:text-stone-700"
-      >
-        Edit
+    <nav class="mb-8 text-sm">
+      <a href="/de/mixtures/" class="text-stone-500 transition hover:text-stone-900">
+        {t("nav.back.mixtures")}
       </a>
     </nav>
 
@@ -80,23 +77,17 @@ const lightboxSteps = steps.map((step) => ({
           class="mb-8 overflow-hidden rounded-3xl"
           style={`view-transition-name: ${transitionName};`}
         >
-          <img
-            src={image}
-            alt={data.name}
-            class="aspect-[16/9] w-full object-cover"
-          />
+          <img src={image} alt={data.name} class="aspect-[16/9] w-full object-cover" />
         </figure>
       ) : (
         <div
-          class="mb-8 rounded-3xl bg-gradient-to-br from-rose-50 via-stone-50 to-amber-50 p-10"
+          class="mb-8 rounded-3xl bg-gradient-to-br from-amber-50 via-stone-50 to-orange-50 p-10"
           style={`view-transition-name: ${transitionName};`}
         >
           <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
             {[data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ")}
           </p>
-          <h1 class="mt-3 font-serif text-5xl leading-tight text-stone-900">
-            {data.name}
-          </h1>
+          <h1 class="mt-3 font-serif text-5xl leading-tight text-stone-900">{data.name}</h1>
         </div>
       )
     }
@@ -107,18 +98,21 @@ const lightboxSteps = steps.map((step) => ({
           <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
             {[data.recipeCategory, data.recipeCuisine].filter(Boolean).join(" · ")}
           </p>
-          <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900">
-            {data.name}
-          </h1>
+          <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900">{data.name}</h1>
         </header>
       )
     }
 
-    {
-      data.description && (
-        <p class="mb-6 text-lg italic text-stone-700">{data.description}</p>
-      )
-    }
+    {variantOfItem && (
+      <p class="mb-4 text-sm text-stone-500">
+        {t("section.variantOf")}{" "}
+        <a href={variantOfItem.href} class="text-amber-700 underline decoration-dotted underline-offset-2 hover:text-amber-900">
+          {variantOfItem.name}
+        </a>
+      </p>
+    )}
+
+    {data.description && <p class="mb-6 text-lg italic text-stone-700">{data.description}</p>}
 
     <div class="mb-10 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
       <RecipeMeta
@@ -131,18 +125,13 @@ const lightboxSteps = steps.map((step) => ({
     </div>
 
     <section class="mb-10">
-      <h2 class="mb-3 font-serif text-2xl text-stone-900">
-        {t("section.ingredients")}
-      </h2>
+      <h2 class="mb-3 font-serif text-2xl text-stone-900">{t("section.ingredients")}</h2>
       <ul class="space-y-1.5">
         {
           linkedIngredients.map(({ text, slug: ingSlug }) => (
             <li class="border-b border-dashed border-stone-200 pb-1.5 text-stone-800">
               {ingSlug ? (
-                <a
-                  href={`${ingredientBase}/${ingSlug}/`}
-                  class="underline decoration-dotted underline-offset-2 text-amber-700 hover:text-amber-900"
-                >
+                <a href={`${ingredientBase}/${ingSlug}/`} class="underline decoration-dotted underline-offset-2 text-amber-700 hover:text-amber-900">
                   {text}
                 </a>
               ) : (
@@ -155,9 +144,7 @@ const lightboxSteps = steps.map((step) => ({
     </section>
 
     <section class="mb-10">
-      <h2 class="mb-3 font-serif text-2xl text-stone-900">
-        {t("section.instructions")}
-      </h2>
+      <h2 class="mb-3 font-serif text-2xl text-stone-900">{t("section.instructions")}</h2>
       <ol class="space-y-4">
         {
           steps.map((step, i) => (
@@ -167,16 +154,8 @@ const lightboxSteps = steps.map((step) => ({
               </span>
               <div class="flex flex-1 items-start gap-3">
                 <p class="flex-1 text-stone-800">
-                  {step.name && (
-                    <strong class="block text-stone-900">{step.name}</strong>
-                  )}
-                  <Fragment
-                    set:html={annotateTextHtml(
-                      step.text,
-                      meta.ingredientLinks,
-                      ingredientBase
-                    )}
-                  />
+                  {step.name && <strong class="block text-stone-900">{step.name}</strong>}
+                  <Fragment set:html={annotateTextHtml(step.text, meta.ingredientLinks, ingredientBase)} />
                 </p>
                 {step.image && <StepImage src={step.image} alt={step.name ?? ""} stepIndex={i} />}
               </div>
@@ -188,19 +167,15 @@ const lightboxSteps = steps.map((step) => ({
 
     <RelatedList heading={t("section.goesWellWith")} items={goesWellWithItems} />
     <RelatedList heading={t("section.usesBase")} items={usesBaseItems} />
-    <ExternalSourceList
-      heading={t("section.externalRecipes")}
-      sources={meta.externalSources}
-    />
+    <RelatedList heading={t("section.variants")} items={variantItems} />
+    <ExternalSourceList heading={t("section.externalRecipes")} sources={meta.externalSources} />
 
     {
       tags.length > 0 && (
         <footer class="border-t border-stone-200 pt-6">
           <ul class="flex flex-wrap gap-2">
             {tags.map((tag) => (
-              <li class="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">
-                {tag}
-              </li>
+              <li class="rounded-full bg-stone-100 px-3 py-1 text-xs text-stone-600">{tag}</li>
             ))}
           </ul>
         </footer>

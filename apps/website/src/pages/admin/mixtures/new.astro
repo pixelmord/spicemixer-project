@@ -1,15 +1,15 @@
 ---
 export const prerender = false;
 import AdminShell from "@/components/admin/AdminShell.tsx";
-import ImportFromUrl from "@/components/admin/ImportFromUrl.tsx";
+import NewRecipePage from "@/components/admin/NewRecipePage.tsx";
 const currentPath = Astro.url.pathname;
 ---
 <html lang="en">
   <head><meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" /><title>Import sauce · Admin</title></head>
+    <link rel="stylesheet" href="/src/styles/global.css" /><title>New mixture · Admin</title></head>
   <body>
     <AdminShell currentPath={currentPath} client:load>
-      <ImportFromUrl client:load />
+      <NewRecipePage collection="mixtures" client:load />
     </AdminShell>
   </body>
 </html>

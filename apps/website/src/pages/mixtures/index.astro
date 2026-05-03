@@ -1,20 +1,21 @@
 ---
-import BaseLayout from "../../../layouts/BaseLayout.astro";
-import FilterBar from "../../../components/FilterBar.astro";
-import RecipeMeta from "../../../components/RecipeMeta.astro";
-import { firstImage, keywordList } from "../../../lib/instructions.ts";
-import { getPublished } from "../../../lib/recipe-augment.ts";
-import { useTranslations } from "../../../i18n/translations.ts";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import FilterBar from "../../components/FilterBar.astro";
+import RecipeMeta from "../../components/RecipeMeta.astro";
+import { firstImage, keywordList } from "../../lib/instructions.ts";
+import { getPublished } from "../../lib/recipe-augment.ts";
+import { useTranslations, type Lang } from "../../i18n/translations.ts";
 
-const t = useTranslations("de");
-const prefix = "/de";
+const t = useTranslations((Astro.currentLocale ?? "en") as Lang);
+const locale = Astro.currentLocale ?? "en";
+const prefix = locale === "de" ? "/de" : "";
 
-const spicemixes = (await getPublished("spicemixes")).sort((a, b) =>
+const mixtures = (await getPublished("mixtures")).sort((a, b) =>
   (b.data.datePublished ?? "").localeCompare(a.data.datePublished ?? ""),
 );
 
-const cuisines = [...new Set(spicemixes.map((r) => r.data.recipeCuisine).filter((c): c is string => Boolean(c)))].sort();
-const tags = [...new Set(spicemixes.flatMap((r) => keywordList(r.data.keywords)))].sort();
+const cuisines = [...new Set(mixtures.map((r) => r.data.recipeCuisine).filter((c): c is string => Boolean(c)))].sort();
+const tags = [...new Set(mixtures.flatMap((r) => keywordList(r.data.keywords)))].sort();
 
 const groups = [
   { key: "cuisine", label: t("filter.cuisine"), values: cuisines.map((v) => ({ value: v, label: v })) },
@@ -22,25 +23,25 @@ const groups = [
 ];
 ---
 
-<BaseLayout title={t("page.spicemixes.title")} description={t("page.spicemixes.description")}>
+<BaseLayout title={t("page.mixtures.title")} description={t("page.mixtures.description")}>
   <main class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
     <header class="mb-10">
       <p class="text-xs font-semibold uppercase tracking-[0.3em] text-stone-500">Spicemixer</p>
       <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900 sm:text-6xl">
-        {t("page.spicemixes.tagline")}
+        {t("page.mixtures.tagline")}
       </h1>
-      <p class="mt-3 max-w-2xl text-lg text-stone-600">{t("page.spicemixes.description")}</p>
+      <p class="mt-3 max-w-2xl text-lg text-stone-600">{t("page.mixtures.description")}</p>
     </header>
 
-    <FilterBar groups={groups} totalCount={spicemixes.length} />
+    <FilterBar groups={groups} totalCount={mixtures.length} />
 
     <section class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
       {
-        spicemixes.map((mix) => {
-          const href = `${prefix}/spicemixes/${mix.id}/`;
+        mixtures.map((mix) => {
+          const href = `${prefix}/mixtures/${mix.id}/`;
           const image = firstImage(mix.data.image);
           const cardTags = keywordList(mix.data.keywords);
-          const transitionName = `spicemix-${mix.id}`;
+          const transitionName = `mixture-${mix.id}`;
           const fallbackLabel = [mix.data.recipeCategory, mix.data.recipeCuisine].filter(Boolean).join(" · ") || t("recipe.fallback");
           return (
             <article

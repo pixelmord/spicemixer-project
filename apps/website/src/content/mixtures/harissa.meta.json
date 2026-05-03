@@ -35,14 +35,14 @@
       },
       {
         "kind": "usesBase",
-        "collection": "spicemixes",
+        "collection": "mixtures",
         "slug": "berbere",
         "name": "Berbere",
         "rationale": "Berbere is another North African spice blend that shares similar warm spices with Harissa, and can be used to enhance the flavor profile of various dishes."
       },
       {
         "kind": "usesBase",
-        "collection": "spicemixes",
+        "collection": "mixtures",
         "slug": "ras-el-hanout",
         "name": "Ras el Hanout",
         "rationale": "Ras el Hanout features a complex mix of spices that can be used alongside Harissa to deepen the flavor in Tunisian recipes."
@@ -70,5 +70,6 @@
     }
   ],
   "language": "en",
-  "locale": "en"
+  "locale": "en",
+  "kind": "sauce"
 }

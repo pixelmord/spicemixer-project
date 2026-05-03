@@ -135,7 +135,7 @@ export default function ContentTable({ initialRows }: { initialRows: ContentRow[
 
     const action = row.draft ? actions.publish : actions.unpublish;
     const { error } = await action({
-      collection: row.collection as "recipes" | "spicemixes" | "sauces",
+      collection: row.collection as "recipes" | "mixtures",
       id: row.id,
     });
     if (error) {
@@ -165,7 +165,7 @@ export default function ContentTable({ initialRows }: { initialRows: ContentRow[
     }
 
     const { error } = await actions.deleteItem({
-      collection: row.collection as "recipes" | "spicemixes" | "sauces" | "ingredients",
+      collection: row.collection as "recipes" | "mixtures" | "ingredients",
       id: row.id,
     });
     if (error) {

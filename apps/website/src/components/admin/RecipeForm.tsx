@@ -520,8 +520,7 @@ export default function RecipeForm({
         externalSources: externalSources.filter((s) => s.url.trim()),
         goesWellWith,
         usesBase,
-        kind:
-          collection === "recipes" ? "recipe" : collection === "spicemixes" ? "spicemix" : "sauce",
+        kind: collection === "recipes" ? "recipe" : "mixture",
         // Preserve existing aiSuggestions — cleared by aiRefreshSuggestions when content changes
         aiSuggestions,
         imageAttribution: imageAttribution || undefined,
@@ -1804,7 +1803,7 @@ export default function RecipeForm({
                         )
                       }
                       options={recipeOptions}
-                      placeholder="Select recipes, spicemixes, sauces…"
+                      placeholder="Select recipes, mixtures…"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -1820,7 +1819,7 @@ export default function RecipeForm({
                         )
                       }
                       options={recipeOptions}
-                      placeholder="Select base recipes or spicemixes…"
+                      placeholder="Select base recipes or mixtures…"
                     />
                   </div>
                 </CardContent>

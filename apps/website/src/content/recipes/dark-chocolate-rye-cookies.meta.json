@@ -40,14 +40,14 @@
       },
       {
         "kind": "goesWellWith",
-        "collection": "sauces",
+        "collection": "mixtures",
         "slug": "mojo-rojo",
         "name": "Mojo rojo zu Kartoffelspalten von Chefkoch-Video",
         "rationale": "The tangy and spicy profile of mojo rojo can create an unexpected but delightful contrast to the sweetness of the cookies."
       },
       {
         "kind": "goesWellWith",
-        "collection": "sauces",
+        "collection": "mixtures",
         "slug": "mojo-verde",
         "name": "Original Mojo Verde from Tenerife",
         "rationale": "Similar to mojo rojo, the herbaceous and slightly tangy flavor of mojo verde can pair surprisingly well with the richness of the cookies."

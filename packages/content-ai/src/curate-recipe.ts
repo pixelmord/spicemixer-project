@@ -199,7 +199,7 @@ Rules:
 
 export interface RelationProposal {
   kind: "goesWellWith" | "usesBase";
-  collection: "recipes" | "spicemixes" | "sauces";
+  collection: "recipes" | "mixtures";
   slug: string;
   name: string;
   rationale: string;
@@ -244,7 +244,7 @@ export async function proposeRelations(
     relations: z.array(
       z.object({
         kind: z.enum(["goesWellWith", "usesBase"]),
-        collection: z.enum(["recipes", "spicemixes", "sauces"]),
+        collection: z.enum(["recipes", "mixtures"]),
         slug: z.string(),
         name: z.string(),
         rationale: z.string(),
@@ -284,7 +284,7 @@ ${candidatesList}
 
 Return up to 4 relations:
 - "goesWellWith": recipes this pairs or serves well alongside
-- "usesBase": recipes/spicemixes this recipe uses as a base ingredient (e.g. a spice blend used in a dish)
+- "usesBase": recipes/mixtures this recipe uses as a base ingredient (e.g. a spice blend used in a dish)
 
 Only suggest relations with clear culinary logic. Return empty if nothing fits.`,
     });

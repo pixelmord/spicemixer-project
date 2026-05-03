@@ -38,14 +38,14 @@
       },
       {
         "kind": "goesWellWith",
-        "collection": "sauces",
+        "collection": "mixtures",
         "slug": "mojo-rojo",
         "name": "Mojo rojo",
         "rationale": "The smoky and spicy notes of mojo rojo enhance the sweet and savory characteristics of the tomato confit."
       },
       {
         "kind": "goesWellWith",
-        "collection": "sauces",
+        "collection": "mixtures",
         "slug": "mojo-verde",
         "name": "Original Mojo Verde from Tenerife",
         "rationale": "The herbal and citrusy flavors of mojo verde pair nicely with the garlicky tomato confit, adding depth."

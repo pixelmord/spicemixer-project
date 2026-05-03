@@ -54,7 +54,7 @@
       },
       {
         "kind": "usesBase",
-        "collection": "spicemixes",
+        "collection": "mixtures",
         "slug": "berbere",
         "name": "Berbere",
         "rationale": "Berbere is another North African spice blend that shares some similar spices, making it a logical base for dishes that can also incorporate Ras el Hanout."
@@ -68,7 +68,7 @@
       },
       {
         "kind": "goesWellWith",
-        "collection": "sauces",
+        "collection": "mixtures",
         "slug": "harissa",
         "name": "Harissa",
         "rationale": "Harissa, a spicy North African sauce, pairs well with the warm flavors of Ras el Hanout, enhancing the overall dish."

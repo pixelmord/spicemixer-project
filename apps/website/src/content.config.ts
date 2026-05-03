@@ -3,7 +3,7 @@ import { glob } from "astro/loaders";
 import { recipeSchema } from "recipe-ingestion";
 
 const recipeLinkRef = z.object({
-  collection: z.enum(["recipes", "spicemixes", "sauces"]),
+  collection: z.enum(["recipes", "mixtures"]),
   slug: z.string(),
 });
 
@@ -11,7 +11,7 @@ const ingredientLinkItem = z.object({
   pattern: z.string(),
   kind: z.enum(["ingredient", "recipe"]).default("ingredient"),
   slug: z.string(),
-  collection: z.enum(["recipes", "spicemixes", "sauces"]).optional(),
+  collection: z.enum(["recipes", "mixtures"]).optional(),
 });
 
 const aiSuggestionsSchema = z.object({
@@ -40,7 +40,7 @@ const aiSuggestionsSchema = z.object({
     .array(
       z.object({
         kind: z.enum(["goesWellWith", "usesBase"]),
-        collection: z.enum(["recipes", "spicemixes", "sauces"]),
+        collection: z.enum(["recipes", "mixtures"]),
         slug: z.string(),
         name: z.string(),
       }),
@@ -174,21 +174,16 @@ const recipes = defineCollection({
   schema: recipeSchema,
 });
 
-const spicemixes = defineCollection({
-  loader: glob({ pattern: "[^.]+.json", base: "./src/content/spicemixes" }),
+const mixtures = defineCollection({
+  loader: glob({ pattern: "[^.]+.json", base: "./src/content/mixtures" }),
   schema: recipeSchema,
 });
 
-const sauces = defineCollection({
-  loader: glob({ pattern: "[^.]+.json", base: "./src/content/sauces" }),
-  schema: recipeSchema,
-});
-
-// Meta files colocated with content: recipes/slug.meta.json, sauces/slug.meta.json, etc.
-// IDs are "recipes/slug", "sauces/slug", "spicemixes/slug" — same as before.
+// Meta files colocated with content: recipes/slug.meta.json, mixtures/slug.meta.json, etc.
+// IDs are "recipes/slug", "mixtures/slug" — same as before.
 const meta = defineCollection({
   loader: glob({
-    pattern: "{recipes,sauces,spicemixes}/*.meta.json",
+    pattern: "{recipes,mixtures}/*.meta.json",
     base: "./src/content",
     generateId: ({ entry }) => entry.replace(".meta.json", ""),
   }),
@@ -229,8 +224,7 @@ const pairingMeta = defineCollection({
 
 export const collections = {
   recipes,
-  spicemixes,
-  sauces,
+  mixtures,
   meta,
   ingredients,
   pairings,

@@ -5,17 +5,16 @@ import { createStore } from "@/lib/content-store.ts";
 import { scoreRecipe, scoreIngredient } from "@/lib/completeness.ts";
 
 const store = await createStore();
-const [recipes, spicemixes, sauces, metas, ingredients] = await Promise.all([
+const [recipes, mixtures, metas, ingredients] = await Promise.all([
   store.list("recipes"),
-  store.list("spicemixes"),
-  store.list("sauces"),
+  store.list("mixtures"),
   store.list("meta"),
   store.list("ingredients"),
 ]);
 
 const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown>]));
 
-const allRecipes = [...recipes, ...spicemixes, ...sauces];
+const allRecipes = [...recipes, ...mixtures];
 const published = allRecipes.filter((r) => {
   const meta = metaMap.get(`${r.collection}/${r.id}`) ?? {};
   return !(meta as Record<string, unknown>).draft;

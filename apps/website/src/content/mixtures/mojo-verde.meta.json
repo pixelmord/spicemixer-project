@@ -58,7 +58,7 @@
       },
       {
         "kind": "goesWellWith",
-        "collection": "sauces",
+        "collection": "mixtures",
         "slug": "mojo-rojo",
         "name": "Mojo rojo zu Kartoffelspalten von Chefkoch-Video",
         "rationale": "Both mojo sauces can enhance the flavor of grilled dishes, offering a diverse sauce selection."
@@ -72,7 +72,7 @@
       },
       {
         "kind": "usesBase",
-        "collection": "spicemixes",
+        "collection": "mixtures",
         "slug": "berbere",
         "name": "Berbere",
         "rationale": "While not directly related, the robust spices in Berbere would harmonize with the cumin in Mojo Verde, complementing its flavors in a fusion dish."

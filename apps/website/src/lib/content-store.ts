@@ -1,4 +1,4 @@
-export type RecipeCollection = "recipes" | "spicemixes" | "sauces";
+export type RecipeCollection = "recipes" | "mixtures";
 export type Collection =
   | RecipeCollection
   | "ingredients"
@@ -9,7 +9,7 @@ export type Collection =
 
 export interface ContentItem<T = unknown> {
   collection: Collection;
-  /** Bare slug for recipes/spicemixes/sauces; "en/cardamom" for ingredients; "recipes/miso-butter-ramen" for meta. */
+  /** Bare slug for recipes/mixtures; "en/cardamom" for ingredients; "recipes/miso-butter-ramen" for meta. */
   id: string;
   data: T;
   updatedAt?: string;

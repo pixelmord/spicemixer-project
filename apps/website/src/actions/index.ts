@@ -83,7 +83,7 @@ function resolveAiConfig() {
   };
 }
 
-const recipeCollectionEnum = z.enum(["recipes", "spicemixes", "sauces"]);
+const recipeCollectionEnum = z.enum(["recipes", "mixtures"]);
 
 // ──────────────────────────────────────────────
 // Helper: build the combined listing used by the content table
@@ -91,24 +91,22 @@ const recipeCollectionEnum = z.enum(["recipes", "spicemixes", "sauces"]);
 
 async function buildListing() {
   const store = await createStore();
-  const [recipes, spicemixes, sauces, metas, ingredients, ingredientMetas, pairings] =
-    await Promise.all([
-      store.list("recipes"),
-      store.list("spicemixes"),
-      store.list("sauces"),
-      store.list("meta"),
-      store.list("ingredients"),
-      store.list("ingredientMeta"),
-      store.list("pairings"),
-    ]);
+  const [recipes, mixtures, metas, ingredients, ingredientMetas, pairings] = await Promise.all([
+    store.list("recipes"),
+    store.list("mixtures"),
+    store.list("meta"),
+    store.list("ingredients"),
+    store.list("ingredientMeta"),
+    store.list("pairings"),
+  ]);
 
   const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown>]));
   const ingredientMetaMap = new Map(
     ingredientMetas.map((m) => [m.id, m.data as Record<string, unknown>]),
   );
 
-  const recipeItems = [...recipes, ...spicemixes, ...sauces].map((item) => {
-    const collection = item.collection as "recipes" | "spicemixes" | "sauces";
+  const recipeItems = [...recipes, ...mixtures].map((item) => {
+    const collection = item.collection as "recipes" | "mixtures";
     const metaId = `${collection}/${item.id}`;
     const meta = metaMap.get(metaId) ?? {};
     const completeness = scoreRecipe(item.data as Record<string, unknown>, meta);
@@ -175,7 +173,7 @@ export const server = {
   /** Fetch a single content item + its meta (if applicable). */
   getItem: defineAction({
     input: z.object({
-      collection: z.enum(["recipes", "spicemixes", "sauces", "ingredients", "meta"]),
+      collection: z.enum(["recipes", "mixtures", "ingredients", "meta"]),
       id: z.string(),
     }),
     handler: async ({ collection, id }) => {
@@ -183,7 +181,7 @@ export const server = {
       const item = await store.get(collection, id);
       if (!item) return null;
       // For recipe collections also fetch the meta sidecar
-      if (collection === "recipes" || collection === "spicemixes" || collection === "sauces") {
+      if (collection === "recipes" || collection === "mixtures") {
         const meta = await store.get("meta", `${collection}/${id}`);
         return { item, meta: meta?.data ?? null };
       }
@@ -326,7 +324,7 @@ export const server = {
   /** Delete a content item (and its meta sidecar if it's a recipe collection). */
   deleteItem: defineAction({
     input: z.object({
-      collection: z.enum(["recipes", "spicemixes", "sauces", "ingredients"]),
+      collection: z.enum(["recipes", "mixtures", "ingredients"]),
       id: z.string(),
     }),
     handler: async ({ collection, id }) => {
@@ -412,14 +410,13 @@ export const server = {
     },
   }),
 
-  /** Return a flat list of recipe/spicemix/sauce slugs + names for use in combobox fields. */
+  /** Return a flat list of recipe/mixture slugs + names for use in combobox fields. */
   listRecipeOptions: defineAction({
     handler: async () => {
       const store = await createStore();
-      const [recipes, spicemixes, sauces] = await Promise.all([
+      const [recipes, mixtures] = await Promise.all([
         store.list("recipes"),
-        store.list("spicemixes"),
-        store.list("sauces"),
+        store.list("mixtures"),
       ]);
       return [
         ...recipes.map((item) => ({
@@ -427,13 +424,8 @@ export const server = {
           slug: item.id,
           name: String((item.data as Record<string, unknown>).name ?? item.id),
         })),
-        ...spicemixes.map((item) => ({
-          collection: "spicemixes" as const,
-          slug: item.id,
-          name: String((item.data as Record<string, unknown>).name ?? item.id),
-        })),
-        ...sauces.map((item) => ({
-          collection: "sauces" as const,
+        ...mixtures.map((item) => ({
+          collection: "mixtures" as const,
           slug: item.id,
           name: String((item.data as Record<string, unknown>).name ?? item.id),
         })),
@@ -503,7 +495,7 @@ export const server = {
     input: z.object({
       prompt: z.string().min(3),
       locale: z.enum(["en", "de"]).default("en"),
-      style: z.enum(["recipe", "spicemix", "sauce"]).default("recipe"),
+      style: z.enum(["recipe", "mixture"]).default("recipe"),
     }),
     handler: async ({ prompt, locale, style }) => {
       const config = resolveAiConfig();
@@ -1100,7 +1092,7 @@ export const server = {
   checkSlugAvailable: defineAction({
     accept: "json",
     input: z.object({
-      collection: z.enum(["recipes", "spicemixes", "sauces", "ingredients"]),
+      collection: z.enum(["recipes", "mixtures", "ingredients"]),
       slug: z.string().min(1),
     }),
     handler: async ({ collection, slug }) => {
@@ -1237,10 +1229,9 @@ export const server = {
           name: String((i.data as Record<string, unknown>)["name"] ?? i.id.slice(3)),
         }));
 
-      const [recipes, spicemixes, sauces] = await Promise.all([
+      const [recipes, mixtures] = await Promise.all([
         store.list("recipes"),
-        store.list("spicemixes"),
-        store.list("sauces"),
+        store.list("mixtures"),
       ]);
       const existingRecipes = [
         ...recipes.map((r) => ({
@@ -1251,13 +1242,8 @@ export const server = {
             | string[]
             | undefined,
         })),
-        ...spicemixes.map((r) => ({
-          collection: "spicemixes" as const,
-          slug: r.id,
-          name: String((r.data as Record<string, unknown>).name ?? r.id),
-        })),
-        ...sauces.map((r) => ({
-          collection: "sauces" as const,
+        ...mixtures.map((r) => ({
+          collection: "mixtures" as const,
           slug: r.id,
           name: String((r.data as Record<string, unknown>).name ?? r.id),
         })),
@@ -1443,8 +1429,7 @@ export const server = {
       });
       await store.put("meta", `${collection}/${slug}`, {
         draft: true,
-        kind:
-          collection === "recipes" ? "recipe" : collection === "spicemixes" ? "spicemix" : "sauce",
+        kind: collection === "recipes" ? "recipe" : "mixture",
         tags: [],
         ingredientLinks: [],
         externalSources: [],

@@ -61,14 +61,14 @@
       },
       {
         "kind": "usesBase",
-        "collection": "spicemixes",
+        "collection": "mixtures",
         "slug": "ras-el-hanout",
         "name": "Ras el Hanout",
         "rationale": "Both Berbere and Ras el Hanout are complex spice blends that can be swapped in similar savory dishes or used to enhance marinades."
       },
       {
         "kind": "goesWellWith",
-        "collection": "sauces",
+        "collection": "mixtures",
         "slug": "harissa",
         "name": "Harissa",
         "rationale": "Both Berbere and Harissa are spicy blends; they can be used together to elevate the heat and flavor in various dishes."

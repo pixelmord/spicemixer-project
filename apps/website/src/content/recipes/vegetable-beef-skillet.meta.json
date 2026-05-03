@@ -54,14 +54,14 @@
       },
       {
         "kind": "usesBase",
-        "collection": "spicemixes",
+        "collection": "mixtures",
         "slug": "berbere",
         "name": "Berbere",
         "rationale": "Using berbere spice can enhance the flavor of the beef and vegetables, bringing additional warmth and complexity to the dish."
       },
       {
         "kind": "usesBase",
-        "collection": "spicemixes",
+        "collection": "mixtures",
         "slug": "ras-el-hanout",
         "name": "Ras el Hanout",
         "rationale": "Ras el Hanout can add depth and aromatic flavors to the vegetable and beef skillet, enriching the overall taste."

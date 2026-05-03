@@ -16,7 +16,7 @@ import {
 import { createStore } from "@/lib/content-store.ts";
 import type { RecipeCollection } from "@/lib/content-store.ts";
 
-const VALID_COLLECTIONS: RecipeCollection[] = ["recipes", "spicemixes", "sauces"];
+const VALID_COLLECTIONS: RecipeCollection[] = ["recipes", "mixtures"];
 
 const { collection, slug } = Astro.params;
 if (!collection || !slug || !VALID_COLLECTIONS.includes(collection as RecipeCollection)) {
