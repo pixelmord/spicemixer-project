@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { InMemoryStore } from "../../src/lib/stores/in-memory.ts";
+import { createMetaSidecar, PAIRING_META } from "../../src/lib/meta-sidecar.ts";
 import {
   savePairing,
   togglePairingDraft,
@@ -99,25 +100,27 @@ describe("savePairing", () => {
 
   test("deletePairing removes both the pairing and its meta sidecar", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("pairings", "anise--cardamom", { ingredients: ["anise", "cardamom"] });
-    await store.put("pairingMeta", "anise--cardamom", { imageAttribution: { source: "x" } });
+    await store.put(PAIRING_META, "anise--cardamom", { imageAttribution: { source: "x" } });
 
-    await deletePairing(store, { id: "anise--cardamom" });
+    await deletePairing(store, sidecar, { id: "anise--cardamom" });
 
     expect(await store.get("pairings", "anise--cardamom")).toBeNull();
-    expect(await store.get("pairingMeta", "anise--cardamom")).toBeNull();
+    expect(await store.get(PAIRING_META, "anise--cardamom")).toBeNull();
   });
 
   test("savePairingMeta merge-patches existing meta", async () => {
     const store = new InMemoryStore();
-    await store.put("pairingMeta", "anise--cardamom", {
+    const sidecar = createMetaSidecar(store);
+    await store.put(PAIRING_META, "anise--cardamom", {
       imageAttribution: { source: "Openverse" },
     });
-    await savePairingMeta(store, {
+    await savePairingMeta(store, sidecar, {
       id: "anise--cardamom",
       patch: { aiSuggestions: { en: { contentHash: "abc" } } },
     });
-    const meta = await store.get("pairingMeta", "anise--cardamom");
+    const meta = await store.get(PAIRING_META, "anise--cardamom");
     expect(meta?.data).toEqual({
       imageAttribution: { source: "Openverse" },
       aiSuggestions: { en: { contentHash: "abc" } },
@@ -162,8 +165,8 @@ describe("savePairing", () => {
       description: "Warm and licorice-y.",
       locale: "en",
     });
-    const pairingMeta = await store.get("pairingMeta", "anise--cardamom");
-    expect(pairingMeta).toBeNull();
+    const meta = await store.get(PAIRING_META, "anise--cardamom");
+    expect(meta).toBeNull();
   });
 
   test("clears image when empty string is supplied", async () => {

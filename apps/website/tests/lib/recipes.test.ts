@@ -1,11 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
 import { InMemoryStore } from "../../src/lib/stores/in-memory.ts";
+import { createMetaSidecar } from "../../src/lib/meta-sidecar.ts";
 import { saveRecipe, deleteRecipe, publishRecipe, unpublishRecipe } from "../../src/lib/recipes.ts";
 
 describe("saveRecipe", () => {
   test("persists a new recipe to its collection", async () => {
     const store = new InMemoryStore();
-    await saveRecipe(store, {
+    const sidecar = createMetaSidecar(store);
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
@@ -16,7 +18,8 @@ describe("saveRecipe", () => {
 
   test("writes the meta sidecar when meta is provided", async () => {
     const store = new InMemoryStore();
-    await saveRecipe(store, {
+    const sidecar = createMetaSidecar(store);
+    await saveRecipe(store, sidecar, {
       collection: "mixtures",
       slug: "harissa",
       recipe: { name: "Harissa" },
@@ -28,8 +31,9 @@ describe("saveRecipe", () => {
 
   test("does not touch meta sidecar when meta is undefined", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("meta", "recipes/miso-ramen", { tags: ["existing"] });
-    await saveRecipe(store, {
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen v2" },
@@ -40,8 +44,9 @@ describe("saveRecipe", () => {
 
   test("overwrites an existing recipe", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("recipes", "miso-ramen", { name: "Old Name", description: "old" });
-    await saveRecipe(store, {
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe: { name: "New Name" },
@@ -54,7 +59,8 @@ describe("saveRecipe", () => {
 describe("saveRecipe — canonicalLocale", () => {
   test("stamps canonicalLocale from meta.locale on first save", async () => {
     const store = new InMemoryStore();
-    await saveRecipe(store, {
+    const sidecar = createMetaSidecar(store);
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
@@ -66,13 +72,14 @@ describe("saveRecipe — canonicalLocale", () => {
 
   test("does not overwrite canonicalLocale on subsequent saves", async () => {
     const store = new InMemoryStore();
-    await saveRecipe(store, {
+    const sidecar = createMetaSidecar(store);
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
       meta: { locale: "de", draft: true },
     });
-    await saveRecipe(store, {
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
@@ -84,7 +91,8 @@ describe("saveRecipe — canonicalLocale", () => {
 
   test("does not stamp canonicalLocale when meta.locale is absent", async () => {
     const store = new InMemoryStore();
-    await saveRecipe(store, {
+    const sidecar = createMetaSidecar(store);
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
@@ -98,10 +106,11 @@ describe("saveRecipe — canonicalLocale", () => {
 describe("deleteRecipe", () => {
   test("removes both the recipe and its meta sidecar", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("recipes", "miso-ramen", { name: "Miso Ramen" });
     await store.put("meta", "recipes/miso-ramen", { tags: ["soup"] });
 
-    await deleteRecipe(store, { collection: "recipes", id: "miso-ramen" });
+    await deleteRecipe(store, sidecar, { collection: "recipes", id: "miso-ramen" });
 
     expect(await store.get("recipes", "miso-ramen")).toBeNull();
     expect(await store.get("meta", "recipes/miso-ramen")).toBeNull();
@@ -109,8 +118,9 @@ describe("deleteRecipe", () => {
 
   test("is idempotent for nonexistent items", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await expect(
-      deleteRecipe(store, { collection: "mixtures", id: "ghost" }),
+      deleteRecipe(store, sidecar, { collection: "mixtures", id: "ghost" }),
     ).resolves.toBeUndefined();
   });
 });
@@ -118,9 +128,10 @@ describe("deleteRecipe", () => {
 describe("publishRecipe", () => {
   test("sets meta.draft to false, preserving other meta fields", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("meta", "recipes/miso-ramen", { draft: true, tags: ["soup"] });
 
-    await publishRecipe(store, { collection: "recipes", id: "miso-ramen" });
+    await publishRecipe(store, sidecar, { collection: "recipes", id: "miso-ramen" });
 
     const meta = await store.get("meta", "recipes/miso-ramen");
     expect(meta?.data).toEqual({ draft: false, tags: ["soup"] });
@@ -128,8 +139,9 @@ describe("publishRecipe", () => {
 
   test("creates the meta sidecar if it does not exist", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
 
-    await publishRecipe(store, { collection: "recipes", id: "miso-ramen" });
+    await publishRecipe(store, sidecar, { collection: "recipes", id: "miso-ramen" });
 
     const meta = await store.get("meta", "recipes/miso-ramen");
     expect(meta?.data).toEqual({ draft: false });
@@ -139,9 +151,10 @@ describe("publishRecipe", () => {
 describe("unpublishRecipe", () => {
   test("sets meta.draft to true, preserving other meta fields", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("meta", "recipes/miso-ramen", { draft: false, tags: ["soup"] });
 
-    await unpublishRecipe(store, { collection: "recipes", id: "miso-ramen" });
+    await unpublishRecipe(store, sidecar, { collection: "recipes", id: "miso-ramen" });
 
     const meta = await store.get("meta", "recipes/miso-ramen");
     expect(meta?.data).toEqual({ draft: true, tags: ["soup"] });
@@ -152,7 +165,8 @@ describe("save as draft (parameterized over recipe-shaped collections)", () => {
   for (const collection of ["recipes", "mixtures"] as const) {
     test(`${collection}: saveRecipe with meta.draft=true persists draft state`, async () => {
       const store = new InMemoryStore();
-      await saveRecipe(store, {
+      const sidecar = createMetaSidecar(store);
+      await saveRecipe(store, sidecar, {
         collection,
         slug: "demo",
         recipe: { name: "Demo" },
@@ -164,13 +178,14 @@ describe("save as draft (parameterized over recipe-shaped collections)", () => {
 
     test(`${collection}: unpublishRecipe flips an existing published item to draft`, async () => {
       const store = new InMemoryStore();
-      await saveRecipe(store, {
+      const sidecar = createMetaSidecar(store);
+      await saveRecipe(store, sidecar, {
         collection,
         slug: "demo",
         recipe: { name: "Demo" },
         meta: { draft: false, tags: ["wip"] },
       });
-      await unpublishRecipe(store, { collection, id: "demo" });
+      await unpublishRecipe(store, sidecar, { collection, id: "demo" });
       const meta = await store.get("meta", `${collection}/demo`);
       expect(meta?.data).toEqual(expect.objectContaining({ draft: true, tags: ["wip"] }));
     });
@@ -180,7 +195,8 @@ describe("save as draft (parameterized over recipe-shaped collections)", () => {
 describe("saveRecipe — translation-sync wiring", () => {
   test("canonical save stamps canonicalContentHash into meta", async () => {
     const store = new InMemoryStore();
-    await saveRecipe(store, {
+    const sidecar = createMetaSidecar(store);
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
@@ -192,7 +208,8 @@ describe("saveRecipe — translation-sync wiring", () => {
 
   test("canonical save flags translation children stale when content changes", async () => {
     const store = new InMemoryStore();
-    await saveRecipe(store, {
+    const sidecar = createMetaSidecar(store);
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
@@ -200,7 +217,7 @@ describe("saveRecipe — translation-sync wiring", () => {
     });
     await store.put("meta", "recipes/miso-ramen-de", { translationOf: "miso-ramen" });
 
-    await saveRecipe(store, {
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen updated" },
@@ -215,8 +232,9 @@ describe("saveRecipe — translation-sync wiring", () => {
 
   test("canonical save with unchanged content does not re-flag translations", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     const recipe = { name: "Miso Ramen" };
-    await saveRecipe(store, {
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe,
@@ -224,7 +242,7 @@ describe("saveRecipe — translation-sync wiring", () => {
     });
     await store.put("meta", "recipes/miso-ramen-de", { translationOf: "miso-ramen" });
 
-    await saveRecipe(store, {
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen",
       recipe,
@@ -237,9 +255,10 @@ describe("saveRecipe — translation-sync wiring", () => {
 
   test("translation-side save does not flag canonical", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("meta", "recipes/miso-ramen", { canonicalLocale: "en" });
 
-    await saveRecipe(store, {
+    await saveRecipe(store, sidecar, {
       collection: "recipes",
       slug: "miso-ramen-de",
       recipe: { name: "Miso Ramen DE" },

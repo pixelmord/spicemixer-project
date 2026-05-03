@@ -1,5 +1,6 @@
 import { getEntry, getCollection } from "astro:content";
 import type { MixtureKind } from "./mixture-schema.ts";
+import { INGREDIENT_META } from "./meta-sidecar.ts";
 
 /** Locale-aware ingredient lookup with EN fallback. */
 export async function getIngredient(slug: string, locale: string) {
@@ -79,7 +80,7 @@ export async function getPublished<K extends RecipeKind>(kind: K) {
 export async function getPublishedIngredients(locale?: string) {
   const [rawEntries, rawMeta] = await Promise.all([
     getCollection("ingredients"),
-    getCollection("ingredientMeta"),
+    getCollection(INGREDIENT_META),
   ]);
   const entries = rawEntries as { id: string }[];
   const allMeta = rawMeta as MetaEntry[];
@@ -123,10 +124,8 @@ export function annotateTextHtml(
 
   for (const link of sorted) {
     const { pattern, slug, kind, collection } = link;
-    const href =
-      kind === "recipe"
-        ? `${recipeBase}/${collection ?? "recipes"}/${slug}/`
-        : `${ingredientBase}/${slug}/`;
+    const col = collection ?? "recipes";
+    const href = kind === "recipe" ? `${recipeBase}/${col}/${slug}/` : `${ingredientBase}/${slug}/`;
     const next: Span[] = [];
     for (const span of spans) {
       if (span.slug) {
@@ -183,7 +182,7 @@ export async function getPairings(slug: string): Promise<PairingEntity[]> {
 }
 
 export async function getIngredientMeta(locale: string, slug: string) {
-  const entry = await getEntry("ingredientMeta", `${locale}/${slug}`);
+  const entry = await getEntry(INGREDIENT_META, `${locale}/${slug}`);
   return (entry?.data ?? null) as import("../content.config.ts").IngredientMeta | null;
 }
 
@@ -247,7 +246,8 @@ export async function resolveRefs(
         e = await getEntry("mixtures", slug);
       }
       if (!e) return null;
-      return { name: e.data.name, href: `${localePrefix}/${collection}/${slug}/` };
+      const itemPath = collection + "/" + slug;
+      return { name: e.data.name, href: `${localePrefix}/${itemPath}/` };
     }),
   );
   return results.filter((x): x is NonNullable<typeof x> => x !== null);

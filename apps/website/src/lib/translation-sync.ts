@@ -1,15 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Collection, ContentStore, RecipeCollection } from "./content-store.ts";
-
-type SyncCollection = "ingredients" | RecipeCollection;
-
-function metaCollectionFor(collection: SyncCollection): Collection {
-  return collection === "ingredients" ? "ingredientMeta" : "meta";
-}
-
-function metaTarget(collection: SyncCollection, key: string): [Collection, string] {
-  return collection === "ingredients" ? ["ingredientMeta", key] : ["meta", `${collection}/${key}`];
-}
+import type { MetaSidecar, MetaRef, SyncCollection } from "./meta-sidecar.ts";
 
 function normalizeValue(value: unknown): unknown {
   if (value === null || value === undefined) return value;
@@ -33,35 +23,39 @@ export function contentHash(record: Record<string, unknown>): string {
 }
 
 export async function flagTranslationsStale(
-  store: ContentStore,
+  sidecar: MetaSidecar,
   collection: SyncCollection,
   canonicalKey: string,
 ): Promise<void> {
   const now = new Date().toISOString();
-  const metaCollection = metaCollectionFor(collection);
-  const items = await store.list(metaCollection);
-
-  for (const item of items) {
-    if (metaCollection === "meta" && !item.id.startsWith(`${collection}/`)) continue;
-    const data = item.data as Record<string, unknown>;
-    if (data["translationOf"] !== canonicalKey) continue;
-    if (data["translationStaleSince"] != null) continue;
-    await store.put(metaCollection, item.id, { ...data, translationStaleSince: now });
+  const items = await sidecar.listSync(collection);
+  for (const { metaCollection, id, data } of items) {
+    const d = data as Record<string, unknown>;
+    if (d["translationOf"] !== canonicalKey) continue;
+    if (d["translationStaleSince"] != null) continue;
+    await sidecar.updateById(metaCollection, id, { ...d, translationStaleSince: now });
   }
 }
 
+function refFromKey(collection: SyncCollection, key: string): MetaRef {
+  if (collection === "ingredients") {
+    const slash = key.indexOf("/");
+    return { collection, locale: key.slice(0, slash), slug: key.slice(slash + 1) };
+  }
+  return { collection, slug: key };
+}
+
 export async function clearStaleFlag(
-  store: ContentStore,
+  sidecar: MetaSidecar,
   collection: SyncCollection,
   key: string,
 ): Promise<void> {
-  const [metaCol, metaKey] = metaTarget(collection, key);
-  const item = await store.get(metaCol, metaKey);
+  const ref = refFromKey(collection, key);
+  const item = await sidecar.read(ref);
   if (item === null) return;
   const data = item.data as Record<string, unknown>;
-  await store.put(
-    metaCol,
-    metaKey,
+  await sidecar.write(
+    ref,
     Object.fromEntries(Object.entries(data).filter(([k]) => k !== "translationStaleSince")),
   );
 }

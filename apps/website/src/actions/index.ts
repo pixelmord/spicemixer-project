@@ -1,6 +1,7 @@
 import { defineAction, ActionError } from "astro:actions";
 import { z } from "astro/zod";
 import { createStore } from "@/lib/content-store.ts";
+import { createMetaSidecar, INGREDIENT_META } from "@/lib/meta-sidecar.ts";
 import { fetchRecipe } from "recipe-ingestion";
 import { scoreRecipe, scoreIngredient, scorePairing } from "@/lib/completeness.ts";
 import {
@@ -96,7 +97,7 @@ async function buildListing() {
     store.list("mixtures"),
     store.list("meta"),
     store.list("ingredients"),
-    store.list("ingredientMeta"),
+    store.list(INGREDIENT_META),
     store.list("pairings"),
   ]);
 
@@ -200,7 +201,8 @@ export const server = {
     }),
     handler: async ({ collection, slug, recipe, meta }) => {
       const store = await createStore();
-      const result = await libSaveRecipe(store, { collection, slug, recipe, meta });
+      const sidecar = createMetaSidecar(store);
+      const result = await libSaveRecipe(store, sidecar, { collection, slug, recipe, meta });
       return { ok: true, slug: result.slug };
     },
   }),
@@ -216,7 +218,8 @@ export const server = {
     }),
     handler: async ({ locale, slug, ingredient, meta }) => {
       const store = await createStore();
-      const result = await libSaveIngredient(store, { locale, slug, ingredient, meta });
+      const sidecar = createMetaSidecar(store);
+      const result = await libSaveIngredient(store, sidecar, { locale, slug, ingredient, meta });
       return { ok: true, slug: result.slug };
     },
   }),
@@ -270,7 +273,8 @@ export const server = {
     input: z.object({ id: z.string().min(1) }),
     handler: async ({ id }) => {
       const store = await createStore();
-      await libDeletePairing(store, { id });
+      const sidecar = createMetaSidecar(store);
+      await libDeletePairing(store, sidecar, { id });
       return { ok: true };
     },
   }),
@@ -329,10 +333,11 @@ export const server = {
     }),
     handler: async ({ collection, id }) => {
       const store = await createStore();
+      const sidecar = createMetaSidecar(store);
       if (collection === "ingredients") {
-        await libDeleteIngredient(store, { id });
+        await libDeleteIngredient(store, sidecar, { id });
       } else {
-        await libDeleteRecipe(store, { collection, id });
+        await libDeleteRecipe(store, sidecar, { collection, id });
       }
       return { ok: true };
     },
@@ -343,7 +348,8 @@ export const server = {
     input: z.object({ collection: recipeCollectionEnum, id: z.string() }),
     handler: async ({ collection, id }) => {
       const store = await createStore();
-      await libPublishRecipe(store, { collection, id });
+      const sidecar = createMetaSidecar(store);
+      await libPublishRecipe(store, sidecar, { collection, id });
       return { ok: true };
     },
   }),
@@ -353,27 +359,30 @@ export const server = {
     input: z.object({ collection: recipeCollectionEnum, id: z.string() }),
     handler: async ({ collection, id }) => {
       const store = await createStore();
-      await libUnpublishRecipe(store, { collection, id });
+      const sidecar = createMetaSidecar(store);
+      await libUnpublishRecipe(store, sidecar, { collection, id });
       return { ok: true };
     },
   }),
 
-  /** Set ingredientMeta.draft = false (publish). */
+  /** Set ingredient meta draft = false (publish). */
   publishIngredient: defineAction({
     input: z.object({ locale: z.enum(["en", "de"]), slug: z.string().min(1) }),
     handler: async ({ locale, slug }) => {
       const store = await createStore();
-      await libPublishIngredient(store, { locale, slug });
+      const sidecar = createMetaSidecar(store);
+      await libPublishIngredient(store, sidecar, { locale, slug });
       return { ok: true };
     },
   }),
 
-  /** Set ingredientMeta.draft = true (unpublish). */
+  /** Set ingredient meta draft = true (unpublish). */
   unpublishIngredient: defineAction({
     input: z.object({ locale: z.enum(["en", "de"]), slug: z.string().min(1) }),
     handler: async ({ locale, slug }) => {
       const store = await createStore();
-      await libUnpublishIngredient(store, { locale, slug });
+      const sidecar = createMetaSidecar(store);
+      await libUnpublishIngredient(store, sidecar, { locale, slug });
       return { ok: true };
     },
   }),
@@ -458,7 +467,13 @@ export const server = {
     }),
     handler: async ({ locale, slug, name, category }) => {
       const store = await createStore();
-      const result = await libQuickCreateIngredient(store, { locale, slug, name, category });
+      const sidecar = createMetaSidecar(store);
+      const result = await libQuickCreateIngredient(store, sidecar, {
+        locale,
+        slug,
+        name,
+        category,
+      });
       return { ok: true, slug: result.slug };
     },
   }),
@@ -870,25 +885,26 @@ export const server = {
         config,
       );
 
+      const sidecar = createMetaSidecar(store);
       const translatedIngredient = { ...ingredient, ...translation.fields };
       await store.put("ingredients", `${targetLocale}/${slug}`, translatedIngredient);
 
       // Create minimal ingredient meta for the translation
-      await store.put("ingredientMeta", `${targetLocale}/${slug}`, {
-        kind: "ingredient",
-        translationOf: `${sourceLocale}/${slug}`,
-        translations: {},
-      });
+      await sidecar.write(
+        { collection: "ingredients", locale: targetLocale, slug },
+        { kind: "ingredient", translationOf: `${sourceLocale}/${slug}`, translations: {} },
+      );
 
       // Back-link: update source meta to record the translation
-      const sourceMeta = (await store.get("ingredientMeta", `${sourceLocale}/${slug}`))?.data as
+      const sourceRef = { collection: "ingredients" as const, locale: sourceLocale, slug };
+      const sourceMeta = (await sidecar.read(sourceRef))?.data as
         | Record<string, unknown>
         | undefined;
       const currentTranslations =
         typeof sourceMeta?.["translations"] === "object" && sourceMeta["translations"] !== null
           ? (sourceMeta["translations"] as Record<string, string>)
           : {};
-      await store.put("ingredientMeta", `${sourceLocale}/${slug}`, {
+      await sidecar.write(sourceRef, {
         ...sourceMeta,
         translations: { ...currentTranslations, [targetLocale]: `${targetLocale}/${slug}` },
       });
@@ -1084,7 +1100,8 @@ export const server = {
     }),
     handler: async ({ locale, slug, patch }) => {
       const store = await createStore();
-      await libSaveIngredientMeta(store, { locale, slug, patch });
+      const sidecar = createMetaSidecar(store);
+      await libSaveIngredientMeta(store, sidecar, { locale, slug, patch });
       return { ok: true };
     },
   }),
@@ -1098,7 +1115,8 @@ export const server = {
     }),
     handler: async ({ id, patch }) => {
       const store = await createStore();
-      await libSavePairingMeta(store, { id, patch });
+      const sidecar = createMetaSidecar(store);
+      await libSavePairingMeta(store, sidecar, { id, patch });
       return { ok: true };
     },
   }),
@@ -1158,6 +1176,7 @@ export const server = {
         detectLanguage,
       } = await import("content-ai");
       const store = await createStore();
+      const sidecar = createMetaSidecar(store);
 
       // Build inventories
       const ingredientItems = await store.list("ingredients");
@@ -1261,7 +1280,7 @@ export const server = {
         updatedMeta["locale"] = detectedLanguage;
       }
 
-      await store.put("meta", `${collection}/${slug}`, updatedMeta);
+      await sidecar.write({ collection, slug }, updatedMeta);
 
       return {
         aiSuggestions,
@@ -1299,6 +1318,7 @@ export const server = {
       const config = resolveAiConfig();
       const { proposeRecipeTranslation } = await import("content-ai");
       const store = await createStore();
+      const sidecar = createMetaSidecar(store);
 
       const existing = await store.get(collection, translationSlug);
       if (existing) {
@@ -1328,17 +1348,20 @@ export const server = {
         translations: {},
         variants: [],
       };
-      await store.put("meta", `${collection}/${translationSlug}`, translationMeta);
+      await sidecar.write({ collection, slug: translationSlug }, translationMeta);
 
       // Back-link original → translation
       const currentTranslations =
         typeof meta["translations"] === "object" && meta["translations"] !== null
           ? (meta["translations"] as Record<string, string>)
           : {};
-      await store.put("meta", `${collection}/${slug}`, {
-        ...meta,
-        translations: { ...currentTranslations, [targetLocale]: translationSlug },
-      });
+      await sidecar.write(
+        { collection, slug },
+        {
+          ...meta,
+          translations: { ...currentTranslations, [targetLocale]: translationSlug },
+        },
+      );
 
       return { ok: true, translationSlug };
     },
@@ -1354,6 +1377,7 @@ export const server = {
     }),
     handler: async ({ collection, slug, name }) => {
       const store = await createStore();
+      const sidecar = createMetaSidecar(store);
       await store.put(collection, slug, {
         "@context": "https://schema.org",
         "@type": "Recipe",
@@ -1361,16 +1385,19 @@ export const server = {
         recipeIngredient: [""],
         recipeInstructions: [{ "@type": "HowToStep", text: "" }],
       });
-      await store.put("meta", `${collection}/${slug}`, {
-        draft: true,
-        kind: collection === "recipes" ? "recipe" : "mixture",
-        tags: [],
-        ingredientLinks: [],
-        externalSources: [],
-        goesWellWith: [],
-        usesBase: [],
-        variants: [],
-      });
+      await sidecar.write(
+        { collection, slug },
+        {
+          draft: true,
+          kind: collection === "recipes" ? "recipe" : "mixture",
+          tags: [],
+          ingredientLinks: [],
+          externalSources: [],
+          goesWellWith: [],
+          usesBase: [],
+          variants: [],
+        },
+      );
       return { ok: true, slug };
     },
   }),

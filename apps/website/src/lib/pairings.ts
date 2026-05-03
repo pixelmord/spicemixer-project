@@ -1,4 +1,5 @@
 import type { ContentStore } from "./content-store.ts";
+import type { MetaSidecar } from "./meta-sidecar.ts";
 import { NotFoundError } from "./errors.ts";
 
 export interface SavePairingInput {
@@ -46,17 +47,23 @@ export async function togglePairingDraft(
   });
 }
 
-export async function deletePairing(store: ContentStore, input: { id: string }): Promise<void> {
+export async function deletePairing(
+  store: ContentStore,
+  sidecar: MetaSidecar,
+  input: { id: string },
+): Promise<void> {
   await store.delete("pairings", input.id);
-  await store.delete("pairingMeta", input.id);
+  await sidecar.remove({ collection: "pairings", slug: input.id });
 }
 
 export async function savePairingMeta(
-  store: ContentStore,
+  _store: ContentStore,
+  sidecar: MetaSidecar,
   input: { id: string; patch: Record<string, unknown> },
 ): Promise<void> {
-  const existing = await store.get("pairingMeta", input.id);
-  await store.put("pairingMeta", input.id, {
+  const ref = { collection: "pairings" as const, slug: input.id };
+  const existing = await sidecar.read(ref);
+  await sidecar.write(ref, {
     ...((existing?.data as Record<string, unknown>) ?? {}),
     ...input.patch,
   });

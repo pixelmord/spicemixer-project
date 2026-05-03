@@ -2,8 +2,9 @@ import type { Collection, ContentItem, ContentStore } from "../content-store.ts"
 
 /**
  * In-memory ContentStore for tests. Mirrors LocalFsStore's locale-prefix
- * filter for ingredients/ingredientMeta so tests faithfully exercise the
- * contract that production code sees.
+ * filter for ingredients so tests faithfully exercise the contract that
+ * production code sees. ingredientMeta keys are always locale-prefixed
+ * because MetaSidecar is the only write path.
  */
 export class InMemoryStore implements ContentStore {
   #items = new Map<string, ContentItem>();
@@ -14,7 +15,7 @@ export class InMemoryStore implements ContentStore {
 
   async list(collection: Collection): Promise<ContentItem[]> {
     const items = Array.from(this.#items.values()).filter((i) => i.collection === collection);
-    if (collection === "ingredients" || collection === "ingredientMeta") {
+    if (collection === "ingredients") {
       return items.filter((item) => /^[a-z]{2}\//.test(item.id));
     }
     return items;

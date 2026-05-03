@@ -44,7 +44,7 @@ export class LocalFsStore implements ContentStore {
       const dir = join(CONTENT_ROOT, "ingredients");
       const items: ContentItem[] = [];
       await this.#walkDir(dir, collection, items, dir, { suffix: ".meta.json" });
-      return items.filter((item) => /^[a-z]{2}\//.test(item.id));
+      return items;
     }
 
     if (collection === "pairingMeta") {

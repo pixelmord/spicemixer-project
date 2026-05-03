@@ -1,4 +1,5 @@
 import type { ContentStore } from "./content-store.ts";
+import type { MetaSidecar } from "./meta-sidecar.ts";
 import { contentHash, flagTranslationsStale } from "./translation-sync.ts";
 
 export type Locale = "en" | "de";
@@ -12,12 +13,13 @@ export interface SaveIngredientInput {
 
 export async function saveIngredient(
   store: ContentStore,
+  sidecar: MetaSidecar,
   input: SaveIngredientInput,
 ): Promise<{ slug: string }> {
-  const key = `${input.locale}/${input.slug}`;
-  await store.put("ingredients", key, input.ingredient);
+  const ref = { collection: "ingredients" as const, locale: input.locale, slug: input.slug };
+  await store.put("ingredients", `${input.locale}/${input.slug}`, input.ingredient);
   if (input.meta !== undefined) {
-    const existing = await store.get("ingredientMeta", key);
+    const existing = await sidecar.read(ref);
     const existingData = (existing?.data as Record<string, unknown>) ?? {};
     const canonicalLocale =
       (existingData["canonicalLocale"] as string | undefined) ??
@@ -36,11 +38,11 @@ export async function saveIngredient(
       const storedHash = existingData["canonicalContentHash"] as string | undefined;
       mergedMeta["canonicalContentHash"] = newHash;
       if (newHash !== storedHash) {
-        await flagTranslationsStale(store, "ingredients", key);
+        await flagTranslationsStale(sidecar, "ingredients", `${input.locale}/${input.slug}`);
       }
     }
 
-    await store.put("ingredientMeta", key, mergedMeta);
+    await sidecar.write(ref, mergedMeta);
   }
   return { slug: input.slug };
 }
@@ -54,6 +56,7 @@ export interface QuickCreateIngredientInput {
 
 export async function quickCreateIngredient(
   store: ContentStore,
+  sidecar: MetaSidecar,
   input: QuickCreateIngredientInput,
 ): Promise<{ slug: string }> {
   await store.put("ingredients", `${input.locale}/${input.slug}`, {
@@ -64,16 +67,24 @@ export async function quickCreateIngredient(
     flavorNotes: [],
     pairings: [],
   });
-  await store.put("ingredientMeta", `${input.locale}/${input.slug}`, {
-    draft: true,
-    canonicalLocale: input.locale,
-  });
+  await sidecar.write(
+    { collection: "ingredients", locale: input.locale, slug: input.slug },
+    { draft: true, canonicalLocale: input.locale },
+  );
   return { slug: input.slug };
 }
 
-export async function deleteIngredient(store: ContentStore, input: { id: string }): Promise<void> {
+export async function deleteIngredient(
+  store: ContentStore,
+  sidecar: MetaSidecar,
+  input: { id: string },
+): Promise<void> {
   await store.delete("ingredients", input.id);
-  await store.delete("ingredientMeta", input.id);
+  // id is "locale/slug" — parse for the sidecar ref
+  const slash = input.id.indexOf("/");
+  const locale = input.id.slice(0, slash);
+  const slug = input.id.slice(slash + 1);
+  await sidecar.remove({ collection: "ingredients", locale, slug });
 }
 
 export interface SaveIngredientMetaInput {
@@ -83,12 +94,13 @@ export interface SaveIngredientMetaInput {
 }
 
 export async function saveIngredientMeta(
-  store: ContentStore,
+  _store: ContentStore,
+  sidecar: MetaSidecar,
   input: SaveIngredientMetaInput,
 ): Promise<void> {
-  const key = `${input.locale}/${input.slug}`;
-  const existing = await store.get("ingredientMeta", key);
-  await store.put("ingredientMeta", key, {
+  const ref = { collection: "ingredients" as const, locale: input.locale, slug: input.slug };
+  const existing = await sidecar.read(ref);
+  await sidecar.write(ref, {
     ...((existing?.data as Record<string, unknown>) ?? {}),
     ...input.patch,
   });
@@ -100,26 +112,28 @@ export interface IngredientPublishStateInput {
 }
 
 async function setIngredientDraft(
-  store: ContentStore,
+  sidecar: MetaSidecar,
   input: IngredientPublishStateInput,
   draft: boolean,
 ): Promise<void> {
-  const key = `${input.locale}/${input.slug}`;
-  const existing = await store.get("ingredientMeta", key);
+  const ref = { collection: "ingredients" as const, locale: input.locale, slug: input.slug };
+  const existing = await sidecar.read(ref);
   const meta = (existing?.data as Record<string, unknown>) ?? {};
-  await store.put("ingredientMeta", key, { ...meta, draft });
+  await sidecar.write(ref, { ...meta, draft });
 }
 
 export async function publishIngredient(
-  store: ContentStore,
+  _store: ContentStore,
+  sidecar: MetaSidecar,
   input: IngredientPublishStateInput,
 ): Promise<void> {
-  await setIngredientDraft(store, input, false);
+  await setIngredientDraft(sidecar, input, false);
 }
 
 export async function unpublishIngredient(
-  store: ContentStore,
+  _store: ContentStore,
+  sidecar: MetaSidecar,
   input: IngredientPublishStateInput,
 ): Promise<void> {
-  await setIngredientDraft(store, input, true);
+  await setIngredientDraft(sidecar, input, true);
 }
