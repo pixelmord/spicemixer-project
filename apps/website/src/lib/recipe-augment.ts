@@ -10,7 +10,7 @@ export async function getIngredient(slug: string, locale: string) {
 
 export type RecipeKind = "recipes" | "mixtures";
 
-export type MetaRef = { collection: RecipeKind; slug: string };
+export type MetaRef = { collection: RecipeKind | "ingredients"; slug: string };
 export type IngredientLink = {
   pattern: string;
   slug: string;
@@ -35,6 +35,14 @@ export type Meta = {
   tags: string[];
 };
 
+type MetaEntry = { id: string; data: { draft?: boolean; ingredientLinks?: IngredientLink[] } };
+type NamedEntry = { id: string; data: { name: string } };
+type PairingData = {
+  ingredients: [string, string];
+  descriptions?: Record<string, string>;
+  description?: string;
+};
+
 const EMPTY_META: Meta = {
   variants: [],
   goesWellWith: [],
@@ -57,9 +65,10 @@ export async function getMeta(kind: RecipeKind, slug: string): Promise<Meta> {
  * legacy entries without a sidecar).
  */
 export async function getPublished<K extends RecipeKind>(kind: K) {
-  const [entries, allMeta] = await Promise.all([getCollection(kind), getCollection("meta")]);
+  const [entries, rawMeta] = await Promise.all([getCollection(kind), getCollection("meta")]);
+  const allMeta = rawMeta as MetaEntry[];
   const drafts = new Set(allMeta.filter((m) => m.data.draft === true).map((m) => m.id));
-  return entries.filter((e) => !drafts.has(`${kind}/${e.id}`));
+  return entries.filter((e: { id: string }) => !drafts.has(`${kind}/${e.id}`));
 }
 
 /**
@@ -67,10 +76,12 @@ export async function getPublished<K extends RecipeKind>(kind: K) {
  * `ingredientMeta.draft === true` filtered out. Missing meta is published.
  */
 export async function getPublishedIngredients(locale?: string) {
-  const [entries, allMeta] = await Promise.all([
+  const [rawEntries, rawMeta] = await Promise.all([
     getCollection("ingredients"),
     getCollection("ingredientMeta"),
   ]);
+  const entries = rawEntries as { id: string }[];
+  const allMeta = rawMeta as MetaEntry[];
   const drafts = new Set(allMeta.filter((m) => m.data.draft === true).map((m) => m.id));
   const scoped = locale ? entries.filter((e) => e.id.startsWith(`${locale}/`)) : entries;
   return scoped.filter((e) => !drafts.has(e.id));
@@ -159,7 +170,7 @@ export interface PairingEntity {
 
 /** Get all pairings that include a given ingredient slug. */
 export async function getPairings(slug: string): Promise<PairingEntity[]> {
-  const all = await getCollection("pairings");
+  const all = (await getCollection("pairings")) as { id: string; data: PairingData }[];
   return all
     .filter((entry) => entry.data.ingredients.includes(slug))
     .map((entry) => ({
@@ -175,16 +186,19 @@ export async function getIngredientMeta(locale: string, slug: string) {
   return (entry?.data ?? null) as import("../content.config.ts").IngredientMeta | null;
 }
 
-export async function getRecipeUsedIn(
-  recipeSlug: string,
-  recipeCollection: RecipeKind,
+async function findByIngredientLinks(
   localePrefix: string,
+  predicate: (link: IngredientLink) => boolean,
 ): Promise<Array<{ name: string; href: string; kind: RecipeKind }>> {
-  const [allMeta, recipes, mixtures] = await Promise.all([
+  const [rawMeta, rawRecipes, rawMixtures] = await Promise.all([
     getCollection("meta"),
     getCollection("recipes"),
     getCollection("mixtures"),
   ]);
+
+  const allMeta = rawMeta as MetaEntry[];
+  const recipes = rawRecipes as NamedEntry[];
+  const mixtures = rawMixtures as NamedEntry[];
 
   const byKind: Record<RecipeKind, Map<string, string>> = {
     recipes: new Map(recipes.map((r) => [r.id, r.data.name])),
@@ -192,12 +206,7 @@ export async function getRecipeUsedIn(
   };
 
   return allMeta
-    .filter((entry) =>
-      entry.data.ingredientLinks.some(
-        (l: IngredientLink) =>
-          l.kind === "recipe" && l.slug === recipeSlug && l.collection === recipeCollection,
-      ),
-    )
+    .filter((entry) => (entry.data.ingredientLinks ?? []).some(predicate))
     .map((entry) => {
       const slash = entry.id.indexOf("/");
       if (slash === -1) return null;
@@ -211,16 +220,31 @@ export async function getRecipeUsedIn(
     .filter((x): x is NonNullable<typeof x> => x !== null);
 }
 
+export async function getRecipeUsedIn(
+  recipeSlug: string,
+  recipeCollection: RecipeKind,
+  localePrefix: string,
+): Promise<Array<{ name: string; href: string; kind: RecipeKind }>> {
+  return findByIngredientLinks(
+    localePrefix,
+    (l) => l.kind === "recipe" && l.slug === recipeSlug && l.collection === recipeCollection,
+  );
+}
+
 export async function resolveRefs(
   refs: MetaRef[],
   localePrefix: string,
 ): Promise<Array<{ name: string; href: string }>> {
   const results = await Promise.all(
     refs.map(async ({ collection, slug }) => {
-      const e =
-        collection === "recipes"
-          ? await getEntry("recipes", slug)
-          : await getEntry("mixtures", slug);
+      let e: { data: { name: string } } | null | undefined;
+      if (collection === "recipes") {
+        e = await getEntry("recipes", slug);
+      } else if (collection === "ingredients") {
+        e = await getEntry("ingredients", `en/${slug}`);
+      } else {
+        e = await getEntry("mixtures", slug);
+      }
       if (!e) return null;
       return { name: e.data.name, href: `${localePrefix}/${collection}/${slug}/` };
     }),
@@ -248,30 +272,5 @@ export async function getUsedIn(
   ingredientSlug: string,
   localePrefix: string,
 ): Promise<Array<{ name: string; href: string; kind: RecipeKind }>> {
-  const [allMeta, recipes, mixtures] = await Promise.all([
-    getCollection("meta"),
-    getCollection("recipes"),
-    getCollection("mixtures"),
-  ]);
-
-  const byKind: Record<RecipeKind, Map<string, string>> = {
-    recipes: new Map(recipes.map((r) => [r.id, r.data.name])),
-    mixtures: new Map(mixtures.map((r) => [r.id, r.data.name])),
-  };
-
-  return allMeta
-    .filter((entry) =>
-      entry.data.ingredientLinks.some((l: IngredientLink) => l.slug === ingredientSlug),
-    )
-    .map((entry) => {
-      const slash = entry.id.indexOf("/");
-      if (slash === -1) return null;
-      const kind = entry.id.slice(0, slash) as RecipeKind;
-      const slug = entry.id.slice(slash + 1);
-      if (!(kind in byKind)) return null;
-      const name = byKind[kind].get(slug);
-      if (!name) return null;
-      return { name, href: `${localePrefix}/${kind}/${slug}/`, kind };
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null);
+  return findByIngredientLinks(localePrefix, (l) => l.slug === ingredientSlug);
 }
