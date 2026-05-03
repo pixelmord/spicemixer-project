@@ -17,9 +17,16 @@ export async function saveIngredient(
   await store.put("ingredients", key, input.ingredient);
   if (input.meta !== undefined) {
     const existing = await store.get("ingredientMeta", key);
+    const existingData = (existing?.data as Record<string, unknown>) ?? {};
+    const incomingMeta = input.meta as Record<string, unknown>;
+    const canonicalLocale =
+      (existingData["canonicalLocale"] as string | undefined) ??
+      (incomingMeta["canonicalLocale"] as string | undefined) ??
+      input.locale;
     await store.put("ingredientMeta", key, {
-      ...((existing?.data as Record<string, unknown>) ?? {}),
-      ...input.meta,
+      ...existingData,
+      ...incomingMeta,
+      canonicalLocale,
     });
   }
   return { slug: input.slug };
@@ -44,7 +51,10 @@ export async function quickCreateIngredient(
     flavorNotes: [],
     pairings: [],
   });
-  await store.put("ingredientMeta", `${input.locale}/${input.slug}`, { draft: true });
+  await store.put("ingredientMeta", `${input.locale}/${input.slug}`, {
+    draft: true,
+    canonicalLocale: input.locale,
+  });
   return { slug: input.slug };
 }
 

@@ -66,6 +66,7 @@ const recipeMetaSchema = z.object({
   draft: z.boolean().default(false),
   language: z.string().length(2).optional(),
   locale: z.string().length(2).optional(),
+  canonicalLocale: z.string().length(2).optional(),
   translationOf: z.string().optional(),
   translations: z.record(z.string(), z.string()).default({}),
   variantOf: z.string().optional(),
@@ -163,6 +164,7 @@ const aiIngredientSuggestionsSchema = z.object({
 const ingredientMetaSchema = z.object({
   kind: z.literal("ingredient").default("ingredient"),
   draft: z.boolean().default(false),
+  canonicalLocale: z.string().length(2).optional(),
   translationOf: z.string().optional(),
   translations: z.record(z.string(), z.string()).default({}),
   aiSuggestions: aiIngredientSuggestionsSchema.optional(),

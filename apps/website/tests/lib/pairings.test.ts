@@ -154,6 +154,19 @@ describe("savePairing", () => {
     expect((stored?.data as Record<string, unknown>)["draft"]).toBe(true);
   });
 
+  test("does not stamp canonicalLocale on pairingMeta (pairings excluded per ADR 0003)", async () => {
+    const store = new InMemoryStore();
+    await savePairing(store, {
+      id: "anise--cardamom",
+      ingredients: ["anise", "cardamom"],
+      description: "Warm and licorice-y.",
+      locale: "en",
+    });
+    const pairingMeta = await store.get("pairingMeta", "anise--cardamom");
+    // pairingMeta is not written by savePairing at all
+    expect(pairingMeta).toBeNull();
+  });
+
   test("clears image when empty string is supplied", async () => {
     const store = new InMemoryStore();
     await store.put("pairings", "anise--cardamom", {

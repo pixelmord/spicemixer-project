@@ -72,6 +72,7 @@ describe("saveIngredient", () => {
       imageAttribution: { source: "Openverse" },
       translations: { de: "kardamom" },
       draft: true,
+      canonicalLocale: "en",
     });
   });
 
@@ -90,7 +91,56 @@ describe("saveIngredient", () => {
       meta: { draft: false },
     });
     const meta = await store.get("ingredientMeta", "en/cardamom");
-    expect(meta?.data).toEqual({ draft: false, translations: { de: "kardamom" } });
+    expect(meta?.data).toEqual({
+      draft: false,
+      translations: { de: "kardamom" },
+      canonicalLocale: "en",
+    });
+  });
+});
+
+describe("saveIngredient — canonicalLocale", () => {
+  test("stamps canonicalLocale from locale on first save", async () => {
+    const store = new InMemoryStore();
+    await saveIngredient(store, {
+      locale: "de",
+      slug: "kardamom",
+      ingredient: { name: "Kardamom", category: "spice" },
+      meta: { draft: true },
+    });
+    const meta = await store.get("ingredientMeta", "de/kardamom");
+    expect((meta?.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
+  });
+
+  test("does not overwrite canonicalLocale on subsequent saves", async () => {
+    const store = new InMemoryStore();
+    await saveIngredient(store, {
+      locale: "de",
+      slug: "kardamom",
+      ingredient: { name: "Kardamom", category: "spice" },
+      meta: { draft: true },
+    });
+    // Second save of the same entry — canonicalLocale must remain "de"
+    await saveIngredient(store, {
+      locale: "de",
+      slug: "kardamom",
+      ingredient: { name: "Kardamom updated", category: "spice" },
+      meta: { draft: false },
+    });
+    const meta = await store.get("ingredientMeta", "de/kardamom");
+    expect((meta?.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
+  });
+
+  test("stamps canonicalLocale even when meta object is not provided", async () => {
+    const store = new InMemoryStore();
+    // meta omitted — no sidecar written, so canonicalLocale check is skipped
+    await saveIngredient(store, {
+      locale: "en",
+      slug: "cardamom",
+      ingredient: { name: "Cardamom", category: "spice" },
+    });
+    // No meta sidecar → no canonicalLocale (meta not written at all)
+    expect(await store.get("ingredientMeta", "en/cardamom")).toBeNull();
   });
 });
 
@@ -124,6 +174,18 @@ describe("quickCreateIngredient", () => {
     });
     const meta = await store.get("ingredientMeta", "de/kardamom");
     expect((meta?.data as Record<string, unknown>)["draft"]).toBe(true);
+  });
+
+  test("stamps canonicalLocale from locale", async () => {
+    const store = new InMemoryStore();
+    await quickCreateIngredient(store, {
+      locale: "de",
+      slug: "kardamom",
+      name: "Kardamom",
+      category: "spice",
+    });
+    const meta = await store.get("ingredientMeta", "de/kardamom");
+    expect((meta?.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
   });
 });
 

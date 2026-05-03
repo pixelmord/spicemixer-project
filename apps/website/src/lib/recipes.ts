@@ -14,7 +14,19 @@ export async function saveRecipe(
 ): Promise<{ slug: string }> {
   await store.put(input.collection, input.slug, input.recipe);
   if (input.meta !== undefined) {
-    await store.put("meta", `${input.collection}/${input.slug}`, input.meta);
+    const metaKey = `${input.collection}/${input.slug}`;
+    const existing = await store.get("meta", metaKey);
+    const existingData = (existing?.data as Record<string, unknown>) ?? {};
+    const incomingMeta = input.meta as Record<string, unknown>;
+    const existingCanonicalLocale = existingData["canonicalLocale"] as string | undefined;
+    const incomingLocale = incomingMeta["locale"] as string | undefined;
+    const metaToWrite: Record<string, unknown> = { ...incomingMeta };
+    if (!existingCanonicalLocale && incomingLocale) {
+      metaToWrite["canonicalLocale"] = incomingLocale;
+    } else if (existingCanonicalLocale) {
+      metaToWrite["canonicalLocale"] = existingCanonicalLocale;
+    }
+    await store.put("meta", metaKey, metaToWrite);
   }
   return { slug: input.slug };
 }
