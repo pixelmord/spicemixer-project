@@ -13,7 +13,7 @@
  * The migration is idempotent — running it twice has no side effects.
  */
 import { readdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 async function walkMetaFiles(dir: string): Promise<string[]> {
@@ -85,7 +85,7 @@ export async function backfillCanonicalLocale(contentRoot: string): Promise<Back
 
       data["canonicalLocale"] = locale;
       await writeFile(file, JSON.stringify(data, null, 2) + "\n", "utf-8");
-      const name = file.split("/").pop();
+      const name = basename(file);
       console.log(`  ✓  ${collection}/${name} → canonicalLocale: ${locale}`);
       updated++;
     }
@@ -101,7 +101,6 @@ async function main() {
   console.log(`\nDone. ${updated} entries updated, ${skipped} already had canonicalLocale.`);
 }
 
-// Only execute when run directly (not when imported in tests)
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   main().catch((e) => {
     console.error(e);
