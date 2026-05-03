@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
 import { scoreRecipe, RECIPE_REQUIRED, RECIPE_RECOMMENDED } from "@/lib/completeness.ts";
 import { slugify } from "@/lib/slugify.ts";
 import type { RecipeCollection } from "@/lib/content-store.ts";
@@ -57,6 +56,7 @@ import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
 } from "./ImageSearchModal.tsx";
+import { REGION_LABELS, REGIONS, type RegionCode } from "@/lib/regions.ts";
 
 type Collection = RecipeCollection;
 
@@ -102,6 +102,7 @@ interface MetaData {
   translations?: Record<string, string>;
   kind?: string;
   variantOf?: string;
+  region: RegionCode[];
   tags: string[];
   ingredientLinks: IngredientLink[];
   externalSources: Array<{ url: string; title: string; source?: string }>;
@@ -136,6 +137,7 @@ function emptyRecipe(): RecipeData {
 function emptyMeta(): MetaData {
   return {
     draft: true,
+    region: [],
     tags: [],
     ingredientLinks: [],
     externalSources: [],
@@ -145,6 +147,11 @@ function emptyMeta(): MetaData {
     translations: {},
   };
 }
+
+const REGION_OPTIONS = REGIONS.map((code) => ({
+  value: code,
+  label: REGION_LABELS[code].en,
+}));
 
 function getFirstImage(image?: string | string[]): string {
   if (!image) return "";
@@ -244,6 +251,7 @@ export default function RecipeForm({
   const [usesBase, setUsesBase] = useState(meta.usesBase);
   const [language, setLanguage] = useState(meta.language ?? "");
   const [tags, setTags] = useState<string[]>(meta.tags);
+  const [regions, setRegions] = useState<RegionCode[]>(meta.region ?? []);
   const [keywords, setKeywords] = useState<string[]>(
     Array.isArray(recipe.keywords) ? recipe.keywords : [],
   );
@@ -300,7 +308,7 @@ export default function RecipeForm({
     slug: string;
     confidence: "high" | "medium" | "low";
   }> | null>(null);
-  const [pendingRelations, setPendingRelations] = useState<Array<{
+  const [_pendingRelations, _setPendingRelations] = useState<Array<{
     kind: "goesWellWith" | "usesBase";
     collection: string;
     slug: string;
@@ -333,15 +341,21 @@ export default function RecipeForm({
   }
 
   function fetchIngredientOptions(lang: string) {
-    void actions.listIngredientOptions({ locale: ingredientLocale(lang) }).then(({ data }) => {
-      if (data)
-        setIngredientOptions(data.map((d) => ({ value: d.slug, label: d.name, sublabel: d.slug })));
-    });
+    void actions
+      .listIngredientOptions({ locale: ingredientLocale(lang) })
+      .then((r: { data?: unknown }) => {
+        const data = r.data as { slug: string; name: string }[] | undefined;
+        if (data)
+          setIngredientOptions(
+            data.map((d) => ({ value: d.slug, label: d.name, sublabel: d.slug })),
+          );
+      });
   }
 
   useEffect(() => {
     fetchIngredientOptions(meta.language ?? "en");
-    void actions.listRecipeOptions().then(({ data }) => {
+    void actions.listRecipeOptions().then((r: { data?: unknown }) => {
+      const data = r.data as { collection: string; slug: string; name: string }[] | undefined;
       if (data)
         setRecipeOptions(
           data.map((d) => ({
@@ -351,7 +365,8 @@ export default function RecipeForm({
           })),
         );
     });
-    void actions.listAllTags().then(({ data }) => {
+    void actions.listAllTags().then((r: { data?: unknown }) => {
+      const data = r.data as string[] | undefined;
       if (data) setTagSuggestions(data);
     });
   }, []);
@@ -391,7 +406,8 @@ export default function RecipeForm({
         missingFields: missingKeys,
         locale: (initialMeta?.language ?? "en") as "en" | "de",
       })
-      .then(({ data }) => {
+      .then((r: { data?: unknown }) => {
+        const data = r.data as { aiSuggestions: AiSuggestions; autoLinked: number } | undefined;
         if (data) {
           setAiSuggestions(data.aiSuggestions as AiSuggestions);
           if (data.autoLinked > 0) {
@@ -435,7 +451,8 @@ export default function RecipeForm({
     const t = setTimeout(() => {
       void actions
         .checkSlugAvailable({ collection, slug })
-        .then(({ data }) => {
+        .then((r: { data?: unknown }) => {
+          const data = r.data as { available: boolean } | undefined;
           if (data) setSlugAvailable(data.available);
         })
         .finally(() => setSlugChecking(false));
@@ -513,6 +530,7 @@ export default function RecipeForm({
       const metaPayload: MetaData = {
         ...meta,
         draft,
+        region: regions,
         language: language || undefined,
         locale: language || undefined,
         tags,
@@ -568,7 +586,8 @@ export default function RecipeForm({
           missingFields: missingKeys,
           locale: (language || "en") as "en" | "de",
         })
-        .then(({ data }) => {
+        .then((r: { data?: unknown }) => {
+          const data = r.data as { aiSuggestions: AiSuggestions; autoLinked: number } | undefined;
           if (data) {
             setAiSuggestions(data.aiSuggestions as AiSuggestions);
             if (data.autoLinked > 0) {
@@ -803,7 +822,7 @@ export default function RecipeForm({
       if (error) throw new Error(error.message);
       // Filter out already-linked
       const existing = new Set(ingredientLinks.map((l) => l.pattern));
-      const newLinks = (data ?? []).filter((l) => !existing.has(l.pattern));
+      const newLinks = (data ?? []).filter((l: { pattern: string }) => !existing.has(l.pattern));
       setPendingLinks(newLinks);
     } catch (e) {
       toast.error(String(e instanceof Error ? e.message : e));
@@ -1601,6 +1620,19 @@ export default function RecipeForm({
                       ]}
                       placeholder="VegetarianDiet, VeganDiet"
                     />
+                  </div>
+                  <div className="col-span-2 space-y-1.5">
+                    <Label>Regions</Label>
+                    <EntityMultiCombobox
+                      value={regions}
+                      onChange={(vals) => setRegions(vals as RegionCode[])}
+                      options={REGION_OPTIONS}
+                      placeholder="Select culinary macro-regions…"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Closed enum — different from <span className="font-mono">recipeCuisine</span>{" "}
+                      (schema.org cuisine).
+                    </p>
                   </div>
                   <form.Field name="datePublished">
                     {(field) => (

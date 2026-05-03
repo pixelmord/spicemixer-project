@@ -1,6 +1,7 @@
 import { defineCollection, z } from "astro:content";
 import { glob } from "astro/loaders";
 import { recipeSchema } from "recipe-ingestion";
+import { REGIONS } from "./lib/regions.ts";
 
 const recipeLinkRef = z.object({
   collection: z.enum(["recipes", "spicemixes", "sauces"]),
@@ -64,6 +65,7 @@ const imageAttributionSchema = z
 const recipeMetaSchema = z.object({
   kind: z.enum(["recipe", "spicemix", "sauce"]).optional(),
   draft: z.boolean().default(false),
+  region: z.array(z.enum(REGIONS)).default([]),
   language: z.string().length(2).optional(),
   locale: z.string().length(2).optional(),
   translationOf: z.string().optional(),
@@ -163,6 +165,7 @@ const aiIngredientSuggestionsSchema = z.object({
 const ingredientMetaSchema = z.object({
   kind: z.literal("ingredient").default("ingredient"),
   draft: z.boolean().default(false),
+  region: z.array(z.enum(REGIONS)).default([]),
   translationOf: z.string().optional(),
   translations: z.record(z.string(), z.string()).default({}),
   aiSuggestions: aiIngredientSuggestionsSchema.optional(),
