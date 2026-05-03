@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { slugify } from "@/lib/slugify.ts";
 
-type EntityKind = "ingredient" | "recipe" | "spicemix" | "sauce";
+type EntityKind = "ingredient" | "recipe" | "mixture";
 
 interface Props {
   open: boolean;

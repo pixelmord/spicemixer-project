@@ -19,6 +19,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.t
 import { scoreRecipe, RECIPE_REQUIRED, RECIPE_RECOMMENDED } from "@/lib/completeness.ts";
 import { slugify } from "@/lib/slugify.ts";
 import type { RecipeCollection } from "@/lib/content-store.ts";
+import { MIXTURE_KINDS, type MixtureKind } from "@/lib/mixture-schema.ts";
+import { validateSlug } from "@/lib/slug-validator.ts";
 interface AiSuggestion {
   field: string;
   suggestion: string;
@@ -250,6 +252,7 @@ export default function RecipeForm({
   const [dietTags, setDietTags] = useState<string[]>(
     Array.isArray(recipe.suitableForDiet) ? recipe.suitableForDiet : [],
   );
+  const [kind, setKind] = useState<MixtureKind | "">((meta.kind as MixtureKind | undefined) ?? "");
 
   // Image health check
   const [imageBroken, setImageBroken] = useState(false);
@@ -313,7 +316,7 @@ export default function RecipeForm({
   const [recipeOptions, setRecipeOptions] = useState<EntityOption[]>([]);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   const [quickCreateKind, setQuickCreateKind] = useState<
-    "ingredient" | "recipe" | "spicemix" | "sauce" | null
+    "ingredient" | "recipe" | "mixture" | null
   >(null);
   const [quickCreateName, setQuickCreateName] = useState("");
   const [quickCreateCallback, setQuickCreateCallback] = useState<
@@ -482,6 +485,24 @@ export default function RecipeForm({
         toast.error(`Slug "${slug}" is already taken`);
         return;
       }
+      if (collection === "mixtures") {
+        if (!kind) {
+          toast.error("Kind is required for mixtures");
+          return;
+        }
+        const slugValidation = validateSlug(slug, "mixtures", {
+          ingredients: ingredientOptions.map((o) => o.value),
+        });
+        if (!slugValidation.ok) {
+          toast.error(`Slug "${slug}" is a reserved name and cannot be used for a mixture`);
+          return;
+        }
+        if (slugValidation.warning) {
+          toast.warning(
+            `Slug "${slug}" also exists in the ingredients collection — cross-collection collision (saving anyway)`,
+          );
+        }
+      }
       setSaving(true);
 
       const recipePayload: RecipeData = {
@@ -530,7 +551,7 @@ export default function RecipeForm({
         externalSources: externalSources.filter((s) => s.url.trim()),
         goesWellWith,
         usesBase,
-        kind: meta.kind ?? (collection === "recipes" ? "recipe" : "sauce"),
+        kind: collection === "mixtures" ? kind || undefined : (meta.kind ?? undefined),
         imageAttribution: imageAttribution || undefined,
         recipeInstructionsAttribution:
           recipeInstructionsAttribution.length > 0 ? recipeInstructionsAttribution : undefined,
@@ -642,7 +663,7 @@ export default function RecipeForm({
   }, [formValues, ingredients, instructions, keywords, ingredientLinks]);
 
   function openQuickCreate(
-    kind: "ingredient" | "recipe" | "spicemix" | "sauce",
+    kind: "ingredient" | "recipe" | "mixture",
     name: string,
     cb: (slug: string, label: string) => void,
   ) {
@@ -1508,6 +1529,25 @@ export default function RecipeForm({
                   <CardTitle>Classification</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4">
+                  {collection === "mixtures" && (
+                    <div className="col-span-2 space-y-1.5">
+                      <Label>
+                        Kind <span className="text-destructive">*</span>
+                      </Label>
+                      <Select value={kind} onValueChange={(v) => v && setKind(v as MixtureKind)}>
+                        <SelectTrigger data-testid="mixture-kind-select">
+                          <SelectValue placeholder="Select mixture kind…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MIXTURE_KINDS.map((k) => (
+                            <SelectItem key={k} value={k}>
+                              {k}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <form.Field name="recipeCategory">
                     {(field) => (
                       <div className="space-y-1.5">
