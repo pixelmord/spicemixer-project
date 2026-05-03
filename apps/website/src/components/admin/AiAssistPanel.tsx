@@ -436,7 +436,6 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
   function removeFromResult(field: string, hash: string) {
     setResult((prev) => {
       if (!prev) return null;
-      // Remove the matched item from the items array
       const filtered = (prev.items as Array<{ field: string; hash: string }>).filter(
         (item) => !(item.field === field && item.hash === hash),
       );
@@ -471,6 +470,28 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
     removeFromResult(item.field, item.hash);
   }
 
+  function acceptAllAndDismiss(
+    items: ReadonlyArray<{
+      field: string;
+      hash: string;
+      summary: string;
+      confidence?: "high" | "medium" | "low";
+    }>,
+    applyFn: () => void,
+  ) {
+    applyFn();
+    for (const item of items) {
+      emitEvent({
+        type: "accepted",
+        field: item.field,
+        suggestion: { hash: item.hash, summary: item.summary },
+        model,
+        ...(item.confidence ? { confidence: item.confidence } : {}),
+      });
+    }
+    dismiss();
+  }
+
   async function run(op: Op) {
     setLoading(op);
     setResult(null);
@@ -490,23 +511,18 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
         const enriched = ((data as { tags: string[] }).tags ?? []).map(enrichTag);
         setResult({ op, items: filterSuggestions(aiEvents, enriched) });
       } else if (op === "improve") {
-        if (isRecipe) {
-          const { data, error } = await actions.aiProposeRecipeImprovements({
-            recipe: props.snapshot,
-            missingFields: props.missingFields,
-          });
-          if (error) throw new Error(error.message);
-          const enriched = (data as { fields: ImprovementField[] }).fields.map(enrichImprovement);
-          setResult({ op, items: filterSuggestions(aiEvents, enriched) });
-        } else {
-          const { data, error } = await actions.aiProposeIngredientImprovements({
-            ingredient: props.snapshot,
-            missingFields: props.missingFields,
-          });
-          if (error) throw new Error(error.message);
-          const enriched = (data as { fields: ImprovementField[] }).fields.map(enrichImprovement);
-          setResult({ op, items: filterSuggestions(aiEvents, enriched) });
-        }
+        const { data, error } = isRecipe
+          ? await actions.aiProposeRecipeImprovements({
+              recipe: props.snapshot,
+              missingFields: props.missingFields,
+            })
+          : await actions.aiProposeIngredientImprovements({
+              ingredient: props.snapshot,
+              missingFields: props.missingFields,
+            });
+        if (error) throw new Error(error.message);
+        const enriched = (data as { fields: ImprovementField[] }).fields.map(enrichImprovement);
+        setResult({ op, items: filterSuggestions(aiEvents, enriched) });
       } else if (op === "translate") {
         if (isRecipe && recipe) {
           const { data, error } = await actions.aiTranslateRecipe({
@@ -629,19 +645,11 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
                   <SectionHeader icon={<Link2 size={11} />} label="Ingredient links" />
                   <IngredientLinksResult
                     links={result.items}
-                    onAcceptAll={() => {
-                      recipe.onApplyIngredientLinks(result.items);
-                      result.items.forEach((l) =>
-                        emitEvent({
-                          type: "accepted",
-                          field: l.field,
-                          suggestion: { hash: l.hash, summary: l.summary },
-                          model,
-                          confidence: l.confidence,
-                        }),
-                      );
-                      dismiss();
-                    }}
+                    onAcceptAll={() =>
+                      acceptAllAndDismiss(result.items, () =>
+                        recipe.onApplyIngredientLinks(result.items),
+                      )
+                    }
                     onAcceptOne={(l) => {
                       handleAccept(l, () => recipe.onApplyIngredientLinks([l]), l.confidence);
                     }}
@@ -656,18 +664,11 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
                   <SectionHeader icon={<Link2 size={11} />} label="Pairings" />
                   <PairingsResult
                     pairings={result.items}
-                    onAcceptAll={() => {
-                      ingredient.onApplyPairings(result.items);
-                      result.items.forEach((p) =>
-                        emitEvent({
-                          type: "accepted",
-                          field: p.field,
-                          suggestion: { hash: p.hash, summary: p.summary },
-                          model,
-                        }),
-                      );
-                      dismiss();
-                    }}
+                    onAcceptAll={() =>
+                      acceptAllAndDismiss(result.items, () =>
+                        ingredient.onApplyPairings(result.items),
+                      )
+                    }
                     onAcceptOne={(p) => {
                       handleAccept(p, () => ingredient.onApplyPairings([p]));
                     }}
@@ -682,19 +683,14 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
                   <SectionHeader icon={<Tag size={11} />} label="Tags" />
                   <TagsResult
                     tags={result.items}
-                    onAcceptAll={() => {
-                      const tags = result.items.map((t) => t.tag);
-                      props.onApplyField("tags", tags);
-                      result.items.forEach((t) =>
-                        emitEvent({
-                          type: "accepted",
-                          field: t.field,
-                          suggestion: { hash: t.hash, summary: t.summary },
-                          model,
-                        }),
-                      );
-                      dismiss();
-                    }}
+                    onAcceptAll={() =>
+                      acceptAllAndDismiss(result.items, () =>
+                        props.onApplyField(
+                          "tags",
+                          result.items.map((t) => t.tag),
+                        ),
+                      )
+                    }
                     onAcceptOne={(t) => {
                       handleAccept(t, () => {
                         const current = Array.isArray(props.snapshot["tags"])
@@ -731,21 +727,13 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
                   <TranslationResult
                     fields={result.items}
                     targetLocale={targetLocale}
-                    onAcceptAll={() => {
-                      const fields = Object.fromEntries(
-                        result.items.map((item) => [item.field, item.value]),
-                      );
-                      props.onApplyTranslation(fields);
-                      result.items.forEach((item) =>
-                        emitEvent({
-                          type: "accepted",
-                          field: item.field,
-                          suggestion: { hash: item.hash, summary: item.summary },
-                          model,
-                        }),
-                      );
-                      dismiss();
-                    }}
+                    onAcceptAll={() =>
+                      acceptAllAndDismiss(result.items, () =>
+                        props.onApplyTranslation(
+                          Object.fromEntries(result.items.map((item) => [item.field, item.value])),
+                        ),
+                      )
+                    }
                     onAcceptOne={(item) => {
                       handleAccept(item, () => props.onApplyField(item.field, item.value));
                     }}

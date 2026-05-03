@@ -2,8 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 import { hashSuggestion, filterSuggestions, recordAiEvent } from "../src/index.ts";
 import type { AiEvent } from "../src/schemas/ai-events.ts";
 
-// Integration tests for AiAssistPanel accept/reject + suppression filter behavior.
-// Tests the data pipeline used by the panel without rendering the React component.
+// Tests the data pipeline without rendering the React component.
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
