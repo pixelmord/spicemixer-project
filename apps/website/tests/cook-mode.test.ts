@@ -189,6 +189,66 @@ describe("mixture detail: data-cook annotations (DE)", () => {
   });
 });
 
+// ── Recipe detail: data-cook annotations ─────────────────────────────────────
+
+describe("recipe detail: data-cook annotations (EN)", () => {
+  let src: string;
+  beforeAll(async () => {
+    src = await readFile(join(PAGES, "recipes", "[slug].astro"), "utf-8");
+  });
+
+  test("hero slot has data-cook='compact'", () => {
+    expect(src).toContain('data-cook="compact"');
+  });
+
+  test("encyclopedia slot has data-cook='hide'", () => {
+    const encyclopediaIdx = src.indexOf('slot="encyclopedia"');
+    const hideAfterEncyclopedia = src.indexOf('data-cook="hide"', encyclopediaIdx);
+    expect(encyclopediaIdx).toBeGreaterThan(-1);
+    expect(hideAfterEncyclopedia).toBeGreaterThan(encyclopediaIdx);
+  });
+
+  test("relations slot has data-cook='hide'", () => {
+    const relationsIdx = src.indexOf('slot="relations"');
+    const hideAfterRelations = src.indexOf('data-cook="hide"', relationsIdx);
+    expect(relationsIdx).toBeGreaterThan(-1);
+    expect(hideAfterRelations).toBeGreaterThan(relationsIdx);
+  });
+
+  test("imports and renders CookModeToggle", () => {
+    expect(src).toContain("CookModeToggle");
+  });
+});
+
+describe("recipe detail: data-cook annotations (DE)", () => {
+  let src: string;
+  beforeAll(async () => {
+    src = await readFile(join(PAGES, "de", "recipes", "[slug].astro"), "utf-8");
+  });
+
+  test("hero slot has data-cook='compact'", () => {
+    expect(src).toContain('data-cook="compact"');
+  });
+
+  test("encyclopedia slot has data-cook='hide'", () => {
+    const encyclopediaIdx = src.indexOf('slot="encyclopedia"');
+    const hideAfterEncyclopedia = src.indexOf('data-cook="hide"', encyclopediaIdx);
+    expect(encyclopediaIdx).toBeGreaterThan(-1);
+    expect(hideAfterEncyclopedia).toBeGreaterThan(encyclopediaIdx);
+  });
+
+  test("relations slot has data-cook='hide'", () => {
+    const relationsIdx = src.indexOf('slot="relations"');
+    const hideAfterRelations = src.indexOf('data-cook="hide"', relationsIdx);
+    expect(relationsIdx).toBeGreaterThan(-1);
+    expect(hideAfterRelations).toBeGreaterThan(relationsIdx);
+  });
+
+  test("imports and renders CookModeToggle", () => {
+    expect(src).toContain("CookModeToggle");
+  });
+});
+
 // ── CookModeToggle component ──────────────────────────────────────────────────
 
 describe("CookModeToggle component", () => {
