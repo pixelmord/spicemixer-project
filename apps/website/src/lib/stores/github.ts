@@ -1,4 +1,3 @@
-// Phase 2 — see ADR 0006
 import type { Collection, ContentItem, ContentStore } from "../content-store.ts";
 
 /**

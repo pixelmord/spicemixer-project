@@ -8,16 +8,13 @@ const SRC_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 const FORBIDDEN_MODULES = ["fs/promises", "node:fs", "node:fs/promises", "node:path"];
 
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+const BYPASS_PATTERNS = FORBIDDEN_MODULES.map((mod) => {
+  const escaped = mod.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:from\\s+|import\\s*\\(|require\\s*\\()\\s*['"]${escaped}['"]`);
+});
 
 function lineHasBypass(line: string): boolean {
-  for (const mod of FORBIDDEN_MODULES) {
-    const re = new RegExp(`(?:from\\s+|import\\s*\\(|require\\s*\\()\\s*['"]${escapeRe(mod)}['"]`);
-    if (re.test(line)) return true;
-  }
-  return false;
+  return BYPASS_PATTERNS.some((re) => re.test(line));
 }
 
 async function* walkSrc(dir: string): AsyncGenerator<string> {
