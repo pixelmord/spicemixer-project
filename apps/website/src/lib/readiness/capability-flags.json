@@ -1,0 +1,34 @@
+[
+  {
+    "key": "github-store-dogfooded",
+    "label": "GitHubStore battle-tested ≥4 weeks",
+    "complete": false,
+    "completedAt": null,
+    "completedBy": null,
+    "notes": ""
+  },
+  {
+    "key": "auth-and-moderation",
+    "label": "Auth and moderation queue shipped and tested",
+    "complete": false,
+    "completedAt": null,
+    "completedBy": null,
+    "notes": ""
+  },
+  {
+    "key": "attribution",
+    "label": "Attribution system shipped and tested",
+    "complete": false,
+    "completedAt": null,
+    "completedBy": null,
+    "notes": ""
+  },
+  {
+    "key": "ai-suppression-proven",
+    "label": "AI suggestion deduplication proven ≥4 weeks",
+    "complete": false,
+    "completedAt": null,
+    "completedBy": null,
+    "notes": ""
+  }
+]
