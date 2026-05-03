@@ -1,22 +1,31 @@
 ---
+import { getCollection } from "astro:content";
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import FilterBar from "../../../components/FilterBar.astro";
 import RecipeMeta from "../../../components/RecipeMeta.astro";
 import { firstImage, keywordList } from "../../../lib/instructions.ts";
 import { getPublished } from "../../../lib/recipe-augment.ts";
-import { useTranslations } from "../../../i18n/translations.ts";
+import { MIXTURE_KINDS, buildKindBySlug } from "../../../lib/mixture-schema.ts";
+import { useTranslations, type TranslationKey } from "../../../i18n/translations.ts";
 
 const t = useTranslations("de");
 const prefix = "/de";
 
-const mixtures = (await getPublished("mixtures")).sort((a, b) =>
+const [mixtures, rawMeta] = await Promise.all([
+  getPublished("mixtures"),
+  getCollection("meta"),
+]);
+const sorted = mixtures.sort((a, b) =>
   (b.data.datePublished ?? "").localeCompare(a.data.datePublished ?? ""),
 );
+const kindBySlug = buildKindBySlug(rawMeta);
 
-const cuisines = [...new Set(mixtures.map((r) => r.data.recipeCuisine).filter((c): c is string => Boolean(c)))].sort();
-const tags = [...new Set(mixtures.flatMap((r) => keywordList(r.data.keywords)))].sort();
+const cuisines = [...new Set(sorted.map((r) => r.data.recipeCuisine).filter((c): c is string => Boolean(c)))].sort();
+const tags = [...new Set(sorted.flatMap((r) => keywordList(r.data.keywords)))].sort();
+const presentKinds = MIXTURE_KINDS.filter((k) => sorted.some((m) => kindBySlug.get(m.id) === k));
 
 const groups = [
+  { key: "kind", label: t("filter.kind"), values: presentKinds.map((k) => ({ value: k, label: t(`kind.${k}` as TranslationKey) })) },
   { key: "cuisine", label: t("filter.cuisine"), values: cuisines.map((v) => ({ value: v, label: v })) },
   { key: "tags", label: t("filter.tag"), values: tags.map((v) => ({ value: v, label: v })) },
 ];
@@ -32,19 +41,21 @@ const groups = [
       <p class="mt-3 max-w-2xl text-lg text-stone-600">{t("page.mixtures.description")}</p>
     </header>
 
-    <FilterBar groups={groups} totalCount={mixtures.length} />
+    <FilterBar groups={groups} totalCount={sorted.length} />
 
     <section class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
       {
-        mixtures.map((mix) => {
+        sorted.map((mix) => {
           const href = `${prefix}/mixtures/${mix.id}/`;
           const image = firstImage(mix.data.image);
           const cardTags = keywordList(mix.data.keywords);
           const transitionName = `mixture-${mix.id}`;
           const fallbackLabel = [mix.data.recipeCategory, mix.data.recipeCuisine].filter(Boolean).join(" · ") || t("recipe.fallback");
+          const kind = kindBySlug.get(mix.id) ?? "";
           return (
             <article
               data-filter-item
+              data-filter-kind={kind}
               data-filter-cuisine={mix.data.recipeCuisine ?? ""}
               data-filter-tags={cardTags.join(",")}
               class="mb-6 break-inside-avoid rounded-2xl bg-white shadow-sm ring-1 ring-stone-200 transition hover:shadow-md hover:ring-stone-300"

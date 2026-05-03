@@ -14,9 +14,11 @@ const ingredients = allIngredients
   .sort((a, b) => a.data.name.localeCompare(b.data.name));
 
 const categories = [...new Set(ingredients.map((i) => i.data.category))].sort();
+const flavorProfiles = [...new Set(ingredients.flatMap((i) => i.data.flavorProfile ?? []))].sort();
 
 const groups = [
   { key: "category", label: t("filter.category"), values: categories.map((v) => ({ value: v, label: v })) },
+  { key: "flavorProfile", label: t("filter.flavorProfile"), values: flavorProfiles.map((v) => ({ value: v, label: v })) },
 ];
 
 const categoryColors: Record<string, string> = {
@@ -52,6 +54,7 @@ const categoryColors: Record<string, string> = {
             <article
               data-filter-item
               data-filter-category={data.category}
+              data-filter-flavor-profile={(data.flavorProfile ?? []).join(",")}
               class="mb-6 break-inside-avoid rounded-2xl bg-white shadow-sm ring-1 ring-stone-200 transition hover:shadow-md hover:ring-stone-300"
             >
               <a href={href} class="group block overflow-hidden rounded-2xl">
