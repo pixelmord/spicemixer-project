@@ -17,7 +17,13 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { cn } from "@/lib/utils.ts";
-import { hashSuggestion, filterSuggestions, recordAiEvent } from "content-ai";
+import {
+  hashSuggestion,
+  filterSuggestions,
+  recordAiEvent,
+  isAllowedAutoApply,
+  assertAutoApplyAllowed,
+} from "content-ai";
 import type { AiEvent } from "content-ai";
 
 // ── Raw proposal types (from API) ──────────────────────────────────────────────
@@ -504,7 +510,30 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
         });
         if (error) throw new Error(error.message);
         const enriched = (data as IngredientLinkProposal[]).map(enrichLink);
-        setResult({ op, items: filterSuggestions(aiEvents, enriched) });
+        const filtered = filterSuggestions(aiEvents, enriched);
+
+        const toAutoApply = filtered.filter((l) =>
+          isAllowedAutoApply("ingredient-link", l.confidence, "editor"),
+        );
+        const toSuggest = filtered.filter(
+          (l) => !isAllowedAutoApply("ingredient-link", l.confidence, "editor"),
+        );
+
+        for (const link of toAutoApply) {
+          assertAutoApplyAllowed("ingredient-link", link.confidence, "editor");
+          recipe.onApplyIngredientLinks([link]);
+          emitEvent({
+            type: "auto-applied",
+            field: link.field,
+            suggestion: { hash: link.hash, summary: link.summary },
+            model,
+            confidence: "high",
+          });
+        }
+
+        if (toSuggest.length > 0) {
+          setResult({ op, items: toSuggest });
+        }
       } else if (op === "tags") {
         const { data, error } = await actions.aiProposeTags({ recipe: props.snapshot });
         if (error) throw new Error(error.message);

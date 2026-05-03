@@ -73,4 +73,11 @@ export { normalizePayload, hashSuggestion, hashContent } from "./hash.ts";
 export { ALLOWLIST, isAllowedAutoApply, assertAutoApplyAllowed } from "./auto-apply.ts";
 export type { AutoApplyKind, Confidence } from "./auto-apply.ts";
 
-export { prune, isSuppressed, filterSuggestions, appendEvent, recordAiEvent } from "./events.ts";
+export {
+  prune,
+  isSuppressed,
+  filterSuggestions,
+  appendEvent,
+  recordAiEvent,
+  hasAutoApplied,
+} from "./events.ts";
