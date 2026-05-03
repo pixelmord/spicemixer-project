@@ -46,6 +46,7 @@ export async function proposeIngredientLinks(
   recipeIngredients: string[],
   inventory: Array<{ slug: string; name: string }>,
   config: AiConfig,
+  rejectedContext?: string,
 ): Promise<IngredientLinkProposal[]> {
   if (!recipeIngredients.length || !inventory.length) return [];
 
@@ -64,6 +65,8 @@ export async function proposeIngredientLinks(
       }),
     ),
   });
+
+  const rejectedSection = rejectedContext ? `\n\n${rejectedContext}` : "";
 
   try {
     const { output } = await generateText({
@@ -85,7 +88,7 @@ For each ingredient that has a clear match, return:
 - slug: the exact matching slug from the inventory list above
 - confidence: high / medium / low
 
-Return an empty links array if nothing matches confidently. Do not fabricate slugs.`,
+Return an empty links array if nothing matches confidently. Do not fabricate slugs.${rejectedSection}`,
     });
 
     // Discard any suggested slug not in the provided inventory
@@ -105,6 +108,7 @@ export async function proposeTags(
   recipe: RecipeSnapshot,
   existingTags: string[],
   config: AiConfig,
+  rejectedContext?: string,
 ): Promise<TagProposal> {
   const model = createProvider(config);
 
@@ -126,6 +130,8 @@ export async function proposeTags(
     ? `Prefer tags from this existing vocabulary where applicable:\n${existingTags.slice(0, 60).join(", ")}`
     : "";
 
+  const rejectedSection = rejectedContext ? `\n\n${rejectedContext}` : "";
+
   try {
     const { output } = await generateText({
       model,
@@ -134,7 +140,7 @@ export async function proposeTags(
       prompt: `Suggest 3–8 concise tags for this recipe. Tags should be lowercase, hyphenated if multi-word (e.g. "quick-dinner", "vegan", "spicy").
 
 ${context}
-${tagHints}`,
+${tagHints}${rejectedSection}`,
     });
     return output;
   } catch (e) {
@@ -146,6 +152,7 @@ export async function proposeRecipeImprovements(
   recipe: RecipeSnapshot,
   missingFields: string[],
   config: AiConfig,
+  rejectedContext?: string,
 ): Promise<ImprovementProposal> {
   if (!missingFields.length) return { fields: [] };
 
@@ -173,6 +180,8 @@ export async function proposeRecipeImprovements(
     .filter(Boolean)
     .join("\n");
 
+  const rejectedSection = rejectedContext ? `\n\n${rejectedContext}` : "";
+
   try {
     const { output } = await generateText({
       model,
@@ -189,7 +198,7 @@ Rules:
 - Only suggest fields from the missing list
 - Do NOT suggest image URLs, placeholder images, or any URLs for the "image" field — leave image fields empty
 - For time fields (prepTime, cookTime, totalTime) use ISO 8601 duration format only, e.g. "PT15M" or "PT1H30M" — never plain English like "10 minutes"
-- Only fill text, number, or array fields you can infer from the recipe context`,
+- Only fill text, number, or array fields you can infer from the recipe context${rejectedSection}`,
     });
     return output;
   } catch (e) {
@@ -236,6 +245,7 @@ export async function proposeRelations(
     recipeIngredient?: string[];
   }>,
   config: AiConfig,
+  rejectedContext?: string,
 ): Promise<RelationProposal[]> {
   if (!existingRecipes.length) return [];
 
@@ -269,6 +279,8 @@ export async function proposeRelations(
     .map((r) => `${r.collection}/${r.slug}: ${r.name}`)
     .join("\n");
 
+  const rejectedSection = rejectedContext ? `\n\n${rejectedContext}` : "";
+
   try {
     const { output } = await generateText({
       model,
@@ -286,7 +298,7 @@ Return up to 4 relations:
 - "goesWellWith": recipes this pairs or serves well alongside
 - "usesBase": recipes/mixtures this recipe uses as a base ingredient (e.g. a spice blend used in a dish)
 
-Only suggest relations with clear culinary logic. Return empty if nothing fits.`,
+Only suggest relations with clear culinary logic. Return empty if nothing fits.${rejectedSection}`,
     });
     return output.relations;
   } catch (e) {

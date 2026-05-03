@@ -27,6 +27,7 @@ import {
   savePairingMeta as libSavePairingMeta,
 } from "@/lib/pairings.ts";
 import { NotFoundError } from "@/lib/errors.ts";
+import type { AiEvent } from "content-ai";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -59,6 +60,41 @@ async function resolveFileInput({
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (mimeType === "application/pdf") return { kind: "pdf", bytes };
   return { kind: "image", bytes, mimeType };
+}
+
+async function resolveMergeSource({
+  sourceKind,
+  file,
+  mimeType,
+  text,
+  prompt,
+}: {
+  sourceKind: "file" | "text" | "prompt";
+  file?: File;
+  mimeType?: string;
+  text?: string;
+  prompt?: string;
+}) {
+  if (sourceKind === "prompt") {
+    if (!prompt) throw new ActionError({ code: "BAD_REQUEST", message: "Prompt required." });
+    return { kind: "prompt" as const, prompt };
+  }
+  if (sourceKind === "text") {
+    if (!text) throw new ActionError({ code: "BAD_REQUEST", message: "Text required." });
+    return { kind: "text" as const, content: text };
+  }
+  if (!file || !mimeType) {
+    throw new ActionError({ code: "BAD_REQUEST", message: "File required." });
+  }
+  if (file.size > MAX_FILE_BYTES) {
+    throw new ActionError({ code: "BAD_REQUEST", message: "File exceeds 10 MB limit." });
+  }
+  if (mimeType === "text/plain" || mimeType === "text/markdown") {
+    return { kind: "text" as const, content: await file.text() };
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (mimeType === "application/pdf") return { kind: "pdf" as const, bytes };
+  return { kind: "image" as const, bytes, mimeType };
 }
 
 function resolveAiConfig() {
@@ -205,11 +241,37 @@ export const server = {
       slug: z.string().min(1),
       recipe: z.record(z.string(), z.unknown()),
       meta: z.record(z.string(), z.unknown()).optional(),
+      aiMergeModel: z.string().optional(),
     }),
-    handler: async ({ collection, slug, recipe, meta }) => {
+    handler: async ({ collection, slug, recipe, meta, aiMergeModel }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      const result = await libSaveRecipe(store, sidecar, { collection, slug, recipe, meta });
+      let finalMeta = meta;
+      if (aiMergeModel) {
+        const { recordAiEvent, hashSuggestion } = await import("content-ai");
+        const metaKey = `${collection}/${slug}`;
+        const existingRecord = await store.get("meta", metaKey);
+        const existingMeta = (existingRecord?.data as Record<string, unknown>) ?? {};
+        const base = meta ?? existingMeta;
+        const existingEvents: AiEvent[] = Array.isArray(base["aiEvents"])
+          ? (base["aiEvents"] as AiEvent[])
+          : [];
+        const updatedEvents = recordAiEvent(existingEvents, {
+          type: "accepted",
+          suggestion: {
+            hash: hashSuggestion(recipe),
+            summary: "AI-merged recipe accepted",
+          },
+          model: aiMergeModel,
+        });
+        finalMeta = { ...base, aiEvents: updatedEvents };
+      }
+      const result = await libSaveRecipe(store, sidecar, {
+        collection,
+        slug,
+        recipe,
+        meta: finalMeta,
+      });
       return { ok: true, slug: result.slug };
     },
   }),
@@ -222,11 +284,37 @@ export const server = {
       slug: z.string().min(1),
       ingredient: z.record(z.string(), z.unknown()),
       meta: z.record(z.string(), z.unknown()).optional(),
+      aiMergeModel: z.string().optional(),
     }),
-    handler: async ({ locale, slug, ingredient, meta }) => {
+    handler: async ({ locale, slug, ingredient, meta, aiMergeModel }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      const result = await libSaveIngredient(store, sidecar, { locale, slug, ingredient, meta });
+      let finalMeta = meta;
+      if (aiMergeModel) {
+        const { recordAiEvent, hashSuggestion } = await import("content-ai");
+        const metaKey = `${locale}/${slug}`;
+        const existingRecord = await store.get("ingredientMeta", metaKey);
+        const existingMeta = (existingRecord?.data as Record<string, unknown>) ?? {};
+        const base = meta ?? existingMeta;
+        const existingEvents: AiEvent[] = Array.isArray(base["aiEvents"])
+          ? (base["aiEvents"] as AiEvent[])
+          : [];
+        const updatedEvents = recordAiEvent(existingEvents, {
+          type: "accepted",
+          suggestion: {
+            hash: hashSuggestion(ingredient),
+            summary: "AI-merged ingredient accepted",
+          },
+          model: aiMergeModel,
+        });
+        finalMeta = { ...base, aiEvents: updatedEvents };
+      }
+      const result = await libSaveIngredient(store, sidecar, {
+        locale,
+        slug,
+        ingredient,
+        meta: finalMeta,
+      });
       return { ok: true, slug: result.slug };
     },
   }),
@@ -241,8 +329,9 @@ export const server = {
       locale: z.string().length(2).default("en"),
       draft: z.boolean().optional(),
       image: z.string().optional(),
+      aiMergeModel: z.string().optional(),
     }),
-    handler: async ({ id, ingredients, description, locale, draft, image }) => {
+    handler: async ({ id, ingredients, description, locale, draft, image, aiMergeModel }) => {
       const store = await createStore();
       const result = await libSavePairing(store, {
         id,
@@ -252,6 +341,24 @@ export const server = {
         draft,
         image,
       });
+      if (aiMergeModel) {
+        const { recordAiEvent, hashSuggestion } = await import("content-ai");
+        const existingMetaRecord = await store.get("pairingMeta", id);
+        const existingMeta = (existingMetaRecord?.data as Record<string, unknown>) ?? {};
+        const existingEvents: AiEvent[] = Array.isArray(existingMeta["aiEvents"])
+          ? (existingMeta["aiEvents"] as AiEvent[])
+          : [];
+        const updatedEvents = recordAiEvent(existingEvents, {
+          type: "accepted",
+          field: "description",
+          suggestion: {
+            hash: hashSuggestion({ description, locale }),
+            summary: `AI-enhanced pairing description (${locale}) accepted`,
+          },
+          model: aiMergeModel,
+        });
+        await store.put("pairingMeta", id, { ...existingMeta, aiEvents: updatedEvents });
+      }
       return { ok: true, id: result.id };
     },
   }),
@@ -551,40 +658,9 @@ export const server = {
       const config = resolveAiConfig();
       const { mergeRecipe } = await import("content-ai");
       const existingRecipe = JSON.parse(existing) as Record<string, unknown>;
-
-      if (sourceKind === "prompt") {
-        if (!prompt) throw new ActionError({ code: "BAD_REQUEST", message: "Prompt required." });
-        return mergeRecipe(
-          { existing: existingRecipe as never, source: { kind: "prompt", prompt } },
-          config,
-        );
-      }
-      if (sourceKind === "text") {
-        if (!text) throw new ActionError({ code: "BAD_REQUEST", message: "Text required." });
-        return mergeRecipe(
-          { existing: existingRecipe as never, source: { kind: "text", content: text } },
-          config,
-        );
-      }
-      // file
-      if (!file || !mimeType) {
-        throw new ActionError({ code: "BAD_REQUEST", message: "File required." });
-      }
-      if (file.size > MAX_FILE_BYTES) {
-        throw new ActionError({ code: "BAD_REQUEST", message: "File exceeds 10 MB limit." });
-      }
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      if (mimeType === "text/plain" || mimeType === "text/markdown") {
-        const content = await file.text();
-        return mergeRecipe(
-          { existing: existingRecipe as never, source: { kind: "text", content } },
-          config,
-        );
-      }
-      const kind = mimeType === "application/pdf" ? "pdf" : "image";
-      const source =
-        kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
-      return mergeRecipe({ existing: existingRecipe as never, source }, config);
+      const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
+      const result = await mergeRecipe({ existing: existingRecipe as never, source }, config);
+      return { ...result, model: config.model };
     },
   }),
 
@@ -733,38 +809,12 @@ export const server = {
       const config = resolveAiConfig();
       const { mergeIngredient } = await import("content-ai");
       const existingIngredient = JSON.parse(existing) as Record<string, unknown>;
-
-      if (sourceKind === "prompt") {
-        if (!prompt) throw new ActionError({ code: "BAD_REQUEST", message: "Prompt required." });
-        return mergeIngredient(
-          { existing: existingIngredient as never, source: { kind: "prompt", prompt } },
-          config,
-        );
-      }
-      if (sourceKind === "text") {
-        if (!text) throw new ActionError({ code: "BAD_REQUEST", message: "Text required." });
-        return mergeIngredient(
-          { existing: existingIngredient as never, source: { kind: "text", content: text } },
-          config,
-        );
-      }
-      if (!file || !mimeType) {
-        throw new ActionError({ code: "BAD_REQUEST", message: "File required." });
-      }
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      if (mimeType === "text/plain" || mimeType === "text/markdown") {
-        return mergeIngredient(
-          {
-            existing: existingIngredient as never,
-            source: { kind: "text", content: await file.text() },
-          },
-          config,
-        );
-      }
-      const kind = mimeType === "application/pdf" ? "pdf" : "image";
-      const source =
-        kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
-      return mergeIngredient({ existing: existingIngredient as never, source }, config);
+      const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
+      const result = await mergeIngredient(
+        { existing: existingIngredient as never, source },
+        config,
+      );
+      return { ...result, model: config.model };
     },
   }),
 
@@ -783,9 +833,22 @@ export const server = {
     }),
     handler: async ({ locale, slug, ingredient, existingMeta = {}, missingFields }) => {
       const config = resolveAiConfig();
-      const { proposeIngredientImprovements, proposeIngredientPairings, detectLanguage } =
-        await import("content-ai");
+      const {
+        proposeIngredientImprovements,
+        proposeIngredientPairings,
+        detectLanguage,
+        isAllowedAutoApply,
+        assertAutoApplyAllowed,
+        recordAiEvent,
+        hashSuggestion,
+        buildRejectedContext,
+      } = await import("content-ai");
       const store = await createStore();
+
+      const existingEvents: AiEvent[] = Array.isArray(existingMeta["aiEvents"])
+        ? (existingMeta["aiEvents"] as AiEvent[])
+        : [];
+      const rejectedContext = buildRejectedContext(existingEvents);
 
       // Build inventory (exclude self)
       const items = await store.list("ingredients");
@@ -803,10 +866,10 @@ export const server = {
 
       const [improvementsResult, pairingsResult, langResult] = await Promise.allSettled([
         fieldsForAi.length
-          ? proposeIngredientImprovements(ingredient as never, fieldsForAi, config)
+          ? proposeIngredientImprovements(ingredient as never, fieldsForAi, config, rejectedContext)
           : Promise.resolve({ fields: [] }),
         inventory.length
-          ? proposeIngredientPairings(ingredient as never, inventory, config)
+          ? proposeIngredientPairings(ingredient as never, inventory, config, rejectedContext)
           : Promise.resolve([]),
         !existingMeta["locale"]
           ? detectLanguage(
@@ -842,21 +905,26 @@ export const server = {
         pairings: proposedPairings.map((p) => ({
           slug: p.slug,
           description: p.description,
-          confidence: p.confidence as "high" | "medium" | "low",
+          confidence: p.confidence,
         })),
         detectedLanguage,
         languageMismatch,
       };
 
-      // Auto-apply: high-confidence pairings (additive, never overwrites)
-      const highConf = proposedPairings.filter((p) => p.confidence === "high");
+      // Auto-apply: policy-gated pairings (additive, never overwrites)
+      const toAutoApply = proposedPairings.filter((p) =>
+        isAllowedAutoApply("pairing-slug", p.confidence, "editor"),
+      );
       let autoLinked = 0;
-      if (highConf.length > 0) {
+      let events: AiEvent[] = existingEvents;
+
+      if (toAutoApply.length > 0) {
         const existingPairings = await store.list("pairings");
         const existingIds = new Set(existingPairings.map((p) => p.id));
-        for (const pairing of highConf) {
+        for (const pairing of toAutoApply) {
           const id = [slug, pairing.slug].sort().join("--");
           if (!existingIds.has(id)) {
+            assertAutoApplyAllowed("pairing-slug", pairing.confidence, "editor");
             const ref1: EntityRef = { collection: "ingredients", slug };
             const ref2: EntityRef = { collection: "ingredients", slug: pairing.slug };
             const sortedRefs = [ref1, ref2].sort((a, b) => a.slug.localeCompare(b.slug)) as [
@@ -867,9 +935,30 @@ export const server = {
               ingredients: sortedRefs,
               description: pairing.description,
             });
+            events = recordAiEvent(events, {
+              type: "auto-applied",
+              field: "pairings",
+              suggestion: {
+                hash: hashSuggestion({ slug, pairingSlug: pairing.slug }),
+                summary: `Pairing auto-applied: ${slug} ↔ ${pairing.slug}`,
+              },
+              model: config.model,
+              confidence: pairing.confidence,
+            });
             autoLinked++;
           }
         }
+      }
+
+      if (events !== existingEvents) {
+        const metaKey = `${locale}/${slug}`;
+        const currentMeta = (await store.get("ingredientMeta", metaKey))?.data as
+          | Record<string, unknown>
+          | undefined;
+        await store.put("ingredientMeta", metaKey, {
+          ...(currentMeta ?? existingMeta),
+          aiEvents: events,
+        });
       }
 
       return { aiSuggestions, autoLinked, skipped: false };
@@ -967,40 +1056,12 @@ export const server = {
       const config = resolveAiConfig();
       const { mergePairing } = await import("content-ai");
       const existingData = JSON.parse(existing) as Record<string, unknown>;
-
-      if (sourceKind === "prompt") {
-        if (!prompt) throw new ActionError({ code: "BAD_REQUEST", message: "Prompt required." });
-        return mergePairing(
-          { existing: { ...existingData, locale } as never, source: { kind: "prompt", prompt } },
-          config,
-        );
-      }
-      if (sourceKind === "text") {
-        if (!text) throw new ActionError({ code: "BAD_REQUEST", message: "Text required." });
-        return mergePairing(
-          {
-            existing: { ...existingData, locale } as never,
-            source: { kind: "text", content: text },
-          },
-          config,
-        );
-      }
-      if (!file || !mimeType)
-        throw new ActionError({ code: "BAD_REQUEST", message: "File required." });
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      if (mimeType === "text/plain" || mimeType === "text/markdown") {
-        return mergePairing(
-          {
-            existing: { ...existingData, locale } as never,
-            source: { kind: "text", content: await file.text() },
-          },
-          config,
-        );
-      }
-      const kind = mimeType === "application/pdf" ? "pdf" : "image";
-      const source =
-        kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
-      return mergePairing({ existing: { ...existingData, locale } as never, source }, config);
+      const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
+      const result = await mergePairing(
+        { existing: { ...existingData, locale } as never, source },
+        config,
+      );
+      return { ...result, model: config.model };
     },
   }),
 
@@ -1063,9 +1124,18 @@ export const server = {
       locale: z.string().length(2).default("en"),
       pairing: z.record(z.string(), z.unknown()),
     }),
-    handler: async ({ id: _id, locale, pairing }) => {
+    handler: async ({ id, locale, pairing }) => {
       const config = resolveAiConfig();
-      const { proposePairingImprovements } = await import("content-ai");
+      const { proposePairingImprovements, buildRejectedContext } = await import("content-ai");
+      const store = await createStore();
+
+      const pairingMeta = (await store.get("pairingMeta", id))?.data as
+        | Record<string, unknown>
+        | undefined;
+      const existingEvents: AiEvent[] = Array.isArray(pairingMeta?.["aiEvents"])
+        ? (pairingMeta["aiEvents"] as AiEvent[])
+        : [];
+      const rejectedContext = buildRejectedContext(existingEvents);
 
       const descriptions = (pairing["descriptions"] as Record<string, string>) ?? {};
       const description =
@@ -1081,6 +1151,7 @@ export const server = {
         { ingredient1: refSlug(ings?.[0]), ingredient2: refSlug(ings?.[1]), description },
         locale,
         config,
+        rejectedContext,
       );
 
       const aiSuggestions = {
@@ -1204,9 +1275,19 @@ export const server = {
         proposeIngredientLinks,
         proposeRelations,
         detectLanguage,
+        isAllowedAutoApply,
+        assertAutoApplyAllowed,
+        recordAiEvent,
+        hashSuggestion,
+        buildRejectedContext,
       } = await import("content-ai");
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
+
+      const existingEvents: AiEvent[] = Array.isArray(meta["aiEvents"])
+        ? (meta["aiEvents"] as AiEvent[])
+        : [];
+      const rejectedContext = buildRejectedContext(existingEvents);
 
       // Build inventories
       const ingredientItems = await store.list("ingredients");
@@ -1247,13 +1328,13 @@ export const server = {
       const [improvementsResult, tagsResult, linksResult, relationsResult, langResult] =
         await Promise.allSettled([
           fieldsForAi.length
-            ? proposeRecipeImprovements(recipe as never, fieldsForAi, config)
+            ? proposeRecipeImprovements(recipe as never, fieldsForAi, config, rejectedContext)
             : Promise.resolve({ fields: [] }),
-          proposeTags(recipe as never, [], config),
+          proposeTags(recipe as never, [], config, rejectedContext),
           recipeIngredients.length
-            ? proposeIngredientLinks(recipeIngredients, inventory, config)
+            ? proposeIngredientLinks(recipeIngredients, inventory, config, rejectedContext)
             : Promise.resolve([]),
-          proposeRelations(recipe as never, existingRecipes, config),
+          proposeRelations(recipe as never, existingRecipes, config, rejectedContext),
           !meta["language"]
             ? detectLanguage(
                 [recipe["name"], recipe["description"]].filter(Boolean).map(String).join(" — "),
@@ -1286,35 +1367,64 @@ export const server = {
         detectedLanguage,
       };
 
-      // Auto-apply: high-confidence ingredient links (additive only)
+      // Auto-apply: policy-gated ingredient links (additive only)
       const existingLinks = Array.isArray(meta["ingredientLinks"])
         ? (meta["ingredientLinks"] as Array<Record<string, unknown>>)
         : [];
       const existingPatterns = new Set(existingLinks.map((l) => String(l["pattern"] ?? "")));
-      const highConf = ingredientLinks.filter(
-        (l) => l.confidence === "high" && !existingPatterns.has(l.pattern),
+      const toAutoApply = ingredientLinks.filter(
+        (l) =>
+          isAllowedAutoApply("ingredient-link", l.confidence, "editor") &&
+          !existingPatterns.has(l.pattern),
       );
 
       const updatedMeta: Record<string, unknown> = { ...meta };
+      let events: AiEvent[] = existingEvents;
 
-      if (highConf.length > 0) {
+      if (toAutoApply.length > 0) {
         updatedMeta["ingredientLinks"] = [
           ...existingLinks,
-          ...highConf.map((l) => ({ pattern: l.pattern, slug: l.slug, kind: "ingredient" })),
+          ...toAutoApply.map((l) => ({ pattern: l.pattern, slug: l.slug, kind: "ingredient" })),
         ];
+        for (const link of toAutoApply) {
+          assertAutoApplyAllowed("ingredient-link", link.confidence, "editor");
+          events = recordAiEvent(events, {
+            type: "auto-applied",
+            field: "ingredientLinks",
+            suggestion: {
+              hash: hashSuggestion({ pattern: link.pattern, slug: link.slug }),
+              summary: `Link ${link.pattern} → ${link.slug}`,
+            },
+            model: config.model,
+            confidence: link.confidence,
+          });
+        }
       }
 
       // Auto-apply: detected language when none is set
       if (!meta["language"] && detectedLanguage) {
+        assertAutoApplyAllowed("language-detection", "high", "editor");
         updatedMeta["language"] = detectedLanguage;
         updatedMeta["locale"] = detectedLanguage;
+        events = recordAiEvent(events, {
+          type: "auto-applied",
+          field: "language",
+          suggestion: {
+            hash: hashSuggestion({ language: detectedLanguage }),
+            summary: `Language detected: ${detectedLanguage}`,
+          },
+          model: config.model,
+          confidence: "high",
+        });
       }
 
+      updatedMeta["aiEvents"] = events;
       await sidecar.write({ collection, slug }, updatedMeta);
 
       return {
         aiSuggestions,
-        autoLinked: highConf.length,
+        autoLinked: toAutoApply.length,
+        autoAppliedLinks: toAutoApply.map((l) => l.pattern),
         detectedLanguage: aiSuggestions.detectedLanguage,
         skipped: false,
       };

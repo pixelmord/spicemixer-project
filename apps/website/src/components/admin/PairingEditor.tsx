@@ -196,11 +196,11 @@ export default function PairingEditor({
                 variant="outline"
                 className={cn(
                   "text-[10px] shrink-0",
-                  p.confidence === "high"
-                    ? "text-emerald-600 border-emerald-200"
-                    : p.confidence === "medium"
-                      ? "text-amber-600 border-amber-200"
-                      : "text-muted-foreground",
+                  {
+                    high: "text-emerald-600 border-emerald-200",
+                    medium: "text-amber-600 border-amber-200",
+                    low: "text-muted-foreground",
+                  }[p.confidence] ?? "text-muted-foreground",
                 )}
               >
                 {p.confidence}

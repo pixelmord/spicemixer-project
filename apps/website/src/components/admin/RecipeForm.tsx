@@ -392,7 +392,13 @@ export default function RecipeForm({
         locale: (initialMeta?.language ?? "en") as "en" | "de",
       })
       .then((r: { data?: unknown }) => {
-        const data = r.data as { aiSuggestions: AiSuggestions; autoLinked: number } | undefined;
+        const data = r.data as
+          | {
+              aiSuggestions: AiSuggestions;
+              autoLinked: number;
+              autoAppliedLinks?: string[];
+            }
+          | undefined;
         if (data) {
           setAiSuggestions(data.aiSuggestions as AiSuggestions);
           if (data.autoLinked > 0) {
@@ -401,8 +407,9 @@ export default function RecipeForm({
             );
             // Merge auto-links into current client state — never replace, so
             // any link the user added in-session isn't clobbered.
+            const autoAppliedPatterns = new Set(data.autoAppliedLinks ?? []);
             const autoLinks = ((data.aiSuggestions as AiSuggestions)?.ingredientLinks ?? []).filter(
-              (l) => l.confidence === "high",
+              (l) => autoAppliedPatterns.has(l.pattern),
             );
             if (autoLinks.length > 0) {
               setIngredientLinks((prev) => {
@@ -569,16 +576,23 @@ export default function RecipeForm({
           locale: (language || "en") as "en" | "de",
         })
         .then((r: { data?: unknown }) => {
-          const data = r.data as { aiSuggestions: AiSuggestions; autoLinked: number } | undefined;
+          const data = r.data as
+            | {
+                aiSuggestions: AiSuggestions;
+                autoLinked: number;
+                autoAppliedLinks?: string[];
+              }
+            | undefined;
           if (data) {
             setAiSuggestions(data.aiSuggestions as AiSuggestions);
             if (data.autoLinked > 0) {
               toast.success(
                 `Auto-linked ${data.autoLinked} ingredient${data.autoLinked !== 1 ? "s" : ""}`,
               );
+              const autoAppliedPatterns = new Set(data.autoAppliedLinks ?? []);
               const autoLinks = (
                 (data.aiSuggestions as AiSuggestions)?.ingredientLinks ?? []
-              ).filter((l) => l.confidence === "high");
+              ).filter((l) => autoAppliedPatterns.has(l.pattern));
               if (autoLinks.length > 0) {
                 setIngredientLinks((prev) => {
                   const existingPatterns = new Set(prev.map((l) => l.pattern));

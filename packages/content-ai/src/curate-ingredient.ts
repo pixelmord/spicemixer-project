@@ -18,7 +18,7 @@ export type { ImprovementProposal, TranslationDraft };
 export interface PairingProposal {
   slug: string;
   description: string;
-  confidence: string;
+  confidence: "high" | "medium" | "low";
 }
 
 function normalizePairingConfidence(v: string): "high" | "medium" | "low" {
@@ -32,6 +32,7 @@ export async function proposeIngredientPairings(
   ingredient: IngredientSnapshot,
   inventory: Array<{ slug: string; name: string }>,
   config: AiConfig,
+  rejectedContext?: string,
 ): Promise<PairingProposal[]> {
   if (!inventory.length) return [];
 
@@ -58,6 +59,8 @@ export async function proposeIngredientPairings(
     .filter(Boolean)
     .join("\n");
 
+  const rejectedSection = rejectedContext ? `\n\n${rejectedContext}` : "";
+
   try {
     const { output } = await generateText({
       model,
@@ -74,7 +77,7 @@ ${inventoryList}
 Return up to 6 pairings. For each:
 - slug: exact slug from the inventory
 - description: 1-2 sentences explaining why they pair well (culinary reason, flavor harmony)
-- confidence: high / medium / low`,
+- confidence: high / medium / low${rejectedSection}`,
     });
 
     return output.pairings
@@ -93,6 +96,7 @@ export async function proposeIngredientImprovements(
   ingredient: IngredientSnapshot,
   missingFields: string[],
   config: AiConfig,
+  rejectedContext?: string,
 ): Promise<ImprovementProposal> {
   if (!missingFields.length) return { fields: [] };
 
@@ -117,6 +121,8 @@ export async function proposeIngredientImprovements(
     .filter(Boolean)
     .join("\n");
 
+  const rejectedSection = rejectedContext ? `\n\n${rejectedContext}` : "";
+
   try {
     const { output } = await generateText({
       model,
@@ -134,7 +140,7 @@ Rules:
 - Do NOT suggest image URLs or placeholder images — leave image fields empty
 - Only fill text or array fields you can infer from culinary knowledge about this ingredient
 
-For each field, provide a suggested value and a one-sentence rationale.`,
+For each field, provide a suggested value and a one-sentence rationale.${rejectedSection}`,
     });
     return output;
   } catch (e) {
