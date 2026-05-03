@@ -20,6 +20,12 @@ import {
   INGREDIENT_REQUIRED,
   INGREDIENT_RECOMMENDED,
 } from "@/lib/completeness.ts";
+import {
+  INGREDIENT_PARTS,
+  INGREDIENT_FLAVOR_PROFILE,
+  type IngredientPart,
+  type IngredientFlavorProfile,
+} from "@/lib/ingredient-schema.ts";
 import { slugify } from "@/lib/slugify.ts";
 import type { EntityOption } from "./EntityCombobox.tsx";
 import SectionNav, { type SectionDef } from "./SectionNav.tsx";
@@ -63,6 +69,13 @@ interface IngredientData {
   category: Category;
   origin: string[];
   flavorNotes: string[];
+  commonNames?: string[];
+  botanicalName?: string;
+  family?: string;
+  parts?: IngredientPart[];
+  seasonality?: string;
+  flavorProfile?: IngredientFlavorProfile[];
+  safetyFlags?: string[];
 }
 
 interface AiSuggestionsState {
@@ -97,6 +110,7 @@ const CATEGORIES: Category[] = [
 
 const SECTIONS: SectionDef[] = [
   { id: "section-basic", label: "Basic info" },
+  { id: "section-taxonomy", label: "Taxonomy" },
   { id: "section-profile", label: "Origin & Flavor" },
   { id: "section-regions", label: "Regions" },
   { id: "section-longform", label: "Long-form" },
@@ -145,6 +159,14 @@ const LONGFORM_SECTIONS: {
   },
 ];
 
+const RECOMMENDED_ANCHOR: Record<string, string> = {
+  origin: "section-profile",
+  botanicalName: "section-taxonomy",
+  family: "section-taxonomy",
+  parts: "section-taxonomy",
+  flavorProfile: "section-taxonomy",
+};
+
 function emptyIngredient(): IngredientData {
   return { name: "", category: "spice", origin: [], flavorNotes: [] };
 }
@@ -190,6 +212,13 @@ export default function IngredientForm({
   const [quickCreateCallback, setQuickCreateCallback] = useState<
     ((slug: string, label: string) => void) | null
   >(null);
+
+  const [commonNames, setCommonNames] = useState<string[]>(data.commonNames ?? []);
+  const [parts, setParts] = useState<IngredientPart[]>(data.parts ?? []);
+  const [flavorProfile, setFlavorProfile] = useState<IngredientFlavorProfile[]>(
+    data.flavorProfile ?? [],
+  );
+  const [safetyFlags, setSafetyFlags] = useState<string[]>(data.safetyFlags ?? []);
 
   // Image health check
   const [imageBroken, setImageBroken] = useState(false);
@@ -261,9 +290,9 @@ export default function IngredientForm({
       return;
     const missingKeys = INGREDIENT_RECOMMENDED.filter((k) => {
       if (k === "origin") return origins.length === 0;
-      if (k === "flavorNotes") return flavorNotes.length === 0;
-      if (k === "pairings") return pairings.length === 0;
       if (k === "images") return !data.images?.length;
+      if (k === "parts") return parts.length === 0;
+      if (k === "flavorProfile") return flavorProfile.length === 0;
       const v = (data as unknown as Record<string, unknown>)[k];
       return !v;
     });
@@ -316,6 +345,9 @@ export default function IngredientForm({
       sourcing: data.sourcing ?? "",
       image: data.images?.[0] ?? "",
       category: data.category,
+      botanicalName: data.botanicalName ?? "",
+      family: data.family ?? "",
+      seasonality: data.seasonality ?? "",
     },
     onSubmit: async ({ value }) => {
       if (!slug) {
@@ -344,6 +376,13 @@ export default function IngredientForm({
       if (value.storage) payload.storage = value.storage;
       if (value.sourcing) payload.sourcing = value.sourcing;
       if (value.image) payload.images = [value.image];
+      if (commonNames.length > 0) payload.commonNames = commonNames;
+      if (value.botanicalName) payload.botanicalName = value.botanicalName;
+      if (value.family) payload.family = value.family;
+      if (parts.length > 0) payload.parts = parts;
+      if (value.seasonality) payload.seasonality = value.seasonality;
+      if (flavorProfile.length > 0) payload.flavorProfile = flavorProfile;
+      if (safetyFlags.length > 0) payload.safetyFlags = safetyFlags;
 
       const { error } = await actions.saveIngredient({
         locale,
@@ -375,9 +414,9 @@ export default function IngredientForm({
       // Post-save async refresh
       const missingKeys = INGREDIENT_RECOMMENDED.filter((k) => {
         if (k === "origin") return origins.filter(Boolean).length === 0;
-        if (k === "flavorNotes") return flavorNotes.filter(Boolean).length === 0;
-        if (k === "pairings") return pairings.length === 0;
         if (k === "images") return !payload.images?.length;
+        if (k === "parts") return (payload.parts ?? []).length === 0;
+        if (k === "flavorProfile") return (payload.flavorProfile ?? []).length === 0;
         return !(payload as unknown as Record<string, unknown>)[k];
       });
       setAiRefreshing(true);
@@ -408,45 +447,50 @@ export default function IngredientForm({
     setCompleteness(
       scoreIngredient({
         name: formValues.name,
-        category: formValues.category,
         summary: formValues.summary,
+        category: formValues.category,
         description: formValues.description,
         images: formValues.image ? [formValues.image] : [],
         origin: origins.filter(Boolean),
-        flavorNotes: flavorNotes.filter(Boolean),
-        pairings: pairings.map((p) => ({
-          slug: p.ingredients[0] === slug ? p.ingredients[1] : p.ingredients[0],
-        })),
+        botanicalName: formValues.botanicalName || undefined,
+        family: formValues.family || undefined,
+        parts: parts.length > 0 ? parts : undefined,
+        flavorProfile: flavorProfile.length > 0 ? flavorProfile : undefined,
       } as never),
     );
-  }, [formValues, origins, flavorNotes, pairings]);
+  }, [formValues, origins, parts, flavorProfile]);
 
-  const requiredFields = INGREDIENT_REQUIRED.map((key) => ({
-    key,
-    label: key,
-    filled: key === "name" ? !!formValues.name : !!formValues.category,
-    anchorId: "section-basic",
-  }));
+  const requiredFields = INGREDIENT_REQUIRED.map((key) => {
+    let filled: boolean;
+    switch (key) {
+      case "name":
+        filled = !!formValues.name;
+        break;
+      case "category":
+        filled = !!formValues.category;
+        break;
+      case "summary":
+        filled = !!formValues.summary;
+        break;
+    }
+    return { key, label: key, filled, anchorId: "section-basic" };
+  });
 
   const recommendedFields = INGREDIENT_RECOMMENDED.map((key) => {
     let filled: boolean;
-    if (key === "summary") filled = !!formValues.summary;
-    else if (key === "description") filled = !!formValues.description;
-    else if (key === "images") filled = !!formValues.image;
+    if (key === "description") filled = !!formValues.description;
+    else if (key === "botanicalName") filled = !!formValues.botanicalName;
+    else if (key === "family") filled = !!formValues.family;
     else if (key === "origin") filled = origins.filter(Boolean).length > 0;
-    else if (key === "flavorNotes") filled = flavorNotes.filter(Boolean).length > 0;
-    else filled = pairings.length > 0;
+    else if (key === "parts") filled = parts.length > 0;
+    else if (key === "flavorProfile") filled = flavorProfile.length > 0;
+    else filled = !!formValues.image;
 
     return {
       key,
       label: key,
       filled,
-      anchorId:
-        key === "origin" || key === "flavorNotes"
-          ? "section-profile"
-          : key === "pairings"
-            ? "section-pairings"
-            : "section-basic",
+      anchorId: RECOMMENDED_ANCHOR[key] ?? "section-basic",
     };
   });
 
@@ -471,9 +515,9 @@ export default function IngredientForm({
     setDismissedSuggestions(new Set());
     const missingKeys = INGREDIENT_RECOMMENDED.filter((k) => {
       if (k === "origin") return origins.length === 0;
-      if (k === "flavorNotes") return flavorNotes.length === 0;
-      if (k === "pairings") return pairings.length === 0;
       if (k === "images") return !formValues.image;
+      if (k === "parts") return parts.length === 0;
+      if (k === "flavorProfile") return flavorProfile.length === 0;
       const v = formValues[k as keyof typeof formValues];
       return !v;
     });
@@ -485,6 +529,10 @@ export default function IngredientForm({
         category: formValues.category,
         origin: origins.filter(Boolean),
         flavorNotes: flavorNotes.filter(Boolean),
+        botanicalName: formValues.botanicalName || undefined,
+        family: formValues.family || undefined,
+        parts: parts.length > 0 ? parts : undefined,
+        flavorProfile: flavorProfile.length > 0 ? flavorProfile : undefined,
       };
       const { data: result } = await actions.aiRefreshIngredientSuggestions({
         locale,
@@ -571,6 +619,10 @@ export default function IngredientForm({
       category: formValues.category,
       origin: origins.filter(Boolean),
       flavorNotes: flavorNotes.filter(Boolean),
+      botanicalName: formValues.botanicalName || undefined,
+      family: formValues.family || undefined,
+      parts: parts.length > 0 ? parts : undefined,
+      flavorProfile: flavorProfile.length > 0 ? flavorProfile : undefined,
     };
   }
 
@@ -584,6 +636,16 @@ export default function IngredientForm({
         return other === p.slug;
       }),
   );
+
+  function togglePart(part: IngredientPart) {
+    setParts((prev) => (prev.includes(part) ? prev.filter((p) => p !== part) : [...prev, part]));
+  }
+
+  function toggleFlavorProfile(value: IngredientFlavorProfile) {
+    setFlavorProfile((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -745,10 +807,7 @@ export default function IngredientForm({
                             fieldKey="summary"
                             context={companion}
                           >
-                            <Label htmlFor={field.name}>
-                              Summary
-                              <RecommendedHint show={!field.state.value} />
-                            </Label>
+                            <Label htmlFor={field.name}>Summary *</Label>
                             <Input
                               id={field.name}
                               value={field.state.value}
@@ -872,6 +931,128 @@ export default function IngredientForm({
                           moving it or creating a translation.
                         </div>
                       )}
+                    </CardContent>
+                  </Card>
+                </section>
+
+                {/* ── Taxonomy ── */}
+                <section id="section-taxonomy" className="scroll-mt-4 space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Taxonomy</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label>Common names</Label>
+                        <TagInput
+                          value={commonNames}
+                          onChange={setCommonNames}
+                          placeholder="kala zeera, cilantro…"
+                        />
+                      </div>
+
+                      <form.Field name="botanicalName">
+                        {(field) => (
+                          <div className="space-y-1.5">
+                            <Label htmlFor={field.name}>
+                              Botanical name
+                              <RecommendedHint show={!field.state.value} />
+                            </Label>
+                            <Input
+                              id={field.name}
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              placeholder="Elettaria cardamomum"
+                            />
+                          </div>
+                        )}
+                      </form.Field>
+
+                      <form.Field name="family">
+                        {(field) => (
+                          <div className="space-y-1.5">
+                            <Label htmlFor={field.name}>
+                              Family
+                              <RecommendedHint show={!field.state.value} />
+                            </Label>
+                            <Input
+                              id={field.name}
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              placeholder="Zingiberaceae"
+                            />
+                          </div>
+                        )}
+                      </form.Field>
+
+                      <div className="space-y-1.5">
+                        <Label>
+                          Parts used
+                          <RecommendedHint show={parts.length === 0} />
+                        </Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {INGREDIENT_PARTS.map((part) => (
+                            <button
+                              key={part}
+                              type="button"
+                              onClick={() => togglePart(part)}
+                              className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                parts.includes(part)
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                              }`}
+                            >
+                              {part}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <form.Field name="seasonality">
+                        {(field) => (
+                          <div className="space-y-1.5">
+                            <Label htmlFor={field.name}>Seasonality</Label>
+                            <Input
+                              id={field.name}
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              placeholder="Spring, late summer…"
+                            />
+                          </div>
+                        )}
+                      </form.Field>
+
+                      <div className="space-y-1.5">
+                        <Label>
+                          Flavor profile
+                          <RecommendedHint show={flavorProfile.length === 0} />
+                        </Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {INGREDIENT_FLAVOR_PROFILE.map((value) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => toggleFlavorProfile(value)}
+                              className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                flavorProfile.includes(value)
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                              }`}
+                            >
+                              {value}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label>Safety flags</Label>
+                        <TagInput
+                          value={safetyFlags}
+                          onChange={setSafetyFlags}
+                          placeholder="allergen, contraindication…"
+                        />
+                      </div>
                     </CardContent>
                   </Card>
                 </section>

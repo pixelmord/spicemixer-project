@@ -2,6 +2,7 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import RelatedList from "../../components/RelatedList.astro";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
+import IngredientTaxonomy from "../../components/IngredientTaxonomy.astro";
 import {
   getUsedIn,
   getIngredient,
@@ -119,32 +120,7 @@ const pairingsResolved = pairingEntities.length > 0
       )
     }
 
-    {
-      (data.origin.length > 0 || data.flavorNotes.length > 0) && (
-        <div class="mb-10 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
-          <dl class="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-            {data.origin.length > 0 && (
-              <div>
-                <dt class="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                  {t("meta.origin")}
-                </dt>
-                <dd class="mt-0.5 text-stone-700">{data.origin.join(", ")}</dd>
-              </div>
-            )}
-            {data.flavorNotes.length > 0 && (
-              <div>
-                <dt class="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                  {t("meta.flavour")}
-                </dt>
-                <dd class="mt-0.5 text-stone-700">
-                  {data.flavorNotes.join(", ")}
-                </dd>
-              </div>
-            )}
-          </dl>
-        </div>
-      )
-    }
+    <IngredientTaxonomy data={data} t={t} />
 
     {
       data.description && (

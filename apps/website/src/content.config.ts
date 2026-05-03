@@ -3,6 +3,7 @@ import { glob } from "astro/loaders";
 import { recipeSchema } from "recipe-ingestion";
 import { REGIONS } from "./lib/regions.ts";
 import { aiEventSchema } from "content-ai";
+import { INGREDIENT_PARTS, INGREDIENT_FLAVOR_PROFILE } from "./lib/ingredient-schema.ts";
 
 const recipeLinkRef = z.object({
   collection: z.enum(["recipes", "spicemixes", "sauces"]),
@@ -85,6 +86,13 @@ const ingredientSchema = z.object({
   category: z.enum(["spice", "herb", "seed", "dried-fruit", "salt", "acid", "allium", "other"]),
   origin: z.array(z.string()).default([]),
   flavorNotes: z.array(z.string()).default([]),
+  commonNames: z.array(z.string()).default([]),
+  botanicalName: z.string().optional(),
+  family: z.string().optional(),
+  parts: z.array(z.enum(INGREDIENT_PARTS)).optional(),
+  seasonality: z.string().optional(),
+  flavorProfile: z.array(z.enum(INGREDIENT_FLAVOR_PROFILE)).optional(),
+  safetyFlags: z.array(z.string()).optional(),
   // Legacy inline pairings — kept optional during migration window.
   // Canonical pairings now live in the `pairings` collection.
   pairings: z
