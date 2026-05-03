@@ -1,32 +1,47 @@
 ---
+import type { CollectionEntry } from "astro:content";
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import DetailLayout from "../../../components/DetailLayout.astro";
 import RelatedList from "../../../components/RelatedList.astro";
+import TranslationFallbackBanner from "../../../components/TranslationFallbackBanner.astro";
 import { useTranslations } from "../../../i18n/translations.ts";
 import IngredientTaxonomy from "../../../components/IngredientTaxonomy.astro";
 import { getUsedIn, getIngredient, getPairings, getPublishedIngredients } from "../../../lib/recipe-augment.ts";
 import { renderInlineMarkdown } from "../../../lib/inline-markdown.ts";
 import { INGREDIENT_LONGFORM_FIELDS } from "../../../lib/ingredient-schema.ts";
 import { hasLiabilityScope } from "../../../lib/liability.ts";
+import { resolvePublished } from "../../../lib/published-entity.ts";
+import { hreflangTags } from "../../../lib/hreflang.ts";
 
 export async function getStaticPaths() {
-  const all = await getPublishedIngredients();
-  const enEntries = all.filter((e) => e.id.startsWith("en/"));
-  const deEntries = all.filter((e) => e.id.startsWith("de/"));
-
-  return enEntries.map((en) => {
-    const slug = en.id.replace(/^en\//, "");
-    const de = deEntries.find((e) => e.id === `de/${slug}`);
-    return {
-      params: { slug },
-      props: { ingredient: de ?? en },
-    };
-  });
+  const canonicalIngredients = await getPublishedIngredients("en");
+  const paths = await Promise.all(
+    canonicalIngredients.map(async (enEntry) => {
+      const slug = enEntry.id.replace(/^en\//, "");
+      const resolved = await resolvePublished("ingredients", slug, "de");
+      if (!resolved) return null;
+      return {
+        params: { slug },
+        props: {
+          ingredient: resolved.entity as CollectionEntry<"ingredients">,
+          isFallback: resolved.isFallback,
+          canonicalLocale: resolved.canonicalLocale,
+        },
+      };
+    }),
+  );
+  return paths.filter((p): p is NonNullable<typeof p> => p !== null);
 }
 
-const { ingredient } = Astro.props;
+interface Props {
+  ingredient: CollectionEntry<"ingredients">;
+  isFallback: boolean;
+  canonicalLocale: string;
+}
+
+const { ingredient, isFallback, canonicalLocale } = Astro.props;
 const data = ingredient.data;
-const slug = ingredient.id.replace(/^(en|de)\//, "");
+const slug = Astro.params.slug as string;
 
 const t = useTranslations("de");
 const locale = "de";
@@ -52,8 +67,8 @@ const pairingsResolved = pairingEntities.length > 0
         const entry = await getIngredient(otherSlug, locale);
         const descriptions = pairing.descriptions ?? {};
         const description = descriptions[locale] ?? descriptions["en"] ?? pairing.description ?? "";
-        const isFallback = !descriptions[locale] && (!!descriptions["en"] || !!pairing.description);
-        return { slug: otherSlug, name: entry?.data.name ?? otherSlug, description, isFallback };
+        const pairingFallback = !descriptions[locale] && (!!descriptions["en"] || !!pairing.description);
+        return { slug: otherSlug, name: entry?.data.name ?? otherSlug, description, isFallback: pairingFallback };
       })
     )
   : await Promise.all(
@@ -62,9 +77,17 @@ const pairingsResolved = pairingEntities.length > 0
         return { slug: pairSlug, name: entry?.data.name ?? pairSlug, description: note ?? "", isFallback: false };
       })
     );
+
+const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().replace(/\/$/, "") ?? "");
 ---
 
 <BaseLayout title={`${data.name} — Spicemixer`} description={data.summary}>
+  <Fragment slot="head">
+    {hreflang.map((tag) => (
+      <link rel="alternate" hreflang={tag.hrefLang} href={tag.href} />
+    ))}
+  </Fragment>
+
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
     <nav class="mb-8 text-sm">
       <a
@@ -74,6 +97,10 @@ const pairingsResolved = pairingEntities.length > 0
         {t("nav.back.ingredients")}
       </a>
     </nav>
+
+    {isFallback && (
+      <TranslationFallbackBanner requestedLocale={locale} canonicalLocale={canonicalLocale} />
+    )}
 
     <DetailLayout>
       <section slot="hero">
@@ -191,7 +218,7 @@ const pairingsResolved = pairingEntities.length > 0
                 {t("section.pairings")}
               </h2>
               <ul class="space-y-3">
-                {pairingsResolved.map(({ slug: pairSlug, name, description, isFallback }) => (
+                {pairingsResolved.map(({ slug: pairSlug, name, description, isFallback: pairingFallback }) => (
                   <li class="rounded-xl bg-white p-4 ring-1 ring-stone-200">
                     <a
                       href={`/de/ingredients/${pairSlug}/`}
@@ -200,9 +227,9 @@ const pairingsResolved = pairingEntities.length > 0
                       {name}
                     </a>
                     {description && (
-                      <p class={`mt-1 text-sm ${isFallback ? "text-stone-400 italic" : "text-stone-600"}`}>
+                      <p class={`mt-1 text-sm ${pairingFallback ? "text-stone-400 italic" : "text-stone-600"}`}>
                         {description}
-                        {isFallback && <span class="ml-1 text-xs not-italic">(EN)</span>}
+                        {pairingFallback && <span class="ml-1 text-xs not-italic">(EN)</span>}
                       </p>
                     )}
                   </li>

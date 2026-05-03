@@ -23,6 +23,7 @@ const homeHref = lang === "de" ? "/de/" : "/";
     <meta name="generator" content={Astro.generator} />
     {description && <meta name="description" content={description} />}
     <title>{title}</title>
+    <slot name="head" />
     <ClientRouter />
     <!-- Browser locale detection: redirect to /de on first visit when preferred -->
     <script is:inline>

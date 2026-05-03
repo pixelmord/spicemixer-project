@@ -1,0 +1,18 @@
+---
+import { useTranslations, type Lang } from "../i18n/translations.ts";
+
+interface Props {
+  requestedLocale: string;
+  canonicalLocale: string;
+}
+
+const { requestedLocale, canonicalLocale } = Astro.props;
+const t = useTranslations(requestedLocale as Lang);
+const bannerText = t("locale.fallback")
+  .replace("{canonical}", canonicalLocale.toUpperCase())
+  .replace("{requested}", requestedLocale.toUpperCase());
+---
+
+<div class="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200">
+  {bannerText}
+</div>

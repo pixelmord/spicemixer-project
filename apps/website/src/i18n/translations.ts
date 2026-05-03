@@ -81,6 +81,8 @@ const ui = {
     "page.pairings.recentlyAdded": "Recently Added",
     "filter.region": "Region",
     "filter.flavorProfile": "Flavor Profile",
+    "locale.fallback":
+      "Showing original {canonical} content — a {requested} translation is not yet available.",
   },
   de: {
     "page.home.title": "Spicemixer — Gewürze & Saucen",
@@ -162,6 +164,8 @@ const ui = {
     "page.pairings.recentlyAdded": "Kürzlich hinzugefügt",
     "filter.region": "Region",
     "filter.flavorProfile": "Aromaprofil",
+    "locale.fallback":
+      "Es wird der originale {canonical}-Inhalt angezeigt — eine {requested}-Übersetzung ist noch nicht verfügbar.",
   },
 } as const;
 
