@@ -42,14 +42,15 @@ export const RECIPE_RECOMMENDED = [
   "datePublished",
 ] as const;
 
-export const INGREDIENT_REQUIRED = ["name", "category"] as const;
+export const INGREDIENT_REQUIRED = ["name", "category", "summary"] as const;
 export const INGREDIENT_RECOMMENDED = [
-  "summary",
   "description",
-  "images",
+  "botanicalName",
+  "family",
   "origin",
-  "flavorNotes",
-  "pairings",
+  "parts",
+  "flavorProfile",
+  "images",
 ] as const;
 
 export function scoreRecipe(recipe: AnyRecord, meta: AnyRecord): CompletenessResult {

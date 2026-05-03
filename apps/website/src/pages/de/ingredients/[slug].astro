@@ -2,7 +2,8 @@
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import RelatedList from "../../../components/RelatedList.astro";
 import { useTranslations } from "../../../i18n/translations.ts";
-import { getUsedIn, getIngredient, getPublishedIngredients } from "../../../lib/recipe-augment.ts";
+import type { TranslationKey } from "../../../i18n/translations.ts";
+import { getUsedIn, getIngredient, getPairings, getPublishedIngredients } from "../../../lib/recipe-augment.ts";
 
 export async function getStaticPaths() {
   const all = await getPublishedIngredients();
@@ -29,12 +30,25 @@ const prefix = "/de";
 
 const usedIn = await getUsedIn(slug, prefix);
 
-const pairingsResolved = await Promise.all(
-  data.pairings.map(async ({ slug: pairSlug, note }) => {
-    const entry = await getIngredient(pairSlug, locale);
-    return { slug: pairSlug, name: entry?.data.name ?? pairSlug, note };
-  })
-);
+// Use pairings collection (bidirectional), fall back to legacy inline pairings
+const pairingEntities = await getPairings(slug);
+const pairingsResolved = pairingEntities.length > 0
+  ? await Promise.all(
+      pairingEntities.map(async (pairing) => {
+        const otherSlug = pairing.ingredients[0] === slug ? pairing.ingredients[1] : pairing.ingredients[0];
+        const entry = await getIngredient(otherSlug, locale);
+        const descriptions = pairing.descriptions ?? {};
+        const description = descriptions[locale] ?? descriptions["en"] ?? pairing.description ?? "";
+        const isFallback = !descriptions[locale] && (!!descriptions["en"] || !!pairing.description);
+        return { slug: otherSlug, name: entry?.data.name ?? otherSlug, description, isFallback };
+      })
+    )
+  : await Promise.all(
+      (data.pairings ?? []).map(async ({ slug: pairSlug, note }) => {
+        const entry = await getIngredient(pairSlug, locale);
+        return { slug: pairSlug, name: entry?.data.name ?? pairSlug, description: note ?? "", isFallback: false };
+      })
+    );
 ---
 
 <BaseLayout title={`${data.name} — Spicemixer`} description={data.summary}>
@@ -89,30 +103,54 @@ const pairingsResolved = await Promise.all(
     }
 
     {
-      (data.origin.length > 0 || data.flavorNotes.length > 0) && (
-        <div class="mb-10 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
-          <dl class="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-            {data.origin.length > 0 && (
-              <div>
-                <dt class="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                  {t("meta.origin")}
-                </dt>
-                <dd class="mt-0.5 text-stone-700">{data.origin.join(", ")}</dd>
-              </div>
-            )}
-            {data.flavorNotes.length > 0 && (
-              <div>
-                <dt class="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                  {t("meta.flavour")}
-                </dt>
-                <dd class="mt-0.5 text-stone-700">
-                  {data.flavorNotes.join(", ")}
-                </dd>
-              </div>
-            )}
-          </dl>
-        </div>
-      )
+      (() => {
+        const hasTaxonomy =
+          data.commonNames.length > 0 ||
+          data.botanicalName ||
+          data.family ||
+          (data.parts && data.parts.length > 0) ||
+          data.seasonality ||
+          (data.flavorProfile && data.flavorProfile.length > 0) ||
+          data.origin.length > 0 ||
+          data.flavorNotes.length > 0 ||
+          (data.safetyFlags && data.safetyFlags.length > 0);
+        if (!hasTaxonomy) return null;
+
+        const entries: Array<{ key: TranslationKey; value: string }> = [];
+        if (data.commonNames.length > 0)
+          entries.push({ key: "meta.commonNames", value: data.commonNames.join(", ") });
+        if (data.botanicalName)
+          entries.push({ key: "meta.botanicalName", value: data.botanicalName });
+        if (data.family)
+          entries.push({ key: "meta.family", value: data.family });
+        if (data.parts && data.parts.length > 0)
+          entries.push({ key: "meta.parts", value: data.parts.join(", ") });
+        if (data.seasonality)
+          entries.push({ key: "meta.seasonality", value: data.seasonality });
+        if (data.flavorProfile && data.flavorProfile.length > 0)
+          entries.push({ key: "meta.flavorProfile", value: data.flavorProfile.join(", ") });
+        if (data.origin.length > 0)
+          entries.push({ key: "meta.origin", value: data.origin.join(", ") });
+        if (data.flavorNotes.length > 0)
+          entries.push({ key: "meta.flavour", value: data.flavorNotes.join(", ") });
+        if (data.safetyFlags && data.safetyFlags.length > 0)
+          entries.push({ key: "meta.safetyFlags", value: data.safetyFlags.join(", ") });
+
+        return (
+          <div class="mb-10 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
+            <dl class="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+              {entries.map(({ key, value }) => (
+                <div>
+                  <dt class="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                    {t(key)}
+                  </dt>
+                  <dd class="mt-0.5 text-stone-700">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        );
+      })()
     }
 
     {
@@ -130,7 +168,7 @@ const pairingsResolved = await Promise.all(
             {t("section.pairings")}
           </h2>
           <ul class="space-y-3">
-            {pairingsResolved.map(({ slug: pairSlug, name, note }) => (
+            {pairingsResolved.map(({ slug: pairSlug, name, description, isFallback }) => (
               <li class="rounded-xl bg-white p-4 ring-1 ring-stone-200">
                 <a
                   href={`/de/ingredients/${pairSlug}/`}
@@ -138,7 +176,12 @@ const pairingsResolved = await Promise.all(
                 >
                   {name}
                 </a>
-                {note && <p class="mt-1 text-sm text-stone-600">{note}</p>}
+                {description && (
+                  <p class={`mt-1 text-sm ${isFallback ? "text-stone-400 italic" : "text-stone-600"}`}>
+                    {description}
+                    {isFallback && <span class="ml-1 text-xs not-italic">(EN)</span>}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
