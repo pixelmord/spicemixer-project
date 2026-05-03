@@ -20,6 +20,7 @@ import {
 } from "../../../lib/recipe-augment.ts";
 import { MIXTURE_KINDS, MIXTURE_KIND_PLURALS, buildKindBySlug, type MixtureKind } from "../../../lib/mixture-schema.ts";
 import { useTranslations } from "../../../i18n/translations.ts";
+import CookModeToggle from "../../../components/CookModeToggle.tsx";
 
 export async function getStaticPaths() {
   const allMixtures = await getPublished("mixtures");
@@ -224,7 +225,7 @@ const pageDescription = kind ? t("page.mixtures.description") : mix!.data.descri
       </nav>
 
       <DetailLayout>
-        <section slot="hero">
+        <section slot="hero" data-cook="compact">
           {
             detailImage ? (
               <figure
@@ -269,16 +270,22 @@ const pageDescription = kind ? t("page.mixtures.description") : mix!.data.descri
             <p class="mb-4 text-lg italic text-stone-700">{mix!.data.description}</p>
           )}
 
-          <a
-            href="#recipe"
-            class="mb-8 inline-block rounded-full bg-amber-700 px-5 py-2 text-sm font-medium text-white transition hover:bg-amber-800"
-          >
-            {t("section.jumpToRecipe")}
-          </a>
+          <div class="mb-8 flex flex-wrap items-center gap-3">
+            <a
+              href="#recipe"
+              class="inline-block rounded-full bg-amber-700 px-5 py-2 text-sm font-medium text-white transition hover:bg-amber-800"
+            >
+              {t("section.jumpToRecipe")}
+            </a>
+            <CookModeToggle
+              labels={{ enter: t("cook.enter"), exit: t("cook.exit") }}
+              client:load
+            />
+          </div>
         </section>
 
         {(variantOfItem || (meta?.externalSources.length ?? 0) > 0) && (
-          <section slot="encyclopedia" class="mb-10">
+          <section slot="encyclopedia" data-cook="hide" class="mb-10">
             {variantOfItem && (
               <p class="mb-4 text-sm text-stone-500">
                 {t("section.variantOf")}{" "}
@@ -349,7 +356,7 @@ const pageDescription = kind ? t("page.mixtures.description") : mix!.data.descri
           <script type="application/ld+json" set:html={jsonLd} />
         </section>
 
-        <section slot="relations">
+        <section slot="relations" data-cook="hide">
           <RelatedList heading={t("section.goesWellWith")} items={goesWellWithItems} />
           <RelatedList heading={t("section.usesBase")} items={usesBaseItems} />
           <RelatedList heading={t("section.variants")} items={variantItems} />

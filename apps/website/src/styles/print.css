@@ -1,0 +1,8 @@
+@media print {
+  [data-cook="hide"] {
+    display: none;
+  }
+  [data-cook="compact"] {
+    padding-block: 1rem;
+  }
+}

@@ -3,6 +3,8 @@ import { ClientRouter } from "astro:transitions";
 import LanguageSwitcher from "../components/LanguageSwitcher.astro";
 import SiteNav from "../components/SiteNav.astro";
 import "../styles/global.css";
+import "../styles/cook-mode.css";
+import "../styles/print.css";
 
 interface Props {
   title: string;
@@ -24,6 +26,13 @@ const homeHref = lang === "de" ? "/de/" : "/";
     {description && <meta name="description" content={description} />}
     <title>{title}</title>
     <ClientRouter />
+    <!-- Cook mode pre-paint: sets data-mode="cook" on <html> before first paint -->
+    <script is:inline>
+      try {
+        var m = localStorage.getItem("spicemixer.viewMode");
+        if (m === "cook") document.documentElement.setAttribute("data-mode", "cook");
+      } catch (e) {}
+    </script>
     <!-- Browser locale detection: redirect to /de on first visit when preferred -->
     <script is:inline>
       (function () {

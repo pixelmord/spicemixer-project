@@ -1,0 +1,8 @@
+@layer cook {
+  html[data-mode="cook"] [data-cook="hide"] {
+    display: none;
+  }
+  html[data-mode="cook"] [data-cook="compact"] {
+    padding-block: 1rem;
+  }
+}
