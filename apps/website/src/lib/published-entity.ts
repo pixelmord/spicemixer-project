@@ -3,8 +3,8 @@ import { INGREDIENT_META } from "./meta-sidecar.ts";
 
 export type PublishedCollection = "ingredients" | "recipes" | "mixtures";
 
-export type Resolved<T> = {
-  entity: T;
+export type Resolved = {
+  entity: unknown;
   canonicalLocale: string;
   renderedLocale: string;
   isFallback: boolean;
@@ -45,18 +45,12 @@ async function getRecipeCanonicalLocale(
   return (meta?.data as { canonicalLocale?: string } | undefined)?.canonicalLocale ?? "en";
 }
 
-/**
- * Single read-side resolver: given (collection, slug, requestedLocale), returns the
- * published entity to render, the locale it was authored in, and an isFallback flag.
- *
- * Owns: draft filtering, canonical-locale lookup, and locale fallback.
- * No other module should re-implement any of the three.
- */
+// Owns draft filtering, canonical-locale lookup, and locale fallback — no other module should re-implement these.
 export async function resolvePublished(
   collection: PublishedCollection,
   slug: string,
   requestedLocale: string,
-): Promise<Resolved<unknown> | null> {
+): Promise<Resolved | null> {
   if (collection === "ingredients") {
     const requestedEntry = await getEntry("ingredients", `${requestedLocale}/${slug}`);
     if (requestedEntry && !(await isIngredientDraft(requestedLocale, slug))) {

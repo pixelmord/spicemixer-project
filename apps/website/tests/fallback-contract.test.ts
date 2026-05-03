@@ -20,10 +20,7 @@ async function collectAstroFiles(dir: string): Promise<string[]> {
   return files;
 }
 
-/**
- * Only check detail page templates ([slug].astro). List pages and admin pages
- * legitimately use locale-prefix filtering for building index/admin views.
- */
+// Only detail pages — list/admin pages legitimately use locale-prefix filtering.
 async function collectDetailPageFiles(): Promise<string[]> {
   const all = await collectAstroFiles(PAGES_DIR);
   return all.filter((f) => f.endsWith("[slug].astro"));

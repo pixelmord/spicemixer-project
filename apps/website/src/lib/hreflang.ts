@@ -13,13 +13,6 @@ function localeHref(
   return `${base}${prefix}/${path}/`;
 }
 
-/**
- * Returns hreflang link tags for all locales that have content for this entry,
- * plus an x-default pointing to the canonical-locale URL.
- *
- * Implemented in terms of resolvePublished so canonical-locale logic has a
- * single source of truth.
- */
 export async function hreflangTags(
   slug: string,
   collection: PublishedCollection,
