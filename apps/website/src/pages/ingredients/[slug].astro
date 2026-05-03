@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import DetailLayout from "../../components/DetailLayout.astro";
 import RelatedList from "../../components/RelatedList.astro";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 import IngredientTaxonomy from "../../components/IngredientTaxonomy.astro";
@@ -41,14 +42,12 @@ const prefix = locale === "de" ? "/de" : "";
 
 const usedIn = await getUsedIn(slug, prefix);
 
-// Use pairings collection (bidirectional), fall back to legacy inline pairings
 const pairingEntities = await getPairings(slug);
 const pairingsResolved = pairingEntities.length > 0
   ? await Promise.all(
       pairingEntities.map(async (pairing) => {
         const otherSlug = pairing.ingredients[0] === slug ? pairing.ingredients[1] : pairing.ingredients[0];
         const entry = await getIngredient(otherSlug, locale);
-        // Resolve locale-aware description with fallback
         const descriptions = pairing.descriptions ?? {};
         const description = descriptions[locale] ?? descriptions["en"] ?? pairing.description ?? "";
         const isFallback = !descriptions[locale] && (!!descriptions["en"] || !!pairing.description);
@@ -81,147 +80,155 @@ const pairingsResolved = pairingEntities.length > 0
       </a>
     </nav>
 
-    {
-      data.images[0] ? (
-        <figure class="mb-8 overflow-hidden rounded-3xl">
-          <img
-            src={data.images[0]}
-            alt={data.name}
-            class="aspect-[16/9] w-full object-cover"
-          />
-        </figure>
-      ) : (
-        <div class="mb-8 rounded-3xl bg-gradient-to-br from-amber-50 via-stone-50 to-rose-50 p-10">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
-            {data.category}
-          </p>
-          <h1 class="mt-3 font-serif text-5xl leading-tight text-stone-900">
-            {data.name}
-          </h1>
-        </div>
-      )
-    }
+    <DetailLayout>
+      <!-- hero: image/gradient + h1 + category badge + summary -->
+      <section slot="hero">
+        {
+          data.images[0] ? (
+            <figure class="mb-8 overflow-hidden rounded-3xl">
+              <img
+                src={data.images[0]}
+                alt={data.name}
+                class="aspect-[16/9] w-full object-cover"
+              />
+            </figure>
+          ) : (
+            <div class="mb-8 rounded-3xl bg-gradient-to-br from-amber-50 via-stone-50 to-rose-50 p-10">
+              <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
+                {data.category}
+              </p>
+              <h1 class="mt-3 font-serif text-5xl leading-tight text-stone-900">
+                {data.name}
+              </h1>
+            </div>
+          )
+        }
 
-    {
-      data.images[0] && (
-        <header class="mb-6">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
-            {data.category}
-          </p>
-          <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900">
-            {data.name}
-          </h1>
-        </header>
-      )
-    }
+        {
+          data.images[0] && (
+            <header class="mb-6">
+              <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
+                {data.category}
+              </p>
+              <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900">
+                {data.name}
+              </h1>
+            </header>
+          )
+        }
 
-    {
-      data.summary && (
-        <p class="mb-6 text-lg italic text-stone-700">{data.summary}</p>
-      )
-    }
+        {data.summary && (
+          <p class="mb-6 text-lg italic text-stone-700">{data.summary}</p>
+        )}
+      </section>
 
-    <IngredientTaxonomy data={data} t={t} />
+      <!-- encyclopedia: taxonomy + description + longform fields + extra images + sources -->
+      <section slot="encyclopedia">
+        <IngredientTaxonomy data={data} t={t} />
 
-    {
-      data.description && (
-        <section class="mb-10">
-          <p class="leading-relaxed text-stone-800" set:html={renderInlineMarkdown(data.description)} />
-        </section>
-      )
-    }
+        {
+          data.description && (
+            <section class="mb-10">
+              <p class="leading-relaxed text-stone-800" set:html={renderInlineMarkdown(data.description)} />
+            </section>
+          )
+        }
 
-    {
-      INGREDIENT_LONGFORM_FIELDS.map((field) => {
-        const text = data[field];
-        if (!text) return null;
-        return (
-          <section class="mb-10">
-            <h2 class="mb-3 font-serif text-2xl text-stone-900">{SECTION_LABELS[field]}</h2>
-            <div class="leading-relaxed text-stone-800" set:html={renderInlineMarkdown(text)} />
-          </section>
-        );
-      })
-    }
+        {
+          INGREDIENT_LONGFORM_FIELDS.map((field) => {
+            const text = data[field];
+            if (!text) return null;
+            return (
+              <section class="mb-10">
+                <h2 class="mb-3 font-serif text-2xl text-stone-900">{SECTION_LABELS[field]}</h2>
+                <div class="leading-relaxed text-stone-800" set:html={renderInlineMarkdown(text)} />
+              </section>
+            );
+          })
+        }
 
-    {
-      data.images.length > 1 && (
-        <section class="mb-10">
-          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {data.images.slice(1).map((src) => (
-              <figure class="overflow-hidden rounded-2xl">
-                <img
-                  src={src}
-                  alt={data.name}
-                  class="aspect-square w-full object-cover"
-                />
-              </figure>
-            ))}
-          </div>
-        </section>
-      )
-    }
+        {
+          data.images.length > 1 && (
+            <section class="mb-10">
+              <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {data.images.slice(1).map((src) => (
+                  <figure class="overflow-hidden rounded-2xl">
+                    <img
+                      src={src}
+                      alt={data.name}
+                      class="aspect-square w-full object-cover"
+                    />
+                  </figure>
+                ))}
+              </div>
+            </section>
+          )
+        }
 
-    {
-      data.sources && data.sources.length > 0 && (
-        <section class="mb-10">
-          <h2 class="mb-3 font-serif text-2xl text-stone-900">Sources</h2>
-          <ol class="list-decimal pl-5 space-y-1 text-sm text-stone-700">
-            {data.sources.map((src) => (
-              <li>
-                <a
-                  href={src.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-amber-700 underline decoration-dotted underline-offset-2 hover:text-amber-900"
-                >
-                  {src.title}
-                </a>
-                {src.author && <span class="text-stone-500"> — {src.author}</span>}
-                {src.year && <span class="text-stone-500"> ({src.year})</span>}
-              </li>
-            ))}
-          </ol>
-        </section>
-      )
-    }
+        {
+          data.sources && data.sources.length > 0 && (
+            <section class="mb-10">
+              <h2 class="mb-3 font-serif text-2xl text-stone-900">Sources</h2>
+              <ol class="list-decimal pl-5 space-y-1 text-sm text-stone-700">
+                {data.sources.map((src) => (
+                  <li>
+                    <a
+                      href={src.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-amber-700 underline decoration-dotted underline-offset-2 hover:text-amber-900"
+                    >
+                      {src.title}
+                    </a>
+                    {src.author && <span class="text-stone-500"> — {src.author}</span>}
+                    {src.year && <span class="text-stone-500"> ({src.year})</span>}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )
+        }
+      </section>
 
-    {
-      hasLiabilityScope(data) && (
-        <p class="mb-8 text-xs text-stone-500 italic border-t border-stone-100 pt-4">
+      <!-- relations: pairings + used-in -->
+      <section slot="relations">
+        {
+          pairingsResolved.length > 0 && (
+            <section class="mb-10">
+              <h2 class="mb-4 font-serif text-2xl text-stone-900">
+                {t("section.pairings")}
+              </h2>
+              <ul class="space-y-3">
+                {pairingsResolved.map(({ slug: pairSlug, name, description, isFallback }) => (
+                  <li class="rounded-xl bg-white p-4 ring-1 ring-stone-200">
+                    <a
+                      href={`${prefix}/ingredients/${pairSlug}/`}
+                      class="font-medium text-amber-700 underline decoration-dotted underline-offset-2 hover:text-amber-900"
+                    >
+                      {name}
+                    </a>
+                    {description && (
+                      <p class={`mt-1 text-sm ${isFallback ? "text-stone-400 italic" : "text-stone-600"}`}>
+                        {description}
+                        {isFallback && <span class="ml-1 text-xs not-italic">(EN)</span>}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+
+        <RelatedList heading={t("section.usedIn")} items={usedIn} />
+      </section>
+
+      <!-- liability: auto-renders when ingredient has medicinal/safety content -->
+      {hasLiabilityScope(data) && (
+        <p slot="liability" class="mb-8 text-xs text-stone-500 italic border-t border-stone-100 pt-4">
           This page includes information about medicinal uses, health benefits, or safety considerations. It is provided for informational purposes only and does not constitute medical advice.
         </p>
-      )
-    }
-
-    {
-      pairingsResolved.length > 0 && (
-        <section class="mb-10">
-          <h2 class="mb-4 font-serif text-2xl text-stone-900">
-            {t("section.pairings")}
-          </h2>
-          <ul class="space-y-3">
-            {pairingsResolved.map(({ slug: pairSlug, name, description, isFallback }) => (
-              <li class="rounded-xl bg-white p-4 ring-1 ring-stone-200">
-                <a
-                  href={`${prefix}/ingredients/${pairSlug}/`}
-                  class="font-medium text-amber-700 underline decoration-dotted underline-offset-2 hover:text-amber-900"
-                >
-                  {name}
-                </a>
-                {description && (
-                  <p class={`mt-1 text-sm ${isFallback ? "text-stone-400 italic" : "text-stone-600"}`}>
-                    {description}
-                    {isFallback && <span class="ml-1 text-xs not-italic">(EN)</span>}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )
-    }
-
-    <RelatedList heading={t("section.usedIn")} items={usedIn} />
+      )}
+    </DetailLayout>
   </main>
 </BaseLayout>
