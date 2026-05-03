@@ -5,6 +5,7 @@ import {
   contentHash,
   flagTranslationsStale,
   clearStaleFlag,
+  listStaleEntries,
 } from "../../src/lib/translation-sync.ts";
 
 // ---------------------------------------------------------------------------
@@ -303,5 +304,117 @@ describe("clearStaleFlag — recipes", () => {
     const data = meta!.data as Record<string, unknown>;
     expect(data["translationOf"]).toBe("miso-ramen");
     expect(data["tags"]).toEqual(["spicy"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listStaleEntries
+// ---------------------------------------------------------------------------
+
+describe("listStaleEntries", () => {
+  test("returns empty array when no stale entries", async () => {
+    const store = new InMemoryStore();
+    expect(await listStaleEntries(store)).toEqual([]);
+  });
+
+  test("includes ingredient entries with translationStaleSince", async () => {
+    const store = new InMemoryStore();
+    await store.put("ingredientMeta", "de/cardamom", {
+      translationOf: "en/cardamom",
+      translationStaleSince: "2026-01-01T00:00:00.000Z",
+      canonicalLocale: "en",
+    });
+    const entries = await listStaleEntries(store);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      collection: "ingredients",
+      key: "de/cardamom",
+      slug: "cardamom",
+      locale: "de",
+      staleSince: "2026-01-01T00:00:00.000Z",
+      canonicalLocale: "en",
+    });
+  });
+
+  test("includes recipe entries with translationStaleSince", async () => {
+    const store = new InMemoryStore();
+    await store.put("meta", "recipes/miso-ramen-de", {
+      translationOf: "miso-ramen",
+      locale: "de",
+      translationStaleSince: "2026-03-01T00:00:00.000Z",
+      canonicalLocale: "en",
+    });
+    const entries = await listStaleEntries(store);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      collection: "recipes",
+      key: "miso-ramen-de",
+      slug: "miso-ramen-de",
+      locale: "de",
+      staleSince: "2026-03-01T00:00:00.000Z",
+      canonicalLocale: "en",
+    });
+  });
+
+  test("includes mixture entries with translationStaleSince", async () => {
+    const store = new InMemoryStore();
+    await store.put("meta", "mixtures/harissa-de", {
+      translationOf: "harissa",
+      locale: "de",
+      translationStaleSince: "2026-02-01T00:00:00.000Z",
+    });
+    const entries = await listStaleEntries(store);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      collection: "mixtures",
+      key: "harissa-de",
+      slug: "harissa-de",
+      locale: "de",
+    });
+  });
+
+  test("sorts oldest-stale first across collections", async () => {
+    const store = new InMemoryStore();
+    await store.put("ingredientMeta", "de/cumin", {
+      translationOf: "en/cumin",
+      translationStaleSince: "2026-03-01T00:00:00.000Z",
+    });
+    await store.put("ingredientMeta", "de/cardamom", {
+      translationOf: "en/cardamom",
+      translationStaleSince: "2026-01-01T00:00:00.000Z",
+    });
+    await store.put("meta", "recipes/miso-ramen-de", {
+      translationOf: "miso-ramen",
+      locale: "de",
+      translationStaleSince: "2026-02-01T00:00:00.000Z",
+    });
+    const entries = await listStaleEntries(store);
+    expect(entries).toHaveLength(3);
+    expect(entries[0]!.staleSince).toBe("2026-01-01T00:00:00.000Z");
+    expect(entries[1]!.staleSince).toBe("2026-02-01T00:00:00.000Z");
+    expect(entries[2]!.staleSince).toBe("2026-03-01T00:00:00.000Z");
+  });
+
+  test("excludes entries without translationStaleSince", async () => {
+    const store = new InMemoryStore();
+    await store.put("ingredientMeta", "en/cardamom", { canonicalLocale: "en" });
+    await store.put("ingredientMeta", "de/cardamom", {
+      translationOf: "en/cardamom",
+      translationStaleSince: "2026-01-01T00:00:00.000Z",
+    });
+    const entries = await listStaleEntries(store);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.locale).toBe("de");
+  });
+
+  test("falls back to language field when locale is absent on recipe meta", async () => {
+    const store = new InMemoryStore();
+    await store.put("meta", "recipes/curry-de", {
+      translationOf: "curry",
+      language: "de",
+      translationStaleSince: "2026-04-01T00:00:00.000Z",
+    });
+    const entries = await listStaleEntries(store);
+    expect(entries[0]!.locale).toBe("de");
   });
 });

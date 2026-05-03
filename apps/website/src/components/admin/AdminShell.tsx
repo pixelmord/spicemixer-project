@@ -9,6 +9,8 @@ import {
   Sparkles,
   Menu,
   X,
+  Clock,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { Toaster } from "@/components/ui/sonner.tsx";
@@ -26,6 +28,8 @@ const NAV: NavItem[] = [
   { label: "Mixtures", href: "/admin/mixtures", icon: <FlaskConical size={16} /> },
   { label: "Ingredients", href: "/admin/ingredients", icon: <Leaf size={16} /> },
   { label: "Pairings", href: "/admin/pairings", icon: <Link2 size={16} /> },
+  { label: "Needs Review", href: "/admin/needs-review", icon: <Clock size={16} /> },
+  { label: "Readiness", href: "/admin/readiness", icon: <BarChart2 size={16} /> },
   { label: "Import from URL", href: "/admin/recipes/import", icon: <Import size={16} /> },
   { label: "AI compose", href: "/admin/import", icon: <Sparkles size={16} /> },
 ];

@@ -59,3 +59,55 @@ export async function clearStaleFlag(
     Object.fromEntries(Object.entries(data).filter(([k]) => k !== "translationStaleSince")),
   );
 }
+
+export type StaleEntry = {
+  collection: "ingredients" | "recipes" | "mixtures";
+  key: string;
+  slug: string;
+  locale: string;
+  staleSince: string;
+  canonicalLocale: string | undefined;
+};
+
+export async function listStaleEntries(store: ContentStore): Promise<StaleEntry[]> {
+  const result: StaleEntry[] = [];
+
+  const ingredientMetas = await store.list("ingredientMeta");
+  for (const item of ingredientMetas) {
+    const data = item.data as Record<string, unknown>;
+    if (!data["translationStaleSince"]) continue;
+    const slash = item.id.indexOf("/");
+    if (slash === -1) continue;
+    result.push({
+      collection: "ingredients",
+      key: item.id,
+      slug: item.id.slice(slash + 1),
+      locale: item.id.slice(0, slash),
+      staleSince: data["translationStaleSince"] as string,
+      canonicalLocale: data["canonicalLocale"] as string | undefined,
+    });
+  }
+
+  const metaItems = await store.list("meta");
+  for (const item of metaItems) {
+    const data = item.data as Record<string, unknown>;
+    if (!data["translationStaleSince"]) continue;
+    const slash = item.id.indexOf("/");
+    if (slash === -1) continue;
+    const prefix = item.id.slice(0, slash);
+    if (prefix !== "recipes" && prefix !== "mixtures") continue;
+    const key = item.id.slice(slash + 1);
+    result.push({
+      collection: prefix as "recipes" | "mixtures",
+      key,
+      slug: key,
+      locale:
+        (data["locale"] as string | undefined) ?? (data["language"] as string | undefined) ?? "—",
+      staleSince: data["translationStaleSince"] as string,
+      canonicalLocale: data["canonicalLocale"] as string | undefined,
+    });
+  }
+
+  result.sort((a, b) => a.staleSince.localeCompare(b.staleSince));
+  return result;
+}

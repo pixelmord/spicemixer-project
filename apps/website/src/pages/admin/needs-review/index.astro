@@ -1,0 +1,125 @@
+---
+export const prerender = false;
+import AdminShell from "@/components/admin/AdminShell.tsx";
+import { createStore } from "@/lib/content-store.ts";
+import { clearStaleFlag, listStaleEntries, type StaleEntry } from "@/lib/translation-sync.ts";
+
+const store = await createStore();
+
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  const collection = formData.get("collection");
+  const key = formData.get("key");
+  if (
+    typeof collection === "string" &&
+    typeof key === "string" &&
+    (collection === "ingredients" || collection === "recipes" || collection === "mixtures")
+  ) {
+    await clearStaleFlag(store, collection, key);
+  }
+  return Astro.redirect("/admin/needs-review/");
+}
+
+const entries = await listStaleEntries(store);
+
+function openHref(entry: StaleEntry): string {
+  if (entry.collection === "ingredients") {
+    return `/admin/ingredients/${entry.slug}/edit?locale=${entry.locale}`;
+  }
+  return `/admin/${entry.collection}/${entry.slug}/edit`;
+}
+
+const currentPath = Astro.url.pathname;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="/src/styles/global.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Needs Review · Admin · SpiceMixer</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  </head>
+  <body>
+    <AdminShell currentPath={currentPath} client:load>
+      <div class="space-y-6">
+        <div>
+          <h1 class="text-2xl font-bold">Needs Review</h1>
+          <p class="text-muted-foreground text-sm mt-1">
+            Translations stale since canonical content changed — oldest first.
+          </p>
+        </div>
+
+        {entries.length === 0 ? (
+          <div class="rounded-lg border border-border bg-muted/30 px-6 py-10 text-center text-sm text-muted-foreground">
+            No stale translations. All entries are up to date.
+          </div>
+        ) : (
+          <div class="rounded-lg border border-border overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-border bg-muted/40">
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Collection</th>
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Slug</th>
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Locale</th>
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Stale since</th>
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Canonical</th>
+                  <th class="px-4 py-2.5"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border">
+                {entries.map((entry) => (
+                  <tr>
+                    <td class="px-4 py-3 font-mono text-xs text-muted-foreground">{entry.collection}</td>
+                    <td class="px-4 py-3 font-mono text-xs">{entry.slug}</td>
+                    <td class="px-4 py-3">
+                      <span class="inline-flex items-center rounded border border-border px-2 py-0.5 text-xs font-semibold font-mono">
+                        {entry.locale}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-muted-foreground text-xs tabular-nums">
+                      {new Date(entry.staleSince).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </td>
+                    <td class="px-4 py-3">
+                      {entry.canonicalLocale ? (
+                        <span class="inline-flex items-center rounded border border-border px-2 py-0.5 text-xs font-semibold font-mono">
+                          {entry.canonicalLocale}
+                        </span>
+                      ) : (
+                        <span class="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                      <div class="flex items-center justify-end gap-2">
+                        <a
+                          href={openHref(entry)}
+                          class="rounded border border-border bg-card px-2.5 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                        >
+                          Open
+                        </a>
+                        <form method="POST">
+                          <input type="hidden" name="collection" value={entry.collection} />
+                          <input type="hidden" name="key" value={entry.key} />
+                          <button
+                            type="submit"
+                            class="rounded border border-border bg-card px-2.5 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                          >
+                            Mark reviewed
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </AdminShell>
+  </body>
+</html>
