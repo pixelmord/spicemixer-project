@@ -2,6 +2,8 @@ import { defineAction, ActionError } from "astro:actions";
 import { z } from "astro/zod";
 import { createStore } from "@/lib/content-store.ts";
 import { createMetaSidecar, INGREDIENT_META } from "@/lib/meta-sidecar.ts";
+import { entityRefSchema } from "@/lib/entity-ref.ts";
+import type { EntityRef } from "@/lib/entity-ref.ts";
 import { fetchRecipe } from "recipe-ingestion";
 import { scoreRecipe, scoreIngredient, scorePairing } from "@/lib/completeness.ts";
 import {
@@ -138,16 +140,18 @@ async function buildListing() {
 
   const pairingItems = pairings.map((item) => {
     const d = item.data as Record<string, unknown>;
-    const ings = (d["ingredients"] as string[]) ?? [];
+    const ings = (d["ingredients"] as Array<EntityRef | string>) ?? [];
     const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
     const completeness = scorePairing(d, "en");
     const translations = ["en", "de"].filter((l) => !!descriptions[l]);
     const description = descriptions["en"] ?? String(d["description"] ?? "");
+    const refSlug = (v: EntityRef | string | undefined): string =>
+      v == null ? "?" : typeof v === "string" ? v : v.slug;
     return {
       type: "pairing" as const,
       collection: "pairings" as const,
       id: item.id,
-      name: `${ings[0] ?? "?"} ↔ ${ings[1] ?? "?"}`,
+      name: `${refSlug(ings[0])} ↔ ${refSlug(ings[1])}`,
       draft: !!(d["draft"] as boolean),
       completeness,
       updatedAt: item.updatedAt,
@@ -229,7 +233,7 @@ export const server = {
     accept: "json",
     input: z.object({
       id: z.string().min(1),
-      ingredients: z.tuple([z.string(), z.string()]),
+      ingredients: z.tuple([entityRefSchema, entityRefSchema]),
       description: z.string().min(1),
       locale: z.string().length(2).default("en"),
       draft: z.boolean().optional(),
@@ -288,7 +292,7 @@ export const server = {
         const d = item.data as Record<string, unknown>;
         return {
           id: item.id,
-          ingredients: d["ingredients"] as [string, string],
+          ingredients: d["ingredients"] as [EntityRef, EntityRef],
           descriptions:
             (d["descriptions"] as Record<string, string>) ??
             (d["description"] ? { en: String(d["description"]) } : {}),
@@ -298,18 +302,28 @@ export const server = {
     },
   }),
 
-  /** List all pairing entities that include a given ingredient slug. */
+  /** List all pairing entities that include a given entity ref (matched by collection+slug). */
   listPairingsFor: defineAction({
     accept: "json",
-    input: z.object({ slug: z.string().min(1) }),
-    handler: async ({ slug }) => {
+    input: z.object({
+      slug: z.string().min(1),
+      collection: z.enum(["ingredients", "mixtures"]).optional(),
+    }),
+    handler: async ({ slug, collection }) => {
       const store = await createStore();
       const all = await store.list("pairings");
       return all
         .filter((item) => {
           const d = item.data as Record<string, unknown>;
           const ings = d["ingredients"];
-          return Array.isArray(ings) && ings.includes(slug);
+          if (!Array.isArray(ings)) return false;
+          return ings.some((ref: unknown) => {
+            if (typeof ref === "object" && ref !== null && "slug" in ref) {
+              const r = ref as EntityRef;
+              return r.slug === slug && (!collection || r.collection === collection);
+            }
+            return ref === slug;
+          });
         })
         .map((item) => {
           const d = item.data as Record<string, unknown>;
@@ -318,7 +332,7 @@ export const server = {
             (d["description"] ? { en: String(d["description"]) } : {});
           return {
             id: item.id,
-            ingredients: d["ingredients"] as [string, string],
+            ingredients: d["ingredients"] as [EntityRef, EntityRef],
             descriptions,
           };
         });
@@ -840,8 +854,14 @@ export const server = {
         for (const pairing of highConf) {
           const id = [slug, pairing.slug].sort().join("--");
           if (!existingIds.has(id)) {
+            const ref1: EntityRef = { collection: "ingredients", slug };
+            const ref2: EntityRef = { collection: "ingredients", slug: pairing.slug };
+            const sortedRefs = [ref1, ref2].sort((a, b) => a.slug.localeCompare(b.slug)) as [
+              EntityRef,
+              EntityRef,
+            ];
             await store.put("pairings", id, {
-              ingredients: [slug, pairing.slug].sort() as [string, string],
+              ingredients: sortedRefs,
               description: pairing.description,
             });
             autoLinked++;
@@ -1012,10 +1032,12 @@ export const server = {
 
       const sourceDescription =
         descriptions[sourceLocale] ?? descriptions["en"] ?? Object.values(descriptions)[0] ?? "";
-      const ings = d["ingredients"] as [string, string];
+      const ings = d["ingredients"] as [EntityRef, EntityRef];
+      const slug1 = typeof ings[0] === "string" ? ings[0] : (ings[0]?.slug ?? "");
+      const slug2 = typeof ings[1] === "string" ? ings[1] : (ings[1]?.slug ?? "");
 
       const result = await proposePairingTranslation(
-        { ingredient1: ings[0], ingredient2: ings[1], description: sourceDescription },
+        { ingredient1: slug1, ingredient2: slug2, description: sourceDescription },
         sourceLocale,
         targetLocale,
         config,
@@ -1045,10 +1067,12 @@ export const server = {
       const descriptions = (pairing["descriptions"] as Record<string, string>) ?? {};
       const description =
         descriptions[locale] ?? descriptions["en"] ?? String(pairing["description"] ?? "");
-      const ings = pairing["ingredients"] as [string, string];
+      const ings = pairing["ingredients"] as [EntityRef | string, EntityRef | string] | undefined;
+      const refSlug = (v: EntityRef | string | undefined): string =>
+        v == null ? "" : typeof v === "string" ? v : v.slug;
 
       const improvements = await proposePairingImprovements(
-        { ingredient1: ings?.[0] ?? "", ingredient2: ings?.[1] ?? "", description },
+        { ingredient1: refSlug(ings?.[0]), ingredient2: refSlug(ings?.[1]), description },
         locale,
         config,
       );

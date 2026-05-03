@@ -1,10 +1,11 @@
 import type { ContentStore } from "./content-store.ts";
 import type { MetaSidecar } from "./meta-sidecar.ts";
+import type { EntityRef } from "./entity-ref.ts";
 import { NotFoundError } from "./errors.ts";
 
 export interface SavePairingInput {
   id: string;
-  ingredients: [string, string];
+  ingredients: [EntityRef, EntityRef];
   description: string;
   locale: string;
   draft?: boolean;
@@ -15,7 +16,10 @@ export async function savePairing(
   store: ContentStore,
   input: SavePairingInput,
 ): Promise<{ id: string }> {
-  const canonical = [...input.ingredients].sort() as [string, string];
+  const canonical = [...input.ingredients].sort((a, b) => a.slug.localeCompare(b.slug)) as [
+    EntityRef,
+    EntityRef,
+  ];
   const existing = await store.get("pairings", input.id);
   const existingData = (existing?.data as Record<string, unknown>) ?? {};
   const existingDescriptions =

@@ -7,31 +7,68 @@ import {
   deletePairing,
   savePairingMeta,
 } from "../../src/lib/pairings.ts";
+import type { EntityRef } from "../../src/lib/entity-ref.ts";
 import { NotFoundError } from "../../src/lib/errors.ts";
 
+const cardamom: EntityRef = { collection: "ingredients", slug: "cardamom" };
+const anise: EntityRef = { collection: "ingredients", slug: "anise" };
+const harissa: EntityRef = { collection: "mixtures", slug: "harissa" };
+
 describe("savePairing", () => {
-  test("canonicalizes ingredient order alphabetically", async () => {
+  test("canonicalizes ingredient order alphabetically by slug", async () => {
     const store = new InMemoryStore();
     await savePairing(store, {
       id: "cardamom--anise",
-      ingredients: ["cardamom", "anise"],
+      ingredients: [cardamom, anise],
       description: "Warm and licorice-y.",
       locale: "en",
     });
     const stored = await store.get("pairings", "cardamom--anise");
-    expect((stored!.data as Record<string, unknown>)["ingredients"]).toEqual(["anise", "cardamom"]);
+    const ings = (stored!.data as Record<string, unknown>)["ingredients"] as EntityRef[];
+    expect(ings[0]?.slug).toBe("anise");
+    expect(ings[1]?.slug).toBe("cardamom");
+  });
+
+  test("stores full EntityRef objects for ingredients", async () => {
+    const store = new InMemoryStore();
+    await savePairing(store, {
+      id: "harissa--cardamom",
+      ingredients: [harissa, cardamom],
+      description: "Spicy warmth.",
+      locale: "en",
+    });
+    const stored = await store.get("pairings", "harissa--cardamom");
+    const ings = (stored!.data as Record<string, unknown>)["ingredients"] as EntityRef[];
+    expect(ings[0]).toEqual({ collection: "ingredients", slug: "cardamom" });
+    expect(ings[1]).toEqual({ collection: "mixtures", slug: "harissa" });
+  });
+
+  test("cross-collection pair: mixture endpoint alongside ingredient endpoint", async () => {
+    const store = new InMemoryStore();
+    await savePairing(store, {
+      id: "cardamom--harissa",
+      ingredients: [cardamom, harissa],
+      description: "Spicy warmth.",
+      locale: "en",
+    });
+    const stored = await store.get("pairings", "cardamom--harissa");
+    expect(stored).not.toBeNull();
+    const ings = (stored!.data as Record<string, unknown>)["ingredients"] as EntityRef[];
+    expect(ings).toHaveLength(2);
+    expect(ings.map((r) => r.collection)).toContain("mixtures");
+    expect(ings.map((r) => r.collection)).toContain("ingredients");
   });
 
   test("migrates legacy single-locale description into descriptions map", async () => {
     const store = new InMemoryStore();
     await store.put("pairings", "anise--cardamom", {
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       description: "Warm and licorice-y.", // legacy field
       draft: false,
     });
     await savePairing(store, {
       id: "anise--cardamom",
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       description: "Warm und lakritzig.",
       locale: "de",
     });
@@ -45,13 +82,13 @@ describe("savePairing", () => {
   test("merges new locale description into existing descriptions map", async () => {
     const store = new InMemoryStore();
     await store.put("pairings", "anise--cardamom", {
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       descriptions: { en: "Warm and licorice-y." },
       draft: false,
     });
     await savePairing(store, {
       id: "anise--cardamom",
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       description: "Warm und lakritzig.",
       locale: "de",
     });
@@ -65,13 +102,13 @@ describe("savePairing", () => {
   test("preserves existing image when image is not supplied", async () => {
     const store = new InMemoryStore();
     await store.put("pairings", "anise--cardamom", {
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       descriptions: { en: "x" },
       image: "https://example.com/img.jpg",
     });
     await savePairing(store, {
       id: "anise--cardamom",
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       description: "y",
       locale: "en",
     });
@@ -89,7 +126,7 @@ describe("savePairing", () => {
   test("togglePairingDraft updates draft on existing pairing", async () => {
     const store = new InMemoryStore();
     await store.put("pairings", "anise--cardamom", {
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       descriptions: { en: "x" },
       draft: false,
     });
@@ -101,7 +138,7 @@ describe("savePairing", () => {
   test("deletePairing removes both the pairing and its meta sidecar", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("pairings", "anise--cardamom", { ingredients: ["anise", "cardamom"] });
+    await store.put("pairings", "anise--cardamom", { ingredients: [anise, cardamom] });
     await store.put(PAIRING_META, "anise--cardamom", { imageAttribution: { source: "x" } });
 
     await deletePairing(store, sidecar, { id: "anise--cardamom" });
@@ -131,7 +168,7 @@ describe("savePairing", () => {
     const store = new InMemoryStore();
     await savePairing(store, {
       id: "anise--cardamom",
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       description: "Warm and licorice-y.",
       locale: "en",
       draft: true,
@@ -143,13 +180,13 @@ describe("savePairing", () => {
   test("save without draft preserves existing draft state", async () => {
     const store = new InMemoryStore();
     await store.put("pairings", "anise--cardamom", {
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       descriptions: { en: "x" },
       draft: true,
     });
     await savePairing(store, {
       id: "anise--cardamom",
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       description: "y",
       locale: "en",
     });
@@ -161,7 +198,7 @@ describe("savePairing", () => {
     const store = new InMemoryStore();
     await savePairing(store, {
       id: "anise--cardamom",
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       description: "Warm and licorice-y.",
       locale: "en",
     });
@@ -172,13 +209,13 @@ describe("savePairing", () => {
   test("clears image when empty string is supplied", async () => {
     const store = new InMemoryStore();
     await store.put("pairings", "anise--cardamom", {
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       descriptions: { en: "x" },
       image: "https://example.com/img.jpg",
     });
     await savePairing(store, {
       id: "anise--cardamom",
-      ingredients: ["anise", "cardamom"],
+      ingredients: [anise, cardamom],
       description: "y",
       locale: "en",
       image: "",
