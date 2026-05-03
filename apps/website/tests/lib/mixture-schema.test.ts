@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
-import { MIXTURE_KINDS, MIXTURE_KIND_PLURALS, pluralToKind } from "../../src/lib/mixture-schema.ts";
+import {
+  MIXTURE_KINDS,
+  MIXTURE_KIND_PLURALS,
+  pluralToKind,
+  buildKindBySlug,
+} from "../../src/lib/mixture-schema.ts";
 
 describe("MIXTURE_KINDS", () => {
   test("has exactly seven values", () => {
@@ -27,83 +32,63 @@ describe("MIXTURE_KINDS", () => {
 });
 
 describe("MIXTURE_KIND_PLURALS", () => {
-  test("has an entry for every kind", () => {
-    for (const kind of MIXTURE_KINDS) {
-      expect(MIXTURE_KIND_PLURALS[kind]).toBeTruthy();
-    }
+  test("maps each kind to its expected plural", () => {
+    expect(MIXTURE_KIND_PLURALS).toEqual({
+      spicemix: "spicemixes",
+      sauce: "sauces",
+      rub: "rubs",
+      oil: "oils",
+      pickle: "pickles",
+      chutney: "chutneys",
+      marinade: "marinades",
+    });
   });
 
-  test("spicemix maps to spicemixes", () => {
-    expect(MIXTURE_KIND_PLURALS.spicemix).toBe("spicemixes");
-  });
-
-  test("sauce maps to sauces", () => {
-    expect(MIXTURE_KIND_PLURALS.sauce).toBe("sauces");
-  });
-
-  test("rub maps to rubs", () => {
-    expect(MIXTURE_KIND_PLURALS.rub).toBe("rubs");
-  });
-
-  test("oil maps to oils", () => {
-    expect(MIXTURE_KIND_PLURALS.oil).toBe("oils");
-  });
-
-  test("pickle maps to pickles", () => {
-    expect(MIXTURE_KIND_PLURALS.pickle).toBe("pickles");
-  });
-
-  test("chutney maps to chutneys", () => {
-    expect(MIXTURE_KIND_PLURALS.chutney).toBe("chutneys");
-  });
-
-  test("marinade maps to marinades", () => {
-    expect(MIXTURE_KIND_PLURALS.marinade).toBe("marinades");
-  });
-
-  test("all plural values match RESERVED_SLUGS", () => {
+  test("all plural values are unique", () => {
     const plurals = Object.values(MIXTURE_KIND_PLURALS);
-    expect(plurals).toHaveLength(7);
-    expect(new Set(plurals).size).toBe(7);
+    expect(new Set(plurals).size).toBe(plurals.length);
   });
 });
 
 describe("pluralToKind", () => {
-  test("maps sauces to sauce", () => {
-    expect(pluralToKind("sauces")).toBe("sauce");
-  });
-
-  test("maps spicemixes to spicemix", () => {
-    expect(pluralToKind("spicemixes")).toBe("spicemix");
-  });
-
-  test("maps rubs to rub", () => {
-    expect(pluralToKind("rubs")).toBe("rub");
-  });
-
-  test("maps oils to oil", () => {
-    expect(pluralToKind("oils")).toBe("oil");
-  });
-
-  test("maps pickles to pickle", () => {
-    expect(pluralToKind("pickles")).toBe("pickle");
-  });
-
-  test("maps chutneys to chutney", () => {
-    expect(pluralToKind("chutneys")).toBe("chutney");
-  });
-
-  test("maps marinades to marinade", () => {
-    expect(pluralToKind("marinades")).toBe("marinade");
+  test("is the inverse of MIXTURE_KIND_PLURALS for all kinds", () => {
+    for (const kind of MIXTURE_KINDS) {
+      expect(pluralToKind(MIXTURE_KIND_PLURALS[kind])).toBe(kind);
+    }
   });
 
   test("returns undefined for an unknown plural", () => {
     expect(pluralToKind("unknown")).toBeUndefined();
   });
+});
 
-  test("is the inverse of MIXTURE_KIND_PLURALS for all kinds", () => {
-    for (const kind of MIXTURE_KINDS) {
-      expect(pluralToKind(MIXTURE_KIND_PLURALS[kind])).toBe(kind);
-    }
+describe("buildKindBySlug", () => {
+  test("extracts kind from mixture meta entries", () => {
+    const entries = [
+      { id: "mixtures/harissa", data: { kind: "spicemix" } },
+      { id: "mixtures/sriracha", data: { kind: "sauce" } },
+    ];
+    const map = buildKindBySlug(entries);
+    expect(map.get("harissa")).toBe("spicemix");
+    expect(map.get("sriracha")).toBe("sauce");
+  });
+
+  test("skips non-mixture meta entries", () => {
+    const entries = [
+      { id: "recipes/pasta", data: { kind: "recipe" } },
+      { id: "mixtures/harissa", data: { kind: "spicemix" } },
+    ];
+    const map = buildKindBySlug(entries);
+    expect(map.size).toBe(1);
+    expect(map.has("pasta")).toBe(false);
+  });
+
+  test("skips entries with invalid or missing kind", () => {
+    const entries = [
+      { id: "mixtures/unknown", data: { kind: "invented" } },
+      { id: "mixtures/empty", data: {} },
+    ];
+    const map = buildKindBySlug(entries);
+    expect(map.size).toBe(0);
   });
 });

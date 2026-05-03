@@ -17,23 +17,14 @@ import {
   resolveVariants,
   type Meta,
 } from "../../lib/recipe-augment.ts";
-import { MIXTURE_KINDS, MIXTURE_KIND_PLURALS, type MixtureKind } from "../../lib/mixture-schema.ts";
+import { MIXTURE_KINDS, MIXTURE_KIND_PLURALS, buildKindBySlug, type MixtureKind } from "../../lib/mixture-schema.ts";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 
 export async function getStaticPaths() {
   const allMixtures = await getPublished("mixtures");
   const rawMeta = await getCollection("meta");
 
-  const kindBySlug = new Map<string, MixtureKind>();
-  for (const entry of rawMeta) {
-    if (entry.id.startsWith("mixtures/")) {
-      const slug = entry.id.slice(9);
-      const kind = (entry.data as { kind?: string }).kind as MixtureKind | undefined;
-      if (kind && (MIXTURE_KINDS as readonly string[]).includes(kind)) {
-        kindBySlug.set(slug, kind);
-      }
-    }
-  }
+  const kindBySlug = buildKindBySlug(rawMeta);
 
   const kindPaths = MIXTURE_KINDS.map((kind) => ({
     params: { slug: MIXTURE_KIND_PLURALS[kind] },
@@ -68,7 +59,6 @@ const locale = Astro.currentLocale ?? "en";
 const prefix = locale === "de" ? "/de" : "";
 const ingredientBase = `${prefix}/ingredients`;
 
-// Detail page data — only loaded when rendering a mixture detail
 let detailImage: string | undefined;
 let detailTags: string[] = [];
 let detailSteps: ReturnType<typeof normalizeInstructions> = [];
@@ -112,7 +102,6 @@ if (mix) {
   }));
 }
 
-// Kind-index page data — only used when rendering a kind-plural index
 const kindLabel = kind ? t(`kind.${kind}`) : "";
 const indexMixtures = (kindMixtures ?? []).sort((a, b) =>
   (b.data.datePublished ?? "").localeCompare(a.data.datePublished ?? ""),
