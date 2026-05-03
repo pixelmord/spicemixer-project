@@ -512,12 +512,14 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
         const enriched = (data as IngredientLinkProposal[]).map(enrichLink);
         const filtered = filterSuggestions(aiEvents, enriched);
 
-        const toAutoApply = filtered.filter((l) =>
-          isAllowedAutoApply("ingredient-link", l.confidence, "editor"),
-        );
-        const toSuggest = filtered.filter(
-          (l) => !isAllowedAutoApply("ingredient-link", l.confidence, "editor"),
-        );
+        const toAutoApply: EnrichedLink[] = [];
+        const toSuggest: EnrichedLink[] = [];
+        for (const l of filtered) {
+          (isAllowedAutoApply("ingredient-link", l.confidence, "editor")
+            ? toAutoApply
+            : toSuggest
+          ).push(l);
+        }
 
         for (const link of toAutoApply) {
           assertAutoApplyAllowed("ingredient-link", link.confidence, "editor");
@@ -527,7 +529,7 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
             field: link.field,
             suggestion: { hash: link.hash, summary: link.summary },
             model,
-            confidence: "high",
+            confidence: link.confidence,
           });
         }
 
