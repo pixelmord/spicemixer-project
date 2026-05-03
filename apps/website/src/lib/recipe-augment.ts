@@ -1,6 +1,7 @@
 import { getEntry, getCollection } from "astro:content";
 import type { MixtureKind } from "./mixture-schema.ts";
 import { INGREDIENT_META } from "./meta-sidecar.ts";
+import { regionsForPairing } from "./region-derivation.ts";
 
 /** Locale-aware ingredient lookup with EN fallback. */
 export async function getIngredient(slug: string, locale: string) {
@@ -183,9 +184,10 @@ export async function getPublishedPairings(): Promise<PublishedPairing[]> {
     .filter((p) => !p.data.draft)
     .map((p) => {
       const [a, b] = p.data.ingredients;
-      const regions = [
-        ...new Set([...(regionsBySlug.get(a) ?? []), ...(regionsBySlug.get(b) ?? [])]),
-      ];
+      const regions = regionsForPairing(
+        { region: regionsBySlug.get(a) },
+        { region: regionsBySlug.get(b) },
+      );
       return {
         id: p.id,
         ingredients: p.data.ingredients,
