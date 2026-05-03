@@ -39,21 +39,23 @@ const homeHref = lang === "de" ? "/de/" : "/";
     </script>
   </head>
   <body class="flex min-h-screen flex-col bg-stone-50 text-stone-900 antialiased">
-    <div class="flex items-center justify-between px-4 py-2 sm:px-6 lg:px-8">
-      <a
-        href={homeHref}
-        class="text-xs font-semibold uppercase tracking-[0.3em] text-stone-500 transition hover:text-stone-900"
-      >
-        Spicemixer
-      </a>
-      <LanguageSwitcher />
-    </div>
+    <header class="relative border-b border-stone-200 px-4 sm:px-6 lg:px-8">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 py-3">
+        <a
+          href={homeHref}
+          class="shrink-0 text-xs font-semibold uppercase tracking-[0.3em] text-stone-500 transition hover:text-stone-900"
+        >
+          Spicemixer
+        </a>
+        <SiteNav />
+        <LanguageSwitcher />
+      </div>
+    </header>
     <div class="flex-1">
       <slot />
     </div>
     <footer class="border-t border-stone-200 px-4 py-5 sm:px-6 lg:px-8">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-4">
-        <SiteNav />
         <div class="flex items-center gap-4 shrink-0">
           <a
             href="/admin/"
