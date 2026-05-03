@@ -43,10 +43,37 @@ describe("INGREDIENT_FLAVOR_PROFILE", () => {
 });
 
 describe("INGREDIENT_SECTION_FIELDS", () => {
-  test("includes the long-form section names", () => {
+  test("includes summary and description", () => {
+    expect(INGREDIENT_SECTION_FIELDS).toContain("summary");
+    expect(INGREDIENT_SECTION_FIELDS).toContain("description");
+  });
+
+  test("includes all seven long-form section names", () => {
     expect(INGREDIENT_SECTION_FIELDS).toContain("culinaryUse");
+    expect(INGREDIENT_SECTION_FIELDS).toContain("medicinalUses");
+    expect(INGREDIENT_SECTION_FIELDS).toContain("healthBenefits");
+    expect(INGREDIENT_SECTION_FIELDS).toContain("safetyNotes");
     expect(INGREDIENT_SECTION_FIELDS).toContain("history");
     expect(INGREDIENT_SECTION_FIELDS).toContain("storage");
     expect(INGREDIENT_SECTION_FIELDS).toContain("sourcing");
+  });
+
+  test("canonical render order: summary, description, culinaryUse, medicinalUses, healthBenefits, safetyNotes, history, storage, sourcing", () => {
+    const expected = [
+      "summary",
+      "description",
+      "culinaryUse",
+      "medicinalUses",
+      "healthBenefits",
+      "safetyNotes",
+      "history",
+      "storage",
+      "sourcing",
+    ];
+    expect([...INGREDIENT_SECTION_FIELDS]).toEqual(expected);
+  });
+
+  test("has no duplicates", () => {
+    expect(new Set(INGREDIENT_SECTION_FIELDS).size).toBe(INGREDIENT_SECTION_FIELDS.length);
   });
 });

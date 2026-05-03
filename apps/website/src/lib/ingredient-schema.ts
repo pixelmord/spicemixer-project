@@ -23,9 +23,7 @@ export const INGREDIENT_FLAVOR_PROFILE = [
   "sour",
 ] as const;
 
-export const INGREDIENT_SECTION_FIELDS = [
-  "summary",
-  "description",
+export const INGREDIENT_LONGFORM_FIELDS = [
   "culinaryUse",
   "medicinalUses",
   "healthBenefits",
@@ -35,6 +33,13 @@ export const INGREDIENT_SECTION_FIELDS = [
   "sourcing",
 ] as const;
 
+export const INGREDIENT_SECTION_FIELDS = [
+  "summary",
+  "description",
+  ...INGREDIENT_LONGFORM_FIELDS,
+] as const;
+
 export type IngredientPart = (typeof INGREDIENT_PARTS)[number];
 export type IngredientFlavorProfile = (typeof INGREDIENT_FLAVOR_PROFILE)[number];
+export type IngredientLongformField = (typeof INGREDIENT_LONGFORM_FIELDS)[number];
 export type IngredientSectionField = (typeof INGREDIENT_SECTION_FIELDS)[number];

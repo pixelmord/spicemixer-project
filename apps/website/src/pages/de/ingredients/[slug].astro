@@ -3,6 +3,8 @@ import BaseLayout from "../../../layouts/BaseLayout.astro";
 import RelatedList from "../../../components/RelatedList.astro";
 import { useTranslations } from "../../../i18n/translations.ts";
 import { getUsedIn, getIngredient, getPublishedIngredients } from "../../../lib/recipe-augment.ts";
+import { renderInlineMarkdown } from "../../../lib/inline-markdown.ts";
+import { INGREDIENT_LONGFORM_FIELDS } from "../../../lib/ingredient-schema.ts";
 
 export async function getStaticPaths() {
   const all = await getPublishedIngredients();
@@ -26,6 +28,16 @@ const slug = ingredient.id.replace(/^(en|de)\//, "");
 const t = useTranslations("de");
 const locale = "de";
 const prefix = "/de";
+
+const SECTION_LABELS: Record<(typeof INGREDIENT_LONGFORM_FIELDS)[number], string> = {
+  culinaryUse: "Kulinarische Verwendung",
+  medicinalUses: "Medizinische Anwendungen",
+  healthBenefits: "Gesundheitsvorteile",
+  safetyNotes: "Sicherheitshinweise",
+  history: "Geschichte",
+  storage: "Lagerung",
+  sourcing: "Bezugsquellen",
+};
 
 const usedIn = await getUsedIn(slug, prefix);
 
@@ -118,7 +130,38 @@ const pairingsResolved = await Promise.all(
     {
       data.description && (
         <section class="mb-10">
-          <p class="leading-relaxed text-stone-800">{data.description}</p>
+          <p class="leading-relaxed text-stone-800" set:html={renderInlineMarkdown(data.description)} />
+        </section>
+      )
+    }
+
+    {
+      INGREDIENT_LONGFORM_FIELDS.map((field) => {
+        const text = data[field];
+        if (!text) return null;
+        return (
+          <section class="mb-10">
+            <h2 class="mb-3 font-serif text-2xl text-stone-900">{SECTION_LABELS[field]}</h2>
+            <div class="leading-relaxed text-stone-800" set:html={renderInlineMarkdown(text)} />
+          </section>
+        );
+      })
+    }
+
+    {
+      data.images.length > 1 && (
+        <section class="mb-10">
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {data.images.slice(1).map((src) => (
+              <figure class="overflow-hidden rounded-2xl">
+                <img
+                  src={src}
+                  alt={data.name}
+                  class="aspect-square w-full object-cover"
+                />
+              </figure>
+            ))}
+          </div>
         </section>
       )
     }
