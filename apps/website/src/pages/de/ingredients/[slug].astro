@@ -2,7 +2,7 @@
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import RelatedList from "../../../components/RelatedList.astro";
 import { useTranslations } from "../../../i18n/translations.ts";
-import type { TranslationKey } from "../../../i18n/translations.ts";
+import IngredientTaxonomy from "../../../components/IngredientTaxonomy.astro";
 import { getUsedIn, getIngredient, getPairings, getPublishedIngredients } from "../../../lib/recipe-augment.ts";
 
 export async function getStaticPaths() {
@@ -102,56 +102,7 @@ const pairingsResolved = pairingEntities.length > 0
       )
     }
 
-    {
-      (() => {
-        const hasTaxonomy =
-          data.commonNames.length > 0 ||
-          data.botanicalName ||
-          data.family ||
-          (data.parts && data.parts.length > 0) ||
-          data.seasonality ||
-          (data.flavorProfile && data.flavorProfile.length > 0) ||
-          data.origin.length > 0 ||
-          data.flavorNotes.length > 0 ||
-          (data.safetyFlags && data.safetyFlags.length > 0);
-        if (!hasTaxonomy) return null;
-
-        const entries: Array<{ key: TranslationKey; value: string }> = [];
-        if (data.commonNames.length > 0)
-          entries.push({ key: "meta.commonNames", value: data.commonNames.join(", ") });
-        if (data.botanicalName)
-          entries.push({ key: "meta.botanicalName", value: data.botanicalName });
-        if (data.family)
-          entries.push({ key: "meta.family", value: data.family });
-        if (data.parts && data.parts.length > 0)
-          entries.push({ key: "meta.parts", value: data.parts.join(", ") });
-        if (data.seasonality)
-          entries.push({ key: "meta.seasonality", value: data.seasonality });
-        if (data.flavorProfile && data.flavorProfile.length > 0)
-          entries.push({ key: "meta.flavorProfile", value: data.flavorProfile.join(", ") });
-        if (data.origin.length > 0)
-          entries.push({ key: "meta.origin", value: data.origin.join(", ") });
-        if (data.flavorNotes.length > 0)
-          entries.push({ key: "meta.flavour", value: data.flavorNotes.join(", ") });
-        if (data.safetyFlags && data.safetyFlags.length > 0)
-          entries.push({ key: "meta.safetyFlags", value: data.safetyFlags.join(", ") });
-
-        return (
-          <div class="mb-10 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
-            <dl class="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-              {entries.map(({ key, value }) => (
-                <div>
-                  <dt class="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-                    {t(key)}
-                  </dt>
-                  <dd class="mt-0.5 text-stone-700">{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        );
-      })()
-    }
+    <IngredientTaxonomy data={data} t={t} />
 
     {
       data.description && (

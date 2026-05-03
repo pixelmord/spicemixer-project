@@ -106,6 +106,14 @@ const SECTIONS: SectionDef[] = [
   { id: "section-pairings", label: "Pairings" },
 ];
 
+const RECOMMENDED_ANCHOR: Record<string, string> = {
+  origin: "section-profile",
+  botanicalName: "section-taxonomy",
+  family: "section-taxonomy",
+  parts: "section-taxonomy",
+  flavorProfile: "section-taxonomy",
+};
+
 function emptyIngredient(): IngredientData {
   return { name: "", category: "spice", origin: [], flavorNotes: [] };
 }
@@ -149,7 +157,6 @@ export default function IngredientForm({
     ((slug: string, label: string) => void) | null
   >(null);
 
-  // Taxonomy state
   const [commonNames, setCommonNames] = useState<string[]>(data.commonNames ?? []);
   const [parts, setParts] = useState<IngredientPart[]>(data.parts ?? []);
   const [flavorProfile, setFlavorProfile] = useState<IngredientFlavorProfile[]>(
@@ -386,17 +393,21 @@ export default function IngredientForm({
     );
   }, [formValues, origins, parts, flavorProfile]);
 
-  const requiredFields = INGREDIENT_REQUIRED.map((key) => ({
-    key,
-    label: key,
-    filled:
-      key === "name"
-        ? !!formValues.name
-        : key === "category"
-          ? !!formValues.category
-          : !!formValues.summary,
-    anchorId: "section-basic",
-  }));
+  const requiredFields = INGREDIENT_REQUIRED.map((key) => {
+    let filled: boolean;
+    switch (key) {
+      case "name":
+        filled = !!formValues.name;
+        break;
+      case "category":
+        filled = !!formValues.category;
+        break;
+      case "summary":
+        filled = !!formValues.summary;
+        break;
+    }
+    return { key, label: key, filled, anchorId: "section-basic" };
+  });
 
   const recommendedFields = INGREDIENT_RECOMMENDED.map((key) => {
     let filled: boolean;
@@ -412,15 +423,7 @@ export default function IngredientForm({
       key,
       label: key,
       filled,
-      anchorId:
-        key === "origin"
-          ? "section-profile"
-          : key === "botanicalName" ||
-              key === "family" ||
-              key === "parts" ||
-              key === "flavorProfile"
-            ? "section-taxonomy"
-            : "section-basic",
+      anchorId: RECOMMENDED_ANCHOR[key] ?? "section-basic",
     };
   });
 

@@ -1,0 +1,59 @@
+---
+import type { TranslationKey } from "../i18n/translations.ts";
+
+interface IngredientFields {
+  commonNames: string[];
+  botanicalName?: string;
+  family?: string;
+  parts?: string[];
+  seasonality?: string;
+  flavorProfile?: string[];
+  origin: string[];
+  flavorNotes: string[];
+  safetyFlags?: string[];
+}
+
+interface Props {
+  data: IngredientFields;
+  t: (key: TranslationKey) => string;
+}
+
+const { data, t } = Astro.props;
+
+const entries: Array<{ key: TranslationKey; value: string }> = [];
+if (data.commonNames.length > 0)
+  entries.push({ key: "meta.commonNames", value: data.commonNames.join(", ") });
+if (data.botanicalName)
+  entries.push({ key: "meta.botanicalName", value: data.botanicalName });
+if (data.family)
+  entries.push({ key: "meta.family", value: data.family });
+if (data.parts && data.parts.length > 0)
+  entries.push({ key: "meta.parts", value: data.parts.join(", ") });
+if (data.seasonality)
+  entries.push({ key: "meta.seasonality", value: data.seasonality });
+if (data.flavorProfile && data.flavorProfile.length > 0)
+  entries.push({ key: "meta.flavorProfile", value: data.flavorProfile.join(", ") });
+if (data.origin.length > 0)
+  entries.push({ key: "meta.origin", value: data.origin.join(", ") });
+if (data.flavorNotes.length > 0)
+  entries.push({ key: "meta.flavour", value: data.flavorNotes.join(", ") });
+if (data.safetyFlags && data.safetyFlags.length > 0)
+  entries.push({ key: "meta.safetyFlags", value: data.safetyFlags.join(", ") });
+---
+
+{
+  entries.length > 0 && (
+    <div class="mb-10 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
+      <dl class="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+        {entries.map(({ key, value }) => (
+          <div>
+            <dt class="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+              {t(key)}
+            </dt>
+            <dd class="mt-0.5 text-stone-700">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )
+}
