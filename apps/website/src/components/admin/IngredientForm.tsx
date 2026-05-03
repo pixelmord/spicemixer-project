@@ -45,6 +45,7 @@ import ImageSearchModal, {
 } from "./ImageSearchModal.tsx";
 import EntityMultiCombobox from "./EntityMultiCombobox.tsx";
 import { REGION_OPTIONS, type RegionCode } from "@/lib/regions.ts";
+import { hasLiabilityScope } from "@/lib/liability.ts";
 
 interface AiSuggestion {
   field: string;
@@ -76,6 +77,7 @@ interface IngredientData {
   seasonality?: string;
   flavorProfile?: IngredientFlavorProfile[];
   safetyFlags?: string[];
+  sources?: Array<{ author?: string; title: string; url: string; year?: string }>;
 }
 
 interface AiSuggestionsState {
@@ -114,6 +116,7 @@ const SECTIONS: SectionDef[] = [
   { id: "section-profile", label: "Origin & Flavor" },
   { id: "section-regions", label: "Regions" },
   { id: "section-longform", label: "Long-form" },
+  { id: "section-sources", label: "Sources" },
   { id: "section-pairings", label: "Pairings" },
 ];
 
@@ -219,6 +222,9 @@ export default function IngredientForm({
     data.flavorProfile ?? [],
   );
   const [safetyFlags, setSafetyFlags] = useState<string[]>(data.safetyFlags ?? []);
+  const [sources, setSources] = useState<
+    Array<{ author?: string; title: string; url: string; year?: string }>
+  >(data.sources ?? []);
 
   // Image health check
   const [imageBroken, setImageBroken] = useState(false);
@@ -383,6 +389,7 @@ export default function IngredientForm({
       if (value.seasonality) payload.seasonality = value.seasonality;
       if (flavorProfile.length > 0) payload.flavorProfile = flavorProfile;
       if (safetyFlags.length > 0) payload.safetyFlags = safetyFlags;
+      if (sources.length > 0) payload.sources = sources;
 
       const { error } = await actions.saveIngredient({
         locale,
@@ -1231,6 +1238,111 @@ export default function IngredientForm({
                       )}
                     </form.Field>
                   ))}
+                </section>
+
+                {/* ── Sources ── */}
+                <section id="section-sources" className="scroll-mt-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Sources</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {sources.map((src, i) => (
+                        <div
+                          key={i}
+                          className="rounded-md border border-border p-3 space-y-2 relative"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setSources((prev) => prev.filter((_, idx) => idx !== i))}
+                            className="absolute right-2 top-2 text-xs text-muted-foreground hover:text-destructive"
+                            aria-label="Remove source"
+                          >
+                            ✕
+                          </button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Title *</Label>
+                              <Input
+                                value={src.title}
+                                onChange={(e) =>
+                                  setSources((prev) =>
+                                    prev.map((s, idx) =>
+                                      idx === i ? { ...s, title: e.target.value } : s,
+                                    ),
+                                  )
+                                }
+                                placeholder="Source title"
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">URL *</Label>
+                              <Input
+                                type="url"
+                                value={src.url}
+                                onChange={(e) =>
+                                  setSources((prev) =>
+                                    prev.map((s, idx) =>
+                                      idx === i ? { ...s, url: e.target.value } : s,
+                                    ),
+                                  )
+                                }
+                                placeholder="https://…"
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Author</Label>
+                              <Input
+                                value={src.author ?? ""}
+                                onChange={(e) =>
+                                  setSources((prev) =>
+                                    prev.map((s, idx) =>
+                                      idx === i ? { ...s, author: e.target.value || undefined } : s,
+                                    ),
+                                  )
+                                }
+                                placeholder="Author name"
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Year</Label>
+                              <Input
+                                value={src.year ?? ""}
+                                onChange={(e) =>
+                                  setSources((prev) =>
+                                    prev.map((s, idx) =>
+                                      idx === i ? { ...s, year: e.target.value || undefined } : s,
+                                    ),
+                                  )
+                                }
+                                placeholder="2024"
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setSources((prev) => [...prev, { title: "", url: "" }])}
+                        className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground w-full"
+                      >
+                        + Add source
+                      </button>
+                      {hasLiabilityScope(formValues) && sources.length === 0 && (
+                        <div
+                          data-testid="liability-warning"
+                          className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2.5 text-xs text-amber-800 dark:text-amber-300"
+                        >
+                          ⚠ This ingredient has medicinal, health, or safety content. Add at least
+                          one source to support these claims.
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </section>
 
                 {/* ── Pairings ── */}
