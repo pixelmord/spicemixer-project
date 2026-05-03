@@ -27,8 +27,6 @@ export async function saveRecipe(
       ...(canonicalLocale !== undefined && { canonicalLocale }),
     };
 
-    // Flag translations stale when a canonical entry's content hash changes.
-    // Canonical = no translationOf. Translation-side saves never flag the canonical.
     const isCanonical = !mergedMeta["translationOf"];
     if (isCanonical) {
       const newHash = contentHash(input.recipe);
