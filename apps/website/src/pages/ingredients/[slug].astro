@@ -8,6 +8,8 @@ import {
   getPairings,
   getPublishedIngredients,
 } from "../../lib/recipe-augment.ts";
+import { renderInlineMarkdown } from "../../lib/inline-markdown.ts";
+import { INGREDIENT_SECTION_FIELDS } from "../../lib/ingredient-schema.ts";
 
 export async function getStaticPaths() {
   const all = await getPublishedIngredients("en");
@@ -20,6 +22,16 @@ export async function getStaticPaths() {
 const { ingredient } = Astro.props;
 const data = ingredient.data;
 const slug = ingredient.id.replace(/^en\//, "");
+
+const SECTION_LABELS: Partial<Record<(typeof INGREDIENT_SECTION_FIELDS)[number], string>> = {
+  culinaryUse: "Culinary use",
+  medicinalUses: "Medicinal uses",
+  healthBenefits: "Health benefits",
+  safetyNotes: "Safety notes",
+  history: "History",
+  storage: "Storage",
+  sourcing: "Sourcing",
+};
 
 const t = useTranslations((Astro.currentLocale ?? "en") as Lang);
 const locale = Astro.currentLocale ?? "en";
@@ -137,7 +149,38 @@ const pairingsResolved = pairingEntities.length > 0
     {
       data.description && (
         <section class="mb-10">
-          <p class="leading-relaxed text-stone-800">{data.description}</p>
+          <p class="leading-relaxed text-stone-800" set:html={renderInlineMarkdown(data.description)} />
+        </section>
+      )
+    }
+
+    {
+      (["culinaryUse", "medicinalUses", "healthBenefits", "safetyNotes", "history", "storage", "sourcing"] as const).map((field) => {
+        const text = data[field];
+        if (!text) return null;
+        return (
+          <section class="mb-10">
+            <h2 class="mb-3 font-serif text-2xl text-stone-900">{SECTION_LABELS[field]}</h2>
+            <div class="leading-relaxed text-stone-800" set:html={renderInlineMarkdown(text)} />
+          </section>
+        );
+      })
+    }
+
+    {
+      data.images.length > 1 && (
+        <section class="mb-10">
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {data.images.slice(1).map((src) => (
+              <figure class="overflow-hidden rounded-2xl">
+                <img
+                  src={src}
+                  alt={data.name}
+                  class="aspect-square w-full object-cover"
+                />
+              </figure>
+            ))}
+          </div>
         </section>
       )
     }

@@ -50,6 +50,13 @@ interface IngredientData {
   name: string;
   summary?: string;
   description?: string;
+  culinaryUse?: string;
+  medicinalUses?: string;
+  healthBenefits?: string;
+  safetyNotes?: string;
+  history?: string;
+  storage?: string;
+  sourcing?: string;
   images?: string[];
   category: Category;
   origin: string[];
@@ -89,7 +96,50 @@ const CATEGORIES: Category[] = [
 const SECTIONS: SectionDef[] = [
   { id: "section-basic", label: "Basic info" },
   { id: "section-profile", label: "Origin & Flavor" },
+  { id: "section-longform", label: "Long-form" },
   { id: "section-pairings", label: "Pairings" },
+];
+
+const LONGFORM_SECTIONS: {
+  key: keyof IngredientData & string;
+  label: string;
+  placeholder: string;
+}[] = [
+  {
+    key: "culinaryUse",
+    label: "Culinary use",
+    placeholder: "How this ingredient is used in cooking…",
+  },
+  {
+    key: "medicinalUses",
+    label: "Medicinal uses",
+    placeholder: "Traditional or documented medicinal applications…",
+  },
+  {
+    key: "healthBenefits",
+    label: "Health benefits",
+    placeholder: "Nutritional or health-related properties…",
+  },
+  {
+    key: "safetyNotes",
+    label: "Safety notes",
+    placeholder: "Allergens, contraindications, handling warnings…",
+  },
+  {
+    key: "history",
+    label: "History",
+    placeholder: "Origin story, cultural history, trade routes…",
+  },
+  {
+    key: "storage",
+    label: "Storage",
+    placeholder: "How to store, shelf life, container recommendations…",
+  },
+  {
+    key: "sourcing",
+    label: "Sourcing",
+    placeholder: "Where to buy, quality indicators, forms available…",
+  },
 ];
 
 function emptyIngredient(): IngredientData {
@@ -254,6 +304,13 @@ export default function IngredientForm({
       name: data.name,
       summary: data.summary ?? "",
       description: data.description ?? "",
+      culinaryUse: data.culinaryUse ?? "",
+      medicinalUses: data.medicinalUses ?? "",
+      healthBenefits: data.healthBenefits ?? "",
+      safetyNotes: data.safetyNotes ?? "",
+      history: data.history ?? "",
+      storage: data.storage ?? "",
+      sourcing: data.sourcing ?? "",
       image: data.images?.[0] ?? "",
       category: data.category,
     },
@@ -276,6 +333,13 @@ export default function IngredientForm({
       };
       if (value.summary) payload.summary = value.summary;
       if (value.description) payload.description = value.description;
+      if (value.culinaryUse) payload.culinaryUse = value.culinaryUse;
+      if (value.medicinalUses) payload.medicinalUses = value.medicinalUses;
+      if (value.healthBenefits) payload.healthBenefits = value.healthBenefits;
+      if (value.safetyNotes) payload.safetyNotes = value.safetyNotes;
+      if (value.history) payload.history = value.history;
+      if (value.storage) payload.storage = value.storage;
+      if (value.sourcing) payload.sourcing = value.sourcing;
       if (value.image) payload.images = [value.image];
 
       const { error } = await actions.saveIngredient({
@@ -932,6 +996,34 @@ export default function IngredientForm({
                       )}
                     </CardContent>
                   </Card>
+                </section>
+
+                {/* ── Long-form sections ── */}
+                <section id="section-longform" className="scroll-mt-4 space-y-4">
+                  {LONGFORM_SECTIONS.map(({ key, label, placeholder }) => (
+                    <form.Field key={key} name={key as never}>
+                      {(field) => (
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>{label}</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <Textarea
+                              id={field.name}
+                              value={field.state.value as string}
+                              onChange={(e) => field.handleChange(e.target.value as never)}
+                              rows={5}
+                              placeholder={placeholder}
+                              className="font-mono text-sm"
+                            />
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Supports inline markdown links: <code>[text](url)</code>
+                            </p>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </form.Field>
+                  ))}
                 </section>
 
                 {/* ── Pairings ── */}
