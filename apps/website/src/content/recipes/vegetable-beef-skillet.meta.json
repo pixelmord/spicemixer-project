@@ -17,5 +17,6 @@
   "usesBase": [],
   "variants": [],
   "kind": "recipe",
-  "language": "en"
+  "language": "en",
+  "canonicalLocale": "en"
 }

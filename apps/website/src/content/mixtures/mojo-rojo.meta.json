@@ -12,5 +12,6 @@
   "goesWellWith": [],
   "usesBase": [],
   "variants": [],
-  "kind": "sauce"
+  "kind": "sauce",
+  "canonicalLocale": "en"
 }
