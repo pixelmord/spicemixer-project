@@ -153,7 +153,7 @@ describe("savePairing", () => {
     await store.put(PAIRING_META, "anise--cardamom", {
       imageAttribution: { source: "Openverse" },
     });
-    await savePairingMeta(store, sidecar, {
+    await savePairingMeta(sidecar, {
       id: "anise--cardamom",
       patch: { aiSuggestions: { en: { contentHash: "abc" } } },
     });

@@ -131,7 +131,7 @@ describe("publishRecipe", () => {
     const sidecar = createMetaSidecar(store);
     await store.put("meta", "recipes/miso-ramen", { draft: true, tags: ["soup"] });
 
-    await publishRecipe(store, sidecar, { collection: "recipes", id: "miso-ramen" });
+    await publishRecipe(sidecar, { collection: "recipes", id: "miso-ramen" });
 
     const meta = await store.get("meta", "recipes/miso-ramen");
     expect(meta?.data).toEqual({ draft: false, tags: ["soup"] });
@@ -141,7 +141,7 @@ describe("publishRecipe", () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
 
-    await publishRecipe(store, sidecar, { collection: "recipes", id: "miso-ramen" });
+    await publishRecipe(sidecar, { collection: "recipes", id: "miso-ramen" });
 
     const meta = await store.get("meta", "recipes/miso-ramen");
     expect(meta?.data).toEqual({ draft: false });
@@ -154,7 +154,7 @@ describe("unpublishRecipe", () => {
     const sidecar = createMetaSidecar(store);
     await store.put("meta", "recipes/miso-ramen", { draft: false, tags: ["soup"] });
 
-    await unpublishRecipe(store, sidecar, { collection: "recipes", id: "miso-ramen" });
+    await unpublishRecipe(sidecar, { collection: "recipes", id: "miso-ramen" });
 
     const meta = await store.get("meta", "recipes/miso-ramen");
     expect(meta?.data).toEqual({ draft: true, tags: ["soup"] });
@@ -185,7 +185,7 @@ describe("save as draft (parameterized over recipe-shaped collections)", () => {
         recipe: { name: "Demo" },
         meta: { draft: false, tags: ["wip"] },
       });
-      await unpublishRecipe(store, sidecar, { collection, id: "demo" });
+      await unpublishRecipe(sidecar, { collection, id: "demo" });
       const meta = await store.get("meta", `${collection}/demo`);
       expect(meta?.data).toEqual(expect.objectContaining({ draft: true, tags: ["wip"] }));
     });

@@ -61,7 +61,6 @@ export async function deletePairing(
 }
 
 export async function savePairingMeta(
-  _store: ContentStore,
   sidecar: MetaSidecar,
   input: { id: string; patch: Record<string, unknown> },
 ): Promise<void> {

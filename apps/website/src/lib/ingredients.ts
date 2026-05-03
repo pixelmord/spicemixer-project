@@ -94,7 +94,6 @@ export interface SaveIngredientMetaInput {
 }
 
 export async function saveIngredientMeta(
-  _store: ContentStore,
   sidecar: MetaSidecar,
   input: SaveIngredientMetaInput,
 ): Promise<void> {
@@ -123,7 +122,6 @@ async function setIngredientDraft(
 }
 
 export async function publishIngredient(
-  _store: ContentStore,
   sidecar: MetaSidecar,
   input: IngredientPublishStateInput,
 ): Promise<void> {
@@ -131,7 +129,6 @@ export async function publishIngredient(
 }
 
 export async function unpublishIngredient(
-  _store: ContentStore,
   sidecar: MetaSidecar,
   input: IngredientPublishStateInput,
 ): Promise<void> {

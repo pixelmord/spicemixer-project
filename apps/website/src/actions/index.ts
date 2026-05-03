@@ -145,8 +145,11 @@ async function buildListing() {
     const completeness = scorePairing(d, "en");
     const translations = ["en", "de"].filter((l) => !!descriptions[l]);
     const description = descriptions["en"] ?? String(d["description"] ?? "");
-    const refSlug = (v: EntityRef | string | undefined): string =>
-      v == null ? "?" : typeof v === "string" ? v : v.slug;
+    const refSlug = (v: EntityRef | string | undefined): string => {
+      if (v == null) return "?";
+      if (typeof v === "string") return v;
+      return v.slug;
+    };
     return {
       type: "pairing" as const,
       collection: "pairings" as const,
@@ -363,7 +366,7 @@ export const server = {
     handler: async ({ collection, id }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libPublishRecipe(store, sidecar, { collection, id });
+      await libPublishRecipe(sidecar, { collection, id });
       return { ok: true };
     },
   }),
@@ -374,7 +377,7 @@ export const server = {
     handler: async ({ collection, id }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libUnpublishRecipe(store, sidecar, { collection, id });
+      await libUnpublishRecipe(sidecar, { collection, id });
       return { ok: true };
     },
   }),
@@ -385,7 +388,7 @@ export const server = {
     handler: async ({ locale, slug }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libPublishIngredient(store, sidecar, { locale, slug });
+      await libPublishIngredient(sidecar, { locale, slug });
       return { ok: true };
     },
   }),
@@ -396,7 +399,7 @@ export const server = {
     handler: async ({ locale, slug }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libUnpublishIngredient(store, sidecar, { locale, slug });
+      await libUnpublishIngredient(sidecar, { locale, slug });
       return { ok: true };
     },
   }),
@@ -1068,8 +1071,11 @@ export const server = {
       const description =
         descriptions[locale] ?? descriptions["en"] ?? String(pairing["description"] ?? "");
       const ings = pairing["ingredients"] as [EntityRef | string, EntityRef | string] | undefined;
-      const refSlug = (v: EntityRef | string | undefined): string =>
-        v == null ? "" : typeof v === "string" ? v : v.slug;
+      const refSlug = (v: EntityRef | string | undefined): string => {
+        if (v == null) return "";
+        if (typeof v === "string") return v;
+        return v.slug;
+      };
 
       const improvements = await proposePairingImprovements(
         { ingredient1: refSlug(ings?.[0]), ingredient2: refSlug(ings?.[1]), description },
@@ -1125,7 +1131,7 @@ export const server = {
     handler: async ({ locale, slug, patch }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libSaveIngredientMeta(store, sidecar, { locale, slug, patch });
+      await libSaveIngredientMeta(sidecar, { locale, slug, patch });
       return { ok: true };
     },
   }),
@@ -1140,7 +1146,7 @@ export const server = {
     handler: async ({ id, patch }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libSavePairingMeta(store, sidecar, { id, patch });
+      await libSavePairingMeta(sidecar, { id, patch });
       return { ok: true };
     },
   }),

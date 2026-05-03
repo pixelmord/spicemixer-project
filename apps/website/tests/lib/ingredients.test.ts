@@ -222,7 +222,7 @@ describe("saveIngredientMeta", () => {
     await store.put(INGREDIENT_META, "en/cardamom", {
       translations: { de: "kardamom" },
     });
-    await saveIngredientMeta(store, sidecar, {
+    await saveIngredientMeta(sidecar, {
       locale: "en",
       slug: "cardamom",
       patch: { imageAttribution: { source: "Openverse" } },
@@ -243,7 +243,7 @@ describe("publishIngredient / unpublishIngredient", () => {
       draft: false,
       translations: { de: "kardamom" },
     });
-    await unpublishIngredient(store, sidecar, { locale: "en", slug: "cardamom" });
+    await unpublishIngredient(sidecar, { locale: "en", slug: "cardamom" });
     const meta = await store.get(INGREDIENT_META, "en/cardamom");
     expect(meta?.data).toEqual({ draft: true, translations: { de: "kardamom" } });
   });
@@ -255,7 +255,7 @@ describe("publishIngredient / unpublishIngredient", () => {
       draft: true,
       translations: { de: "kardamom" },
     });
-    await publishIngredient(store, sidecar, { locale: "en", slug: "cardamom" });
+    await publishIngredient(sidecar, { locale: "en", slug: "cardamom" });
     const meta = await store.get(INGREDIENT_META, "en/cardamom");
     expect(meta?.data).toEqual({ draft: false, translations: { de: "kardamom" } });
   });
@@ -263,7 +263,7 @@ describe("publishIngredient / unpublishIngredient", () => {
   test("unpublishIngredient creates the meta sidecar if missing", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await unpublishIngredient(store, sidecar, { locale: "en", slug: "cardamom" });
+    await unpublishIngredient(sidecar, { locale: "en", slug: "cardamom" });
     const meta = await store.get(INGREDIENT_META, "en/cardamom");
     expect(meta?.data).toEqual({ draft: true });
   });

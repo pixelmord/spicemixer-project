@@ -74,16 +74,11 @@ async function setDraft(
   await sidecar.write(ref, { ...meta, draft });
 }
 
-export async function publishRecipe(
-  _store: ContentStore,
-  sidecar: MetaSidecar,
-  input: PublishStateInput,
-): Promise<void> {
+export async function publishRecipe(sidecar: MetaSidecar, input: PublishStateInput): Promise<void> {
   await setDraft(sidecar, input, false);
 }
 
 export async function unpublishRecipe(
-  _store: ContentStore,
   sidecar: MetaSidecar,
   input: PublishStateInput,
 ): Promise<void> {
