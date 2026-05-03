@@ -81,7 +81,6 @@ const pairingsResolved = pairingEntities.length > 0
     </nav>
 
     <DetailLayout>
-      <!-- hero: image/gradient + h1 + category badge + summary -->
       <section slot="hero">
         {
           data.images[0] ? (
@@ -122,7 +121,6 @@ const pairingsResolved = pairingEntities.length > 0
         )}
       </section>
 
-      <!-- encyclopedia: taxonomy + description + longform fields + extra images + sources -->
       <section slot="encyclopedia">
         <IngredientTaxonomy data={data} t={t} />
 
@@ -190,7 +188,6 @@ const pairingsResolved = pairingEntities.length > 0
         }
       </section>
 
-      <!-- relations: pairings + used-in -->
       <section slot="relations">
         {
           pairingsResolved.length > 0 && (
@@ -223,7 +220,6 @@ const pairingsResolved = pairingEntities.length > 0
         <RelatedList heading={t("section.usedIn")} items={usedIn} />
       </section>
 
-      <!-- liability: auto-renders when ingredient has medicinal/safety content -->
       {hasLiabilityScope(data) && (
         <p slot="liability" class="mb-8 text-xs text-stone-500 italic border-t border-stone-100 pt-4">
           This page includes information about medicinal uses, health benefits, or safety considerations. It is provided for informational purposes only and does not constitute medical advice.

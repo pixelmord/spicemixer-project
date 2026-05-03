@@ -79,7 +79,6 @@ const demonstratesItems = await Promise.all(
     </nav>
 
     <DetailLayout>
-      <!-- hero: image/gradient + h1 + category + description -->
       <section slot="hero">
         {
           image ? (
@@ -116,7 +115,6 @@ const demonstratesItems = await Promise.all(
         {data.description && <p class="mb-6 text-lg italic text-stone-700">{data.description}</p>}
       </section>
 
-      <!-- encyclopedia: "This recipe demonstrates" cross-links to ingredients -->
       {demonstratesItems.length > 0 && (
         <section slot="encyclopedia" class="mb-8">
           <p class="mb-3 text-sm font-semibold uppercase tracking-[0.15em] text-stone-500">
@@ -137,7 +135,6 @@ const demonstratesItems = await Promise.all(
         </section>
       )}
 
-      <!-- recipe: RecipeMeta + ingredients + instructions + JSON-LD -->
       <section slot="recipe" id="recipe" class="mb-10">
         <div class="mb-10 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
           <RecipeMeta
@@ -185,7 +182,6 @@ const demonstratesItems = await Promise.all(
         <script type="application/ld+json" set:html={jsonLd} />
       </section>
 
-      <!-- relations: goes-well-with + external sources + tags -->
       <section slot="relations">
         <RelatedList heading={t("section.goesWellWith")} items={goesWellWithItems} />
         <ExternalSourceList heading={t("section.externalRecipes")} sources={meta.externalSources} />

@@ -224,7 +224,6 @@ const pageDescription = kind ? t("page.mixtures.description") : mix!.data.descri
       </nav>
 
       <DetailLayout>
-        <!-- hero: image/gradient + h1 + kind badge + description + jump to recipe -->
         <section slot="hero">
           {
             detailImage ? (
@@ -278,7 +277,6 @@ const pageDescription = kind ? t("page.mixtures.description") : mix!.data.descri
           </a>
         </section>
 
-        <!-- encyclopedia: variant-of reference + external sources -->
         {(variantOfItem || (meta?.externalSources.length ?? 0) > 0) && (
           <section slot="encyclopedia" class="mb-10">
             {variantOfItem && (
@@ -296,7 +294,6 @@ const pageDescription = kind ? t("page.mixtures.description") : mix!.data.descri
           </section>
         )}
 
-        <!-- recipe: anchor target + RecipeMeta + ingredients + instructions + JSON-LD -->
         <section slot="recipe" id="recipe" class="mb-10">
           <div class="mb-10 rounded-2xl bg-white p-5 ring-1 ring-stone-200">
             <RecipeMeta
@@ -352,7 +349,6 @@ const pageDescription = kind ? t("page.mixtures.description") : mix!.data.descri
           <script type="application/ld+json" set:html={jsonLd} />
         </section>
 
-        <!-- relations: pairings + base + variants + tags -->
         <section slot="relations">
           <RelatedList heading={t("section.goesWellWith")} items={goesWellWithItems} />
           <RelatedList heading={t("section.usesBase")} items={usesBaseItems} />
