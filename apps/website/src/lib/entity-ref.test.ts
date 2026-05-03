@@ -9,7 +9,6 @@ describe("entityRefSchema", () => {
     { collection: "ingredients", slug: "black-pepper" },
     { collection: "mixtures", slug: "ras-el-hanout" },
   ])("accepts valid ref $collection:$slug", (input) => {
-    expect(() => entityRefSchema.parse(input)).not.toThrow();
     const ref = entityRefSchema.parse(input);
     expect(ref.collection).toBe(input.collection);
     expect(ref.slug).toBe(input.slug);
