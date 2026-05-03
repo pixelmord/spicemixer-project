@@ -51,6 +51,50 @@ describe("saveRecipe", () => {
   });
 });
 
+describe("saveRecipe — canonicalLocale", () => {
+  test("stamps canonicalLocale from meta.locale on first save", async () => {
+    const store = new InMemoryStore();
+    await saveRecipe(store, {
+      collection: "recipes",
+      slug: "miso-ramen",
+      recipe: { name: "Miso Ramen" },
+      meta: { locale: "de", draft: true },
+    });
+    const meta = await store.get("meta", "recipes/miso-ramen");
+    expect((meta?.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
+  });
+
+  test("does not overwrite canonicalLocale on subsequent saves", async () => {
+    const store = new InMemoryStore();
+    await saveRecipe(store, {
+      collection: "recipes",
+      slug: "miso-ramen",
+      recipe: { name: "Miso Ramen" },
+      meta: { locale: "de", draft: true },
+    });
+    await saveRecipe(store, {
+      collection: "recipes",
+      slug: "miso-ramen",
+      recipe: { name: "Miso Ramen" },
+      meta: { locale: "en", draft: false },
+    });
+    const meta = await store.get("meta", "recipes/miso-ramen");
+    expect((meta?.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
+  });
+
+  test("does not stamp canonicalLocale when meta.locale is absent", async () => {
+    const store = new InMemoryStore();
+    await saveRecipe(store, {
+      collection: "recipes",
+      slug: "miso-ramen",
+      recipe: { name: "Miso Ramen" },
+      meta: { draft: true },
+    });
+    const meta = await store.get("meta", "recipes/miso-ramen");
+    expect((meta?.data as Record<string, unknown>)["canonicalLocale"]).toBeUndefined();
+  });
+});
+
 describe("deleteRecipe", () => {
   test("removes both the recipe and its meta sidecar", async () => {
     const store = new InMemoryStore();
