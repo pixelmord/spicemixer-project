@@ -32,7 +32,6 @@ describe("pre-paint script: BaseLayout.astro", () => {
   });
 
   test("wraps localStorage access in try/catch for graceful fallback", () => {
-    // Verify try and catch both appear (in that order) in the inline script.
     const tryIdx = src.indexOf("try");
     const catchIdx = src.indexOf("catch");
     expect(tryIdx).toBeGreaterThan(-1);
@@ -105,7 +104,6 @@ describe("CSS contract: cook-mode and print rules share declarations", () => {
   });
 
   function extractDeclarations(css: string, selector: string): string {
-    // Extract all { ... } blocks following the given selector text.
     const idx = css.indexOf(selector);
     if (idx === -1) return "";
     const open = css.indexOf("{", idx);
@@ -154,8 +152,6 @@ describe("mixture detail: data-cook annotations (EN)", () => {
   });
 
   test("relations slot has data-cook='hide'", () => {
-    // At least one hide annotation exists (already asserted above);
-    // verify relations slot is annotated by confirming it occurs in the relations slot context.
     const relationsIdx = src.indexOf('slot="relations"');
     const hideAfterRelations = src.indexOf('data-cook="hide"', relationsIdx);
     expect(relationsIdx).toBeGreaterThan(-1);
@@ -179,6 +175,13 @@ describe("mixture detail: data-cook annotations (DE)", () => {
 
   test("encyclopedia slot has data-cook='hide'", () => {
     expect(src).toContain('data-cook="hide"');
+  });
+
+  test("relations slot has data-cook='hide'", () => {
+    const relationsIdx = src.indexOf('slot="relations"');
+    const hideAfterRelations = src.indexOf('data-cook="hide"', relationsIdx);
+    expect(relationsIdx).toBeGreaterThan(-1);
+    expect(hideAfterRelations).toBeGreaterThan(relationsIdx);
   });
 
   test("imports and renders CookModeToggle", () => {
