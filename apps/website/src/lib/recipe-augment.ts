@@ -43,6 +43,8 @@ type PairingData = {
   ingredients: [string, string];
   descriptions?: Record<string, string>;
   description?: string;
+  draft?: boolean;
+  image?: string;
 };
 
 const EMPTY_META: Meta = {
@@ -177,17 +179,7 @@ export async function getPublishedPairings(): Promise<PublishedPairing[]> {
     regionsBySlug.set(slug, [...new Set([...prev, ...(m.data.region ?? [])])]);
   }
 
-  return (
-    rawPairings as Array<{
-      id: string;
-      data: {
-        ingredients: [string, string];
-        descriptions?: Record<string, string>;
-        draft?: boolean;
-        image?: string;
-      };
-    }>
-  )
+  return (rawPairings as Array<{ id: string; data: PairingData }>)
     .filter((p) => !p.data.draft)
     .map((p) => {
       const [a, b] = p.data.ingredients;

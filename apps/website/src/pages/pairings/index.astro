@@ -19,7 +19,7 @@ const groups = [
   {
     key: "region",
     label: t("filter.region"),
-    values: presentRegions.map((r) => ({ value: r, label: REGION_LABELS[r][locale === "de" ? "de" : "en"] })),
+    values: presentRegions.map((r) => ({ value: r, label: REGION_LABELS[r][locale] })),
   },
 ];
 ---
@@ -60,7 +60,7 @@ const groups = [
                     <ul class="mt-3 flex flex-wrap gap-1">
                       {pairing.regions.slice(0, 2).map((r) => (
                         <li class="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] text-stone-500">
-                          {REGION_LABELS[r as keyof typeof REGION_LABELS]?.[locale === "de" ? "de" : "en"] ?? r}
+                          {REGION_LABELS[r as keyof typeof REGION_LABELS]?.[locale] ?? r}
                         </li>
                       ))}
                     </ul>
@@ -122,7 +122,7 @@ const groups = [
                       <ul class="mt-3 flex flex-wrap gap-1">
                         {pairing.regions.slice(0, 2).map((r) => (
                           <li class="rounded-full bg-white/60 px-2 py-0.5 text-[10px] text-stone-500">
-                            {REGION_LABELS[r as keyof typeof REGION_LABELS]?.[locale === "de" ? "de" : "en"] ?? r}
+                            {REGION_LABELS[r as keyof typeof REGION_LABELS]?.[locale] ?? r}
                           </li>
                         ))}
                       </ul>

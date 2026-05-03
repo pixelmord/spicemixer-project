@@ -85,13 +85,13 @@ describe("pairings page translation keys", () => {
     expect(t("page.pairings.recentlyAdded")).toBeTruthy();
   });
 
-  test("new filter keys present in EN", () => {
+  test("filter keys present in EN", () => {
     const t = useTranslations("en");
     expect(t("filter.region")).toBeTruthy();
     expect(t("filter.flavorProfile")).toBeTruthy();
   });
 
-  test("new filter keys present in DE", () => {
+  test("filter keys present in DE", () => {
     const t = useTranslations("de");
     expect(t("filter.region")).toBeTruthy();
     expect(t("filter.flavorProfile")).toBeTruthy();

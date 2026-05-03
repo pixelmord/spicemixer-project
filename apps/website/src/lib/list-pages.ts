@@ -9,12 +9,12 @@ export type ListPageConfig = {
   itemRenderer: ItemRenderer;
 };
 
-const _registry = new Map<string, ListPageConfig>();
+const registry = new Map<string, ListPageConfig>();
 
 export function registerListPage(collection: string, config: ListPageConfig): void {
-  _registry.set(collection, config);
+  registry.set(collection, config);
 }
 
 export function lookupListPage(collection: string): ListPageConfig | undefined {
-  return _registry.get(collection);
+  return registry.get(collection);
 }
