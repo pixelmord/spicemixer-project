@@ -238,16 +238,12 @@ export async function resolveRefs(
 ): Promise<Array<{ name: string; href: string }>> {
   const results = await Promise.all(
     refs.map(async ({ collection, slug }) => {
-      let name: string | undefined;
-      if (collection === "recipes") {
-        const e = await getEntry("recipes", slug);
-        name = e?.data.name;
-      } else {
-        const e = await getEntry("mixtures", slug);
-        name = e?.data.name;
-      }
-      if (!name) return null;
-      return { name, href: `${localePrefix}/${collection}/${slug}/` };
+      const e =
+        collection === "recipes"
+          ? await getEntry("recipes", slug)
+          : await getEntry("mixtures", slug);
+      if (!e) return null;
+      return { name: e.data.name, href: `${localePrefix}/${collection}/${slug}/` };
     }),
   );
   return results.filter((x): x is NonNullable<typeof x> => x !== null);
@@ -260,16 +256,10 @@ export async function resolveVariants(
 ): Promise<Array<{ name: string; href: string }>> {
   const results = await Promise.all(
     slugs.map(async (slug) => {
-      let name: string | undefined;
-      if (kind === "recipes") {
-        const e = await getEntry("recipes", slug);
-        name = e?.data.name;
-      } else {
-        const e = await getEntry("mixtures", slug);
-        name = e?.data.name;
-      }
-      if (!name) return null;
-      return { name, href: `${localePrefix}/${kind}/${slug}/` };
+      const e =
+        kind === "recipes" ? await getEntry("recipes", slug) : await getEntry("mixtures", slug);
+      if (!e) return null;
+      return { name: e.data.name, href: `${localePrefix}/${kind}/${slug}/` };
     }),
   );
   return results.filter((x): x is NonNullable<typeof x> => x !== null);
