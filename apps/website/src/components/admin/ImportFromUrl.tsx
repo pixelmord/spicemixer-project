@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 
-type Collection = "recipes" | "spicemixes" | "sauces";
+type Collection = "recipes" | "mixtures";
 
 interface IngestResult {
   recipe: Record<string, unknown>;
@@ -115,8 +115,7 @@ export default function ImportFromUrl() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="recipes">Recipes</SelectItem>
-                <SelectItem value="spicemixes">Spicemixes</SelectItem>
-                <SelectItem value="sauces">Sauces</SelectItem>
+                <SelectItem value="mixtures">Mixtures</SelectItem>
               </SelectContent>
             </Select>
           </div>

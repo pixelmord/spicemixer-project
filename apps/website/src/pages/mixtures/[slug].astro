@@ -18,15 +18,15 @@ import {
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 
 export async function getStaticPaths() {
-  const spicemixes = await getPublished("spicemixes");
-  return spicemixes.map((mix) => ({
+  const mixtures = await getPublished("mixtures");
+  return mixtures.map((mix) => ({
     params: { slug: mix.id },
     props: { mix },
   }));
 }
 
 interface Props {
-  mix: CollectionEntry<"spicemixes">;
+  mix: CollectionEntry<"mixtures">;
 }
 
 const { mix } = Astro.props;
@@ -41,21 +41,21 @@ const ingredientBase = `${prefix}/ingredients`;
 const image = firstImage(data.image);
 const tags = keywordList(data.keywords);
 const steps = normalizeInstructions(data.recipeInstructions);
-const transitionName = `spicemix-${slug}`;
+const transitionName = `mixture-${slug}`;
 const jsonLd = JSON.stringify(data);
 
-const meta = await getMeta("spicemixes", slug);
+const meta = await getMeta("mixtures", slug);
 const linkedIngredients = linkIngredients(data.recipeIngredient, meta.ingredientLinks);
 
 const [goesWellWithItems, usesBaseItems, variantItems] = await Promise.all([
   resolveRefs(meta.goesWellWith, prefix),
   resolveRefs(meta.usesBase, prefix),
-  resolveVariants("spicemixes", meta.variants, prefix),
+  resolveVariants("mixtures", meta.variants, prefix),
 ]);
 
 let variantOfItem: { name: string; href: string } | null = null;
 if (meta.variantOf) {
-  const [item] = await resolveVariants("spicemixes", [meta.variantOf], prefix);
+  const [item] = await resolveVariants("mixtures", [meta.variantOf], prefix);
   variantOfItem = item ?? null;
 }
 const lightboxSteps = steps.map((step) => ({
@@ -68,13 +68,13 @@ const lightboxSteps = steps.map((step) => ({
   <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
     <nav class="mb-8 flex items-center justify-between text-sm">
       <a
-        href={`${prefix}/spicemixes/`}
+        href={`${prefix}/mixtures/`}
         class="text-stone-500 transition hover:text-stone-900"
       >
-        {t("nav.back.spicemixes")}
+        {t("nav.back.mixtures")}
       </a>
       <a
-        href={`/admin/spicemixes/${slug}/edit`}
+        href={`/admin/mixtures/${slug}/edit`}
         data-admin-link
         class="hidden text-xs text-stone-400 transition hover:text-stone-700"
       >

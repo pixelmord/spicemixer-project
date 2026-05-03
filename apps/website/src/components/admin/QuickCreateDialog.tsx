@@ -72,8 +72,7 @@ export default function QuickCreateDialog({
         });
         if (error) throw error;
       } else {
-        const collection =
-          kind === "recipe" ? "recipes" : kind === "spicemix" ? "spicemixes" : "sauces";
+        const collection = kind === "recipe" ? "recipes" : "mixtures";
         const { error } = await actions.quickCreateRecipe({ collection, slug, name });
         if (error) throw error;
       }

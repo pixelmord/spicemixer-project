@@ -4,22 +4,27 @@ import FilterBar from "../../components/FilterBar.astro";
 import RecipeMeta from "../../components/RecipeMeta.astro";
 import { firstImage, keywordList } from "../../lib/instructions.ts";
 import { getPublished } from "../../lib/recipe-augment.ts";
+import { getCollection } from "astro:content";
 import { useTranslations } from "../../i18n/translations.ts";
 
 const t = useTranslations("de");
 const prefix = "/de";
 
-const [spicemixes, sauces] = await Promise.all([
-  getPublished("spicemixes"),
-  getPublished("sauces"),
+const [mixtures, allMeta] = await Promise.all([
+  getPublished("mixtures"),
+  getCollection("meta"),
 ]);
+const metaMap = new Map(allMeta.map((m) => [m.id, m.data]));
 
-const items = [
-  ...spicemixes.map((e) => ({ entry: e, kind: "spicemix" as const })),
-  ...sauces.map((e) => ({ entry: e, kind: "sauce" as const })),
-].sort((a, b) =>
-  (b.entry.data.datePublished ?? "").localeCompare(a.entry.data.datePublished ?? ""),
-);
+const items = mixtures
+  .map((e) => {
+    const meta = metaMap.get(`mixtures/${e.id}`);
+    const kind = (meta?.kind ?? "spicemix") as "spicemix" | "sauce";
+    return { entry: e, kind };
+  })
+  .sort((a, b) =>
+    (b.entry.data.datePublished ?? "").localeCompare(a.entry.data.datePublished ?? ""),
+  );
 
 const cuisines = [
   ...new Set(items.map((i) => i.entry.data.recipeCuisine).filter((c): c is string => Boolean(c))),
@@ -68,7 +73,7 @@ const gradientClass = {
         items.map(({ entry, kind }) => {
           const data = entry.data;
           const slug = entry.id;
-          const href = `${prefix}/${kind === "spicemix" ? "spicemixes" : "sauces"}/${slug}/`;
+          const href = `${prefix}/mixtures/${slug}/`;
           const image = firstImage(data.image);
           const tags = keywordList(data.keywords);
           const transitionName = `${kind}-${slug}`;

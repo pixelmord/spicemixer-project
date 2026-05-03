@@ -6,7 +6,7 @@ import { recipeExtractSchema, type RecipeExtract } from "./schemas/recipe-extrac
 export interface GenerateRecipeInput {
   prompt: string;
   locale?: "en" | "de";
-  style?: "recipe" | "spicemix" | "sauce";
+  style?: "recipe" | "mixture";
 }
 
 export interface GenerateRecipeResult {
@@ -29,7 +29,7 @@ export async function generateRecipeFromPrompt(
   const model = createProvider(config);
   const { prompt, locale = "en", style = "recipe" } = input;
 
-  const styleHint = style === "spicemix" ? "spice blend or spice mix" : style;
+  const styleHint = style === "mixture" ? "spice blend, sauce, or condiment" : style;
   const localeHint =
     locale === "de" ? "Write the recipe in German." : "Write the recipe in English.";
 

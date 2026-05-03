@@ -17,12 +17,12 @@ describe("saveRecipe", () => {
   test("writes the meta sidecar when meta is provided", async () => {
     const store = new InMemoryStore();
     await saveRecipe(store, {
-      collection: "sauces",
+      collection: "mixtures",
       slug: "harissa",
       recipe: { name: "Harissa" },
       meta: { tags: ["spicy"] },
     });
-    const meta = await store.get("meta", "sauces/harissa");
+    const meta = await store.get("meta", "mixtures/harissa");
     expect(meta?.data).toEqual({ tags: ["spicy"] });
   });
 
@@ -61,7 +61,7 @@ describe("saveRecipe — canonicalLocale", () => {
       meta: { locale: "de", draft: true },
     });
     const meta = await store.get("meta", "recipes/miso-ramen");
-    expect((meta?.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
+    expect((meta!.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
   });
 
   test("does not overwrite canonicalLocale on subsequent saves", async () => {
@@ -79,7 +79,7 @@ describe("saveRecipe — canonicalLocale", () => {
       meta: { locale: "en", draft: false },
     });
     const meta = await store.get("meta", "recipes/miso-ramen");
-    expect((meta?.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
+    expect((meta!.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
   });
 
   test("does not stamp canonicalLocale when meta.locale is absent", async () => {
@@ -91,7 +91,7 @@ describe("saveRecipe — canonicalLocale", () => {
       meta: { draft: true },
     });
     const meta = await store.get("meta", "recipes/miso-ramen");
-    expect((meta?.data as Record<string, unknown>)["canonicalLocale"]).toBeUndefined();
+    expect((meta!.data as Record<string, unknown>)["canonicalLocale"]).toBeUndefined();
   });
 });
 
@@ -110,7 +110,7 @@ describe("deleteRecipe", () => {
   test("is idempotent for nonexistent items", async () => {
     const store = new InMemoryStore();
     await expect(
-      deleteRecipe(store, { collection: "sauces", id: "ghost" }),
+      deleteRecipe(store, { collection: "mixtures", id: "ghost" }),
     ).resolves.toBeUndefined();
   });
 });
@@ -149,7 +149,7 @@ describe("unpublishRecipe", () => {
 });
 
 describe("save as draft (parameterized over recipe-shaped collections)", () => {
-  for (const collection of ["recipes", "spicemixes", "sauces"] as const) {
+  for (const collection of ["recipes", "mixtures"] as const) {
     test(`${collection}: saveRecipe with meta.draft=true persists draft state`, async () => {
       const store = new InMemoryStore();
       await saveRecipe(store, {

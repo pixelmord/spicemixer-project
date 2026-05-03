@@ -8,7 +8,7 @@ export async function getIngredient(slug: string, locale: string) {
   );
 }
 
-export type RecipeKind = "recipes" | "spicemixes" | "sauces";
+export type RecipeKind = "recipes" | "mixtures";
 
 export type MetaRef = { collection: RecipeKind; slug: string };
 export type IngredientLink = {
@@ -180,17 +180,15 @@ export async function getRecipeUsedIn(
   recipeCollection: RecipeKind,
   localePrefix: string,
 ): Promise<Array<{ name: string; href: string; kind: RecipeKind }>> {
-  const [allMeta, recipes, spicemixes, sauces] = await Promise.all([
+  const [allMeta, recipes, mixtures] = await Promise.all([
     getCollection("meta"),
     getCollection("recipes"),
-    getCollection("spicemixes"),
-    getCollection("sauces"),
+    getCollection("mixtures"),
   ]);
 
   const byKind: Record<RecipeKind, Map<string, string>> = {
     recipes: new Map(recipes.map((r) => [r.id, r.data.name])),
-    spicemixes: new Map(spicemixes.map((r) => [r.id, r.data.name])),
-    sauces: new Map(sauces.map((r) => [r.id, r.data.name])),
+    mixtures: new Map(mixtures.map((r) => [r.id, r.data.name])),
   };
 
   return allMeta
@@ -219,19 +217,12 @@ export async function resolveRefs(
 ): Promise<Array<{ name: string; href: string }>> {
   const results = await Promise.all(
     refs.map(async ({ collection, slug }) => {
-      let name: string | undefined;
-      if (collection === "recipes") {
-        const e = await getEntry("recipes", slug);
-        name = e?.data.name;
-      } else if (collection === "spicemixes") {
-        const e = await getEntry("spicemixes", slug);
-        name = e?.data.name;
-      } else {
-        const e = await getEntry("sauces", slug);
-        name = e?.data.name;
-      }
-      if (!name) return null;
-      return { name, href: `${localePrefix}/${collection}/${slug}/` };
+      const e =
+        collection === "recipes"
+          ? await getEntry("recipes", slug)
+          : await getEntry("mixtures", slug);
+      if (!e) return null;
+      return { name: e.data.name, href: `${localePrefix}/${collection}/${slug}/` };
     }),
   );
   return results.filter((x): x is NonNullable<typeof x> => x !== null);
@@ -244,19 +235,10 @@ export async function resolveVariants(
 ): Promise<Array<{ name: string; href: string }>> {
   const results = await Promise.all(
     slugs.map(async (slug) => {
-      let name: string | undefined;
-      if (kind === "recipes") {
-        const e = await getEntry("recipes", slug);
-        name = e?.data.name;
-      } else if (kind === "spicemixes") {
-        const e = await getEntry("spicemixes", slug);
-        name = e?.data.name;
-      } else {
-        const e = await getEntry("sauces", slug);
-        name = e?.data.name;
-      }
-      if (!name) return null;
-      return { name, href: `${localePrefix}/${kind}/${slug}/` };
+      const e =
+        kind === "recipes" ? await getEntry("recipes", slug) : await getEntry("mixtures", slug);
+      if (!e) return null;
+      return { name: e.data.name, href: `${localePrefix}/${kind}/${slug}/` };
     }),
   );
   return results.filter((x): x is NonNullable<typeof x> => x !== null);
@@ -266,17 +248,15 @@ export async function getUsedIn(
   ingredientSlug: string,
   localePrefix: string,
 ): Promise<Array<{ name: string; href: string; kind: RecipeKind }>> {
-  const [allMeta, recipes, spicemixes, sauces] = await Promise.all([
+  const [allMeta, recipes, mixtures] = await Promise.all([
     getCollection("meta"),
     getCollection("recipes"),
-    getCollection("spicemixes"),
-    getCollection("sauces"),
+    getCollection("mixtures"),
   ]);
 
   const byKind: Record<RecipeKind, Map<string, string>> = {
     recipes: new Map(recipes.map((r) => [r.id, r.data.name])),
-    spicemixes: new Map(spicemixes.map((r) => [r.id, r.data.name])),
-    sauces: new Map(sauces.map((r) => [r.id, r.data.name])),
+    mixtures: new Map(mixtures.map((r) => [r.id, r.data.name])),
   };
 
   return allMeta

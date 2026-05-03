@@ -17,7 +17,7 @@ describe("InMemoryStore", () => {
   test("list filters by collection", async () => {
     const store = new InMemoryStore();
     await store.put("recipes", "a", { name: "A" });
-    await store.put("sauces", "b", { name: "B" });
+    await store.put("mixtures", "b", { name: "B" });
     const recipes = await store.list("recipes");
     expect(recipes.map((i) => i.id)).toEqual(["a"]);
   });

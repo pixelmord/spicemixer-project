@@ -5,11 +5,11 @@ import RecipeEnhancePage from "@/components/admin/RecipeEnhancePage.tsx";
 import { createStore } from "@/lib/content-store.ts";
 
 const { slug } = Astro.params;
-if (!slug) return Astro.redirect("/admin/spicemixes");
+if (!slug) return Astro.redirect("/admin/mixtures");
 
 const store = await createStore();
-const item = await store.get("spicemixes", slug);
-if (!item) return Astro.redirect("/admin/spicemixes");
+const item = await store.get("mixtures", slug);
+if (!item) return Astro.redirect("/admin/mixtures");
 
 const currentPath = Astro.url.pathname;
 ---
@@ -24,7 +24,7 @@ const currentPath = Astro.url.pathname;
   <body>
     <AdminShell currentPath={currentPath} client:load>
       <RecipeEnhancePage
-        collection="spicemixes"
+        collection="mixtures"
         slug={slug}
         existingRecipe={item.data as never}
         client:load

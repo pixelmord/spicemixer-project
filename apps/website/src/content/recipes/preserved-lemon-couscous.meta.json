@@ -3,8 +3,14 @@
   "region": [],
   "variants": [],
   "goesWellWith": [
-    { "collection": "sauces", "slug": "harissa" },
-    { "collection": "spicemixes", "slug": "ras-el-hanout" }
+    {
+      "collection": "mixtures",
+      "slug": "harissa"
+    },
+    {
+      "collection": "mixtures",
+      "slug": "ras-el-hanout"
+    }
   ],
   "usesBase": [],
   "ingredientLinks": [],

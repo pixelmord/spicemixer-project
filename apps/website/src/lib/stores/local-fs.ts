@@ -7,7 +7,7 @@ import type { Collection, ContentItem, ContentStore } from "../content-store.ts"
 // process.cwd() is the Astro project root in both dev and SSR contexts.
 const CONTENT_ROOT = join(process.cwd(), "src/content");
 
-const META_KIND_DIRS = ["recipes", "sauces", "spicemixes"] as const;
+const META_KIND_DIRS = ["recipes", "mixtures"] as const;
 
 /** Map a collection + id to an absolute file path on disk. */
 function idToPath(collection: Collection, id: string): string {

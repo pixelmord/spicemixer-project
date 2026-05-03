@@ -5,17 +5,16 @@ import { createStore } from "@/lib/content-store.ts";
 import { scoreRecipe, scoreIngredient } from "@/lib/completeness.ts";
 
 const store = await createStore();
-const [recipes, spicemixes, sauces, metas, ingredients] = await Promise.all([
+const [recipes, mixtures, metas, ingredients] = await Promise.all([
   store.list("recipes"),
-  store.list("spicemixes"),
-  store.list("sauces"),
+  store.list("mixtures"),
   store.list("meta"),
   store.list("ingredients"),
 ]);
 
 const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown>]));
 
-const allRecipes = [...recipes, ...spicemixes, ...sauces];
+const allRecipes = [...recipes, ...mixtures];
 const published = allRecipes.filter((r) => {
   const meta = metaMap.get(`${r.collection}/${r.id}`) ?? {};
   return !(meta as Record<string, unknown>).draft;
@@ -76,8 +75,7 @@ const currentPath = Astro.url.pathname;
         <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
           {[
             { href: "/admin/recipes/new", label: "+ New recipe", color: "hover:border-blue-400" },
-            { href: "/admin/spicemixes/new", label: "+ New spicemix", color: "hover:border-purple-400" },
-            { href: "/admin/sauces/new", label: "+ New sauce", color: "hover:border-orange-400" },
+            { href: "/admin/mixtures/new", label: "+ New mixture", color: "hover:border-purple-400" },
             { href: "/admin/ingredients/new", label: "+ New ingredient", color: "hover:border-green-400" },
             { href: "/admin/recipes/import", label: "↓ Import from URL", color: "hover:border-pink-400" },
             { href: "/admin/content", label: "View all content", color: "hover:border-zinc-400" },
@@ -97,8 +95,7 @@ const currentPath = Astro.url.pathname;
           <div class="divide-y divide-border">
             {[
               { label: "Recipes", count: recipes.length, href: "/admin/recipes" },
-              { label: "Spicemixes", count: spicemixes.length, href: "/admin/spicemixes" },
-              { label: "Sauces", count: sauces.length, href: "/admin/sauces" },
+              { label: "Mixtures", count: mixtures.length, href: "/admin/mixtures" },
               { label: "Ingredients", count: ingredients.length, href: "/admin/ingredients" },
             ].map((c) => (
               <div class="flex items-center justify-between py-2.5">
