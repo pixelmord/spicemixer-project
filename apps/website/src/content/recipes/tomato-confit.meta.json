@@ -15,5 +15,6 @@
   "translations": {},
   "kind": "recipe",
   "language": "en",
-  "locale": "en"
+  "locale": "en",
+  "canonicalLocale": "en"
 }

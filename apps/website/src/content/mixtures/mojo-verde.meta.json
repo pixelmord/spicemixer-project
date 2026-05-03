@@ -16,5 +16,6 @@
   "translations": {},
   "language": "en",
   "locale": "en",
-  "kind": "sauce"
+  "kind": "sauce",
+  "canonicalLocale": "en"
 }
