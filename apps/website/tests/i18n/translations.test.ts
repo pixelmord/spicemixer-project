@@ -4,45 +4,42 @@ import { useTranslations } from "../../src/i18n/translations.ts";
 describe("two-tier nav translation keys", () => {
   test("content-tier keys present in EN", () => {
     const t = useTranslations("en");
-    expect(t("nav.mixtures" as Parameters<typeof t>[0])).toBe("Mixtures");
-    expect(t("nav.pairings" as Parameters<typeof t>[0])).toBe("Pairings");
+    expect(t("nav.mixtures")).toBe("Mixtures");
+    expect(t("nav.pairings")).toBe("Pairings");
     expect(t("nav.ingredients")).toBe("Ingredients");
     expect(t("nav.recipes")).toBe("Recipes");
   });
 
   test("lens-tier keys present in EN", () => {
     const t = useTranslations("en");
-    expect(t("nav.search" as Parameters<typeof t>[0])).toBe("Search");
-    expect(t("nav.cookMode" as Parameters<typeof t>[0])).toBe("Cook Mode");
-    expect(t("nav.worldmap" as Parameters<typeof t>[0])).toBe("Worldmap");
+    expect(t("nav.search")).toBe("Search");
+    expect(t("nav.cookMode")).toBe("Cook Mode");
+    expect(t("nav.worldmap")).toBe("Worldmap");
   });
 
   test("section header keys present in EN", () => {
     const t = useTranslations("en");
-    expect(t("nav.sectionContent" as Parameters<typeof t>[0])).toBe("Collections");
-    expect(t("nav.sectionLens" as Parameters<typeof t>[0])).toBe("Explore");
+    expect(t("nav.sectionContent")).toBe("Collections");
+    expect(t("nav.sectionLens")).toBe("Explore");
   });
 
   test("DE has translations for all new nav keys", () => {
     const t = useTranslations("de");
-    const cast = (k: string) => t(k as Parameters<typeof t>[0]);
-    expect(cast("nav.mixtures")).toBeTruthy();
-    expect(cast("nav.pairings")).toBeTruthy();
-    expect(cast("nav.search")).toBeTruthy();
-    expect(cast("nav.cookMode")).toBeTruthy();
-    expect(cast("nav.worldmap")).toBeTruthy();
-    expect(cast("nav.sectionContent")).toBeTruthy();
-    expect(cast("nav.sectionLens")).toBeTruthy();
+    expect(t("nav.mixtures")).toBeTruthy();
+    expect(t("nav.pairings")).toBeTruthy();
+    expect(t("nav.search")).toBeTruthy();
+    expect(t("nav.cookMode")).toBeTruthy();
+    expect(t("nav.worldmap")).toBeTruthy();
+    expect(t("nav.sectionContent")).toBeTruthy();
+    expect(t("nav.sectionLens")).toBeTruthy();
   });
 
   test("open/close menu keys present in both locales", () => {
     const en = useTranslations("en");
     const de = useTranslations("de");
-    const cast = (t: ReturnType<typeof useTranslations>, k: string) =>
-      t(k as Parameters<typeof t>[0]);
-    expect(cast(en, "nav.openMenu")).toBeTruthy();
-    expect(cast(en, "nav.closeMenu")).toBeTruthy();
-    expect(cast(de, "nav.openMenu")).toBeTruthy();
-    expect(cast(de, "nav.closeMenu")).toBeTruthy();
+    expect(en("nav.openMenu")).toBeTruthy();
+    expect(en("nav.closeMenu")).toBeTruthy();
+    expect(de("nav.openMenu")).toBeTruthy();
+    expect(de("nav.closeMenu")).toBeTruthy();
   });
 });

@@ -13,9 +13,9 @@ const contentLinks = [
 ];
 
 const lensItems = [
-  { key: "nav.search" as const, placeholder: true },
-  { key: "nav.cookMode" as const, placeholder: true },
-  { key: "nav.worldmap" as const, placeholder: true },
+  { key: "nav.search" as const },
+  { key: "nav.cookMode" as const },
+  { key: "nav.worldmap" as const },
 ];
 
 const pathname = Astro.url.pathname;
@@ -26,7 +26,6 @@ function isActive(href: string) {
 }
 ---
 
-<!-- Desktop two-tier nav -->
 <nav aria-label="Site navigation" class="hidden md:block">
   <div class="flex flex-wrap items-center gap-x-6 gap-y-1">
     {
@@ -61,7 +60,6 @@ function isActive(href: string) {
   </div>
 </nav>
 
-<!-- Mobile hamburger -->
 <div class="md:hidden">
   <button
     id="site-nav-toggle"
