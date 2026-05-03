@@ -1,0 +1,30 @@
+---
+interface Props {
+  label: string;
+  ingredientA: string;
+  ingredientB: string;
+  description: string;
+  href: string;
+}
+const { label, ingredientA, ingredientB, description, href } = Astro.props;
+---
+
+<section class="mb-12" aria-label={label}>
+  <h2 class="mb-4 text-xs font-semibold uppercase tracking-[0.3em] text-stone-500">{label}</h2>
+  <a
+    href={href}
+    class="group block rounded-2xl bg-gradient-to-br from-teal-50 via-stone-50 to-cyan-50 p-8 ring-1 ring-stone-200 transition hover:shadow-md hover:ring-stone-300"
+  >
+    <p class="text-[11px] font-semibold uppercase tracking-[0.25em] text-stone-400">
+      {ingredientA}
+      <span class="mx-2 text-stone-300">×</span>
+      {ingredientB}
+    </p>
+    <p class="mt-3 font-serif text-3xl leading-snug text-stone-900">
+      {ingredientA}
+      <span class="text-stone-400">&</span>
+      {ingredientB}
+    </p>
+    {description && <p class="mt-3 max-w-2xl text-base text-stone-600">{description}</p>}
+  </a>
+</section>

@@ -1,0 +1,13 @@
+---
+interface Props {
+  caption: string;
+}
+const { caption } = Astro.props;
+---
+
+<section
+  class="mb-12 flex min-h-[200px] items-center justify-center rounded-2xl bg-stone-100 ring-1 ring-stone-200"
+  aria-label={caption}
+>
+  <p class="text-sm font-medium text-stone-400">{caption}</p>
+</section>
