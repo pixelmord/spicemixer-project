@@ -10,37 +10,5 @@
   "translations": {},
   "language": "en",
   "locale": "en",
-  "kind": "recipe",
-  "aiSuggestions": {
-    "contentHash": "fbd9644b551b886a",
-    "generatedAt": "2026-04-29T20:07:32.268Z",
-    "improvements": [],
-    "tags": [
-      "quick-dinner",
-      "japanese",
-      "vegetarian",
-      "miso-butter",
-      "comfort-food",
-      "easy-recipe",
-      "pantry-meal",
-      "ramen"
-    ],
-    "ingredientLinks": [],
-    "relations": [
-      {
-        "kind": "goesWellWith",
-        "collection": "recipes",
-        "slug": "preserved-lemon-couscous",
-        "name": "Preserved Lemon Couscous",
-        "rationale": "The bright acidity of preserved lemon couscous complements the rich umami flavors of miso butter ramen."
-      },
-      {
-        "kind": "goesWellWith",
-        "collection": "recipes",
-        "slug": "vegetable-beef-skillet",
-        "name": "Vegetable and Beef Skillet",
-        "rationale": "This dish provides a hearty complement to the light and savory ramen, creating a balanced meal."
-      }
-    ]
-  }
+  "kind": "recipe"
 }

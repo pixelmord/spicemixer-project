@@ -19,27 +19,6 @@ export type IngredientLink = {
 };
 export type ExternalSource = { url: string; title: string; source?: string };
 
-export interface AiSuggestion {
-  field: string;
-  suggestion: string;
-  rationale: string;
-}
-
-export interface AiSuggestions {
-  contentHash: string;
-  generatedAt: string;
-  improvements: AiSuggestion[];
-  tags: string[];
-  ingredientLinks: Array<{ pattern: string; slug: string; confidence: "high" | "medium" | "low" }>;
-  relations: Array<{
-    kind: "goesWellWith" | "usesBase";
-    collection: RecipeKind;
-    slug: string;
-    name: string;
-  }>;
-  detectedLanguage?: string;
-}
-
 export type Meta = {
   kind?: "recipe" | "spicemix" | "sauce";
   draft?: boolean;
@@ -54,7 +33,6 @@ export type Meta = {
   ingredientLinks: IngredientLink[];
   externalSources: ExternalSource[];
   tags: string[];
-  aiSuggestions?: AiSuggestions;
 };
 
 const EMPTY_META: Meta = {
@@ -218,7 +196,8 @@ export async function getRecipeUsedIn(
   return allMeta
     .filter((entry) =>
       entry.data.ingredientLinks.some(
-        (l) => l.kind === "recipe" && l.slug === recipeSlug && l.collection === recipeCollection,
+        (l: IngredientLink) =>
+          l.kind === "recipe" && l.slug === recipeSlug && l.collection === recipeCollection,
       ),
     )
     .map((entry) => {
@@ -301,7 +280,9 @@ export async function getUsedIn(
   };
 
   return allMeta
-    .filter((entry) => entry.data.ingredientLinks.some((l) => l.slug === ingredientSlug))
+    .filter((entry) =>
+      entry.data.ingredientLinks.some((l: IngredientLink) => l.slug === ingredientSlug),
+    )
     .map((entry) => {
       const slash = entry.id.indexOf("/");
       if (slash === -1) return null;

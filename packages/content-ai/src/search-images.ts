@@ -73,7 +73,7 @@ export async function searchImages(
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${OPENVERSE_BASE}?${params}`, { headers });
+  const response = await fetch(`${OPENVERSE_BASE}?${params.toString()}`, { headers });
   if (!response.ok) {
     throw new Error(`Openverse API error: ${response.status} ${response.statusText}`);
   }

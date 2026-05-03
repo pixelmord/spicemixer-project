@@ -10,8 +10,8 @@
  *
  * The migration is idempotent — running it twice has no side effects.
  */
-import { readdir, readFile, writeFile, stat } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { readdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 

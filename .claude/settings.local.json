@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(vp check *)",
+      "Bash(npx tsc *)",
+      "Bash(vp test *)",
+      "Bash(gh repo *)",
+      "Bash(git -C /Users/andreas.adam/workspace/@personal/spicemixer/spicemixer-project diff -- apps/website/src/content/ingredients/en/caraway.json apps/website/src/content/ingredientMeta/en/caraway.json)",
+      "Bash(git -C /Users/andreas.adam/workspace/@personal/spicemixer/spicemixer-project diff -- AGENTS.md)",
+      "Bash(git ls-tree *)",
+      "Bash(gh label *)"
+    ]
+  }
+}

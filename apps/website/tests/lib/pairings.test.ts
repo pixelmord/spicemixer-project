@@ -18,7 +18,7 @@ describe("savePairing", () => {
       locale: "en",
     });
     const stored = await store.get("pairings", "cardamom--anise");
-    expect((stored?.data as Record<string, unknown>)["ingredients"]).toEqual(["anise", "cardamom"]);
+    expect((stored!.data as Record<string, unknown>)["ingredients"]).toEqual(["anise", "cardamom"]);
   });
 
   test("migrates legacy single-locale description into descriptions map", async () => {
@@ -35,7 +35,7 @@ describe("savePairing", () => {
       locale: "de",
     });
     const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored?.data as Record<string, unknown>)["descriptions"]).toEqual({
+    expect((stored!.data as Record<string, unknown>)["descriptions"]).toEqual({
       en: "Warm and licorice-y.",
       de: "Warm und lakritzig.",
     });
@@ -55,7 +55,7 @@ describe("savePairing", () => {
       locale: "de",
     });
     const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored?.data as Record<string, unknown>)["descriptions"]).toEqual({
+    expect((stored!.data as Record<string, unknown>)["descriptions"]).toEqual({
       en: "Warm and licorice-y.",
       de: "Warm und lakritzig.",
     });
@@ -75,7 +75,7 @@ describe("savePairing", () => {
       locale: "en",
     });
     const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored?.data as Record<string, unknown>)["image"]).toBe("https://example.com/img.jpg");
+    expect((stored!.data as Record<string, unknown>)["image"]).toBe("https://example.com/img.jpg");
   });
 
   test("throws NotFoundError when togglePairingDraft targets missing pairing", async () => {
@@ -94,7 +94,7 @@ describe("savePairing", () => {
     });
     await togglePairingDraft(store, { id: "anise--cardamom", draft: true });
     const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored?.data as Record<string, unknown>)["draft"]).toBe(true);
+    expect((stored!.data as Record<string, unknown>)["draft"]).toBe(true);
   });
 
   test("deletePairing removes both the pairing and its meta sidecar", async () => {
@@ -134,7 +134,7 @@ describe("savePairing", () => {
       draft: true,
     });
     const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored?.data as Record<string, unknown>)["draft"]).toBe(true);
+    expect((stored!.data as Record<string, unknown>)["draft"]).toBe(true);
   });
 
   test("save without draft preserves existing draft state", async () => {
@@ -151,7 +151,7 @@ describe("savePairing", () => {
       locale: "en",
     });
     const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored?.data as Record<string, unknown>)["draft"]).toBe(true);
+    expect((stored!.data as Record<string, unknown>)["draft"]).toBe(true);
   });
 
   test("clears image when empty string is supplied", async () => {
@@ -169,6 +169,6 @@ describe("savePairing", () => {
       image: "",
     });
     const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored?.data as Record<string, unknown>)["image"]).toBeUndefined();
+    expect((stored!.data as Record<string, unknown>)["image"]).toBeUndefined();
   });
 });
