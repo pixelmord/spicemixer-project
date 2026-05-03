@@ -184,10 +184,7 @@ export async function getPublishedPairings(): Promise<PublishedPairing[]> {
     .filter((p) => !p.data.draft)
     .map((p) => {
       const [a, b] = p.data.ingredients;
-      const regions = regionsForPairing(
-        { region: regionsBySlug.get(a) },
-        { region: regionsBySlug.get(b) },
-      );
+      const regions = regionsForPairing(regionsBySlug.get(a), regionsBySlug.get(b));
       return {
         id: p.id,
         ingredients: p.data.ingredients,
