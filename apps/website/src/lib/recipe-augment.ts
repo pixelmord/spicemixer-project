@@ -186,10 +186,9 @@ export async function getIngredientMeta(locale: string, slug: string) {
   return (entry?.data ?? null) as import("../content.config.ts").IngredientMeta | null;
 }
 
-export async function getRecipeUsedIn(
-  recipeSlug: string,
-  recipeCollection: RecipeKind,
+async function findByIngredientLinks(
   localePrefix: string,
+  predicate: (link: IngredientLink) => boolean,
 ): Promise<Array<{ name: string; href: string; kind: RecipeKind }>> {
   const [rawMeta, rawRecipes, rawMixtures] = await Promise.all([
     getCollection("meta"),
@@ -207,12 +206,7 @@ export async function getRecipeUsedIn(
   };
 
   return allMeta
-    .filter((entry) =>
-      (entry.data.ingredientLinks ?? []).some(
-        (l: IngredientLink) =>
-          l.kind === "recipe" && l.slug === recipeSlug && l.collection === recipeCollection,
-      ),
-    )
+    .filter((entry) => (entry.data.ingredientLinks ?? []).some(predicate))
     .map((entry) => {
       const slash = entry.id.indexOf("/");
       if (slash === -1) return null;
@@ -224,6 +218,17 @@ export async function getRecipeUsedIn(
       return { name, href: `${localePrefix}/${kind}/${slug}/`, kind };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
+}
+
+export async function getRecipeUsedIn(
+  recipeSlug: string,
+  recipeCollection: RecipeKind,
+  localePrefix: string,
+): Promise<Array<{ name: string; href: string; kind: RecipeKind }>> {
+  return findByIngredientLinks(
+    localePrefix,
+    (l) => l.kind === "recipe" && l.slug === recipeSlug && l.collection === recipeCollection,
+  );
 }
 
 export async function resolveRefs(
@@ -267,34 +272,5 @@ export async function getUsedIn(
   ingredientSlug: string,
   localePrefix: string,
 ): Promise<Array<{ name: string; href: string; kind: RecipeKind }>> {
-  const [rawMeta, rawRecipes, rawMixtures] = await Promise.all([
-    getCollection("meta"),
-    getCollection("recipes"),
-    getCollection("mixtures"),
-  ]);
-
-  const allMeta = rawMeta as MetaEntry[];
-  const recipes = rawRecipes as NamedEntry[];
-  const mixtures = rawMixtures as NamedEntry[];
-
-  const byKind: Record<RecipeKind, Map<string, string>> = {
-    recipes: new Map(recipes.map((r) => [r.id, r.data.name])),
-    mixtures: new Map(mixtures.map((r) => [r.id, r.data.name])),
-  };
-
-  return allMeta
-    .filter((entry) =>
-      (entry.data.ingredientLinks ?? []).some((l: IngredientLink) => l.slug === ingredientSlug),
-    )
-    .map((entry) => {
-      const slash = entry.id.indexOf("/");
-      if (slash === -1) return null;
-      const kind = entry.id.slice(0, slash) as RecipeKind;
-      const slug = entry.id.slice(slash + 1);
-      if (!(kind in byKind)) return null;
-      const name = byKind[kind].get(slug);
-      if (!name) return null;
-      return { name, href: `${localePrefix}/${kind}/${slug}/`, kind };
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null);
+  return findByIngredientLinks(localePrefix, (l) => l.slug === ingredientSlug);
 }
