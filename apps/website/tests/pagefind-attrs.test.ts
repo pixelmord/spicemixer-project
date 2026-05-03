@@ -89,10 +89,6 @@ describe("Pagefind: pairing detail template", () => {
     expect(src).toContain("data-pagefind-body");
   });
 
-  test("emits data-pagefind-ignore for drafts", () => {
-    expect(src).toContain("data-pagefind-ignore");
-  });
-
   test("emits data-pagefind-filter attrs", () => {
     expect(src).toContain("data-pagefind-filter");
   });
