@@ -73,6 +73,12 @@ const ui = {
     "page.recipes.tagline": "Recipes worth cooking again.",
     "page.recipes.description":
       "A growing collection of dishes from a home kitchen. Filter by tag, category, or cuisine.",
+    "page.pairings.title": "Spicemixer — Pairings",
+    "page.pairings.tagline": "Ingredients that belong together.",
+    "page.pairings.description": "Explore spice and ingredient pairings from around the world.",
+    "page.pairings.recentlyAdded": "Recently Added",
+    "filter.region": "Region",
+    "filter.flavorProfile": "Flavor Profile",
   },
   de: {
     "page.home.title": "Spicemixer — Gewürze & Saucen",
@@ -146,6 +152,12 @@ const ui = {
     "page.recipes.tagline": "Rezepte, die sich lohnen.",
     "page.recipes.description":
       "Eine wachsende Sammlung von Gerichten aus einer Heimküche. Filtern nach Tag, Kategorie oder Küche.",
+    "page.pairings.title": "Spicemixer — Kombinationen",
+    "page.pairings.tagline": "Zutaten, die zusammenpassen.",
+    "page.pairings.description": "Entdecke Gewürz- und Zutatenkombinationen aus aller Welt.",
+    "page.pairings.recentlyAdded": "Kürzlich hinzugefügt",
+    "filter.region": "Region",
+    "filter.flavorProfile": "Aromaprofil",
   },
 } as const;
 

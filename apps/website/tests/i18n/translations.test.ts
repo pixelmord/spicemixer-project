@@ -67,3 +67,33 @@ describe("mixture kind label keys", () => {
     expect(new Set(labels).size).toBe(ALL_KINDS.length);
   });
 });
+
+describe("pairings page translation keys", () => {
+  test("pairings page keys present in EN", () => {
+    const t = useTranslations("en");
+    expect(t("page.pairings.title")).toBeTruthy();
+    expect(t("page.pairings.tagline")).toBeTruthy();
+    expect(t("page.pairings.description")).toBeTruthy();
+    expect(t("page.pairings.recentlyAdded")).toBeTruthy();
+  });
+
+  test("pairings page keys present in DE", () => {
+    const t = useTranslations("de");
+    expect(t("page.pairings.title")).toBeTruthy();
+    expect(t("page.pairings.tagline")).toBeTruthy();
+    expect(t("page.pairings.description")).toBeTruthy();
+    expect(t("page.pairings.recentlyAdded")).toBeTruthy();
+  });
+
+  test("new filter keys present in EN", () => {
+    const t = useTranslations("en");
+    expect(t("filter.region")).toBeTruthy();
+    expect(t("filter.flavorProfile")).toBeTruthy();
+  });
+
+  test("new filter keys present in DE", () => {
+    const t = useTranslations("de");
+    expect(t("filter.region")).toBeTruthy();
+    expect(t("filter.flavorProfile")).toBeTruthy();
+  });
+});

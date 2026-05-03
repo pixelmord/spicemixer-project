@@ -155,6 +155,55 @@ export function annotateTextHtml(
     .join("");
 }
 
+export interface PublishedPairing {
+  id: string;
+  ingredients: [string, string];
+  descriptions: Record<string, string>;
+  image?: string;
+  regions: string[];
+}
+
+/** Get all published pairings, each annotated with the union of both endpoints' regions. */
+export async function getPublishedPairings(): Promise<PublishedPairing[]> {
+  const [rawPairings, rawIngMeta] = await Promise.all([
+    getCollection("pairings"),
+    getCollection(INGREDIENT_META),
+  ]);
+
+  const regionsBySlug = new Map<string, string[]>();
+  for (const m of rawIngMeta as Array<{ id: string; data: { region?: string[] } }>) {
+    const slug = m.id.replace(/^[a-z]{2}\//, "");
+    const prev = regionsBySlug.get(slug) ?? [];
+    regionsBySlug.set(slug, [...new Set([...prev, ...(m.data.region ?? [])])]);
+  }
+
+  return (
+    rawPairings as Array<{
+      id: string;
+      data: {
+        ingredients: [string, string];
+        descriptions?: Record<string, string>;
+        draft?: boolean;
+        image?: string;
+      };
+    }>
+  )
+    .filter((p) => !p.data.draft)
+    .map((p) => {
+      const [a, b] = p.data.ingredients;
+      const regions = [
+        ...new Set([...(regionsBySlug.get(a) ?? []), ...(regionsBySlug.get(b) ?? [])]),
+      ];
+      return {
+        id: p.id,
+        ingredients: p.data.ingredients,
+        descriptions: p.data.descriptions ?? {},
+        image: p.data.image,
+        regions,
+      };
+    });
+}
+
 /** Canonical pairing id: sort both slugs alphabetically, join with --. */
 export function pairingId(slugA: string, slugB: string): string {
   return [slugA, slugB].sort().join("--");
