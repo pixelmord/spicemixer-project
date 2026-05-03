@@ -86,6 +86,9 @@ const ui = {
     "page.home.worldmapPlaceholder": "Worldmap arriving",
     "page.home.featuredPairing": "Featured Pairing",
     "page.home.recentlyAdded": "Recently Added",
+    "page.search.title": "Spicemixer — Search",
+    "page.search.tagline": "Find anything.",
+    "page.search.description": "Search across all spices, blends, pairings, and recipes.",
   },
   de: {
     "page.home.title": "Spicemixer — Gewürze & Saucen",
@@ -172,6 +175,9 @@ const ui = {
     "page.home.worldmapPlaceholder": "Weltkarte folgt",
     "page.home.featuredPairing": "Empfohlene Kombination",
     "page.home.recentlyAdded": "Kürzlich hinzugefügt",
+    "page.search.title": "Spicemixer — Suche",
+    "page.search.tagline": "Alles finden.",
+    "page.search.description": "Suche nach Gewürzen, Mischungen, Kombinationen und Rezepten.",
   },
 } as const;
 

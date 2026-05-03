@@ -38,6 +38,9 @@
     "utils": "workspace:*",
     "zod": "catalog:"
   },
+  "devDependencies": {
+    "pagefind": "catalog:"
+  },
   "engines": {
     "node": ">=22.12.0"
   }

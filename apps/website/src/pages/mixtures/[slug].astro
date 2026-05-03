@@ -21,6 +21,7 @@ import {
 import { MIXTURE_KINDS, MIXTURE_KIND_PLURALS, buildKindBySlug, type MixtureKind } from "../../lib/mixture-schema.ts";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 import CookModeToggle from "../../components/CookModeToggle.tsx";
+import { withPagefindFilters } from "../../lib/withPagefindFilters.ts";
 
 export async function getStaticPaths() {
   const allMixtures = await getPublished("mixtures");
@@ -108,6 +109,16 @@ if (mix) {
     html: annotateTextHtml(step.text, meta!.ingredientLinks, ingredientBase),
   }));
 }
+
+const pagefindFilters = mix ? withPagefindFilters({
+  kind: meta?.kind,
+  region: meta?.region,
+  cuisine: mix.data.recipeCuisine ?? undefined,
+  category: mix.data.recipeCategory ?? undefined,
+}) : {};
+const isDraft = meta?.draft === true;
+const pagefindBody = isDraft ? undefined : (mix ? true : undefined);
+const pagefindIgnore = isDraft && mix ? true : undefined;
 
 const kindLabel = kind ? t(`kind.${kind}`) : "";
 const indexMixtures = (kindMixtures ?? []).sort((a, b) =>
@@ -218,7 +229,14 @@ const pageDescription = kind ? t("page.mixtures.description") : mix!.data.descri
     </main>
   ) : (
     <!-- Mixture detail page -->
-    <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+    <main
+      class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8"
+      data-pagefind-body={pagefindBody}
+      data-pagefind-ignore={pagefindIgnore}
+    >
+      {Object.entries(pagefindFilters).map(([key, value]) => (
+        <span data-pagefind-filter={`${key}:${value}`} hidden aria-hidden="true" />
+      ))}
       <nav class="mb-8 flex items-center justify-between text-sm">
         <a
           href={`${prefix}/mixtures/`}

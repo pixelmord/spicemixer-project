@@ -1,0 +1,73 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { getIngredient, getPublishedPairings } from "../../../lib/recipe-augment.ts";
+import { withPagefindFilters } from "../../../lib/withPagefindFilters.ts";
+import { useTranslations } from "../../../i18n/translations.ts";
+
+export async function getStaticPaths() {
+  const pairings = await getPublishedPairings();
+  return pairings.map((p) => ({
+    params: { slug: p.id },
+    props: { pairing: p },
+  }));
+}
+
+const { pairing } = Astro.props;
+const locale = "de";
+const prefix = "/de";
+const t = useTranslations("de");
+
+const [aEntry, bEntry] = await Promise.all([
+  getIngredient(pairing.ingredients[0], locale),
+  getIngredient(pairing.ingredients[1], locale),
+]);
+const aName = aEntry?.data.name ?? pairing.ingredients[0];
+const bName = bEntry?.data.name ?? pairing.ingredients[1];
+const description = pairing.descriptions?.de ?? pairing.descriptions?.en ?? "";
+
+const pagefindFilters = withPagefindFilters({ region: pairing.regions });
+---
+
+<BaseLayout
+  title={`${aName} & ${bName} — Spicemixer`}
+  description={description || undefined}
+>
+  <main
+    class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8"
+    data-pagefind-body
+  >
+    {Object.entries(pagefindFilters).map(([key, value]) => (
+      <span data-pagefind-filter={`${key}:${value}`} hidden aria-hidden="true" />
+    ))}
+
+    <nav class="mb-8 text-sm">
+      <a href={`${prefix}/pairings/`} class="text-stone-500 transition hover:text-stone-900">
+        ← {t("nav.pairings")}
+      </a>
+    </nav>
+
+    <header class="mb-8">
+      <h1 class="font-serif text-5xl leading-tight text-stone-900">
+        {aName} & {bName}
+      </h1>
+      {description && (
+        <p class="mt-4 text-lg italic text-stone-700">{description}</p>
+      )}
+    </header>
+
+    <section class="mb-10 flex flex-wrap gap-4">
+      <a
+        href={`${prefix}/ingredients/${pairing.ingredients[0]}/`}
+        class="rounded-full bg-amber-100 px-5 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-200"
+      >
+        {aName}
+      </a>
+      <a
+        href={`${prefix}/ingredients/${pairing.ingredients[1]}/`}
+        class="rounded-full bg-amber-100 px-5 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-200"
+      >
+        {bName}
+      </a>
+    </section>
+  </main>
+</BaseLayout>
