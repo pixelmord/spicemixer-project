@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import RecipeForm from "./RecipeForm.tsx";
 import type { RecipeCollection } from "@/lib/content-store.ts";
+import { hashSuggestion, recordAiEvent } from "content-ai";
 
 interface Props {
   collection: RecipeCollection;
@@ -28,15 +29,24 @@ export default function NewRecipePage({ collection }: Props) {
       try {
         const parsed = JSON.parse(stored) as {
           recipe: Record<string, unknown>;
-          source: { url: string };
+          source: { url: string; canonical?: string };
         };
+        const sourceUrl = parsed.source.canonical ?? parsed.source.url;
+        const recipeName = String(parsed.recipe.name ?? "Imported recipe");
+        const aiEvents = sourceUrl.trim()
+          ? recordAiEvent([], {
+              type: "ingested",
+              source: sourceUrl,
+              suggestion: { hash: hashSuggestion({ url: sourceUrl }), summary: recipeName },
+              model: "recipe-ingestion",
+            })
+          : [];
         setImportData({
           recipe: parsed.recipe,
           meta: {
             draft: true,
-            externalSources: [
-              { url: parsed.source.url, title: String(parsed.recipe.name ?? "Imported recipe") },
-            ],
+            externalSources: [{ url: sourceUrl, title: recipeName }],
+            aiEvents,
           },
         });
       } catch {
