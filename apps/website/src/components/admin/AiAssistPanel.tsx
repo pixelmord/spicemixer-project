@@ -221,11 +221,11 @@ function IngredientLinksResult({
               variant="outline"
               className={cn(
                 "text-[10px] px-1 py-0",
-                l.confidence === "high"
-                  ? "text-emerald-600"
-                  : l.confidence === "medium"
-                    ? "text-amber-600"
-                    : "text-muted-foreground",
+                {
+                  high: "text-emerald-600",
+                  medium: "text-amber-600",
+                  low: "text-muted-foreground",
+                }[l.confidence] ?? "text-muted-foreground",
               )}
             >
               {l.confidence}

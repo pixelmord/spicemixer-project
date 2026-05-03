@@ -69,12 +69,17 @@ function IngredientViewContent({
 
   useEffect(() => {
     setLoading(true);
-    void actions
-      .getItem({ collection: "ingredients", id: `${locale}/${slug}` })
-      .then(({ data: item }) => {
+    void (async () => {
+      try {
+        const { data: item } = await actions.getItem({
+          collection: "ingredients",
+          id: `${locale}/${slug}`,
+        });
         if (item?.item?.data) setData(item.item.data as Record<string, unknown>);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [slug, locale]);
 
   if (loading) {
@@ -301,11 +306,11 @@ function IngredientLinkContent({
             variant="outline"
             className={cn(
               "text-[10px]",
-              aiSuggestion.confidence === "high"
-                ? "text-emerald-600 border-emerald-200"
-                : aiSuggestion.confidence === "medium"
-                  ? "text-amber-600 border-amber-200"
-                  : "text-muted-foreground",
+              {
+                high: "text-emerald-600 border-emerald-200",
+                medium: "text-amber-600 border-amber-200",
+                low: "text-muted-foreground",
+              }[aiSuggestion.confidence] ?? "text-muted-foreground",
             )}
           >
             {aiSuggestion.confidence}

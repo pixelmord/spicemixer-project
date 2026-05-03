@@ -12,6 +12,7 @@ import {
   filterSuggestions,
   appendEvent,
   recordAiEvent,
+  buildRejectedContext,
 } from "../src/events.ts";
 import type { AiEvent } from "../src/schemas/ai-events.ts";
 
@@ -342,5 +343,77 @@ describe("recordAiEvent", () => {
     const ts = new Date(result[0].at).getTime();
     expect(ts).toBeGreaterThanOrEqual(before);
     expect(ts).toBeLessThanOrEqual(after);
+  });
+});
+
+// ── buildRejectedContext ──────────────────────────────────────────────────────
+
+describe("buildRejectedContext", () => {
+  test("returns empty string when no rejected events", () => {
+    expect(buildRejectedContext([])).toBe("");
+  });
+
+  test("returns empty string when all events are non-rejected", () => {
+    const events: AiEvent[] = [
+      makeEvent("accepted", "name", "h1"),
+      makeEvent("auto-applied", "tags", "h2"),
+      makeEvent("ingested", "content", "h3"),
+    ];
+    expect(buildRejectedContext(events)).toBe("");
+  });
+
+  test("returns N formatted entries for N rejected events", () => {
+    const events: AiEvent[] = [
+      {
+        type: "rejected",
+        field: "name",
+        suggestion: { hash: "h1", summary: "Use shorter title" },
+        at: "2026-01-01T00:00:00Z",
+        model: "m",
+      },
+      {
+        type: "rejected",
+        field: "tags",
+        suggestion: { hash: "h2", summary: "Add vegan tag" },
+        at: "2026-01-02T00:00:00Z",
+        model: "m",
+      },
+    ];
+    const ctx = buildRejectedContext(events);
+    expect(ctx).toContain("Previously rejected");
+    expect(ctx).toContain("[name] Use shorter title");
+    expect(ctx).toContain("[tags] Add vegan tag");
+  });
+
+  test("formats entry without field as [entity]", () => {
+    const events: AiEvent[] = [
+      {
+        type: "rejected",
+        suggestion: { hash: "h1", summary: "Reject whole document" },
+        at: "2026-01-01T00:00:00Z",
+        model: "m",
+      },
+    ];
+    const ctx = buildRejectedContext(events);
+    expect(ctx).toContain("[entity] Reject whole document");
+  });
+
+  test("ignores non-rejected events when building context", () => {
+    const events: AiEvent[] = [
+      makeEvent("accepted", "name", "h1"),
+      {
+        type: "rejected",
+        field: "desc",
+        suggestion: { hash: "h2", summary: "rejected one" },
+        at: "2026-01-01T00:00:00Z",
+        model: "m",
+      },
+      makeEvent("auto-applied", "tags", "h3"),
+    ];
+    const ctx = buildRejectedContext(events);
+    expect(ctx).toContain("[desc] rejected one");
+    // Should NOT contain entries for accepted/auto-applied
+    const lines = ctx.split("\n").filter((l) => l.startsWith("- "));
+    expect(lines).toHaveLength(1);
   });
 });

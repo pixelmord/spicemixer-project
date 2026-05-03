@@ -38,6 +38,7 @@ export default function IngredientEnhanceModal({
   const [proposed, setProposed] = useState<Record<string, unknown> | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [mergeModel, setMergeModel] = useState<string | null>(null);
 
   function reset() {
     setSource(null);
@@ -45,6 +46,7 @@ export default function IngredientEnhanceModal({
     setWarnings([]);
     setLoading(false);
     setSaving(false);
+    setMergeModel(null);
   }
 
   function handleClose() {
@@ -79,6 +81,7 @@ export default function IngredientEnhanceModal({
 
       setProposed(data.ingredient as Record<string, unknown>);
       setWarnings(data.warnings);
+      setMergeModel(data.model ?? null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -93,6 +96,7 @@ export default function IngredientEnhanceModal({
       locale,
       slug,
       ingredient: proposed,
+      ...(mergeModel ? { aiMergeModel: mergeModel } : {}),
     });
     setSaving(false);
     if (error) {

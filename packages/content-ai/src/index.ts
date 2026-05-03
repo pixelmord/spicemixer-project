@@ -80,4 +80,5 @@ export {
   appendEvent,
   recordAiEvent,
   hasAutoApplied,
+  buildRejectedContext,
 } from "./events.ts";

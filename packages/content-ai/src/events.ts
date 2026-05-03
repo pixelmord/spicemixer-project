@@ -48,3 +48,10 @@ export function recordAiEvent(events: AiEvent[], params: Omit<AiEvent, "at">): A
 export function hasAutoApplied(events: AiEvent[], field: string): boolean {
   return events.some((e) => e.type === "auto-applied" && e.field === field);
 }
+
+export function buildRejectedContext(events: AiEvent[]): string {
+  const rejected = events.filter((e) => e.type === "rejected");
+  if (rejected.length === 0) return "";
+  const lines = rejected.map((e) => `- [${e.field ?? "entity"}] ${e.suggestion.summary}`);
+  return `Previously rejected for this entity:\n${lines.join("\n")}`;
+}

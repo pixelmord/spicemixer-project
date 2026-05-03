@@ -38,6 +38,7 @@ export default function PairingEnhanceModal({
   const [proposed, setProposed] = useState<Record<string, unknown> | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [mergeModel, setMergeModel] = useState<string | null>(null);
 
   function reset() {
     setSource(null);
@@ -45,6 +46,7 @@ export default function PairingEnhanceModal({
     setWarnings([]);
     setLoading(false);
     setSaving(false);
+    setMergeModel(null);
   }
   function handleClose() {
     reset();
@@ -81,6 +83,7 @@ export default function PairingEnhanceModal({
       const proposedDescriptions = { ...descriptions, [locale]: data.pairing.description };
       setProposed({ ...existingPairing, descriptions: proposedDescriptions });
       setWarnings(data.warnings);
+      setMergeModel(data.model ?? null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -98,6 +101,7 @@ export default function PairingEnhanceModal({
       ingredients: existingPairing["ingredients"] as [string, string],
       description: newDesc,
       locale,
+      ...(mergeModel ? { aiMergeModel: mergeModel } : {}),
     });
     setSaving(false);
     if (error) {

@@ -16,6 +16,7 @@ export async function proposePairingImprovements(
   pairing: PairingSnapshot,
   locale: string,
   config: AiConfig,
+  rejectedContext?: string,
 ): Promise<ImprovementProposal> {
   if (!pairing.ingredient1 || !pairing.ingredient2) return { fields: [] };
 
@@ -30,6 +31,8 @@ export async function proposePairingImprovements(
   ]
     .filter(Boolean)
     .join("\n");
+
+  const rejectedSection = rejectedContext ? `\n\n${rejectedContext}` : "";
 
   try {
     const { output } = await generateText({
@@ -47,7 +50,7 @@ Rules:
 - Focus on WHY these ingredients pair well — flavor harmony, culinary tradition, texture contrast
 - Keep it to 1-2 sentences, vivid and informative
 - Do not suggest image URLs
-- Always return field: "description"`,
+- Always return field: "description"${rejectedSection}`,
     });
     // Ensure field is always "description" regardless of model output
     return {
