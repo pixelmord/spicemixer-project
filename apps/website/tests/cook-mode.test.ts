@@ -215,12 +215,26 @@ describe("CookModeToggle component", () => {
 
 describe("scope contract: data-cook absent from ingredient + list pages", () => {
   const EXCLUDED_FILES = [
+    // ingredient detail
     join(PAGES, "ingredients", "[slug].astro"),
     join(PAGES, "de", "ingredients", "[slug].astro"),
+    // homepage
     join(PAGES, "index.astro"),
     join(PAGES, "de", "index.astro"),
+    // list pages
     join(PAGES, "ingredients", "index.astro"),
     join(PAGES, "de", "ingredients", "index.astro"),
+    join(PAGES, "mixtures", "index.astro"),
+    join(PAGES, "de", "mixtures", "index.astro"),
+    join(PAGES, "pairings", "index.astro"),
+    join(PAGES, "de", "pairings", "index.astro"),
+    join(PAGES, "recipes", "index.astro"),
+    join(PAGES, "de", "recipes", "index.astro"),
+    join(PAGES, "mixtures", "[kind].astro"),
+    join(PAGES, "de", "mixtures", "[kind].astro"),
+    // search pages
+    join(PAGES, "search.astro"),
+    join(PAGES, "de", "search.astro"),
   ];
 
   for (const filePath of EXCLUDED_FILES) {
@@ -232,7 +246,31 @@ describe("scope contract: data-cook absent from ingredient + list pages", () => 
       } catch {
         return; // file doesn't exist yet — skip
       }
-      expect(src).not.toContain("data-cook");
+      const lines = src.split("\n");
+      const offendingLine = lines.findIndex((l) => l.includes("data-cook"));
+      expect(offendingLine, `data-cook found at ${label}:${offendingLine + 1}`).toBe(-1);
     });
   }
+});
+
+// ── SiteNav: lens-tier cook mode toggle ───────────────────────────────────────
+
+describe("SiteNav: lens-tier cook mode toggle", () => {
+  let src: string;
+  beforeAll(async () => {
+    src = await readFile(join(COMPONENTS, "SiteNav.astro"), "utf-8");
+  });
+
+  test("imports CookModeToggle", () => {
+    expect(src).toContain("CookModeToggle");
+  });
+
+  test("renders CookModeToggle with client:load", () => {
+    expect(src).toContain("client:load");
+  });
+
+  test("passes cook.enter and cook.exit labels to CookModeToggle", () => {
+    expect(src).toContain("cook.enter");
+    expect(src).toContain("cook.exit");
+  });
 });

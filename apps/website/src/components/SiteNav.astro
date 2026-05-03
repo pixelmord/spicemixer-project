@@ -1,5 +1,6 @@
 ---
 import { useTranslations, type Lang } from "../i18n/translations.ts";
+import CookModeToggle from "./CookModeToggle.tsx";
 
 const locale = (Astro.currentLocale ?? "en") as Lang;
 const t = useTranslations(locale);
@@ -49,7 +50,12 @@ function isActive(href: string) {
   <div class="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1">
     {
       lensItems.map(({ key, href }) =>
-        href ? (
+        key === "nav.cookMode" ? (
+          <CookModeToggle
+            labels={{ enter: t("cook.enter"), exit: t("cook.exit") }}
+            client:load
+          />
+        ) : href ? (
           <a
             href={href}
             aria-current={isActive(href) ? "page" : undefined}
@@ -156,7 +162,12 @@ function isActive(href: string) {
         <div class="flex flex-col gap-2">
           {
             lensItems.map(({ key, href }) =>
-              href ? (
+              key === "nav.cookMode" ? (
+                <CookModeToggle
+                  labels={{ enter: t("cook.enter"), exit: t("cook.exit") }}
+                  client:load
+                />
+              ) : href ? (
                 <a
                   href={href}
                   aria-current={isActive(href) ? "page" : undefined}
