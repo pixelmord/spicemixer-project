@@ -37,6 +37,8 @@ import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
 } from "./ImageSearchModal.tsx";
+import EntityMultiCombobox from "./EntityMultiCombobox.tsx";
+import { REGION_OPTIONS, type RegionCode } from "@/lib/regions.ts";
 
 interface AiSuggestion {
   field: string;
@@ -89,6 +91,7 @@ const CATEGORIES: Category[] = [
 const SECTIONS: SectionDef[] = [
   { id: "section-basic", label: "Basic info" },
   { id: "section-profile", label: "Origin & Flavor" },
+  { id: "section-regions", label: "Regions" },
   { id: "section-pairings", label: "Pairings" },
 ];
 
@@ -127,10 +130,13 @@ export default function IngredientForm({
   const [flavorNotes, setFlavorNotes] = useState<string[]>(
     data.flavorNotes.length > 0 ? data.flavorNotes : [],
   );
+  const [regions, setRegions] = useState<RegionCode[]>(
+    (initialMeta?.["region"] as RegionCode[] | undefined) ?? [],
+  );
   const [pairings, setPairings] = useState<Pairing[]>(initialPairings);
   const [completeness, setCompleteness] = useState(() => scoreIngredient(data as never));
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
-  const [quickCreateName, setQuickCreateName] = useState("");
+  const [quickCreateName] = useState("");
   const [quickCreateCallback, setQuickCreateCallback] = useState<
     ((slug: string, label: string) => void) | null
   >(null);
@@ -282,7 +288,7 @@ export default function IngredientForm({
         locale,
         slug,
         ingredient: payload as never,
-        meta: { draft },
+        meta: { draft, region: regions },
       });
 
       if (error) {
@@ -930,6 +936,29 @@ export default function IngredientForm({
                           </button>
                         </div>
                       )}
+                    </CardContent>
+                  </Card>
+                </section>
+
+                {/* ── Regions ── */}
+                <section id="section-regions" className="scroll-mt-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Regions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-1.5">
+                      <Label>Macro-regions</Label>
+                      <EntityMultiCombobox
+                        value={regions}
+                        onChange={(vals) => setRegions(vals as RegionCode[])}
+                        options={REGION_OPTIONS}
+                        placeholder="Select culinary macro-regions…"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Closed enum — different from <span className="font-mono">origin[]</span>{" "}
+                        (free-form, finer) and <span className="font-mono">recipeCuisine</span>{" "}
+                        (schema.org cuisine).
+                      </p>
                     </CardContent>
                   </Card>
                 </section>

@@ -49,3 +49,17 @@ If the concept you need isn't in the glossary yet, that's a signal — either yo
 If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
 
 > _Contradicts ADR-0007 (event-sourced orders) — but worth reopening because…_
+
+## Authoring: three geographic/culinary axes
+
+When tagging content, these three fields are distinct and must not be conflated:
+
+| Field           | Type                       | Meaning                                                                         | Example                                   |
+| --------------- | -------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------- |
+| `region[]`      | closed enum (`RegionCode`) | Culinary macro-region — coarse, stable, drives worldmap dots and faceted search | `north-africa`, `levant`, `mediterranean` |
+| `origin[]`      | free string array          | Geographic origin — finer-grained, free text, historical/botanical provenance   | `"Iran"`, `"Guatemala"`, `"South India"`  |
+| `recipeCuisine` | free string (schema.org)   | Cuisine — schema.org field on recipes, editorial label, not a region            | `"Moroccan"`, `"French"`, `"Fusion"`      |
+
+`region[]` is a **schema change** (PR + content review) to add/remove/rename codes. The canonical enum and labels live in `apps/website/src/lib/regions.ts`. Pairing entries do **not** carry `region[]` — their regions are derived at read time from the union of the two endpoint regions.
+
+`origin[]` and `recipeCuisine` are editorial free-form fields and can be updated at any time without a schema change.
