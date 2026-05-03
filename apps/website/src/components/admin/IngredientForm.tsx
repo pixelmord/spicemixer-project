@@ -296,7 +296,7 @@ export default function IngredientForm({
       return;
     const missingKeys = INGREDIENT_RECOMMENDED.filter((k) => {
       if (k === "origin") return origins.length === 0;
-      if (k === "images") return !data.images?.length;
+      if (k === "images[0]") return !data.images?.length;
       if (k === "parts") return parts.length === 0;
       if (k === "flavorProfile") return flavorProfile.length === 0;
       const v = (data as unknown as Record<string, unknown>)[k];
@@ -421,7 +421,7 @@ export default function IngredientForm({
       // Post-save async refresh
       const missingKeys = INGREDIENT_RECOMMENDED.filter((k) => {
         if (k === "origin") return origins.filter(Boolean).length === 0;
-        if (k === "images") return !payload.images?.length;
+        if (k === "images[0]") return !payload.images?.length;
         if (k === "parts") return (payload.parts ?? []).length === 0;
         if (k === "flavorProfile") return (payload.flavorProfile ?? []).length === 0;
         return !(payload as unknown as Record<string, unknown>)[k];
@@ -522,7 +522,7 @@ export default function IngredientForm({
     setDismissedSuggestions(new Set());
     const missingKeys = INGREDIENT_RECOMMENDED.filter((k) => {
       if (k === "origin") return origins.length === 0;
-      if (k === "images") return !formValues.image;
+      if (k === "images[0]") return !formValues.image;
       if (k === "parts") return parts.length === 0;
       if (k === "flavorProfile") return flavorProfile.length === 0;
       const v = formValues[k as keyof typeof formValues];
