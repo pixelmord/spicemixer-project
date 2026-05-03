@@ -11,6 +11,7 @@ import {
 } from "../../lib/recipe-augment.ts";
 import { renderInlineMarkdown } from "../../lib/inline-markdown.ts";
 import { INGREDIENT_LONGFORM_FIELDS } from "../../lib/ingredient-schema.ts";
+import { hasLiabilityScope } from "../../lib/liability.ts";
 
 export async function getStaticPaths() {
   const all = await getPublishedIngredients("en");
@@ -158,6 +159,38 @@ const pairingsResolved = pairingEntities.length > 0
             ))}
           </div>
         </section>
+      )
+    }
+
+    {
+      data.sources && data.sources.length > 0 && (
+        <section class="mb-10">
+          <h2 class="mb-3 font-serif text-2xl text-stone-900">Sources</h2>
+          <ol class="list-decimal pl-5 space-y-1 text-sm text-stone-700">
+            {data.sources.map((src) => (
+              <li>
+                <a
+                  href={src.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-amber-700 underline decoration-dotted underline-offset-2 hover:text-amber-900"
+                >
+                  {src.title}
+                </a>
+                {src.author && <span class="text-stone-500"> — {src.author}</span>}
+                {src.year && <span class="text-stone-500"> ({src.year})</span>}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )
+    }
+
+    {
+      hasLiabilityScope(data) && (
+        <p class="mb-8 text-xs text-stone-500 italic border-t border-stone-100 pt-4">
+          This page includes information about medicinal uses, health benefits, or safety considerations. It is provided for informational purposes only and does not constitute medical advice.
+        </p>
       )
     }
 

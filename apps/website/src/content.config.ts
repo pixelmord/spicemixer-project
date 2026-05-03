@@ -93,6 +93,16 @@ const ingredientSchema = z.object({
   seasonality: z.string().optional(),
   flavorProfile: z.array(z.enum(INGREDIENT_FLAVOR_PROFILE)).optional(),
   safetyFlags: z.array(z.string()).optional(),
+  sources: z
+    .array(
+      z.object({
+        author: z.string().optional(),
+        title: z.string(),
+        url: z.string().url(),
+        year: z.string().optional(),
+      }),
+    )
+    .optional(),
   // Legacy inline pairings — kept optional during migration window.
   // Canonical pairings now live in the `pairings` collection.
   pairings: z
