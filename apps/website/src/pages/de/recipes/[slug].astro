@@ -18,6 +18,7 @@ import {
   resolveRefs,
 } from "../../../lib/recipe-augment.ts";
 import { useTranslations } from "../../../i18n/translations.ts";
+import CookModeToggle from "../../../components/CookModeToggle.tsx";
 import { withPagefindFilters } from "../../../lib/withPagefindFilters.ts";
 import { resolvePublished } from "../../../lib/published-entity.ts";
 import { hreflangTags } from "../../../lib/hreflang.ts";
@@ -124,7 +125,7 @@ const hreflang = await hreflangTags(slug, "recipes", Astro.site?.toString().repl
     )}
 
     <DetailLayout>
-      <section slot="hero">
+      <section slot="hero" data-cook="compact">
         {
           image ? (
             <figure
@@ -158,10 +159,23 @@ const hreflang = await hreflangTags(slug, "recipes", Astro.site?.toString().repl
         }
 
         {data.description && <p class="mb-6 text-lg italic text-stone-700">{data.description}</p>}
+
+        <div class="mb-8 flex flex-wrap items-center gap-3">
+          <a
+            href="#recipe"
+            class="inline-block rounded-full bg-amber-700 px-5 py-2 text-sm font-medium text-white transition hover:bg-amber-800"
+          >
+            {t("section.jumpToRecipe")}
+          </a>
+          <CookModeToggle
+            labels={{ enter: t("cook.enter"), exit: t("cook.exit") }}
+            client:load
+          />
+        </div>
       </section>
 
       {demonstratesItems.length > 0 && (
-        <section slot="encyclopedia" class="mb-8">
+        <section slot="encyclopedia" data-cook="hide" class="mb-8">
           <p class="mb-3 text-sm font-semibold uppercase tracking-[0.15em] text-stone-500">
             {t("section.demonstrates")}
           </p>
@@ -227,7 +241,7 @@ const hreflang = await hreflangTags(slug, "recipes", Astro.site?.toString().repl
         <script type="application/ld+json" set:html={jsonLd} />
       </section>
 
-      <section slot="relations">
+      <section slot="relations" data-cook="hide">
         <RelatedList heading={t("section.goesWellWith")} items={goesWellWithItems} />
         <ExternalSourceList heading={t("section.externalRecipes")} sources={meta.externalSources} />
 
