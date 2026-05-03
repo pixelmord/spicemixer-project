@@ -5,11 +5,17 @@ const locale = (Astro.currentLocale ?? "en") as Lang;
 const t = useTranslations(locale);
 const prefix = locale === "de" ? "/de" : "";
 
-const sections = [
+const contentLinks = [
+  { href: `${prefix}/mixtures/`, key: "nav.mixtures" as const },
   { href: `${prefix}/ingredients/`, key: "nav.ingredients" as const },
-  { href: `${prefix}/spicemixes/`, key: "nav.spicemixes" as const },
-  { href: `${prefix}/sauces/`, key: "nav.sauces" as const },
+  { href: `${prefix}/pairings/`, key: "nav.pairings" as const },
   { href: `${prefix}/recipes/`, key: "nav.recipes" as const },
+];
+
+const lensItems = [
+  { key: "nav.search" as const },
+  { key: "nav.cookMode" as const },
+  { key: "nav.worldmap" as const },
 ];
 
 const pathname = Astro.url.pathname;
@@ -20,21 +26,154 @@ function isActive(href: string) {
 }
 ---
 
-<nav aria-label="Site sections" class="flex flex-wrap items-center gap-x-6 gap-y-2">
-  {
-    sections.map(({ href, key }) => (
-      <a
-        href={href}
-        aria-current={isActive(href) ? "page" : undefined}
-        class:list={[
-          "text-sm transition",
-          isActive(href)
-            ? "font-semibold text-stone-900"
-            : "text-stone-500 hover:text-stone-900",
-        ]}
-      >
-        {t(key)}
-      </a>
-    ))
-  }
+<nav aria-label="Site navigation" class="hidden md:block">
+  <div class="flex flex-wrap items-center gap-x-6 gap-y-1">
+    {
+      contentLinks.map(({ href, key }) => (
+        <a
+          href={href}
+          aria-current={isActive(href) ? "page" : undefined}
+          class:list={[
+            "text-sm transition",
+            isActive(href)
+              ? "font-semibold text-stone-900"
+              : "text-stone-500 hover:text-stone-900",
+          ]}
+        >
+          {t(key)}
+        </a>
+      ))
+    }
+  </div>
+  <div class="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1">
+    {
+      lensItems.map(({ key }) => (
+        <span
+          aria-disabled="true"
+          class="cursor-default text-xs text-stone-300 select-none"
+          title="Coming soon"
+        >
+          {t(key)}
+        </span>
+      ))
+    }
+  </div>
 </nav>
+
+<div class="md:hidden">
+  <button
+    id="site-nav-toggle"
+    type="button"
+    aria-expanded="false"
+    aria-controls="site-nav-mobile"
+    aria-label={t("nav.openMenu")}
+    class="rounded p-1.5 text-stone-500 transition hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-stone-900"
+  >
+    <svg
+      id="site-nav-icon-open"
+      xmlns="http://www.w3.org/2000/svg"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+    <svg
+      id="site-nav-icon-close"
+      xmlns="http://www.w3.org/2000/svg"
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+      class="hidden"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  </button>
+
+  <div
+    id="site-nav-mobile"
+    role="navigation"
+    aria-label="Site navigation"
+    class="hidden absolute left-0 right-0 top-full z-50 border-b border-stone-200 bg-stone-50 px-4 py-4 shadow-sm sm:px-6 lg:px-8"
+  >
+    <div class="mx-auto max-w-6xl space-y-4">
+      <div>
+        <p class="mb-2 text-xs font-semibold uppercase tracking-widest text-stone-400">
+          {t("nav.sectionContent")}
+        </p>
+        <div class="flex flex-col gap-2">
+          {
+            contentLinks.map(({ href, key }) => (
+              <a
+                href={href}
+                aria-current={isActive(href) ? "page" : undefined}
+                class:list={[
+                  "text-sm transition",
+                  isActive(href)
+                    ? "font-semibold text-stone-900"
+                    : "text-stone-600 hover:text-stone-900",
+                ]}
+              >
+                {t(key)}
+              </a>
+            ))
+          }
+        </div>
+      </div>
+      <div>
+        <p class="mb-2 text-xs font-semibold uppercase tracking-widest text-stone-400">
+          {t("nav.sectionLens")}
+        </p>
+        <div class="flex flex-col gap-2">
+          {
+            lensItems.map(({ key }) => (
+              <span
+                aria-disabled="true"
+                class="cursor-default text-sm text-stone-300 select-none"
+              >
+                {t(key)}
+              </span>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function initNav() {
+    const toggle = document.getElementById("site-nav-toggle");
+    const menu = document.getElementById("site-nav-mobile");
+    const iconOpen = document.getElementById("site-nav-icon-open");
+    const iconClose = document.getElementById("site-nav-icon-close");
+
+    if (!toggle || !menu) return;
+
+    toggle.addEventListener("click", () => {
+      const isOpen = menu.classList.contains("hidden");
+      menu.classList.toggle("hidden", !isOpen);
+      toggle.setAttribute("aria-expanded", String(isOpen));
+      iconOpen?.classList.toggle("hidden", isOpen);
+      iconClose?.classList.toggle("hidden", !isOpen);
+    });
+  }
+
+  document.addEventListener("astro:page-load", initNav);
+  initNav();
+</script>
