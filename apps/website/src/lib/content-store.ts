@@ -15,6 +15,32 @@ export interface ContentItem<T = unknown> {
   updatedAt?: string;
 }
 
+/**
+ * The load-bearing persistence contract for all admin writes. See ADR 0006.
+ *
+ * **Single-step write invariant.** `put(collection, id, data)` either
+ * succeeds (content is durably saved) or throws. Multi-step approval flows
+ * (branch PR review) live *outside* this interface — git handles them.
+ * No `stage`/`review`/`approve` methods will ever appear here.
+ *
+ * **Per-adapter expectations:**
+ * - `LocalFsStore` (Phase 1): writes JSON to `src/content/` on the lead
+ *   curator's local machine. Operates under the localhost-trust assumption
+ *   from ADR 0004 — no auth, no rate limiting, no conflict resolution.
+ * - `GitHubStore` (Phase 2, stub): writes via the GitHub REST API; each
+ *   `put` commits to a per-contributor branch and the lead curator reviews
+ *   via PR. Community-origin writes bypass AI auto-apply per ADR 0004.
+ * - `InMemoryStore`: test-only; never touches disk or network.
+ *
+ * **`BatchStore` explicitly deferred.** A bulk-migration adapter for
+ * transactional multi-item writes was considered and deferred per ADR 0006
+ * until a concrete migration is scheduled. Do not introduce it prematurely.
+ *
+ * **Bypass rule.** Admin code outside `lib/stores/` must never import
+ * `node:fs`, `node:fs/promises`, `fs/promises`, or `node:path` directly.
+ * Doing so is a Phase-1 leak that will break the Phase 2 store swap.
+ * This is enforced by `lib/stores/contract.test.ts`.
+ */
 export interface ContentStore {
   list(collection: Collection): Promise<ContentItem[]>;
   get(collection: Collection, id: string): Promise<ContentItem | null>;

@@ -1,3 +1,4 @@
+// Phase 2 — see ADR 0006
 import type { Collection, ContentItem, ContentStore } from "../content-store.ts";
 
 /**
@@ -18,21 +19,21 @@ import type { Collection, ContentItem, ContentStore } from "../content-store.ts"
 export class GitHubStore implements ContentStore {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async list(_collection: Collection): Promise<ContentItem[]> {
-    throw new Error("GitHubStore: not implemented");
+    throw new Error("GitHubStore: not implemented (Phase 2 stub — see ADR 0006)");
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async get(_collection: Collection, _id: string): Promise<ContentItem | null> {
-    throw new Error("GitHubStore: not implemented");
+    throw new Error("GitHubStore: not implemented (Phase 2 stub — see ADR 0006)");
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async put(_collection: Collection, _id: string, _data: unknown): Promise<void> {
-    throw new Error("GitHubStore: not implemented");
+    throw new Error("GitHubStore: not implemented (Phase 2 stub — see ADR 0006)");
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async delete(_collection: Collection, _id: string): Promise<void> {
-    throw new Error("GitHubStore: not implemented");
+    throw new Error("GitHubStore: not implemented (Phase 2 stub — see ADR 0006)");
   }
 }
