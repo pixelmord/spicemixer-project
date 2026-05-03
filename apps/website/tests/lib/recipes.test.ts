@@ -23,7 +23,7 @@ describe("saveRecipe", () => {
       meta: { tags: ["spicy"] },
     });
     const meta = await store.get("meta", "mixtures/harissa");
-    expect(meta?.data).toEqual({ tags: ["spicy"] });
+    expect(meta?.data).toEqual(expect.objectContaining({ tags: ["spicy"] }));
   });
 
   test("does not touch meta sidecar when meta is undefined", async () => {
@@ -159,7 +159,7 @@ describe("save as draft (parameterized over recipe-shaped collections)", () => {
         meta: { draft: true, tags: ["wip"] },
       });
       const meta = await store.get("meta", `${collection}/demo`);
-      expect(meta?.data).toEqual({ draft: true, tags: ["wip"] });
+      expect(meta?.data).toEqual(expect.objectContaining({ draft: true, tags: ["wip"] }));
     });
 
     test(`${collection}: unpublishRecipe flips an existing published item to draft`, async () => {
@@ -172,7 +172,81 @@ describe("save as draft (parameterized over recipe-shaped collections)", () => {
       });
       await unpublishRecipe(store, { collection, id: "demo" });
       const meta = await store.get("meta", `${collection}/demo`);
-      expect(meta?.data).toEqual({ draft: true, tags: ["wip"] });
+      expect(meta?.data).toEqual(expect.objectContaining({ draft: true, tags: ["wip"] }));
     });
   }
+});
+
+describe("saveRecipe — translation-sync wiring", () => {
+  test("canonical save stamps canonicalContentHash into meta", async () => {
+    const store = new InMemoryStore();
+    await saveRecipe(store, {
+      collection: "recipes",
+      slug: "miso-ramen",
+      recipe: { name: "Miso Ramen" },
+      meta: { locale: "en", draft: false },
+    });
+    const meta = await store.get("meta", "recipes/miso-ramen");
+    expect(typeof (meta?.data as Record<string, unknown>)["canonicalContentHash"]).toBe("string");
+  });
+
+  test("canonical save flags translation children stale when content changes", async () => {
+    const store = new InMemoryStore();
+    await saveRecipe(store, {
+      collection: "recipes",
+      slug: "miso-ramen",
+      recipe: { name: "Miso Ramen" },
+      meta: { locale: "en", draft: false },
+    });
+    await store.put("meta", "recipes/miso-ramen-de", { translationOf: "miso-ramen" });
+
+    await saveRecipe(store, {
+      collection: "recipes",
+      slug: "miso-ramen",
+      recipe: { name: "Miso Ramen updated" },
+      meta: { locale: "en", draft: false },
+    });
+
+    const deMeta = await store.get("meta", "recipes/miso-ramen-de");
+    expect(typeof (deMeta?.data as Record<string, unknown>)["translationStaleSince"]).toBe(
+      "string",
+    );
+  });
+
+  test("canonical save with unchanged content does not re-flag translations", async () => {
+    const store = new InMemoryStore();
+    const recipe = { name: "Miso Ramen" };
+    await saveRecipe(store, {
+      collection: "recipes",
+      slug: "miso-ramen",
+      recipe,
+      meta: { locale: "en", draft: false },
+    });
+    await store.put("meta", "recipes/miso-ramen-de", { translationOf: "miso-ramen" });
+
+    await saveRecipe(store, {
+      collection: "recipes",
+      slug: "miso-ramen",
+      recipe,
+      meta: { locale: "en", draft: false },
+    });
+
+    const deMeta = await store.get("meta", "recipes/miso-ramen-de");
+    expect((deMeta?.data as Record<string, unknown>)["translationStaleSince"]).toBeUndefined();
+  });
+
+  test("translation-side save does not flag canonical", async () => {
+    const store = new InMemoryStore();
+    await store.put("meta", "recipes/miso-ramen", { canonicalLocale: "en" });
+
+    await saveRecipe(store, {
+      collection: "recipes",
+      slug: "miso-ramen-de",
+      recipe: { name: "Miso Ramen DE" },
+      meta: { translationOf: "miso-ramen", locale: "de", draft: false },
+    });
+
+    const canonical = await store.get("meta", "recipes/miso-ramen");
+    expect((canonical?.data as Record<string, unknown>)["translationStaleSince"]).toBeUndefined();
+  });
 });

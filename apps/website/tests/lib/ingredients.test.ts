@@ -68,12 +68,14 @@ describe("saveIngredient", () => {
       meta: { draft: true },
     });
     const meta = await store.get("ingredientMeta", "en/cardamom");
-    expect(meta?.data).toEqual({
-      imageAttribution: { source: "Openverse" },
-      translations: { de: "kardamom" },
-      draft: true,
-      canonicalLocale: "en",
-    });
+    expect(meta?.data).toEqual(
+      expect.objectContaining({
+        imageAttribution: { source: "Openverse" },
+        translations: { de: "kardamom" },
+        draft: true,
+        canonicalLocale: "en",
+      }),
+    );
   });
 
   test("toggling from draft to published updates only draft flag", async () => {
@@ -91,11 +93,13 @@ describe("saveIngredient", () => {
       meta: { draft: false },
     });
     const meta = await store.get("ingredientMeta", "en/cardamom");
-    expect(meta?.data).toEqual({
-      draft: false,
-      translations: { de: "kardamom" },
-      canonicalLocale: "en",
-    });
+    expect(meta?.data).toEqual(
+      expect.objectContaining({
+        draft: false,
+        translations: { de: "kardamom" },
+        canonicalLocale: "en",
+      }),
+    );
   });
 });
 
@@ -244,5 +248,85 @@ describe("publishIngredient / unpublishIngredient", () => {
     await unpublishIngredient(store, { locale: "en", slug: "cardamom" });
     const meta = await store.get("ingredientMeta", "en/cardamom");
     expect(meta?.data).toEqual({ draft: true });
+  });
+});
+
+describe("saveIngredient — translation-sync wiring", () => {
+  test("canonical save stamps canonicalContentHash into meta", async () => {
+    const store = new InMemoryStore();
+    await saveIngredient(store, {
+      locale: "en",
+      slug: "cardamom",
+      ingredient: { name: "Cardamom", category: "spice" },
+      meta: { draft: false },
+    });
+    const meta = await store.get("ingredientMeta", "en/cardamom");
+    expect(typeof (meta?.data as Record<string, unknown>)["canonicalContentHash"]).toBe("string");
+  });
+
+  test("canonical save flags translation children stale when content changes", async () => {
+    const store = new InMemoryStore();
+    // First save — establishes initial hash
+    await saveIngredient(store, {
+      locale: "en",
+      slug: "cardamom",
+      ingredient: { name: "Cardamom", category: "spice" },
+      meta: { draft: false },
+    });
+    // Translation child
+    await store.put("ingredientMeta", "de/cardamom", { translationOf: "en/cardamom" });
+
+    // Second save — content changes
+    await saveIngredient(store, {
+      locale: "en",
+      slug: "cardamom",
+      ingredient: { name: "Cardamom updated", category: "spice" },
+      meta: { draft: false },
+    });
+
+    const deMeta = await store.get("ingredientMeta", "de/cardamom");
+    expect(typeof (deMeta?.data as Record<string, unknown>)["translationStaleSince"]).toBe(
+      "string",
+    );
+  });
+
+  test("canonical save with unchanged content does not re-flag translations", async () => {
+    const store = new InMemoryStore();
+    const ingredient = { name: "Cardamom", category: "spice" };
+    await saveIngredient(store, {
+      locale: "en",
+      slug: "cardamom",
+      ingredient,
+      meta: { draft: false },
+    });
+    // Translation child — already clean
+    await store.put("ingredientMeta", "de/cardamom", { translationOf: "en/cardamom" });
+
+    // Save again with identical content
+    await saveIngredient(store, {
+      locale: "en",
+      slug: "cardamom",
+      ingredient,
+      meta: { draft: false },
+    });
+
+    const deMeta = await store.get("ingredientMeta", "de/cardamom");
+    expect((deMeta?.data as Record<string, unknown>)["translationStaleSince"]).toBeUndefined();
+  });
+
+  test("translation-side save does not flag canonical", async () => {
+    const store = new InMemoryStore();
+    await store.put("ingredientMeta", "en/cardamom", { canonicalLocale: "en" });
+
+    // Save the translation (has translationOf)
+    await saveIngredient(store, {
+      locale: "de",
+      slug: "kardamom",
+      ingredient: { name: "Kardamom", category: "spice" },
+      meta: { translationOf: "en/cardamom", draft: false },
+    });
+
+    const canonical = await store.get("ingredientMeta", "en/cardamom");
+    expect((canonical?.data as Record<string, unknown>)["translationStaleSince"]).toBeUndefined();
   });
 });
