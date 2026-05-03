@@ -6,7 +6,7 @@ import { aiEventSchema } from "content-ai";
 import { INGREDIENT_PARTS, INGREDIENT_FLAVOR_PROFILE } from "./lib/ingredient-schema.ts";
 
 const recipeLinkRef = z.object({
-  collection: z.enum(["recipes", "mixtures"]),
+  collection: z.enum(["recipes", "ingredients", "mixtures"]),
   slug: z.string(),
 });
 
@@ -14,7 +14,7 @@ const ingredientLinkItem = z.object({
   pattern: z.string(),
   kind: z.enum(["ingredient", "recipe"]).default("ingredient"),
   slug: z.string(),
-  collection: z.enum(["recipes", "mixtures"]).optional(),
+  collection: z.enum(["ingredients", "mixtures"]).optional(),
 });
 
 const imageAttributionSchema = z
