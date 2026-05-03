@@ -1,6 +1,6 @@
 {
   "kind": "recipe",
-  "region": [],
+  "region": ["north-africa"],
   "variants": [],
   "goesWellWith": [
     {
