@@ -10,10 +10,10 @@ const RECIPE_LINK_PATTERN = /href=["'`][^"'`]*\/recipes\/[^"'`]*["'`]/;
 
 describe("Recipe demotion: homepage must not link to /recipes/", () => {
   let homeSrc: string;
-  let homeDesSrc: string;
+  let homeDeSrc: string;
 
   beforeAll(async () => {
-    [homeSrc, homeDesSrc] = await Promise.all([
+    [homeSrc, homeDeSrc] = await Promise.all([
       readFile(join(PAGES, "index.astro"), "utf-8"),
       readFile(join(PAGES, "de", "index.astro"), "utf-8"),
     ]);
@@ -24,7 +24,7 @@ describe("Recipe demotion: homepage must not link to /recipes/", () => {
   });
 
   test("DE homepage contains no <a href> pointing to /recipes/", () => {
-    expect(RECIPE_LINK_PATTERN.test(homeDesSrc)).toBe(false);
+    expect(RECIPE_LINK_PATTERN.test(homeDeSrc)).toBe(false);
   });
 
   test("EN homepage imports RecentlyAddedFeed (not a raw recipe list)", () => {
@@ -36,7 +36,7 @@ describe("Recipe demotion: homepage must not link to /recipes/", () => {
   });
 
   test("DE homepage uses excludeRecipes: true", () => {
-    expect(homeDesSrc).toContain("excludeRecipes: true");
+    expect(homeDeSrc).toContain("excludeRecipes: true");
   });
 });
 

@@ -4,8 +4,7 @@ import WorldmapPlaceholder from "../../components/WorldmapPlaceholder.astro";
 import FeaturedPairingBlock from "../../components/FeaturedPairingBlock.astro";
 import RecentlyAddedFeed from "../../components/RecentlyAddedFeed.astro";
 import { getPublished, getPublishedIngredients, getPublishedPairings } from "../../lib/recipe-augment.ts";
-import { recentlyAdded } from "../../lib/recently-added.ts";
-import type { RecentEntry } from "../../lib/recently-added.ts";
+import { recentlyAdded, type RecentEntry } from "../../lib/recently-added.ts";
 import { FEATURED_PAIRING_SLUG } from "../../lib/homepage.config.ts";
 import { getCollection } from "astro:content";
 import { useTranslations } from "../../i18n/translations.ts";
@@ -14,13 +13,12 @@ const locale = "de";
 const t = useTranslations(locale);
 const prefix = "/de";
 
-const [mixtures, rawIngredients, pairings] = await Promise.all([
+const [mixtures, rawIngredients, pairings, allIngredientsMeta] = await Promise.all([
   getPublished("mixtures"),
   getPublishedIngredients("de"),
   getPublishedPairings(),
+  getCollection("ingredientMeta"),
 ]);
-
-const allIngredientsMeta = await getCollection("ingredientMeta");
 const draftSlugs = new Set(
   (allIngredientsMeta as Array<{ id: string; data: { draft?: boolean } }>)
     .filter((m) => m.data.draft === true)
@@ -38,12 +36,15 @@ const mixtureEntries: RecentEntry[] = mixtures.map((e) => ({
   datePublished: (e.data as { datePublished?: string }).datePublished,
 }));
 
-const ingredientEntries: RecentEntry[] = ingredients.map((e) => ({
-  type: "ingredient",
-  slug: e.id.replace(/^[a-z]{2}\//, ""),
-  name: e.data.name,
-  href: `${prefix}/ingredients/${e.id.replace(/^[a-z]{2}\//, "")}/`,
-}));
+const ingredientEntries: RecentEntry[] = ingredients.map((e) => {
+  const slug = e.id.replace(/^[a-z]{2}\//, "");
+  return {
+    type: "ingredient",
+    slug,
+    name: e.data.name,
+    href: `${prefix}/ingredients/${slug}/`,
+  };
+});
 
 const pairingEntries: RecentEntry[] = pairings.map((p) => ({
   type: "pairing",
@@ -84,7 +85,6 @@ const featuredPairing = pairings.find((p) => p.id === FEATURED_PAIRING_SLUG) ?? 
             ""
           }
           href={`${prefix}/pairings/${featuredPairing.id}/`}
-          locale={locale}
         />
       )
     }

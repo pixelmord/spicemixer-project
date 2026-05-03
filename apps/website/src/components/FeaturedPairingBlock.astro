@@ -1,13 +1,10 @@
 ---
-import type { Lang } from "../i18n/translations.ts";
-
 interface Props {
   label: string;
   ingredientA: string;
   ingredientB: string;
   description: string;
   href: string;
-  locale: Lang;
 }
 const { label, ingredientA, ingredientB, description, href } = Astro.props;
 ---
