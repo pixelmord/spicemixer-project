@@ -44,3 +44,7 @@ export function appendEvent<M extends { aiEvents?: AiEvent[] }>(
 export function recordAiEvent(events: AiEvent[], params: Omit<AiEvent, "at">): AiEvent[] {
   return prune([...events, { ...params, at: new Date().toISOString() }]);
 }
+
+export function hasAutoApplied(events: AiEvent[], field: string): boolean {
+  return events.some((e) => e.type === "auto-applied" && e.field === field);
+}

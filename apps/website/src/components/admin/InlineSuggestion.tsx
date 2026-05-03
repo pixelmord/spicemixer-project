@@ -1,7 +1,15 @@
-import { Check, X, Maximize2 } from "lucide-react";
+import { Check, X, Maximize2, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 
-interface Props {
+interface AutoAppliedProps {
+  autoApplied: true;
+  previousValue: string;
+  onRevert: () => void;
+  className?: string;
+}
+
+interface SuggestionProps {
+  autoApplied?: false;
   label?: string;
   current: string;
   suggested: string;
@@ -12,16 +20,34 @@ interface Props {
   className?: string;
 }
 
-export default function InlineSuggestion({
-  label,
-  current,
-  suggested,
-  rationale,
-  onAccept,
-  onDismiss,
-  onExpand,
-  className,
-}: Props) {
+type Props = AutoAppliedProps | SuggestionProps;
+
+export default function InlineSuggestion(props: Props) {
+  if (props.autoApplied) {
+    return (
+      <div
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/8 px-2 py-0.5 text-[11px] text-primary",
+          props.className,
+        )}
+      >
+        <span className="font-medium">AI applied</span>
+        <span className="text-primary/50">·</span>
+        <button
+          type="button"
+          onClick={props.onRevert}
+          className="flex items-center gap-0.5 hover:underline"
+          title={`Revert to: ${props.previousValue}`}
+        >
+          <Undo2 size={9} />
+          revert
+        </button>
+      </div>
+    );
+  }
+
+  const { label, current, suggested, rationale, onAccept, onDismiss, onExpand, className } = props;
+
   return (
     <div
       className={cn(
