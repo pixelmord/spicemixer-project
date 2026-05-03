@@ -1,0 +1,238 @@
+---
+export const prerender = false;
+import AdminShell from "@/components/admin/AdminShell.tsx";
+import { createStore } from "@/lib/content-store.ts";
+import {
+  computeContentGates,
+  type Corpus,
+  type CorpusMixture,
+  type CorpusIngredient,
+  type CorpusPairing,
+  type CorpusRecipe,
+} from "@/lib/readiness/content-gates.ts";
+import { loadFlags, toggleFlag } from "@/lib/readiness/capability-flags.ts";
+
+const store = await createStore();
+
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  const key = formData.get("key");
+  if (typeof key === "string" && key.length > 0) {
+    await toggleFlag(store, key, "admin");
+  }
+  return Astro.redirect("/admin/readiness/");
+}
+
+const [mixtureItems, metaItems, ingredientItems, ingredientMetaItems, pairingItems, recipeItems] =
+  await Promise.all([
+    store.list("mixtures"),
+    store.list("meta"),
+    store.list("ingredients"),
+    store.list("ingredientMeta"),
+    store.list("pairings"),
+    store.list("recipes"),
+  ]);
+
+const metaMap = new Map(metaItems.map((m) => [m.id, m.data as Record<string, unknown>]));
+const ingredientMetaMap = new Map(
+  ingredientMetaItems.map((m) => [m.id, m.data as Record<string, unknown>]),
+);
+
+const publishedMixtures: CorpusMixture[] = [];
+for (const m of mixtureItems) {
+  const meta = metaMap.get(`mixtures/${m.id}`) ?? {};
+  if (meta.draft) continue;
+  publishedMixtures.push({
+    slug: m.id,
+    kind: meta.kind as string | undefined,
+    regions: (meta.region as string[]) ?? [],
+  });
+}
+
+const publishedIngredients: CorpusIngredient[] = [];
+for (const i of ingredientItems) {
+  const iMeta = ingredientMetaMap.get(i.id) ?? {};
+  if (iMeta.draft) continue;
+  const slug = i.id.replace(/^[a-z]{2}\//, "");
+  const data = i.data as Record<string, unknown>;
+  publishedIngredients.push({
+    slug,
+    category: data.category as string,
+    flavorProfile: (data.flavorProfile as string[]) ?? [],
+    regions: (iMeta.region as string[]) ?? [],
+    culinaryUse: data.culinaryUse as string | undefined,
+    hasImage: ((data.images as string[]) ?? []).length > 0,
+  });
+}
+
+const publishedPairings: CorpusPairing[] = [];
+for (const p of pairingItems) {
+  const data = p.data as Record<string, unknown>;
+  if (data.draft) continue;
+  publishedPairings.push({ slugs: data.ingredients as [string, string] });
+}
+
+const publishedRecipes: CorpusRecipe[] = [];
+for (const r of recipeItems) {
+  const meta = metaMap.get(`recipes/${r.id}`) ?? {};
+  if (meta.draft) continue;
+  const mixtureRefs: string[] = [];
+  for (const ref of (meta.usesBase as { collection: string; slug: string }[]) ?? []) {
+    if (ref.collection === "mixtures") mixtureRefs.push(ref.slug);
+  }
+  for (const link of (meta.ingredientLinks as {
+    slug: string;
+    collection?: string;
+  }[]) ?? []) {
+    if (link.collection === "mixtures") mixtureRefs.push(link.slug);
+  }
+  publishedRecipes.push({ mixtureRefs });
+}
+
+const corpus: Corpus = {
+  mixtures: publishedMixtures,
+  ingredients: publishedIngredients,
+  pairings: publishedPairings,
+  recipes: publishedRecipes,
+};
+
+const gates = computeContentGates(corpus);
+const flags = await loadFlags(store);
+const currentPath = Astro.url.pathname;
+
+const statusColor = {
+  pass: "text-emerald-600 bg-emerald-50 border-emerald-200",
+  warn: "text-amber-600 bg-amber-50 border-amber-200",
+  fail: "text-red-600 bg-red-50 border-red-200",
+};
+
+const statusLabel = { pass: "Pass", warn: "Warn", fail: "Fail" };
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="/src/styles/global.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Phase 2 Readiness · Admin · SpiceMixer</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  </head>
+  <body>
+    <AdminShell currentPath={currentPath} client:load>
+      <div class="space-y-8">
+        <div>
+          <h1 class="text-2xl font-bold">Phase 2 Readiness</h1>
+          <p class="text-muted-foreground text-sm mt-1">
+            ADR 0007 entry criteria — content gates and capability gates
+          </p>
+        </div>
+
+        <!-- Content gates -->
+        <div>
+          <h2 class="text-lg font-semibold mb-3">Content gates</h2>
+          <div class="rounded-lg border border-border overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-border bg-muted/40">
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Gate</th>
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Progress</th>
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Failing items</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border">
+                {gates.map((gate) => (
+                  <tr>
+                    <td class="px-4 py-3 font-medium">{gate.label}</td>
+                    <td class="px-4 py-3">
+                      <span
+                        class={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-semibold ${statusColor[gate.status]}`}
+                      >
+                        {statusLabel[gate.status]}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-muted-foreground">
+                      {gate.current}/{gate.target}
+                    </td>
+                    <td class="px-4 py-3">
+                      {gate.failingItems && gate.failingItems.length > 0 ? (
+                        <details>
+                          <summary class="cursor-pointer text-muted-foreground hover:text-foreground">
+                            {gate.failingItems.length} item{gate.failingItems.length !== 1 ? "s" : ""}
+                          </summary>
+                          <ul class="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                            {gate.failingItems.map((item) => (
+                              <li class="font-mono">{item}</li>
+                            ))}
+                          </ul>
+                        </details>
+                      ) : (
+                        <span class="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Capability gates -->
+        <div>
+          <h2 class="text-lg font-semibold mb-3">Capability gates</h2>
+          <div class="rounded-lg border border-border overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-border bg-muted/40">
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Gate</th>
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                  <th class="text-left px-4 py-2.5 font-medium text-muted-foreground">Completed</th>
+                  <th class="px-4 py-2.5"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border">
+                {flags.map((flag) => (
+                  <tr>
+                    <td class="px-4 py-3 font-medium">{flag.label}</td>
+                    <td class="px-4 py-3">
+                      <span
+                        class={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-semibold ${flag.complete ? statusColor.pass : statusColor.fail}`}
+                      >
+                        {flag.complete ? "Done" : "Pending"}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-muted-foreground text-xs">
+                      {flag.complete && flag.completedAt ? (
+                        <span>
+                          {new Date(flag.completedAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                          {flag.completedBy ? ` by ${flag.completedBy}` : ""}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                      <form method="POST">
+                        <input type="hidden" name="key" value={flag.key} />
+                        <button
+                          type="submit"
+                          class="rounded border border-border bg-card px-2.5 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                        >
+                          {flag.complete ? "Mark incomplete" : "Mark complete"}
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </AdminShell>
+  </body>
+</html>
