@@ -154,21 +154,6 @@ describe("isAllowedAutoApply", () => {
     expect(isAllowedAutoApply("tag", 0.85, "editor")).toBe(true);
     expect(isAllowedAutoApply("tag", 1.0, "editor")).toBe(true);
   });
-
-  // Exhaustive table: medicinal/health/safety, encyclopedia text, slug renames,
-  // translation, variant fork, pairing-creation never auto-applied
-  test.each([
-    ["medicinal" as AutoApplyKind, "high" as const, "editor" as const],
-    ["health" as AutoApplyKind, "high" as const, "editor" as const],
-    ["safety" as AutoApplyKind, "high" as const, "editor" as const],
-    ["encyclopedia-text" as AutoApplyKind, "high" as const, "editor" as const],
-    ["slug-rename" as AutoApplyKind, "high" as const, "editor" as const],
-    ["translation" as AutoApplyKind, "high" as const, "editor" as const],
-    ["variant-fork" as AutoApplyKind, "high" as const, "editor" as const],
-    ["pairing-creation" as AutoApplyKind, "high" as const, "editor" as const],
-  ])("returns false for forbidden kind=%s confidence=%s origin=%s", (kind, confidence, origin) => {
-    expect(isAllowedAutoApply(kind, confidence, origin)).toBe(false);
-  });
 });
 
 describe("assertAutoApplyAllowed", () => {

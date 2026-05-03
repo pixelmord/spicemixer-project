@@ -7,7 +7,6 @@ export type AutoApplyKind =
 
 export type Confidence = "high" | "medium" | "low";
 
-/** Exhaustive set of suggestion kinds that may be auto-applied. */
 export const ALLOWLIST: ReadonlySet<AutoApplyKind> = new Set([
   "ingredient-link",
   "pairing-slug",
@@ -16,12 +15,7 @@ export const ALLOWLIST: ReadonlySet<AutoApplyKind> = new Set([
   "image-attribution",
 ]);
 
-/**
- * Returns true only when ALL three gates pass:
- * 1. origin is "editor" (community-submitted content is never auto-applied in Phase 1)
- * 2. kind is in the ALLOWLIST
- * 3. confidence is "high" or numeric >= 0.85
- */
+// Community origin is always blocked (Phase 1 constraint, per ADR 0004).
 export function isAllowedAutoApply(
   kind: AutoApplyKind,
   confidence: Confidence | number,

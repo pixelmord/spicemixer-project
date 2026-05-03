@@ -296,13 +296,6 @@ export default function RecipeForm({
     slug: string;
     confidence: "high" | "medium" | "low";
   }> | null>(null);
-  const [_pendingRelations, _setPendingRelations] = useState<Array<{
-    kind: "goesWellWith" | "usesBase";
-    collection: string;
-    slug: string;
-    name: string;
-    rationale: string;
-  }> | null>(null);
   const [aiTagsLoading, setAiTagsLoading] = useState(false);
   const [aiKeywordsLoading, setAiKeywordsLoading] = useState(false);
   const [aiLinksLoading, setAiLinksLoading] = useState(false);

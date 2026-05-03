@@ -19,27 +19,6 @@ export type IngredientLink = {
 };
 export type ExternalSource = { url: string; title: string; source?: string };
 
-export interface AiSuggestion {
-  field: string;
-  suggestion: string;
-  rationale: string;
-}
-
-export interface AiSuggestions {
-  contentHash: string;
-  generatedAt: string;
-  improvements: AiSuggestion[];
-  tags: string[];
-  ingredientLinks: Array<{ pattern: string; slug: string; confidence: "high" | "medium" | "low" }>;
-  relations: Array<{
-    kind: "goesWellWith" | "usesBase";
-    collection: RecipeKind;
-    slug: string;
-    name: string;
-  }>;
-  detectedLanguage?: string;
-}
-
 export type Meta = {
   kind?: "recipe" | "spicemix" | "sauce";
   draft?: boolean;
