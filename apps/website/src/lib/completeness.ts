@@ -49,8 +49,9 @@ export const INGREDIENT_RECOMMENDED = [
   "family",
   "origin",
   "parts",
+  "culinaryUse",
   "flavorProfile",
-  "images",
+  "images[0]",
 ] as const;
 
 export function scoreRecipe(recipe: AnyRecord, meta: AnyRecord): CompletenessResult {
@@ -144,7 +145,11 @@ export function scoreIngredient(ingredient: AnyRecord): CompletenessResult {
   let filled = 0;
 
   for (const field of INGREDIENT_RECOMMENDED) {
-    if (has(ingredient, field)) {
+    const isFilled =
+      field === "images[0]"
+        ? Array.isArray(ingredient["images"]) && (ingredient["images"] as unknown[]).length > 0
+        : has(ingredient, field);
+    if (isFilled) {
       filled++;
     } else {
       missing.push(field);
