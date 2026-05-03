@@ -49,24 +49,30 @@ function isActive(href: string) {
   </div>
   <div class="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1">
     {
-      lensItems.map(({ key, href }) =>
-        key === "nav.cookMode" ? (
-          <CookModeToggle
-            labels={{ enter: t("cook.enter"), exit: t("cook.exit") }}
-            client:load
-          />
-        ) : href ? (
-          <a
-            href={href}
-            aria-current={isActive(href) ? "page" : undefined}
-            class:list={[
-              "text-xs transition",
-              isActive(href) ? "font-semibold text-stone-700" : "text-stone-400 hover:text-stone-700",
-            ]}
-          >
-            {t(key)}
-          </a>
-        ) : (
+      lensItems.map(({ key, href }) => {
+        if (key === "nav.cookMode") {
+          return (
+            <CookModeToggle
+              labels={{ enter: t("cook.enter"), exit: t("cook.exit") }}
+              client:load
+            />
+          );
+        }
+        if (href) {
+          return (
+            <a
+              href={href}
+              aria-current={isActive(href) ? "page" : undefined}
+              class:list={[
+                "text-xs transition",
+                isActive(href) ? "font-semibold text-stone-700" : "text-stone-400 hover:text-stone-700",
+              ]}
+            >
+              {t(key)}
+            </a>
+          );
+        }
+        return (
           <span
             aria-disabled="true"
             class="cursor-default text-xs text-stone-300 select-none"
@@ -74,8 +80,8 @@ function isActive(href: string) {
           >
             {t(key)}
           </span>
-        )
-      )
+        );
+      })
     }
   </div>
 </nav>
@@ -161,32 +167,38 @@ function isActive(href: string) {
         </p>
         <div class="flex flex-col gap-2">
           {
-            lensItems.map(({ key, href }) =>
-              key === "nav.cookMode" ? (
-                <CookModeToggle
-                  labels={{ enter: t("cook.enter"), exit: t("cook.exit") }}
-                  client:load
-                />
-              ) : href ? (
-                <a
-                  href={href}
-                  aria-current={isActive(href) ? "page" : undefined}
-                  class:list={[
-                    "text-sm transition",
-                    isActive(href) ? "font-semibold text-stone-900" : "text-stone-500 hover:text-stone-900",
-                  ]}
-                >
-                  {t(key)}
-                </a>
-              ) : (
+            lensItems.map(({ key, href }) => {
+              if (key === "nav.cookMode") {
+                return (
+                  <CookModeToggle
+                    labels={{ enter: t("cook.enter"), exit: t("cook.exit") }}
+                    client:load
+                  />
+                );
+              }
+              if (href) {
+                return (
+                  <a
+                    href={href}
+                    aria-current={isActive(href) ? "page" : undefined}
+                    class:list={[
+                      "text-sm transition",
+                      isActive(href) ? "font-semibold text-stone-900" : "text-stone-500 hover:text-stone-900",
+                    ]}
+                  >
+                    {t(key)}
+                  </a>
+                );
+              }
+              return (
                 <span
                   aria-disabled="true"
                   class="cursor-default text-sm text-stone-300 select-none"
                 >
                   {t(key)}
                 </span>
-              )
-            )
+              );
+            })
           }
         </div>
       </div>
