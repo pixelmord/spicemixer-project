@@ -43,3 +43,27 @@ describe("two-tier nav translation keys", () => {
     expect(de("nav.closeMenu")).toBeTruthy();
   });
 });
+
+describe("mixture kind label keys", () => {
+  const ALL_KINDS = ["spicemix", "sauce", "rub", "oil", "pickle", "chutney", "marinade"] as const;
+
+  test("all 7 kind labels present in EN", () => {
+    const t = useTranslations("en");
+    for (const kind of ALL_KINDS) {
+      expect(t(`kind.${kind}`)).toBeTruthy();
+    }
+  });
+
+  test("all 7 kind labels present in DE", () => {
+    const t = useTranslations("de");
+    for (const kind of ALL_KINDS) {
+      expect(t(`kind.${kind}`)).toBeTruthy();
+    }
+  });
+
+  test("EN kind labels are distinct human-readable strings", () => {
+    const t = useTranslations("en");
+    const labels = ALL_KINDS.map((k) => t(`kind.${k}`));
+    expect(new Set(labels).size).toBe(ALL_KINDS.length);
+  });
+});
