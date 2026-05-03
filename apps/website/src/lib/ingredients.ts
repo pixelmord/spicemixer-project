@@ -1,4 +1,5 @@
 import type { ContentStore } from "./content-store.ts";
+import { contentHash, flagTranslationsStale } from "./translation-sync.ts";
 
 export type Locale = "en" | "de";
 
@@ -22,11 +23,24 @@ export async function saveIngredient(
       (existingData["canonicalLocale"] as string | undefined) ??
       (input.meta["canonicalLocale"] as string | undefined) ??
       input.locale;
-    await store.put("ingredientMeta", key, {
+
+    const mergedMeta: Record<string, unknown> = {
       ...existingData,
       ...input.meta,
       canonicalLocale,
-    });
+    };
+
+    const isCanonical = !mergedMeta["translationOf"];
+    if (isCanonical) {
+      const newHash = contentHash(input.ingredient);
+      const storedHash = existingData["canonicalContentHash"] as string | undefined;
+      mergedMeta["canonicalContentHash"] = newHash;
+      if (newHash !== storedHash) {
+        await flagTranslationsStale(store, "ingredients", key);
+      }
+    }
+
+    await store.put("ingredientMeta", key, mergedMeta);
   }
   return { slug: input.slug };
 }

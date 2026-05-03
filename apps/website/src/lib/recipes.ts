@@ -1,5 +1,6 @@
 import type { ContentStore } from "./content-store.ts";
 import type { RecipeCollection } from "./content-store.ts";
+import { contentHash, flagTranslationsStale } from "./translation-sync.ts";
 
 export interface SaveRecipeInput {
   collection: RecipeCollection;
@@ -20,10 +21,23 @@ export async function saveRecipe(
     const canonicalLocale =
       (existingData["canonicalLocale"] as string | undefined) ??
       (input.meta["locale"] as string | undefined);
-    await store.put("meta", metaKey, {
+
+    const mergedMeta: Record<string, unknown> = {
       ...input.meta,
       ...(canonicalLocale !== undefined && { canonicalLocale }),
-    });
+    };
+
+    const isCanonical = !mergedMeta["translationOf"];
+    if (isCanonical) {
+      const newHash = contentHash(input.recipe);
+      const storedHash = existingData["canonicalContentHash"] as string | undefined;
+      mergedMeta["canonicalContentHash"] = newHash;
+      if (newHash !== storedHash) {
+        await flagTranslationsStale(store, input.collection, input.slug);
+      }
+    }
+
+    await store.put("meta", metaKey, mergedMeta);
   }
   return { slug: input.slug };
 }
