@@ -5,6 +5,7 @@ import DetailLayout from "../../components/DetailLayout.astro";
 import RecipeMeta from "../../components/RecipeMeta.astro";
 import RelatedList from "../../components/RelatedList.astro";
 import ExternalSourceList from "../../components/ExternalSourceList.astro";
+import TranslationFallbackBanner from "../../components/TranslationFallbackBanner.astro";
 import { firstImage, keywordList, normalizeInstructions } from "../../lib/instructions.ts";
 import StepImage from "../../components/StepImage.astro";
 import StepsLightbox from "../../components/StepsLightbox.astro";
@@ -18,22 +19,37 @@ import {
 } from "../../lib/recipe-augment.ts";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 import { withPagefindFilters } from "../../lib/withPagefindFilters.ts";
+import { resolvePublished } from "../../lib/published-entity.ts";
+import { hreflangTags } from "../../lib/hreflang.ts";
 
 export async function getStaticPaths() {
-  const recipes = await getPublished("recipes");
-  return recipes.map((recipe) => ({
-    params: { slug: recipe.id },
-    props: { recipe },
-  }));
+  const all = await getPublished("recipes");
+  const paths = await Promise.all(
+    all.map(async (entry) => {
+      const resolved = await resolvePublished("recipes", entry.id, "en");
+      if (!resolved) return null;
+      return {
+        params: { slug: entry.id },
+        props: {
+          recipe: resolved.entity as CollectionEntry<"recipes">,
+          isFallback: resolved.isFallback,
+          canonicalLocale: resolved.canonicalLocale,
+        },
+      };
+    }),
+  );
+  return paths.filter((p): p is NonNullable<typeof p> => p !== null);
 }
 
 interface Props {
   recipe: CollectionEntry<"recipes">;
+  isFallback: boolean;
+  canonicalLocale: string;
 }
 
-const { recipe } = Astro.props;
+const { recipe, isFallback, canonicalLocale } = Astro.props;
 const data = recipe.data;
-const slug = recipe.id;
+const slug = Astro.params.slug as string;
 const image = firstImage(data.image);
 const tags = keywordList(data.keywords);
 const steps = normalizeInstructions(data.recipeInstructions);
@@ -78,9 +94,17 @@ const demonstratesItems = await Promise.all(
     };
   }),
 );
+
+const hreflang = await hreflangTags(slug, "recipes", Astro.site?.toString().replace(/\/$/, "") ?? "");
 ---
 
 <BaseLayout title={`${data.name} — Spicemixer`} description={data.description}>
+  <Fragment slot="head">
+    {hreflang.map((tag) => (
+      <link rel="alternate" hreflang={tag.hrefLang} href={tag.href} />
+    ))}
+  </Fragment>
+
   <main
     class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8"
     data-pagefind-body={pagefindBody}
@@ -101,6 +125,10 @@ const demonstratesItems = await Promise.all(
         Edit
       </a>
     </nav>
+
+    {isFallback && (
+      <TranslationFallbackBanner requestedLocale={locale} canonicalLocale={canonicalLocale} />
+    )}
 
     <DetailLayout>
       <section slot="hero">

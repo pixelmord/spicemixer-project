@@ -89,6 +89,8 @@ const ui = {
     "page.search.title": "Spicemixer — Search",
     "page.search.tagline": "Find anything.",
     "page.search.description": "Search across all spices, blends, pairings, and recipes.",
+    "locale.fallback":
+      "Showing original {canonical} content — a {requested} translation is not yet available.",
   },
   de: {
     "page.home.title": "Spicemixer — Gewürze & Saucen",
@@ -178,6 +180,8 @@ const ui = {
     "page.search.title": "Spicemixer — Suche",
     "page.search.tagline": "Alles finden.",
     "page.search.description": "Suche nach Gewürzen, Mischungen, Kombinationen und Rezepten.",
+    "locale.fallback":
+      "Es wird der originale {canonical}-Inhalt angezeigt — eine {requested}-Übersetzung ist noch nicht verfügbar.",
   },
 } as const;
 

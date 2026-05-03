@@ -6,6 +6,7 @@ import DetailLayout from "../../../components/DetailLayout.astro";
 import RecipeMeta from "../../../components/RecipeMeta.astro";
 import RelatedList from "../../../components/RelatedList.astro";
 import ExternalSourceList from "../../../components/ExternalSourceList.astro";
+import TranslationFallbackBanner from "../../../components/TranslationFallbackBanner.astro";
 import { firstImage, keywordList, normalizeInstructions } from "../../../lib/instructions.ts";
 import StepImage from "../../../components/StepImage.astro";
 import StepsLightbox from "../../../components/StepsLightbox.astro";
@@ -22,6 +23,8 @@ import { MIXTURE_KINDS, MIXTURE_KIND_PLURALS, buildKindBySlug, type MixtureKind 
 import { useTranslations } from "../../../i18n/translations.ts";
 import CookModeToggle from "../../../components/CookModeToggle.tsx";
 import { withPagefindFilters } from "../../../lib/withPagefindFilters.ts";
+import { resolvePublished } from "../../../lib/published-entity.ts";
+import { hreflangTags } from "../../../lib/hreflang.ts";
 
 export async function getStaticPaths() {
   const allMixtures = await getPublished("mixtures");
@@ -35,17 +38,28 @@ export async function getStaticPaths() {
       kind,
       kindMixtures: allMixtures.filter((m) => kindBySlug.get(m.id) === kind),
       mix: null as CollectionEntry<"mixtures"> | null,
+      isFallback: false,
+      canonicalLocale: "en",
     },
   }));
 
-  const detailPaths = allMixtures.map((mix) => ({
-    params: { slug: mix.id },
-    props: {
-      kind: null as MixtureKind | null,
-      kindMixtures: null as CollectionEntry<"mixtures">[] | null,
-      mix,
-    },
-  }));
+  const detailPathResults = await Promise.all(
+    allMixtures.map(async (entry) => {
+      const resolved = await resolvePublished("mixtures", entry.id, "de");
+      if (!resolved) return null;
+      return {
+        params: { slug: entry.id },
+        props: {
+          kind: null as MixtureKind | null,
+          kindMixtures: null as CollectionEntry<"mixtures">[] | null,
+          mix: resolved.entity as CollectionEntry<"mixtures">,
+          isFallback: resolved.isFallback,
+          canonicalLocale: resolved.canonicalLocale,
+        },
+      };
+    }),
+  );
+  const detailPaths = detailPathResults.filter((p): p is NonNullable<typeof p> => p !== null);
 
   return [...kindPaths, ...detailPaths];
 }
@@ -54,10 +68,13 @@ interface Props {
   mix: CollectionEntry<"mixtures"> | null;
   kind: MixtureKind | null;
   kindMixtures: CollectionEntry<"mixtures">[] | null;
+  isFallback: boolean;
+  canonicalLocale: string;
 }
 
-const { mix, kind, kindMixtures } = Astro.props;
+const { mix, kind, kindMixtures, isFallback, canonicalLocale } = Astro.props;
 const t = useTranslations("de");
+const locale = "de";
 const prefix = "/de";
 const ingredientBase = "/de/ingredients";
 
@@ -136,9 +153,20 @@ const pageTitle = kind
   ? `Spicemixer — ${kindLabel}`
   : `${mix!.data.name} — Spicemixer`;
 const pageDescription = kind ? t("page.mixtures.description") : mix!.data.description;
+
+const mixSlug = Astro.params.slug as string;
+const hreflang = mix ? await hreflangTags(mixSlug, "mixtures", Astro.site?.toString().replace(/\/$/, "") ?? "") : [];
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
+  {hreflang.length > 0 && (
+    <Fragment slot="head">
+      {hreflang.map((tag) => (
+        <link rel="alternate" hreflang={tag.hrefLang} href={tag.href} />
+      ))}
+    </Fragment>
+  )}
+
   {kind ? (
     <!-- Kind-plural index page -->
     <main class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -241,6 +269,10 @@ const pageDescription = kind ? t("page.mixtures.description") : mix!.data.descri
           {t("nav.back.mixtures")}
         </a>
       </nav>
+
+      {isFallback && (
+        <TranslationFallbackBanner requestedLocale={locale} canonicalLocale={canonicalLocale} />
+      )}
 
       <DetailLayout>
         <section slot="hero" data-cook="compact">

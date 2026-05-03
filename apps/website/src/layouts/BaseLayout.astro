@@ -25,6 +25,7 @@ const homeHref = lang === "de" ? "/de/" : "/";
     <meta name="generator" content={Astro.generator} />
     {description && <meta name="description" content={description} />}
     <title>{title}</title>
+    <slot name="head" />
     <ClientRouter />
     <!-- Cook mode pre-paint: sets data-mode="cook" on <html> before first paint -->
     <script is:inline>
