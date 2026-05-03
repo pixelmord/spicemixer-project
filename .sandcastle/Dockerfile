@@ -33,6 +33,19 @@ ENV COREPACK_HOME=/opt/corepack
 RUN corepack enable && corepack prepare pnpm@10.33.2 --activate \
  && chmod -R a+rX /opt/corepack
 
+# Pin pnpm's content-addressable store outside the bind-mounted workspace.
+# Without this, pnpm 10 detects that ~/.pnpm-store and the bind-mounted
+# workspace are on different filesystems, refuses to hardlink across them,
+# and writes the store at <workspace>/.pnpm-store instead. That store
+# (~650MB) then leaks back to the host through the bind-mount, gets
+# scanned by oxlint/oxfmt during `vp check` (causing minutes-long hangs),
+# trips dirty-worktree detection in sandcastle (so worktrees never clean
+# up after sandbox.close), and risks being swept into commits by any
+# overzealous `git add -A`. Putting the store on /home (container overlay
+# FS) keeps it off the host. Hardlinks still won't span filesystems, so
+# pnpm copies instead — slower install, but correct isolation.
+ENV npm_config_store_dir=/home/agent/.pnpm-store
+
 # Install Vite+ globally so `vp` is on PATH for the agent (vp check / vp test).
 # The project also pulls vite-plus locally via pnpm, but a global install means
 # prompts can call `vp` directly without `pnpm exec` shimming.

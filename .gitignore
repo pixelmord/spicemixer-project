@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.pnpm-store
 
 # Env files (keep .env.example tracked, ignore real ones)
 .env

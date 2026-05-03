@@ -49,6 +49,13 @@ Make a git commit. The commit message must:
 
 Keep it concise.
 
+## Commit hygiene — do not break this
+
+- **Never run `git add -A` or `git add .`**. Always `git add` explicit, named files — the source files you intentionally edited.
+- **Never stage `.pnpm-store/`, `node_modules/`, `.astro/`, `dist/`, `.cache/`, or any tool-generated directory** — even if `git status` shows them as untracked.
+- If `vp install` updates `pnpm-lock.yaml` and your task is the cause, stage that file; otherwise leave it.
+- If `git status` after `vp check` or `vp install` shows files you didn't expect, treat that as a bug to investigate, not noise to commit through.
+
 # THE ISSUE
 
 If the task is not complete, leave a comment on the issue with what was done.
