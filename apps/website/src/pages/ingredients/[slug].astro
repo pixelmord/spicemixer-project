@@ -9,7 +9,7 @@ import {
   getPublishedIngredients,
 } from "../../lib/recipe-augment.ts";
 import { renderInlineMarkdown } from "../../lib/inline-markdown.ts";
-import { INGREDIENT_SECTION_FIELDS } from "../../lib/ingredient-schema.ts";
+import { INGREDIENT_LONGFORM_FIELDS } from "../../lib/ingredient-schema.ts";
 
 export async function getStaticPaths() {
   const all = await getPublishedIngredients("en");
@@ -23,7 +23,7 @@ const { ingredient } = Astro.props;
 const data = ingredient.data;
 const slug = ingredient.id.replace(/^en\//, "");
 
-const SECTION_LABELS: Partial<Record<(typeof INGREDIENT_SECTION_FIELDS)[number], string>> = {
+const SECTION_LABELS: Record<(typeof INGREDIENT_LONGFORM_FIELDS)[number], string> = {
   culinaryUse: "Culinary use",
   medicinalUses: "Medicinal uses",
   healthBenefits: "Health benefits",
@@ -155,7 +155,7 @@ const pairingsResolved = pairingEntities.length > 0
     }
 
     {
-      (["culinaryUse", "medicinalUses", "healthBenefits", "safetyNotes", "history", "storage", "sourcing"] as const).map((field) => {
+      INGREDIENT_LONGFORM_FIELDS.map((field) => {
         const text = data[field];
         if (!text) return null;
         return (
