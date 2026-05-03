@@ -24,6 +24,7 @@ import {
   savePairingMeta as libSavePairingMeta,
 } from "@/lib/pairings.ts";
 import { NotFoundError } from "@/lib/errors.ts";
+import type { AiEvent } from "content-ai";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -56,6 +57,41 @@ async function resolveFileInput({
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (mimeType === "application/pdf") return { kind: "pdf", bytes };
   return { kind: "image", bytes, mimeType };
+}
+
+async function resolveMergeSource({
+  sourceKind,
+  file,
+  mimeType,
+  text,
+  prompt,
+}: {
+  sourceKind: "file" | "text" | "prompt";
+  file?: File;
+  mimeType?: string;
+  text?: string;
+  prompt?: string;
+}) {
+  if (sourceKind === "prompt") {
+    if (!prompt) throw new ActionError({ code: "BAD_REQUEST", message: "Prompt required." });
+    return { kind: "prompt" as const, prompt };
+  }
+  if (sourceKind === "text") {
+    if (!text) throw new ActionError({ code: "BAD_REQUEST", message: "Text required." });
+    return { kind: "text" as const, content: text };
+  }
+  if (!file || !mimeType) {
+    throw new ActionError({ code: "BAD_REQUEST", message: "File required." });
+  }
+  if (file.size > MAX_FILE_BYTES) {
+    throw new ActionError({ code: "BAD_REQUEST", message: "File exceeds 10 MB limit." });
+  }
+  if (mimeType === "text/plain" || mimeType === "text/markdown") {
+    return { kind: "text" as const, content: await file.text() };
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (mimeType === "application/pdf") return { kind: "pdf" as const, bytes };
+  return { kind: "image" as const, bytes, mimeType };
 }
 
 function resolveAiConfig() {
@@ -208,9 +244,9 @@ export const server = {
         const existingRecord = await store.get("meta", metaKey);
         const existingMeta = (existingRecord?.data as Record<string, unknown>) ?? {};
         const base = meta ?? existingMeta;
-        const existingEvents = Array.isArray(base["aiEvents"])
-          ? (base["aiEvents"] as Parameters<typeof recordAiEvent>[0])
-          : ([] as Parameters<typeof recordAiEvent>[0]);
+        const existingEvents: AiEvent[] = Array.isArray(base["aiEvents"])
+          ? (base["aiEvents"] as AiEvent[])
+          : [];
         const updatedEvents = recordAiEvent(existingEvents, {
           type: "accepted",
           suggestion: {
@@ -245,9 +281,9 @@ export const server = {
         const existingRecord = await store.get("ingredientMeta", metaKey);
         const existingMeta = (existingRecord?.data as Record<string, unknown>) ?? {};
         const base = meta ?? existingMeta;
-        const existingEvents = Array.isArray(base["aiEvents"])
-          ? (base["aiEvents"] as Parameters<typeof recordAiEvent>[0])
-          : ([] as Parameters<typeof recordAiEvent>[0]);
+        const existingEvents: AiEvent[] = Array.isArray(base["aiEvents"])
+          ? (base["aiEvents"] as AiEvent[])
+          : [];
         const updatedEvents = recordAiEvent(existingEvents, {
           type: "accepted",
           suggestion: {
@@ -289,9 +325,9 @@ export const server = {
         const { recordAiEvent, hashSuggestion } = await import("content-ai");
         const existingMetaRecord = await store.get("pairingMeta", id);
         const existingMeta = (existingMetaRecord?.data as Record<string, unknown>) ?? {};
-        const existingEvents = Array.isArray(existingMeta["aiEvents"])
-          ? (existingMeta["aiEvents"] as Parameters<typeof recordAiEvent>[0])
-          : ([] as Parameters<typeof recordAiEvent>[0]);
+        const existingEvents: AiEvent[] = Array.isArray(existingMeta["aiEvents"])
+          ? (existingMeta["aiEvents"] as AiEvent[])
+          : [];
         const updatedEvents = recordAiEvent(existingEvents, {
           type: "accepted",
           field: "description",
@@ -580,42 +616,8 @@ export const server = {
       const config = resolveAiConfig();
       const { mergeRecipe } = await import("content-ai");
       const existingRecipe = JSON.parse(existing) as Record<string, unknown>;
-
-      let result;
-      if (sourceKind === "prompt") {
-        if (!prompt) throw new ActionError({ code: "BAD_REQUEST", message: "Prompt required." });
-        result = await mergeRecipe(
-          { existing: existingRecipe as never, source: { kind: "prompt", prompt } },
-          config,
-        );
-      } else if (sourceKind === "text") {
-        if (!text) throw new ActionError({ code: "BAD_REQUEST", message: "Text required." });
-        result = await mergeRecipe(
-          { existing: existingRecipe as never, source: { kind: "text", content: text } },
-          config,
-        );
-      } else {
-        // file
-        if (!file || !mimeType) {
-          throw new ActionError({ code: "BAD_REQUEST", message: "File required." });
-        }
-        if (file.size > MAX_FILE_BYTES) {
-          throw new ActionError({ code: "BAD_REQUEST", message: "File exceeds 10 MB limit." });
-        }
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        if (mimeType === "text/plain" || mimeType === "text/markdown") {
-          const content = await file.text();
-          result = await mergeRecipe(
-            { existing: existingRecipe as never, source: { kind: "text", content } },
-            config,
-          );
-        } else {
-          const kind = mimeType === "application/pdf" ? "pdf" : "image";
-          const source =
-            kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
-          result = await mergeRecipe({ existing: existingRecipe as never, source }, config);
-        }
-      }
+      const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
+      const result = await mergeRecipe({ existing: existingRecipe as never, source }, config);
       return { ...result, model: config.model };
     },
   }),
@@ -765,40 +767,11 @@ export const server = {
       const config = resolveAiConfig();
       const { mergeIngredient } = await import("content-ai");
       const existingIngredient = JSON.parse(existing) as Record<string, unknown>;
-
-      let result;
-      if (sourceKind === "prompt") {
-        if (!prompt) throw new ActionError({ code: "BAD_REQUEST", message: "Prompt required." });
-        result = await mergeIngredient(
-          { existing: existingIngredient as never, source: { kind: "prompt", prompt } },
-          config,
-        );
-      } else if (sourceKind === "text") {
-        if (!text) throw new ActionError({ code: "BAD_REQUEST", message: "Text required." });
-        result = await mergeIngredient(
-          { existing: existingIngredient as never, source: { kind: "text", content: text } },
-          config,
-        );
-      } else {
-        if (!file || !mimeType) {
-          throw new ActionError({ code: "BAD_REQUEST", message: "File required." });
-        }
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        if (mimeType === "text/plain" || mimeType === "text/markdown") {
-          result = await mergeIngredient(
-            {
-              existing: existingIngredient as never,
-              source: { kind: "text", content: await file.text() },
-            },
-            config,
-          );
-        } else {
-          const kind = mimeType === "application/pdf" ? "pdf" : "image";
-          const source =
-            kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
-          result = await mergeIngredient({ existing: existingIngredient as never, source }, config);
-        }
-      }
+      const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
+      const result = await mergeIngredient(
+        { existing: existingIngredient as never, source },
+        config,
+      );
       return { ...result, model: config.model };
     },
   }),
@@ -830,9 +803,8 @@ export const server = {
       } = await import("content-ai");
       const store = await createStore();
 
-      // Build rejected context from existing meta aiEvents
-      const existingEvents = Array.isArray(existingMeta["aiEvents"])
-        ? (existingMeta["aiEvents"] as never[])
+      const existingEvents: AiEvent[] = Array.isArray(existingMeta["aiEvents"])
+        ? (existingMeta["aiEvents"] as AiEvent[])
         : [];
       const rejectedContext = buildRejectedContext(existingEvents);
 
@@ -891,7 +863,7 @@ export const server = {
         pairings: proposedPairings.map((p) => ({
           slug: p.slug,
           description: p.description,
-          confidence: p.confidence as "high" | "medium" | "low",
+          confidence: p.confidence,
         })),
         detectedLanguage,
         languageMismatch,
@@ -902,7 +874,7 @@ export const server = {
         isAllowedAutoApply("pairing-slug", p.confidence, "editor"),
       );
       let autoLinked = 0;
-      let events = existingEvents as Parameters<typeof recordAiEvent>[0];
+      let events: AiEvent[] = existingEvents;
 
       if (toAutoApply.length > 0) {
         const existingPairings = await store.list("pairings");
@@ -923,7 +895,7 @@ export const server = {
                 summary: `Pairing auto-applied: ${slug} ↔ ${pairing.slug}`,
               },
               model: config.model,
-              confidence: pairing.confidence as "high" | "medium" | "low",
+              confidence: pairing.confidence,
             });
             autoLinked++;
           }
@@ -1035,45 +1007,11 @@ export const server = {
       const config = resolveAiConfig();
       const { mergePairing } = await import("content-ai");
       const existingData = JSON.parse(existing) as Record<string, unknown>;
-
-      let result;
-      if (sourceKind === "prompt") {
-        if (!prompt) throw new ActionError({ code: "BAD_REQUEST", message: "Prompt required." });
-        result = await mergePairing(
-          { existing: { ...existingData, locale } as never, source: { kind: "prompt", prompt } },
-          config,
-        );
-      } else if (sourceKind === "text") {
-        if (!text) throw new ActionError({ code: "BAD_REQUEST", message: "Text required." });
-        result = await mergePairing(
-          {
-            existing: { ...existingData, locale } as never,
-            source: { kind: "text", content: text },
-          },
-          config,
-        );
-      } else {
-        if (!file || !mimeType)
-          throw new ActionError({ code: "BAD_REQUEST", message: "File required." });
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        if (mimeType === "text/plain" || mimeType === "text/markdown") {
-          result = await mergePairing(
-            {
-              existing: { ...existingData, locale } as never,
-              source: { kind: "text", content: await file.text() },
-            },
-            config,
-          );
-        } else {
-          const kind = mimeType === "application/pdf" ? "pdf" : "image";
-          const source =
-            kind === "pdf" ? ({ kind, bytes } as const) : ({ kind, bytes, mimeType } as const);
-          result = await mergePairing(
-            { existing: { ...existingData, locale } as never, source },
-            config,
-          );
-        }
-      }
+      const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
+      const result = await mergePairing(
+        { existing: { ...existingData, locale } as never, source },
+        config,
+      );
       return { ...result, model: config.model };
     },
   }),
@@ -1140,12 +1078,11 @@ export const server = {
       const { proposePairingImprovements, buildRejectedContext } = await import("content-ai");
       const store = await createStore();
 
-      // Fetch pairingMeta to build rejected context
       const pairingMeta = (await store.get("pairingMeta", id))?.data as
         | Record<string, unknown>
         | undefined;
-      const existingEvents = Array.isArray(pairingMeta?.["aiEvents"])
-        ? (pairingMeta["aiEvents"] as never[])
+      const existingEvents: AiEvent[] = Array.isArray(pairingMeta?.["aiEvents"])
+        ? (pairingMeta["aiEvents"] as AiEvent[])
         : [];
       const rejectedContext = buildRejectedContext(existingEvents);
 
@@ -1288,8 +1225,9 @@ export const server = {
       } = await import("content-ai");
       const store = await createStore();
 
-      // Build rejected context from existing meta aiEvents
-      const existingEvents = Array.isArray(meta["aiEvents"]) ? (meta["aiEvents"] as never[]) : [];
+      const existingEvents: AiEvent[] = Array.isArray(meta["aiEvents"])
+        ? (meta["aiEvents"] as AiEvent[])
+        : [];
       const rejectedContext = buildRejectedContext(existingEvents);
 
       // Build inventories
@@ -1382,7 +1320,7 @@ export const server = {
       );
 
       const updatedMeta: Record<string, unknown> = { ...meta };
-      let events = existingEvents as Parameters<typeof recordAiEvent>[0];
+      let events: AiEvent[] = existingEvents;
 
       if (toAutoApply.length > 0) {
         updatedMeta["ingredientLinks"] = [
