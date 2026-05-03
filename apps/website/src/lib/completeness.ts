@@ -145,11 +145,8 @@ export function scoreIngredient(ingredient: AnyRecord): CompletenessResult {
   let filled = 0;
 
   for (const field of INGREDIENT_RECOMMENDED) {
-    const isFilled =
-      field === "images[0]"
-        ? Array.isArray(ingredient["images"]) && (ingredient["images"] as unknown[]).length > 0
-        : has(ingredient, field);
-    if (isFilled) {
+    const key = field === "images[0]" ? "images" : field;
+    if (has(ingredient, key)) {
       filled++;
     } else {
       missing.push(field);
