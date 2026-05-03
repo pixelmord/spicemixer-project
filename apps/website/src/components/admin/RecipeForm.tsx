@@ -56,7 +56,7 @@ import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
 } from "./ImageSearchModal.tsx";
-import { REGION_LABELS, REGIONS, type RegionCode } from "@/lib/regions.ts";
+import { REGION_OPTIONS, type RegionCode } from "@/lib/regions.ts";
 
 type Collection = RecipeCollection;
 
@@ -147,11 +147,6 @@ function emptyMeta(): MetaData {
     translations: {},
   };
 }
-
-const REGION_OPTIONS = REGIONS.map((code) => ({
-  value: code,
-  label: REGION_LABELS[code].en,
-}));
 
 function getFirstImage(image?: string | string[]): string {
   if (!image) return "";
@@ -307,13 +302,6 @@ export default function RecipeForm({
     pattern: string;
     slug: string;
     confidence: "high" | "medium" | "low";
-  }> | null>(null);
-  const [_pendingRelations, _setPendingRelations] = useState<Array<{
-    kind: "goesWellWith" | "usesBase";
-    collection: string;
-    slug: string;
-    name: string;
-    rationale: string;
   }> | null>(null);
   const [aiTagsLoading, setAiTagsLoading] = useState(false);
   const [aiKeywordsLoading, setAiKeywordsLoading] = useState(false);

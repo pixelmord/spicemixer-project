@@ -46,8 +46,12 @@ export const REGION_LABELS: Record<RegionCode, { en: string; de: string }> = {
   "south-atlantic": { en: "South Atlantic", de: "Südatlantik" },
 };
 
-// Placeholder dot positions on a 0–100 abstract canvas (x = longitude-ish, y = latitude-ish).
-// Exact positions will be refined when the SVG worldmap asset is designed.
+export const REGION_OPTIONS = REGIONS.map((code) => ({
+  value: code,
+  label: REGION_LABELS[code].en,
+}));
+
+// Placeholder — will be refined when the SVG worldmap asset is designed.
 export const DOT_POSITIONS: Record<RegionCode, { x: number; y: number }> = {
   "north-africa": { x: 47, y: 32 },
   "east-africa": { x: 54, y: 45 },

@@ -38,7 +38,7 @@ import ImageSearchModal, {
   type SelectedImage,
 } from "./ImageSearchModal.tsx";
 import EntityMultiCombobox from "./EntityMultiCombobox.tsx";
-import { REGION_LABELS, REGIONS, type RegionCode } from "@/lib/regions.ts";
+import { REGION_OPTIONS, type RegionCode } from "@/lib/regions.ts";
 
 interface AiSuggestion {
   field: string;
@@ -95,11 +95,6 @@ const SECTIONS: SectionDef[] = [
   { id: "section-pairings", label: "Pairings" },
 ];
 
-const REGION_OPTIONS = REGIONS.map((code) => ({
-  value: code,
-  label: REGION_LABELS[code].en,
-}));
-
 function emptyIngredient(): IngredientData {
   return { name: "", category: "spice", origin: [], flavorNotes: [] };
 }
@@ -141,7 +136,7 @@ export default function IngredientForm({
   const [pairings, setPairings] = useState<Pairing[]>(initialPairings);
   const [completeness, setCompleteness] = useState(() => scoreIngredient(data as never));
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
-  const [quickCreateName, _setQuickCreateName] = useState("");
+  const [quickCreateName] = useState("");
   const [quickCreateCallback, setQuickCreateCallback] = useState<
     ((slug: string, label: string) => void) | null
   >(null);
