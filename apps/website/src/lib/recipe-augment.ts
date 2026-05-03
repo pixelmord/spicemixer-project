@@ -24,6 +24,7 @@ export type ExternalSource = { url: string; title: string; source?: string };
 export type Meta = {
   kind?: "recipe" | MixtureKind;
   draft?: boolean;
+  region?: string[];
   language?: string;
   locale?: string;
   translationOf?: string;

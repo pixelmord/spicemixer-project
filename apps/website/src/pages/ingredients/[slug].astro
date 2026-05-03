@@ -9,7 +9,9 @@ import {
   getIngredient,
   getPairings,
   getPublishedIngredients,
+  getIngredientMeta,
 } from "../../lib/recipe-augment.ts";
+import { withPagefindFilters } from "../../lib/withPagefindFilters.ts";
 import { renderInlineMarkdown } from "../../lib/inline-markdown.ts";
 import { INGREDIENT_LONGFORM_FIELDS } from "../../lib/ingredient-schema.ts";
 import { hasLiabilityScope } from "../../lib/liability.ts";
@@ -40,6 +42,16 @@ const t = useTranslations((Astro.currentLocale ?? "en") as Lang);
 const locale = Astro.currentLocale ?? "en";
 const prefix = locale === "de" ? "/de" : "";
 
+const ingredientMeta = await getIngredientMeta(locale, slug);
+const pagefindFilters = withPagefindFilters({
+  category: data.category,
+  flavorProfile: data.flavorProfile,
+  region: ingredientMeta?.region,
+});
+const isDraft = ingredientMeta?.draft === true;
+const pagefindBody = isDraft ? undefined : true;
+const pagefindIgnore = isDraft ? true : undefined;
+
 const usedIn = await getUsedIn(slug, prefix);
 
 const pairingEntities = await getPairings(slug);
@@ -63,7 +75,14 @@ const pairingsResolved = pairingEntities.length > 0
 ---
 
 <BaseLayout title={`${data.name} — Spicemixer`} description={data.summary}>
-  <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+  <main
+    class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8"
+    data-pagefind-body={pagefindBody}
+    data-pagefind-ignore={pagefindIgnore}
+  >
+    {Object.entries(pagefindFilters).map(([key, value]) => (
+      <span data-pagefind-filter={`${key}:${value}`} hidden aria-hidden="true" />
+    ))}
     <nav class="mb-8 flex items-center justify-between text-sm">
       <a
         href={`${prefix}/ingredients/`}

@@ -17,6 +17,7 @@ import {
   resolveRefs,
 } from "../../../lib/recipe-augment.ts";
 import { useTranslations } from "../../../i18n/translations.ts";
+import { withPagefindFilters } from "../../../lib/withPagefindFilters.ts";
 
 export async function getStaticPaths() {
   const recipes = await getPublished("recipes");
@@ -45,6 +46,15 @@ const ingredientBase = "/de/ingredients";
 const locale = "de";
 
 const meta = await getMeta("recipes", slug);
+const pagefindFilters = withPagefindFilters({
+  cuisine: data.recipeCuisine ?? undefined,
+  category: data.recipeCategory ?? undefined,
+  region: meta.region,
+});
+const isDraft = meta.draft === true;
+const pagefindBody = isDraft ? undefined : true;
+const pagefindIgnore = isDraft ? true : undefined;
+
 const linkedIngredients = linkIngredients(data.recipeIngredient, meta.ingredientLinks);
 const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
 const lightboxSteps = steps.map((step) => ({
@@ -71,7 +81,14 @@ const demonstratesItems = await Promise.all(
 ---
 
 <BaseLayout title={`${data.name} — Spicemixer`} description={data.description}>
-  <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+  <main
+    class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8"
+    data-pagefind-body={pagefindBody}
+    data-pagefind-ignore={pagefindIgnore}
+  >
+    {Object.entries(pagefindFilters).map(([key, value]) => (
+      <span data-pagefind-filter={`${key}:${value}`} hidden aria-hidden="true" />
+    ))}
     <nav class="mb-8 text-sm">
       <a href="/de/recipes/" class="text-stone-500 transition hover:text-stone-900">
         {t("nav.back")}

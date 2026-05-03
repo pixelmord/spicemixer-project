@@ -12,10 +12,11 @@ const contentLinks = [
   { href: `${prefix}/recipes/`, key: "nav.recipes" as const },
 ];
 
-const lensItems = [
-  { key: "nav.search" as const },
-  { key: "nav.cookMode" as const },
-  { key: "nav.worldmap" as const },
+const searchHref = `${prefix}/search/`;
+const lensItems: Array<{ key: "nav.search" | "nav.cookMode" | "nav.worldmap"; href: string | null }> = [
+  { key: "nav.search", href: searchHref },
+  { key: "nav.cookMode", href: null },
+  { key: "nav.worldmap", href: null },
 ];
 
 const pathname = Astro.url.pathname;
@@ -47,15 +48,28 @@ function isActive(href: string) {
   </div>
   <div class="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1">
     {
-      lensItems.map(({ key }) => (
-        <span
-          aria-disabled="true"
-          class="cursor-default text-xs text-stone-300 select-none"
-          title="Coming soon"
-        >
-          {t(key)}
-        </span>
-      ))
+      lensItems.map(({ key, href }) =>
+        href ? (
+          <a
+            href={href}
+            aria-current={isActive(href) ? "page" : undefined}
+            class:list={[
+              "text-xs transition",
+              isActive(href) ? "font-semibold text-stone-700" : "text-stone-400 hover:text-stone-700",
+            ]}
+          >
+            {t(key)}
+          </a>
+        ) : (
+          <span
+            aria-disabled="true"
+            class="cursor-default text-xs text-stone-300 select-none"
+            title="Coming soon"
+          >
+            {t(key)}
+          </span>
+        )
+      )
     }
   </div>
 </nav>
@@ -141,14 +155,27 @@ function isActive(href: string) {
         </p>
         <div class="flex flex-col gap-2">
           {
-            lensItems.map(({ key }) => (
-              <span
-                aria-disabled="true"
-                class="cursor-default text-sm text-stone-300 select-none"
-              >
-                {t(key)}
-              </span>
-            ))
+            lensItems.map(({ key, href }) =>
+              href ? (
+                <a
+                  href={href}
+                  aria-current={isActive(href) ? "page" : undefined}
+                  class:list={[
+                    "text-sm transition",
+                    isActive(href) ? "font-semibold text-stone-900" : "text-stone-500 hover:text-stone-900",
+                  ]}
+                >
+                  {t(key)}
+                </a>
+              ) : (
+                <span
+                  aria-disabled="true"
+                  class="cursor-default text-sm text-stone-300 select-none"
+                >
+                  {t(key)}
+                </span>
+              )
+            )
           }
         </div>
       </div>

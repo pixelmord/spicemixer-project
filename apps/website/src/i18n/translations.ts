@@ -81,6 +81,9 @@ const ui = {
     "page.pairings.recentlyAdded": "Recently Added",
     "filter.region": "Region",
     "filter.flavorProfile": "Flavor Profile",
+    "page.search.title": "Spicemixer — Search",
+    "page.search.tagline": "Find anything.",
+    "page.search.description": "Search across all spices, blends, pairings, and recipes.",
   },
   de: {
     "page.home.title": "Spicemixer — Gewürze & Saucen",
@@ -162,6 +165,9 @@ const ui = {
     "page.pairings.recentlyAdded": "Kürzlich hinzugefügt",
     "filter.region": "Region",
     "filter.flavorProfile": "Aromaprofil",
+    "page.search.title": "Spicemixer — Suche",
+    "page.search.tagline": "Alles finden.",
+    "page.search.description": "Suche nach Gewürzen, Mischungen, Kombinationen und Rezepten.",
   },
 } as const;
 
