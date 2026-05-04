@@ -10,6 +10,7 @@
     "sandcastle": "node --experimental-strip-types .sandcastle/main.ts"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "catalog:",
     "vite-plus": "catalog:"
   },
   "engines": {
