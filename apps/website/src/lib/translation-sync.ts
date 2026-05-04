@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import type { ContentStore } from "./content-store.ts";
-import { INGREDIENT_META } from "./meta-sidecar.ts";
-import type { MetaSidecar, MetaRef, SyncCollection } from "./meta-sidecar.ts";
+import {
+  INGREDIENT_META,
+  type MetaSidecar,
+  type MetaRef,
+  type SyncCollection,
+} from "./meta-sidecar.ts";
 
 function normalizeValue(value: unknown): unknown {
   if (value === null || value === undefined) return value;

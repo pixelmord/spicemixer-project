@@ -342,7 +342,8 @@ export const server = {
       });
       if (aiMergeModel) {
         const { recordAiEvent, hashSuggestion } = await import("content-ai");
-        const existingMetaRecord = await sidecar.read({ collection: "pairings", slug: id });
+        const pairingRef = { collection: "pairings" as const, slug: id };
+        const existingMetaRecord = await sidecar.read(pairingRef);
         const existingMeta = (existingMetaRecord?.data as Record<string, unknown>) ?? {};
         const existingEvents: AiEvent[] = Array.isArray(existingMeta["aiEvents"])
           ? (existingMeta["aiEvents"] as AiEvent[])
@@ -356,10 +357,7 @@ export const server = {
           },
           model: aiMergeModel,
         });
-        await sidecar.write(
-          { collection: "pairings", slug: id },
-          { ...existingMeta, aiEvents: updatedEvents },
-        );
+        await sidecar.write(pairingRef, { ...existingMeta, aiEvents: updatedEvents });
       }
       return { ok: true, id: result.id };
     },
