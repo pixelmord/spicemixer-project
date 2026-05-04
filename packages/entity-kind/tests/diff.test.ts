@@ -1,5 +1,12 @@
 import { describe, expect, test } from "vite-plus/test";
-import { getConfig, diffIngredients, diffRecipes, diffPairings, hasChanges } from "../src/index.ts";
+import {
+  getConfig,
+  diffIngredients,
+  diffRecipes,
+  diffPairings,
+  diffWords,
+  hasChanges,
+} from "../src/index.ts";
 import type { EntityKind } from "../src/index.ts";
 
 describe("scalar changes — table-driven across all three kinds", () => {
@@ -189,5 +196,91 @@ describe("hasChanges", () => {
   test("returns true when any diff has changed/added/removed", () => {
     const diffs = diffIngredients({ name: "A" }, { name: "B" });
     expect(hasChanges(diffs)).toBe(true);
+  });
+});
+
+describe("diffWords", () => {
+  test("identical strings → all unchanged", () => {
+    const tokens = diffWords("hello world", "hello world");
+    expect(tokens.every((t) => t.kind === "unchanged")).toBe(true);
+    expect(tokens.map((t) => t.text).join("")).toBe("hello world");
+  });
+
+  test("added word at end", () => {
+    const tokens = diffWords("hello", "hello world");
+    const added = tokens.filter((t) => t.kind === "added");
+    expect(added.some((t) => t.text === "world")).toBe(true);
+    expect(tokens.filter((t) => t.kind === "removed")).toHaveLength(0);
+  });
+
+  test("removed word", () => {
+    const tokens = diffWords("hello world", "hello");
+    const removed = tokens.filter((t) => t.kind === "removed");
+    expect(removed.some((t) => t.text === "world")).toBe(true);
+  });
+
+  test("changed word", () => {
+    const tokens = diffWords("hello world", "hello earth");
+    expect(tokens.some((t) => t.kind === "added" && t.text === "earth")).toBe(true);
+    expect(tokens.some((t) => t.kind === "removed" && t.text === "world")).toBe(true);
+  });
+
+  test("empty before → all added", () => {
+    const tokens = diffWords("", "new text");
+    expect(tokens.filter((t) => t.kind === "removed")).toHaveLength(0);
+    const words = tokens.filter((t) => t.kind === "added").map((t) => t.text);
+    expect(words).toContain("new");
+    expect(words).toContain("text");
+  });
+
+  test("empty after → all removed", () => {
+    const tokens = diffWords("old text", "");
+    expect(tokens.filter((t) => t.kind === "added")).toHaveLength(0);
+    expect(tokens.some((t) => t.kind === "removed" && t.text === "old")).toBe(true);
+  });
+});
+
+describe("diffRecipes — recipeInstructions with HowToStep objects", () => {
+  const step = (text: string) => ({ "@type": "HowToStep", text });
+
+  test("identical HowToStep instructions → all unchanged", () => {
+    const instructions = [step("Boil water"), step("Add noodles")];
+    const diffs = diffRecipes(
+      { recipeInstructions: instructions },
+      { recipeInstructions: instructions },
+    );
+    const entry = diffs.find((d) => d.field === "recipeInstructions")!;
+    expect(entry.kind).toBe("unchanged");
+    expect(entry.itemDiffs?.every((id) => id.kind === "unchanged")).toBe(true);
+  });
+
+  test("added HowToStep is detected", () => {
+    const diffs = diffRecipes(
+      { recipeInstructions: [step("Boil water")] },
+      { recipeInstructions: [step("Boil water"), step("Add noodles")] },
+    );
+    const entry = diffs.find((d) => d.field === "recipeInstructions")!;
+    expect(entry.kind).toBe("changed");
+    const added = (entry.itemDiffs ?? []).filter((id) => id.kind === "added");
+    expect(added.some((id) => id.value === "Add noodles")).toBe(true);
+  });
+
+  test("removed HowToStep is detected", () => {
+    const diffs = diffRecipes(
+      { recipeInstructions: [step("Boil water"), step("Add noodles")] },
+      { recipeInstructions: [step("Boil water")] },
+    );
+    const entry = diffs.find((d) => d.field === "recipeInstructions")!;
+    const removed = (entry.itemDiffs ?? []).filter((id) => id.kind === "removed");
+    expect(removed.some((id) => id.value === "Add noodles")).toBe(true);
+  });
+
+  test("plain string instructions still work alongside object ones", () => {
+    const diffs = diffRecipes(
+      { recipeInstructions: ["Step one"] },
+      { recipeInstructions: ["Step one", "Step two"] },
+    );
+    const entry = diffs.find((d) => d.field === "recipeInstructions")!;
+    expect(entry.kind).toBe("changed");
   });
 });

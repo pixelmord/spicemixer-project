@@ -1,8 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
 import {
   scoreIngredient,
+  scoreRecipe,
+  scorePairing,
+  resolvePairingDescription,
   INGREDIENT_REQUIRED,
   INGREDIENT_RECOMMENDED,
+  RECIPE_REQUIRED,
+  RECIPE_RECOMMENDED,
 } from "../../src/lib/completeness.ts";
 
 const FULL_REQUIRED = { name: "Cardamom", category: "spice", summary: "A great spice" };
@@ -133,5 +138,187 @@ describe("scoreIngredient — full coverage", () => {
     expect(result.score).toBe(100);
     expect(result.color).toBe("green");
     expect(result.missing).toHaveLength(0);
+  });
+});
+
+// ── RECIPE_REQUIRED / RECIPE_RECOMMENDED ──────────────────────────────────────
+
+describe("RECIPE_REQUIRED", () => {
+  test("contains name, recipeIngredient, recipeInstructions", () => {
+    expect(RECIPE_REQUIRED).toContain("name");
+    expect(RECIPE_REQUIRED).toContain("recipeIngredient");
+    expect(RECIPE_REQUIRED).toContain("recipeInstructions");
+    expect(RECIPE_REQUIRED).toHaveLength(3);
+  });
+});
+
+describe("RECIPE_RECOMMENDED", () => {
+  test("contains all time, metadata, and taxonomy fields", () => {
+    for (const f of [
+      "description",
+      "image",
+      "author",
+      "recipeYield",
+      "prepTime",
+      "cookTime",
+      "totalTime",
+      "recipeCategory",
+      "recipeCuisine",
+      "keywords",
+      "datePublished",
+    ] as const) {
+      expect(RECIPE_RECOMMENDED).toContain(f);
+    }
+  });
+});
+
+const BASE_RECIPE = {
+  name: "Miso Ramen",
+  recipeIngredient: ["miso paste", "noodles"],
+  recipeInstructions: ["Boil and serve"],
+};
+
+const FULL_RECIPE_RECOMMENDED = {
+  description: "Rich noodle soup",
+  image: "https://example.com/img.jpg",
+  author: { name: "Chef" },
+  recipeYield: "2",
+  prepTime: "PT10M",
+  cookTime: "PT30M",
+  totalTime: "PT40M",
+  recipeCategory: "Main",
+  recipeCuisine: "Japanese",
+  keywords: ["ramen"],
+  datePublished: "2024-01-01",
+};
+
+describe("scoreRecipe — required fields", () => {
+  test.each([
+    [{ recipeIngredient: ["salt"], recipeInstructions: ["Cook"] }, "name"],
+    [{ name: "Ramen", recipeInstructions: ["Cook"] }, "recipeIngredient"],
+    [{ name: "Ramen", recipeIngredient: [] }, "recipeIngredient"],
+    [{ name: "Ramen", recipeIngredient: ["salt"] }, "recipeInstructions"],
+  ])("missing required → score 0, red", (recipe, missingField) => {
+    const result = scoreRecipe(recipe, {});
+    expect(result.score).toBe(0);
+    expect(result.color).toBe("red");
+    expect(result.missing).toContain(missingField);
+  });
+});
+
+describe("scoreRecipe — recommended and meta", () => {
+  test("all required only → score 0, all recommended missing", () => {
+    const result = scoreRecipe(BASE_RECIPE, {});
+    expect(result.score).toBe(0);
+    expect(result.missing).toContain("meta.ingredientLinks");
+    for (const f of RECIPE_RECOMMENDED) {
+      expect(result.missing).toContain(f);
+    }
+  });
+
+  test("all required + all recommended + meta links → score 100, green", () => {
+    const result = scoreRecipe(
+      { ...BASE_RECIPE, ...FULL_RECIPE_RECOMMENDED },
+      { ingredientLinks: [{ pattern: "miso", slug: "miso-paste" }] },
+    );
+    expect(result.score).toBe(100);
+    expect(result.color).toBe("green");
+    expect(result.missing).toHaveLength(0);
+  });
+
+  test("meta ingredientLinks count toward score", () => {
+    const without = scoreRecipe(BASE_RECIPE, {});
+    const with_ = scoreRecipe(BASE_RECIPE, { ingredientLinks: [{ pattern: "x", slug: "x" }] });
+    expect(with_.score).toBeGreaterThan(without.score);
+    expect(without.missing).toContain("meta.ingredientLinks");
+    expect(with_.missing).not.toContain("meta.ingredientLinks");
+  });
+
+  test("empty ingredientLinks treated as missing", () => {
+    const result = scoreRecipe(BASE_RECIPE, { ingredientLinks: [] });
+    expect(result.missing).toContain("meta.ingredientLinks");
+  });
+});
+
+// ── scorePairing ───────────────────────────────────────────────────────────────
+
+describe("scorePairing — no descriptions", () => {
+  test("empty object → score 0, red", () => {
+    const result = scorePairing({}, "en");
+    expect(result.score).toBe(0);
+    expect(result.color).toBe("red");
+    expect(result.missing).toContain("descriptions");
+  });
+
+  test("descriptions:{} → score 0, red", () => {
+    const result = scorePairing({ descriptions: {} }, "en");
+    expect(result.score).toBe(0);
+    expect(result.color).toBe("red");
+  });
+});
+
+describe("scorePairing — locale and scoring", () => {
+  test("en only → score 50, amber", () => {
+    const result = scorePairing({ descriptions: { en: "Good pair" } }, "en");
+    expect(result.score).toBe(50);
+    expect(result.color).toBe("amber");
+  });
+
+  test("en + de → score 100, green, no missing", () => {
+    const result = scorePairing({ descriptions: { en: "Good", de: "Gut" } }, "en");
+    expect(result.score).toBe(100);
+    expect(result.color).toBe("green");
+    expect(result.missing).toHaveLength(0);
+  });
+
+  test("locale missing is prepended to missing list", () => {
+    const result = scorePairing({ descriptions: { en: "English" } }, "de");
+    expect(result.missing[0]).toBe("description.de");
+  });
+
+  test("legacy description field treated as en", () => {
+    const result = scorePairing({ description: "Old format" }, "en");
+    expect(result.score).toBeGreaterThan(0);
+    expect(result.missing).not.toContain("descriptions");
+  });
+});
+
+// ── resolvePairingDescription ─────────────────────────────────────────────────
+
+describe("resolvePairingDescription", () => {
+  test("returns exact locale match, isFallback false", () => {
+    const result = resolvePairingDescription(
+      { descriptions: { en: "English", de: "Deutsch" } },
+      "de",
+    );
+    expect(result.description).toBe("Deutsch");
+    expect(result.locale).toBe("de");
+    expect(result.isFallback).toBe(false);
+  });
+
+  test("falls back to en when requested locale missing", () => {
+    const result = resolvePairingDescription({ descriptions: { en: "English" } }, "fr");
+    expect(result.description).toBe("English");
+    expect(result.locale).toBe("en");
+    expect(result.isFallback).toBe(true);
+  });
+
+  test("falls back to first available locale when en missing", () => {
+    const result = resolvePairingDescription({ descriptions: { de: "Deutsch" } }, "fr");
+    expect(result.description).toBe("Deutsch");
+    expect(result.locale).toBe("de");
+    expect(result.isFallback).toBe(true);
+  });
+
+  test("legacy description field is returned as fallback", () => {
+    const result = resolvePairingDescription({ description: "Legacy" }, "en");
+    expect(result.description).toBe("Legacy");
+    expect(result.isFallback).toBe(true);
+  });
+
+  test("no description at all returns empty string, isFallback false", () => {
+    const result = resolvePairingDescription({}, "en");
+    expect(result.description).toBe("");
+    expect(result.isFallback).toBe(false);
   });
 });
