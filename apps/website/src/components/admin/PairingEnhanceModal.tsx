@@ -96,9 +96,13 @@ export default function PairingEnhanceModal({
     setSaving(true);
     const descriptions = (proposed["descriptions"] as Record<string, string>) ?? {};
     const newDesc = descriptions[locale] ?? "";
+    const rawIngredients = existingPairing["ingredients"] as [string, string];
     const { error } = await actions.savePairing({
       id: pairingId,
-      ingredients: existingPairing["ingredients"] as [string, string],
+      ingredients: [
+        { collection: "ingredients" as const, slug: rawIngredients[0] },
+        { collection: "ingredients" as const, slug: rawIngredients[1] },
+      ],
       description: newDesc,
       locale,
       ...(mergeModel ? { aiMergeModel: mergeModel } : {}),

@@ -85,7 +85,10 @@ export default function PairingEditor({
     try {
       await actions.savePairing({
         id: pairing.id,
-        ingredients: pairing.ingredients,
+        ingredients: [
+          { collection: "ingredients" as const, slug: pairing.ingredients[0] },
+          { collection: "ingredients" as const, slug: pairing.ingredients[1] },
+        ],
         description: desc,
         locale,
       });
@@ -125,7 +128,10 @@ export default function PairingEditor({
     try {
       await actions.savePairing({
         id,
-        ingredients: [currentSlug, newSlug] as [string, string],
+        ingredients: [
+          { collection: "ingredients" as const, slug: currentSlug },
+          { collection: "ingredients" as const, slug: newSlug },
+        ],
         description: newDescription,
         locale,
       });
@@ -158,7 +164,10 @@ export default function PairingEditor({
     try {
       await actions.savePairing({
         id,
-        ingredients: [currentSlug, p.slug] as [string, string],
+        ingredients: [
+          { collection: "ingredients" as const, slug: currentSlug },
+          { collection: "ingredients" as const, slug: p.slug },
+        ],
         description: p.description,
         locale,
       });

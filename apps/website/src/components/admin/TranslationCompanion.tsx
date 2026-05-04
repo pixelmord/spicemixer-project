@@ -87,7 +87,7 @@ export default function TranslationCompanion({ slug, currentLocale, children }: 
     setLoading(true);
     void actions
       .getItem({ collection: "ingredients", id: `${otherLocale}/${slug}` })
-      .then(({ data }) => {
+      .then(({ data }: { data?: { item?: { data: unknown } | null } | null }) => {
         setOtherData((data?.item?.data as Record<string, unknown>) ?? {});
       })
       .finally(() => setLoading(false));
