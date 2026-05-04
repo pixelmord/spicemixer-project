@@ -11,8 +11,6 @@ import {
 } from "entity-kind";
 import RecipePreview from "./RecipePreview.tsx";
 
-// ── Shared rendering helpers ──────────────────────────────────────────────────
-
 function InlineWordDiff({ before, after }: { before: string; after: string }) {
   const tokens = diffWords(before, after);
   return (
@@ -155,8 +153,6 @@ function FieldsTable({ diffs }: { diffs: FieldDiff[] }) {
     </div>
   );
 }
-
-// ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {
   kind: EntityKind;

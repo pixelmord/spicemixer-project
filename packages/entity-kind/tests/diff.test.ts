@@ -2,8 +2,6 @@ import { describe, expect, test } from "vite-plus/test";
 import { getConfig, diffIngredients, diffRecipes, diffPairings, hasChanges } from "../src/index.ts";
 import type { EntityKind } from "../src/index.ts";
 
-// ── Scalar change ─────────────────────────────────────────────────────────────
-
 describe("scalar changes — table-driven across all three kinds", () => {
   const cases: Array<{
     kind: EntityKind;
@@ -85,8 +83,6 @@ describe("scalar changes — table-driven across all three kinds", () => {
   });
 });
 
-// ── Array reorder (treated as unchanged) ─────────────────────────────────────
-
 describe("array reorder — unchanged when set is identical", () => {
   test("ingredient: flavorNotes reorder yields unchanged", () => {
     const a = { flavorNotes: ["earthy", "warm", "spicy"] };
@@ -108,8 +104,6 @@ describe("array reorder — unchanged when set is identical", () => {
     expect(itemDiffs.filter((id) => id.kind === "added")).toHaveLength(0);
   });
 });
-
-// ── Added / removed array keys ────────────────────────────────────────────────
 
 describe("added / removed array items", () => {
   test("ingredient: adding an origin entry is detected", () => {
@@ -142,8 +136,6 @@ describe("added / removed array items", () => {
   });
 });
 
-// ── Deep nested object (pairing descriptions) ─────────────────────────────────
-
 describe("deep nested — pairing descriptions locale handling", () => {
   test("falls back to 'en' when requested locale is missing", () => {
     const a = { descriptions: { en: "Warm and earthy" } };
@@ -171,8 +163,6 @@ describe("deep nested — pairing descriptions locale handling", () => {
   });
 });
 
-// ── Registry-level diff integration (via getConfig) ───────────────────────────
-
 describe("registry-level: getConfig(kind).diff returns FieldDiff[]", () => {
   const KINDS: EntityKind[] = ["ingredient", "recipe", "pairing"];
 
@@ -189,8 +179,6 @@ describe("registry-level: getConfig(kind).diff returns FieldDiff[]", () => {
     expect(result.every((d) => d.kind === "unchanged")).toBe(true);
   });
 });
-
-// ── hasChanges utility ────────────────────────────────────────────────────────
 
 describe("hasChanges", () => {
   test("returns false when all diffs are unchanged", () => {

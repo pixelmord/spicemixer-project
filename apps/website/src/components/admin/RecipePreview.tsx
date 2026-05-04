@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge.tsx";
 import { cn } from "@/lib/utils.ts";
-import type { FieldDiff, ItemDiff } from "@/lib/recipe-diff.ts";
+import type { FieldDiff, ItemDiff } from "entity-kind";
 
 interface Step {
   text: string;

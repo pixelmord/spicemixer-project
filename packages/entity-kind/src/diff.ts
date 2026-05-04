@@ -91,8 +91,6 @@ function diffStringArrayField(
   };
 }
 
-// ── Ingredient diff ───────────────────────────────────────────────────────────
-
 const INGREDIENT_SCALAR_FIELDS: Array<{ field: string; label: string }> = [
   { field: "name", label: "Name" },
   { field: "summary", label: "Summary" },
@@ -118,8 +116,6 @@ export function diffIngredients(
   diffs.push(diffStringArrayField("flavorNotes", "Flavor notes", existing, proposed));
   return diffs;
 }
-
-// ── Recipe diff ───────────────────────────────────────────────────────────────
 
 const RECIPE_SCALAR_FIELDS: Array<{ field: string; label: string }> = [
   { field: "name", label: "Name" },
@@ -193,8 +189,6 @@ export function diffRecipes(
 export function hasChanges(diffs: FieldDiff[]): boolean {
   return diffs.some((d) => d.kind !== "unchanged");
 }
-
-// ── Pairing diff ──────────────────────────────────────────────────────────────
 
 export function diffPairings(
   existing: Record<string, unknown>,
