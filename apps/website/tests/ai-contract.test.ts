@@ -70,7 +70,7 @@ function hasWrite(region: string): boolean {
 }
 
 describe("ai-contract: AI action handlers with writes also call recordAiEvent", () => {
-  test("aiRefreshSuggestions handler contains a write and recordAiEvent", async () => {
+  test("aiRefreshSuggestions handler contains a write and eventLog.append", async () => {
     const content = await readFile(ACTIONS_FILE, "utf-8");
     const region = extractRegion(
       content,
@@ -79,10 +79,10 @@ describe("ai-contract: AI action handlers with writes also call recordAiEvent", 
     );
     expect(region, "aiRefreshSuggestions region not found").not.toBe("");
     expect(hasWrite(region), "handler must contain store.put( or sidecar.write(").toBe(true);
-    expect(region).toContain("recordAiEvent(");
+    expect(region).toContain("eventLog.append(");
   });
 
-  test("aiRefreshIngredientSuggestions handler contains a write and recordAiEvent", async () => {
+  test("aiRefreshIngredientSuggestions handler contains a write and eventLog.append", async () => {
     const content = await readFile(ACTIONS_FILE, "utf-8");
     const region = extractRegion(
       content,
@@ -91,7 +91,7 @@ describe("ai-contract: AI action handlers with writes also call recordAiEvent", 
     );
     expect(region, "aiRefreshIngredientSuggestions region not found").not.toBe("");
     expect(hasWrite(region), "handler must contain store.put( or sidecar.write(").toBe(true);
-    expect(region).toContain("recordAiEvent(");
+    expect(region).toContain("eventLog.append(");
   });
 
   test("saveRecipe handler calls recordAiEvent when aiMergeModel provided", async () => {

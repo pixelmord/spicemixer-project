@@ -856,17 +856,16 @@ export const server = {
         detectLanguage,
         isAllowedAutoApply,
         assertAutoApplyAllowed,
-        recordAiEvent,
         hashSuggestion,
-        buildRejectedContext,
+        createAiEventLog,
       } = await import("content-ai");
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
+      const ingredientRef = { collection: "ingredients" as const, locale, slug };
+      const eventLog = createAiEventLog(sidecar);
 
-      const existingEvents: AiEvent[] = Array.isArray(existingMeta["aiEvents"])
-        ? (existingMeta["aiEvents"] as AiEvent[])
-        : [];
-      const rejectedContext = buildRejectedContext(existingEvents);
+      const existingEvents = await eventLog.read(ingredientRef);
+      const rejectedContext = eventLog.buildRejectedContext(existingEvents);
 
       // Build inventory (exclude self)
       const items = await store.list("ingredients");
@@ -934,7 +933,6 @@ export const server = {
         isAllowedAutoApply("pairing-slug", p.confidence, "editor"),
       );
       let autoLinked = 0;
-      let events: AiEvent[] = existingEvents;
 
       if (toAutoApply.length > 0) {
         const existingPairings = await store.list("pairings");
@@ -953,7 +951,7 @@ export const server = {
               ingredients: sortedRefs,
               description: pairing.description,
             });
-            events = recordAiEvent(events, {
+            await eventLog.append(ingredientRef, {
               type: "auto-applied",
               field: "pairings",
               suggestion: {
@@ -966,17 +964,6 @@ export const server = {
             autoLinked++;
           }
         }
-      }
-
-      if (events !== existingEvents) {
-        const ingredientRef = { collection: "ingredients" as const, locale, slug };
-        const currentMeta = (await sidecar.read(ingredientRef))?.data as
-          | Record<string, unknown>
-          | undefined;
-        await sidecar.write(ingredientRef, {
-          ...(currentMeta ?? existingMeta),
-          aiEvents: events,
-        });
       }
 
       return { aiSuggestions, autoLinked, skipped: false };
@@ -1298,46 +1285,33 @@ export const server = {
         detectLanguage,
         isAllowedAutoApply,
         assertAutoApplyAllowed,
-        recordAiEvent,
         hashSuggestion,
         hashContent,
-        buildRejectedContext,
+        createAiEventLog,
       } = await import("content-ai");
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
+      const recipeRef = { collection, locale, slug };
+      const eventLog = createAiEventLog(sidecar);
 
-      const existingEvents: AiEvent[] = Array.isArray(meta["aiEvents"])
-        ? (meta["aiEvents"] as AiEvent[])
-        : [];
-      const rejectedContext = buildRejectedContext(existingEvents);
-
-      // Cache key for AI inputs. Includes rejected events so a new rejection
-      // re-prompts the model. Order missingFields so order changes don't bust.
-      const rejectedHashes = existingEvents
-        .filter((e) => e.type === "rejected")
-        .map((e) => `${e.field ?? ""}:${e.suggestion.hash}`)
-        .sort();
-      const fingerprint = hashContent({
-        recipe,
-        missingFields: [...missingFields].sort(),
-        locale,
-        model: config.model,
-        rejectedHashes,
-      });
-
-      const cached = meta["aiSuggestions"] as
-        | { fingerprint?: string; data?: Record<string, unknown> }
-        | undefined;
-      if (!force && cached?.fingerprint === fingerprint && cached.data) {
+      const skipResult = await eventLog.shouldSkip(
+        recipeRef,
+        { recipe, missingFields, locale, model: config.model },
+        force,
+      );
+      if (skipResult.skip) {
         return {
-          aiSuggestions: cached.data,
+          aiSuggestions: skipResult.cachedSuggestion,
           autoLinked: 0,
           autoAppliedLinks: [],
-          detectedLanguage: cached.data["detectedLanguage"] as string | undefined,
+          detectedLanguage: skipResult.cachedSuggestion["detectedLanguage"] as string | undefined,
           skipped: false,
           cached: true,
         };
       }
+
+      const { fingerprint, existingEvents } = skipResult;
+      const rejectedContext = eventLog.buildRejectedContext(existingEvents);
 
       // Build inventories
       const ingredientItems = await store.list("ingredients");
@@ -1429,7 +1403,6 @@ export const server = {
       );
 
       const updatedMeta: Record<string, unknown> = { ...meta };
-      let events: AiEvent[] = existingEvents;
 
       if (toAutoApply.length > 0) {
         updatedMeta["ingredientLinks"] = [
@@ -1438,7 +1411,7 @@ export const server = {
         ];
         for (const link of toAutoApply) {
           assertAutoApplyAllowed("ingredient-link", link.confidence, "editor");
-          events = recordAiEvent(events, {
+          await eventLog.append(recipeRef, {
             type: "auto-applied",
             field: "ingredientLinks",
             suggestion: {
@@ -1456,7 +1429,7 @@ export const server = {
         assertAutoApplyAllowed("language-detection", "high", "editor");
         updatedMeta["language"] = detectedLanguage;
         updatedMeta["locale"] = detectedLanguage;
-        events = recordAiEvent(events, {
+        await eventLog.append(recipeRef, {
           type: "auto-applied",
           field: "language",
           suggestion: {
@@ -1468,22 +1441,26 @@ export const server = {
         });
       }
 
-      updatedMeta["aiEvents"] = events;
-      updatedMeta["aiSuggestions"] = {
-        fingerprint,
-        at: new Date().toISOString(),
-        model: config.model,
-        data: aiSuggestions,
+      // Re-read: append calls above already updated aiEvents in the sidecar.
+      const freshItem = await sidecar.read(recipeRef);
+      const freshMeta = (freshItem?.data as Record<string, unknown> | undefined) ?? meta;
+      const newMeta: Record<string, unknown> = {
+        ...freshMeta,
+        ...updatedMeta,
+        aiSuggestions: {
+          fingerprint,
+          at: new Date().toISOString(),
+          model: config.model,
+          data: aiSuggestions,
+        },
       };
 
-      // Skip the write entirely if nothing material changed. Compare without
-      // the cache's `at` timestamp so a fresh-but-identical run is a no-op.
       const stripTimestamp = (m: Record<string, unknown>) => {
         const cache = m["aiSuggestions"] as { at?: string } | undefined;
         return cache ? { ...m, aiSuggestions: { ...cache, at: "" } } : m;
       };
-      if (hashContent(stripTimestamp(updatedMeta)) !== hashContent(stripTimestamp(meta))) {
-        await sidecar.write({ collection, locale, slug }, updatedMeta);
+      if (hashContent(stripTimestamp(newMeta)) !== hashContent(stripTimestamp(meta))) {
+        await sidecar.write(recipeRef, newMeta);
       }
 
       return {
