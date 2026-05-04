@@ -3,50 +3,46 @@
 
 import { asStr, normalizeString } from "../util/strings.ts";
 
-export type HowToStep = {
+type HowToStep = {
   "@type": "HowToStep";
   text: string;
   name?: string;
   url?: string;
 };
 
-export function extractStringStep(item: string): HowToStep[] {
-  const text = normalizeString(item);
-  return text ? [{ "@type": "HowToStep", text }] : [];
-}
-
-export function extractHowToStep(o: Record<string, unknown>): HowToStep[] {
-  const text = normalizeString(asStr(o["text"]) || asStr(o["name"]));
-  if (!text) return [];
-  const rawName = o["name"] ? normalizeString(asStr(o["name"])) : undefined;
-  // Only include name if it differs from the opening of text
-  const name = rawName && rawName !== text && !text.startsWith(rawName) ? rawName : undefined;
-  const url = typeof o["url"] === "string" ? o["url"] : undefined;
-  const step: HowToStep = { "@type": "HowToStep", text };
-  if (name) step.name = name;
-  if (url) step.url = url;
-  return [step];
-}
-
-export function extractHowToSection(o: Record<string, unknown>): HowToStep[] {
-  const children = o["itemListElement"];
-  if (!Array.isArray(children)) return [];
-  return children.flatMap((child) => extractSteps(child));
-}
-
-export function extractFallbackObject(o: Record<string, unknown>): HowToStep[] {
-  const text = normalizeString(asStr(o["text"]) || asStr(o["name"]));
-  return text ? [{ "@type": "HowToStep", text }] : [];
-}
-
 function extractSteps(item: unknown): HowToStep[] {
-  if (typeof item === "string") return extractStringStep(item);
+  if (typeof item === "string") {
+    const text = normalizeString(item);
+    return text ? [{ "@type": "HowToStep", text }] : [];
+  }
+
   if (!item || typeof item !== "object") return [];
   const o = item as Record<string, unknown>;
   const type = o["@type"];
-  if (type === "HowToStep" || type === "Step") return extractHowToStep(o);
-  if (type === "HowToSection") return extractHowToSection(o);
-  return extractFallbackObject(o);
+
+  if (type === "HowToStep" || type === "Step") {
+    const text = normalizeString(asStr(o["text"]) || asStr(o["name"]));
+    if (!text) return [];
+    const rawName = o["name"] ? normalizeString(asStr(o["name"])) : undefined;
+    // Only include name if it differs from the opening of text
+    const name = rawName && rawName !== text && !text.startsWith(rawName) ? rawName : undefined;
+    const url = typeof o["url"] === "string" ? o["url"] : undefined;
+    const step: HowToStep = { "@type": "HowToStep", text };
+    if (name) step.name = name;
+    if (url) step.url = url;
+    return [step];
+  }
+
+  if (type === "HowToSection") {
+    const children = o["itemListElement"];
+    if (Array.isArray(children)) {
+      return children.flatMap((child) => extractSteps(child));
+    }
+    return [];
+  }
+
+  const text = normalizeString(asStr(o["text"]) || asStr(o["name"]));
+  return text ? [{ "@type": "HowToStep", text }] : [];
 }
 
 export function normalizeInstructions(raw: unknown): HowToStep[] {
