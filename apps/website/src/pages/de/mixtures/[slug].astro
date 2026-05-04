@@ -40,6 +40,7 @@ export async function getStaticPaths() {
       mix: null as CollectionEntry<"mixtures"> | null,
       isFallback: false,
       canonicalLocale: "en",
+      isDraft: false,
     },
   }));
 
@@ -55,6 +56,7 @@ export async function getStaticPaths() {
           mix: resolved.entity as CollectionEntry<"mixtures">,
           isFallback: resolved.isFallback,
           canonicalLocale: resolved.canonicalLocale,
+          isDraft: resolved.isDraft,
         },
       };
     }),
@@ -70,9 +72,10 @@ interface Props {
   kindMixtures: CollectionEntry<"mixtures">[] | null;
   isFallback: boolean;
   canonicalLocale: string;
+  isDraft: boolean;
 }
 
-const { mix, kind, kindMixtures, isFallback, canonicalLocale } = Astro.props;
+const { mix, kind, kindMixtures, isFallback, canonicalLocale, isDraft } = Astro.props;
 const t = useTranslations("de");
 const locale = "de";
 const prefix = "/de";
@@ -132,7 +135,6 @@ const pagefindFilters = mix ? withPagefindFilters({
   cuisine: mix.data.recipeCuisine ?? undefined,
   category: mix.data.recipeCategory ?? undefined,
 }) : {};
-const isDraft = meta?.draft === true;
 const pagefindBody = isDraft ? undefined : (mix ? true : undefined);
 const pagefindIgnore = isDraft && mix ? true : undefined;
 
