@@ -185,12 +185,14 @@ export default function EnhanceModal(props: Props) {
     handleClose();
   }
 
-  const title =
-    props.kind === "recipe"
-      ? "Enhance recipe"
-      : props.kind === "ingredient"
-        ? "Enhance ingredient"
-        : `Enhance pairing description (${props.locale.toUpperCase()})`;
+  let title: string;
+  if (props.kind === "recipe") {
+    title = "Enhance recipe";
+  } else if (props.kind === "ingredient") {
+    title = "Enhance ingredient";
+  } else {
+    title = `Enhance pairing description (${props.locale.toUpperCase()})`;
+  }
 
   let DiffComponent:
     | ComponentType<{ existing: Record<string, unknown>; proposed: Record<string, unknown> }>
@@ -218,7 +220,7 @@ export default function EnhanceModal(props: Props) {
         }}
         backLabel="Try different source"
         warnings={warnings}
-        {...(DiffComponent ? { DiffComponent } : {})}
+        DiffComponent={DiffComponent}
       />
     );
   }
