@@ -46,7 +46,7 @@ const TABS: Array<{ id: SourceMode; label: string; icon: React.ReactNode }> = [
   { id: "prompt", label: "Generate", icon: <Sparkles size={14} /> },
 ];
 
-// ── Pure helpers (module-level, no React state) ───────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function buildFormData(source: Source): FormData {
   const fd = new FormData();

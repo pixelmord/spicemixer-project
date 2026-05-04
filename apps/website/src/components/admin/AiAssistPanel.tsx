@@ -418,7 +418,7 @@ function PairingsResult({
   );
 }
 
-// ── Operation runners (module-level, pure async — no side effects) ─────────────
+// ── Operation runners ─────────────────────────────────────────────────────────
 
 async function runLinks(
   recipe: RecipePanelProps,
@@ -448,19 +448,18 @@ async function runLinks(
 async function runTags(
   snapshot: Record<string, unknown>,
   aiEvents: AiEvent[],
-): Promise<ResultState | null> {
+): Promise<ResultState> {
   const { data, error } = await actions.aiProposeTags({ recipe: snapshot });
   if (error) throw new Error(error.message);
   const enriched = ((data as { tags: string[] }).tags ?? []).map(enrichTag);
-  const filtered = filterSuggestions(aiEvents, enriched);
-  return filtered.length > 0 ? { op: "tags", items: filtered } : null;
+  return { op: "tags", items: filterSuggestions(aiEvents, enriched) };
 }
 
 async function runImprove(
   props: AiAssistPanelProps,
   isRecipe: boolean,
   aiEvents: AiEvent[],
-): Promise<ResultState | null> {
+): Promise<ResultState> {
   const { data, error } = isRecipe
     ? await actions.aiProposeRecipeImprovements({
         recipe: props.snapshot,
@@ -472,53 +471,42 @@ async function runImprove(
       });
   if (error) throw new Error(error.message);
   const enriched = (data as { fields: ImprovementField[] }).fields.map(enrichImprovement);
-  const filtered = filterSuggestions(aiEvents, enriched);
-  return filtered.length > 0 ? { op: "improve", items: filtered } : null;
+  return { op: "improve", items: filterSuggestions(aiEvents, enriched) };
 }
 
 async function runTranslate(
   props: AiAssistPanelProps,
   isRecipe: boolean,
   aiEvents: AiEvent[],
-): Promise<ResultState | null> {
-  if (isRecipe) {
-    const recipe = props as RecipePanelProps;
-    const { data, error } = await actions.aiTranslateRecipe({
-      recipe: props.snapshot,
-      sourceLocale: recipe.locale,
-      targetLocale: recipe.targetLocale,
-    });
-    if (error) throw new Error(error.message);
-    const raw = data as { fields: Record<string, string> };
-    const enriched = Object.entries(raw.fields ?? {}).map(([f, v]) => enrichTranslationField(f, v));
-    const filtered = filterSuggestions(aiEvents, enriched);
-    return filtered.length > 0 ? { op: "translate", items: filtered } : null;
-  }
-  const ingredient = props as IngredientPanelProps;
-  const { data, error } = await actions.aiTranslateIngredient({
-    ingredient: props.snapshot,
-    sourceLocale: ingredient.locale,
-    targetLocale: ingredient.targetLocale,
-  });
+): Promise<ResultState> {
+  const { data, error } = isRecipe
+    ? await actions.aiTranslateRecipe({
+        recipe: props.snapshot,
+        sourceLocale: props.locale,
+        targetLocale: props.targetLocale,
+      })
+    : await actions.aiTranslateIngredient({
+        ingredient: props.snapshot,
+        sourceLocale: props.locale,
+        targetLocale: props.targetLocale,
+      });
   if (error) throw new Error(error.message);
   const raw = data as { fields: Record<string, string> };
   const enriched = Object.entries(raw.fields ?? {}).map(([f, v]) => enrichTranslationField(f, v));
-  const filtered = filterSuggestions(aiEvents, enriched);
-  return filtered.length > 0 ? { op: "translate", items: filtered } : null;
+  return { op: "translate", items: filterSuggestions(aiEvents, enriched) };
 }
 
 async function runPairings(
   ingredient: IngredientPanelProps,
   aiEvents: AiEvent[],
-): Promise<ResultState | null> {
+): Promise<ResultState> {
   const { data, error } = await actions.aiProposeIngredientPairings({
     ingredient: ingredient.snapshot,
     locale: ingredient.locale,
   });
   if (error) throw new Error(error.message);
   const enriched = (data as PairingProposal[]).map(enrichPairing);
-  const filtered = filterSuggestions(aiEvents, enriched);
-  return filtered.length > 0 ? { op: "pairings", items: filtered } : null;
+  return { op: "pairings", items: filterSuggestions(aiEvents, enriched) };
 }
 
 // ── Results sub-component ─────────────────────────────────────────────────────
