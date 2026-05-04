@@ -63,7 +63,7 @@ function FieldRow({ diff }: { diff: FieldDiff }) {
       </td>
       <td className="py-2 px-3 align-top text-xs whitespace-pre-wrap">
         {diff.oldValue ? (
-          <span className="text-muted-foreground">{String(diff.oldValue)}</span>
+          <span className="text-muted-foreground">{diff.oldValue as string}</span>
         ) : (
           <span className="italic text-muted-foreground/50">(empty)</span>
         )}
@@ -71,9 +71,9 @@ function FieldRow({ diff }: { diff: FieldDiff }) {
       <td className="py-2 px-3 align-top text-xs whitespace-pre-wrap">
         {diff.newValue ? (
           diff.kind === "changed" && typeof diff.oldValue === "string" ? (
-            <InlineWordDiff before={diff.oldValue} after={String(diff.newValue)} />
+            <InlineWordDiff before={diff.oldValue} after={diff.newValue as string} />
           ) : (
-            <span>{String(diff.newValue)}</span>
+            <span>{diff.newValue as string}</span>
           )
         ) : (
           <span className="italic text-muted-foreground/50">(empty)</span>

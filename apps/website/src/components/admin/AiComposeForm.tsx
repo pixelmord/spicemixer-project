@@ -299,7 +299,8 @@ export default function AiComposeForm() {
               {contentType === "pairing" ? (
                 <>
                   <h3 className="font-semibold">
-                    {String(result["ingredient1"] ?? "?")} ↔ {String(result["ingredient2"] ?? "?")}
+                    {typeof result["ingredient1"] === "string" ? result["ingredient1"] : "?"} ↔{" "}
+                    {typeof result["ingredient2"] === "string" ? result["ingredient2"] : "?"}
                   </h3>
                   {typeof result["description"] === "string" && (
                     <p className="text-sm text-muted-foreground line-clamp-2">
@@ -309,7 +310,9 @@ export default function AiComposeForm() {
                 </>
               ) : (
                 <>
-                  <h3 className="font-semibold">{String(result["name"] ?? "Untitled")}</h3>
+                  <h3 className="font-semibold">
+                    {typeof result["name"] === "string" ? result["name"] : "Untitled"}
+                  </h3>
                   {typeof result["description"] === "string" && result["description"] && (
                     <p className="text-sm text-muted-foreground line-clamp-2">
                       {result["description"]}

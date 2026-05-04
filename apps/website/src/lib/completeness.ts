@@ -102,7 +102,7 @@ export function resolvePairingDescription(
   const firstKey = Object.keys(descriptions)[0];
   if (firstKey) return { description: descriptions[firstKey], locale: firstKey, isFallback: true };
   // Legacy single-description field
-  const legacy = String(pairing["description"] ?? "");
+  const legacy = typeof pairing["description"] === "string" ? pairing["description"] : "";
   return { description: legacy, locale: "en", isFallback: !!legacy };
 }
 

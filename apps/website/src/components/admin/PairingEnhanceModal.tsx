@@ -63,7 +63,9 @@ export default function PairingEnhanceModal({
       const formData = new FormData();
       const descriptions = (existingPairing["descriptions"] as Record<string, string>) ?? {};
       const currentDesc =
-        descriptions[locale] ?? descriptions["en"] ?? String(existingPairing["description"] ?? "");
+        descriptions[locale] ??
+        descriptions["en"] ??
+        (typeof existingPairing["description"] === "string" ? existingPairing["description"] : "");
       formData.append("existing", JSON.stringify({ ...existingPairing, description: currentDesc }));
       formData.append("locale", locale);
       if (source.kind === "file") {

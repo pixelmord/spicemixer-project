@@ -80,7 +80,7 @@ export default function TranslateModal({
   }, [translationSlug, collection]);
 
   async function suggestSlug() {
-    const name = String(recipe["name"] ?? "");
+    const name = typeof recipe["name"] === "string" ? recipe["name"] : "";
     if (!name) return;
     setSuggestingSlug(true);
     try {

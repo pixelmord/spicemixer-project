@@ -183,7 +183,8 @@ async function buildListing() {
     const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
     const completeness = scorePairing(d, "en");
     const translations = ["en", "de"].filter((l) => !!descriptions[l]);
-    const description = descriptions["en"] ?? String(d["description"] ?? "");
+    const description =
+      descriptions["en"] ?? (typeof d["description"] === "string" ? d["description"] : "");
     const refSlug = (v: EntityRef | string | undefined): string => {
       if (v == null) return "?";
       if (typeof v === "string") return v;
@@ -410,7 +411,7 @@ export const server = {
           ingredients: d["ingredients"] as [EntityRef, EntityRef],
           descriptions:
             (d["descriptions"] as Record<string, string>) ??
-            (d["description"] ? { en: String(d["description"]) } : {}),
+            (typeof d["description"] === "string" ? { en: d["description"] } : {}),
           updatedAt: item.updatedAt,
         };
       });
@@ -444,7 +445,7 @@ export const server = {
           const d = item.data as Record<string, unknown>;
           const descriptions =
             (d["descriptions"] as Record<string, string>) ??
-            (d["description"] ? { en: String(d["description"]) } : {});
+            (typeof d["description"] === "string" ? { en: d["description"] } : {});
           return {
             id: item.id,
             ingredients: d["ingredients"] as [EntityRef, EntityRef],
@@ -553,10 +554,13 @@ export const server = {
       const items = await store.list("ingredients");
       return items
         .filter((item) => item.id.startsWith(`${locale}/`))
-        .map((item) => ({
-          slug: item.id.slice(3),
-          name: String((item.data as Record<string, unknown>).name ?? item.id.slice(3)),
-        }));
+        .map((item) => {
+          const d = item.data as Record<string, unknown>;
+          return {
+            slug: item.id.slice(3),
+            name: typeof d.name === "string" ? d.name : item.id.slice(3),
+          };
+        });
     },
   }),
 
@@ -569,16 +573,22 @@ export const server = {
         store.list("mixtures"),
       ]);
       return [
-        ...recipes.map((item) => ({
-          collection: "recipes" as const,
-          slug: slugFromLocaleId(item.id),
-          name: String((item.data as Record<string, unknown>).name ?? slugFromLocaleId(item.id)),
-        })),
-        ...mixtures.map((item) => ({
-          collection: "mixtures" as const,
-          slug: slugFromLocaleId(item.id),
-          name: String((item.data as Record<string, unknown>).name ?? slugFromLocaleId(item.id)),
-        })),
+        ...recipes.map((item) => {
+          const d = item.data as Record<string, unknown>;
+          return {
+            collection: "recipes" as const,
+            slug: slugFromLocaleId(item.id),
+            name: typeof d.name === "string" ? d.name : slugFromLocaleId(item.id),
+          };
+        }),
+        ...mixtures.map((item) => {
+          const d = item.data as Record<string, unknown>;
+          return {
+            collection: "mixtures" as const,
+            slug: slugFromLocaleId(item.id),
+            name: typeof d.name === "string" ? d.name : slugFromLocaleId(item.id),
+          };
+        }),
       ];
     },
   }),
@@ -698,10 +708,13 @@ export const server = {
       const items = await store.list("ingredients");
       const inventory = items
         .filter((i) => i.id.startsWith(`${locale}/`))
-        .map((i) => ({
-          slug: i.id.slice(3),
-          name: String((i.data as Record<string, unknown>)["name"] ?? i.id.slice(3)),
-        }));
+        .map((i) => {
+          const d = i.data as Record<string, unknown>;
+          return {
+            slug: i.id.slice(3),
+            name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
+          };
+        });
       const { proposeIngredientLinks } = await import("content-ai");
       return proposeIngredientLinks(recipeIngredients, inventory, config);
     },
@@ -773,10 +786,13 @@ export const server = {
       const items = await store.list("ingredients");
       const inventory = items
         .filter((i) => i.id.startsWith(`${locale}/`))
-        .map((i) => ({
-          slug: i.id.slice(3),
-          name: String((i.data as Record<string, unknown>)["name"] ?? i.id.slice(3)),
-        }));
+        .map((i) => {
+          const d = i.data as Record<string, unknown>;
+          return {
+            slug: i.id.slice(3),
+            name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
+          };
+        });
       const { proposeIngredientPairings } = await import("content-ai");
       return proposeIngredientPairings(ingredient as never, inventory, config);
     },
@@ -872,10 +888,13 @@ export const server = {
       const items = await store.list("ingredients");
       const inventory = items
         .filter((i) => i.id.startsWith(`${locale}/`) && i.id !== `${locale}/${slug}`)
-        .map((i) => ({
-          slug: i.id.slice(3),
-          name: String((i.data as Record<string, unknown>)["name"] ?? i.id.slice(3)),
-        }));
+        .map((i) => {
+          const d = i.data as Record<string, unknown>;
+          return {
+            slug: i.id.slice(3),
+            name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
+          };
+        });
 
       // Exclude image field from improvements
       const fieldsForAi = missingFields.filter((f) => f !== "image");
@@ -1103,7 +1122,7 @@ export const server = {
       const d = existing.data as Record<string, unknown>;
       const descriptions =
         (d["descriptions"] as Record<string, string>) ??
-        (d["description"] ? { en: String(d["description"]) } : {});
+        (typeof d["description"] === "string" ? { en: d["description"] } : {});
 
       if (descriptions[targetLocale]) {
         throw new ActionError({
@@ -1158,7 +1177,9 @@ export const server = {
 
       const descriptions = (pairing["descriptions"] as Record<string, string>) ?? {};
       const description =
-        descriptions[locale] ?? descriptions["en"] ?? String(pairing["description"] ?? "");
+        descriptions[locale] ??
+        descriptions["en"] ??
+        (typeof pairing["description"] === "string" ? pairing["description"] : "");
       const ings = pairing["ingredients"] as [EntityRef | string, EntityRef | string] | undefined;
       const refSlug = (v: EntityRef | string | undefined): string => {
         if (v == null) return "";
@@ -1343,29 +1364,36 @@ export const server = {
       const ingredientItems = await store.list("ingredients");
       const inventory = ingredientItems
         .filter((i) => i.id.startsWith(`${locale}/`))
-        .map((i) => ({
-          slug: i.id.slice(3),
-          name: String((i.data as Record<string, unknown>)["name"] ?? i.id.slice(3)),
-        }));
+        .map((i) => {
+          const d = i.data as Record<string, unknown>;
+          return {
+            slug: i.id.slice(3),
+            name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
+          };
+        });
 
       const [recipes, mixtures] = await Promise.all([
         store.list("recipes"),
         store.list("mixtures"),
       ]);
       const existingRecipes = [
-        ...recipes.map((r) => ({
-          collection: "recipes" as const,
-          slug: slugFromLocaleId(r.id),
-          name: String((r.data as Record<string, unknown>).name ?? slugFromLocaleId(r.id)),
-          recipeIngredient: (r.data as Record<string, unknown>).recipeIngredient as
-            | string[]
-            | undefined,
-        })),
-        ...mixtures.map((r) => ({
-          collection: "mixtures" as const,
-          slug: slugFromLocaleId(r.id),
-          name: String((r.data as Record<string, unknown>).name ?? slugFromLocaleId(r.id)),
-        })),
+        ...recipes.map((r) => {
+          const d = r.data as Record<string, unknown>;
+          return {
+            collection: "recipes" as const,
+            slug: slugFromLocaleId(r.id),
+            name: typeof d.name === "string" ? d.name : slugFromLocaleId(r.id),
+            recipeIngredient: d.recipeIngredient as string[] | undefined,
+          };
+        }),
+        ...mixtures.map((r) => {
+          const d = r.data as Record<string, unknown>;
+          return {
+            collection: "mixtures" as const,
+            slug: slugFromLocaleId(r.id),
+            name: typeof d.name === "string" ? d.name : slugFromLocaleId(r.id),
+          };
+        }),
       ].filter((r) => r.slug !== slug);
 
       const recipeIngredients = Array.isArray(recipe["recipeIngredient"])
@@ -1421,7 +1449,9 @@ export const server = {
       const existingLinks = Array.isArray(meta["ingredientLinks"])
         ? (meta["ingredientLinks"] as Array<Record<string, unknown>>)
         : [];
-      const existingPatterns = new Set(existingLinks.map((l) => String(l["pattern"] ?? "")));
+      const existingPatterns = new Set(
+        existingLinks.map((l) => (typeof l["pattern"] === "string" ? l["pattern"] : "")),
+      );
       const toAutoApply = ingredientLinks.filter(
         (l) =>
           isAllowedAutoApply("ingredient-link", l.confidence, "editor") &&

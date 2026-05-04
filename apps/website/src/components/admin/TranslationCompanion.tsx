@@ -59,7 +59,13 @@ export function FieldWithTranslation({ label, fieldKey, context, children }: Fie
               )}
             >
               {otherValue != null && otherValue !== "" ? (
-                String(Array.isArray(otherValue) ? otherValue.join(", ") : otherValue)
+                Array.isArray(otherValue) ? (
+                  otherValue.join(", ")
+                ) : typeof otherValue === "string" ? (
+                  otherValue
+                ) : (
+                  ""
+                )
               ) : (
                 <a
                   href={`/admin/ingredients/${fieldKey}/edit?locale=${context.otherLocale}`}
