@@ -41,7 +41,6 @@ function extractSteps(item: unknown): HowToStep[] {
     return [];
   }
 
-  // Unknown object — try extracting text
   const text = normalizeString(asStr(o["text"]) || asStr(o["name"]));
   return text ? [{ "@type": "HowToStep", text }] : [];
 }
