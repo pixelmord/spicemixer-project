@@ -5,11 +5,12 @@ import { beforeAll, describe, expect, test } from "vite-plus/test";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const PAGES = join(ROOT, "src", "pages");
+const COMPONENTS = join(ROOT, "src", "components");
 
-describe("Pagefind: mixture detail template", () => {
+describe("Pagefind: mixture detail template (shared MixtureSlugPage component)", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(PAGES, "mixtures", "[slug].astro"), "utf-8");
+    src = await readFile(join(COMPONENTS, "pages", "MixtureSlugPage.astro"), "utf-8");
   });
 
   test("imports withPagefindFilters", () => {
@@ -25,10 +26,10 @@ describe("Pagefind: mixture detail template", () => {
   });
 });
 
-describe("Pagefind: ingredient detail template", () => {
+describe("Pagefind: ingredient detail template (shared IngredientSlugPage component)", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(PAGES, "ingredients", "[slug].astro"), "utf-8");
+    src = await readFile(join(COMPONENTS, "pages", "IngredientSlugPage.astro"), "utf-8");
   });
 
   test("imports withPagefindFilters", () => {
@@ -44,10 +45,10 @@ describe("Pagefind: ingredient detail template", () => {
   });
 });
 
-describe("Pagefind: recipe detail template", () => {
+describe("Pagefind: recipe detail template (shared RecipeSlugPage component)", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(PAGES, "recipes", "[slug].astro"), "utf-8");
+    src = await readFile(join(COMPONENTS, "pages", "RecipeSlugPage.astro"), "utf-8");
   });
 
   test("imports withPagefindFilters", () => {

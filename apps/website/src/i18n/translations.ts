@@ -91,6 +91,16 @@ const ui = {
     "page.search.description": "Search across all spices, blends, pairings, and recipes.",
     "locale.fallback":
       "Showing original {canonical} content — a {requested} translation is not yet available.",
+    "ingredient.section.culinaryUse": "Culinary use",
+    "ingredient.section.medicinalUses": "Medicinal uses",
+    "ingredient.section.healthBenefits": "Health benefits",
+    "ingredient.section.safetyNotes": "Safety notes",
+    "ingredient.section.history": "History",
+    "ingredient.section.storage": "Storage",
+    "ingredient.section.sourcing": "Sourcing",
+    "ingredient.sources": "Sources",
+    "ingredient.liability":
+      "This page includes information about medicinal uses, health benefits, or safety considerations. It is provided for informational purposes only and does not constitute medical advice.",
   },
   de: {
     "page.home.title": "Spicemixer — Gewürze & Saucen",
@@ -182,6 +192,16 @@ const ui = {
     "page.search.description": "Suche nach Gewürzen, Mischungen, Kombinationen und Rezepten.",
     "locale.fallback":
       "Es wird der originale {canonical}-Inhalt angezeigt — eine {requested}-Übersetzung ist noch nicht verfügbar.",
+    "ingredient.section.culinaryUse": "Kulinarische Verwendung",
+    "ingredient.section.medicinalUses": "Medizinische Anwendungen",
+    "ingredient.section.healthBenefits": "Gesundheitsvorteile",
+    "ingredient.section.safetyNotes": "Sicherheitshinweise",
+    "ingredient.section.history": "Geschichte",
+    "ingredient.section.storage": "Lagerung",
+    "ingredient.section.sourcing": "Bezugsquellen",
+    "ingredient.sources": "Quellen",
+    "ingredient.liability":
+      "Diese Seite enthält Informationen zu medizinischen Anwendungen, gesundheitlichen Vorteilen oder Sicherheitshinweisen. Diese Informationen dienen ausschließlich zu Informationszwecken und stellen keine medizinische Beratung dar.",
   },
 } as const;
 

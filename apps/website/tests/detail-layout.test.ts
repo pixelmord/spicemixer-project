@@ -5,7 +5,6 @@ import { beforeAll, describe, expect, test } from "vite-plus/test";
 
 const WEBSITE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const COMPONENTS = join(WEBSITE_ROOT, "src", "components");
-const PAGES = join(WEBSITE_ROOT, "src", "pages");
 
 describe("DetailLayout: slot ordering enforced by component shape", () => {
   let src: string;
@@ -36,10 +35,10 @@ describe("DetailLayout: slot ordering enforced by component shape", () => {
   });
 });
 
-describe("DetailLayout: mixture detail page contract", () => {
+describe("DetailLayout: mixture detail page contract (shared MixtureSlugPage component)", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(PAGES, "mixtures", "[slug].astro"), "utf-8");
+    src = await readFile(join(COMPONENTS, "pages", "MixtureSlugPage.astro"), "utf-8");
   });
 
   test("imports DetailLayout", () => {
@@ -65,10 +64,10 @@ describe("DetailLayout: mixture detail page contract", () => {
   });
 });
 
-describe("DetailLayout: ingredient detail page contract", () => {
+describe("DetailLayout: ingredient detail page contract (shared IngredientSlugPage component)", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(PAGES, "ingredients", "[slug].astro"), "utf-8");
+    src = await readFile(join(COMPONENTS, "pages", "IngredientSlugPage.astro"), "utf-8");
   });
 
   test("imports DetailLayout", () => {
@@ -91,10 +90,10 @@ describe("DetailLayout: ingredient detail page contract", () => {
   });
 });
 
-describe("DetailLayout: recipe detail page contract", () => {
+describe("DetailLayout: recipe detail page contract (shared RecipeSlugPage component)", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(PAGES, "recipes", "[slug].astro"), "utf-8");
+    src = await readFile(join(COMPONENTS, "pages", "RecipeSlugPage.astro"), "utf-8");
   });
 
   test("imports DetailLayout", () => {

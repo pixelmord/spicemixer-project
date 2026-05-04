@@ -34,80 +34,67 @@ describe("TranslationFallbackBanner component", () => {
 });
 
 describe("Fallback banner wired into ingredient detail pages", () => {
-  let enSrc: string;
-  let deSrc: string;
+  let enPageSrc: string;
+  let dePageSrc: string;
+  let sharedComponentSrc: string;
 
   beforeAll(async () => {
-    [enSrc, deSrc] = await Promise.all([
+    [enPageSrc, dePageSrc, sharedComponentSrc] = await Promise.all([
       readFile(join(PAGES, "ingredients", "[slug].astro"), "utf-8"),
       readFile(join(PAGES, "de", "ingredients", "[slug].astro"), "utf-8"),
+      readFile(join(COMPONENTS, "pages", "IngredientSlugPage.astro"), "utf-8"),
     ]);
   });
 
-  test("EN ingredient page imports TranslationFallbackBanner", () => {
-    expect(enSrc).toContain("TranslationFallbackBanner");
+  test("shared IngredientSlugPage component imports TranslationFallbackBanner", () => {
+    expect(sharedComponentSrc).toContain("TranslationFallbackBanner");
+  });
+
+  test("shared IngredientSlugPage component imports resolvePublished (via route props)", () => {
+    expect(sharedComponentSrc).toContain("isFallback");
+    expect(sharedComponentSrc).toContain("canonicalLocale");
+  });
+
+  test("shared IngredientSlugPage component conditionally renders banner on isFallback", () => {
+    expect(sharedComponentSrc).toContain("isFallback");
+    expect(sharedComponentSrc).toContain("TranslationFallbackBanner");
   });
 
   test("EN ingredient page imports resolvePublished", () => {
-    expect(enSrc).toContain("resolvePublished");
-  });
-
-  test("EN ingredient page conditionally renders banner on isFallback", () => {
-    expect(enSrc).toContain("isFallback");
-    expect(enSrc).toContain("TranslationFallbackBanner");
-  });
-
-  test("DE ingredient page imports TranslationFallbackBanner", () => {
-    expect(deSrc).toContain("TranslationFallbackBanner");
+    expect(enPageSrc).toContain("resolvePublished");
   });
 
   test("DE ingredient page imports resolvePublished", () => {
-    expect(deSrc).toContain("resolvePublished");
+    expect(dePageSrc).toContain("resolvePublished");
   });
 
   test("DE page getStaticPaths passes 'de' locale to resolvePublished", () => {
-    expect(deSrc).toContain(`resolvePublished("ingredients", slug, "de")`);
+    expect(dePageSrc).toContain(`resolvePublished("ingredients", slug, "de")`);
   });
 
   test("EN page getStaticPaths passes 'en' locale to resolvePublished", () => {
-    expect(enSrc).toContain(`resolvePublished("ingredients", slug, "en")`);
+    expect(enPageSrc).toContain(`resolvePublished("ingredients", slug, "en")`);
   });
 });
 
 describe("hreflang tags wired into detail pages", () => {
-  test("ingredient pages import hreflangTags", async () => {
-    const [enSrc, deSrc] = await Promise.all([
-      readFile(join(PAGES, "ingredients", "[slug].astro"), "utf-8"),
-      readFile(join(PAGES, "de", "ingredients", "[slug].astro"), "utf-8"),
-    ]);
-    expect(enSrc).toContain("hreflangTags");
-    expect(deSrc).toContain("hreflangTags");
+  test("IngredientSlugPage shared component imports hreflangTags", async () => {
+    const src = await readFile(join(COMPONENTS, "pages", "IngredientSlugPage.astro"), "utf-8");
+    expect(src).toContain("hreflangTags");
   });
 
-  test("ingredient pages render link rel=alternate tags", async () => {
-    const [enSrc, deSrc] = await Promise.all([
-      readFile(join(PAGES, "ingredients", "[slug].astro"), "utf-8"),
-      readFile(join(PAGES, "de", "ingredients", "[slug].astro"), "utf-8"),
-    ]);
-    expect(enSrc).toContain('rel="alternate"');
-    expect(deSrc).toContain('rel="alternate"');
+  test("IngredientSlugPage shared component renders link rel=alternate tags", async () => {
+    const src = await readFile(join(COMPONENTS, "pages", "IngredientSlugPage.astro"), "utf-8");
+    expect(src).toContain('rel="alternate"');
   });
 
-  test("recipe pages import hreflangTags", async () => {
-    const [enSrc, deSrc] = await Promise.all([
-      readFile(join(PAGES, "recipes", "[slug].astro"), "utf-8"),
-      readFile(join(PAGES, "de", "recipes", "[slug].astro"), "utf-8"),
-    ]);
-    expect(enSrc).toContain("hreflangTags");
-    expect(deSrc).toContain("hreflangTags");
+  test("RecipeSlugPage shared component imports hreflangTags", async () => {
+    const src = await readFile(join(COMPONENTS, "pages", "RecipeSlugPage.astro"), "utf-8");
+    expect(src).toContain("hreflangTags");
   });
 
-  test("mixture pages import hreflangTags", async () => {
-    const [enSrc, deSrc] = await Promise.all([
-      readFile(join(PAGES, "mixtures", "[slug].astro"), "utf-8"),
-      readFile(join(PAGES, "de", "mixtures", "[slug].astro"), "utf-8"),
-    ]);
-    expect(enSrc).toContain("hreflangTags");
-    expect(deSrc).toContain("hreflangTags");
+  test("MixtureSlugPage shared component imports hreflangTags", async () => {
+    const src = await readFile(join(COMPONENTS, "pages", "MixtureSlugPage.astro"), "utf-8");
+    expect(src).toContain("hreflangTags");
   });
 });
