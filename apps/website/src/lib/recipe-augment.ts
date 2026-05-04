@@ -294,20 +294,9 @@ export async function resolveRefs(
 ): Promise<Array<{ name: string; href: string }>> {
   const results = await Promise.all(
     refs.map(async ({ collection, slug }) => {
-      let e: { data: { name: string } } | null | undefined;
-      if (collection === "recipes") {
-        e =
-          (await getEntry("recipes", `${locale}/${slug}`)) ??
-          (await getEntry("recipes", `en/${slug}`));
-      } else if (collection === "ingredients") {
-        e =
-          (await getEntry("ingredients", `${locale}/${slug}`)) ??
-          (await getEntry("ingredients", `en/${slug}`));
-      } else {
-        e =
-          (await getEntry("mixtures", `${locale}/${slug}`)) ??
-          (await getEntry("mixtures", `en/${slug}`));
-      }
+      const e =
+        (await getEntry(collection, `${locale}/${slug}`)) ??
+        (await getEntry(collection, `en/${slug}`));
       if (!e) return null;
       return { name: e.data.name, href: localePrefix + "/" + collection + "/" + slug + "/" };
     }),
@@ -323,12 +312,7 @@ export async function resolveVariants(
 ): Promise<Array<{ name: string; href: string }>> {
   const results = await Promise.all(
     slugs.map(async (slug) => {
-      const e =
-        kind === "recipes"
-          ? ((await getEntry("recipes", `${locale}/${slug}`)) ??
-            (await getEntry("recipes", `en/${slug}`)))
-          : ((await getEntry("mixtures", `${locale}/${slug}`)) ??
-            (await getEntry("mixtures", `en/${slug}`)));
+      const e = (await getEntry(kind, `${locale}/${slug}`)) ?? (await getEntry(kind, `en/${slug}`));
       if (!e) return null;
       return { name: e.data.name, href: `${localePrefix}/${kind}/${slug}/` };
     }),

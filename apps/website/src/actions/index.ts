@@ -2,6 +2,7 @@ import { defineAction, ActionError } from "astro:actions";
 import { z } from "astro/zod";
 import { createStore } from "@/lib/content-store.ts";
 import { createMetaSidecar, INGREDIENT_META, PAIRING_META } from "@/lib/meta-sidecar.ts";
+import { slugFromLocaleId } from "@/lib/recipe-augment.ts";
 import { entityRefSchema } from "@/lib/entity-ref.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
 import { fetchRecipe } from "recipe-ingestion";
@@ -150,9 +151,7 @@ async function buildListing() {
     const metaId = `${collection}/${item.id}`;
     const meta = metaMap.get(metaId) ?? {};
     const completeness = scoreRecipe(item.data as Record<string, unknown>, meta);
-    // Strip locale prefix so the id matches existing admin URL structure (slug only)
-    const slash = item.id.indexOf("/");
-    const slug = slash !== -1 ? item.id.slice(slash + 1) : item.id;
+    const slug = slugFromLocaleId(item.id);
     return {
       type: "recipe" as const,
       collection,
@@ -568,21 +567,16 @@ export const server = {
         store.list("recipes"),
         store.list("mixtures"),
       ]);
-      // IDs are "locale/slug"; strip locale prefix for relation references.
-      const bareSlug = (id: string) => {
-        const slash = id.indexOf("/");
-        return slash === -1 ? id : id.slice(slash + 1);
-      };
       return [
         ...recipes.map((item) => ({
           collection: "recipes" as const,
-          slug: bareSlug(item.id),
-          name: String((item.data as Record<string, unknown>).name ?? bareSlug(item.id)),
+          slug: slugFromLocaleId(item.id),
+          name: String((item.data as Record<string, unknown>).name ?? slugFromLocaleId(item.id)),
         })),
         ...mixtures.map((item) => ({
           collection: "mixtures" as const,
-          slug: bareSlug(item.id),
-          name: String((item.data as Record<string, unknown>).name ?? bareSlug(item.id)),
+          slug: slugFromLocaleId(item.id),
+          name: String((item.data as Record<string, unknown>).name ?? slugFromLocaleId(item.id)),
         })),
       ];
     },
@@ -1355,24 +1349,19 @@ export const server = {
         store.list("recipes"),
         store.list("mixtures"),
       ]);
-      // IDs are now "locale/slug"; strip the locale prefix to get slug only.
-      const slugFromId = (id: string) => {
-        const slash = id.indexOf("/");
-        return slash === -1 ? id : id.slice(slash + 1);
-      };
       const existingRecipes = [
         ...recipes.map((r) => ({
           collection: "recipes" as const,
-          slug: slugFromId(r.id),
-          name: String((r.data as Record<string, unknown>).name ?? slugFromId(r.id)),
+          slug: slugFromLocaleId(r.id),
+          name: String((r.data as Record<string, unknown>).name ?? slugFromLocaleId(r.id)),
           recipeIngredient: (r.data as Record<string, unknown>).recipeIngredient as
             | string[]
             | undefined,
         })),
         ...mixtures.map((r) => ({
           collection: "mixtures" as const,
-          slug: slugFromId(r.id),
-          name: String((r.data as Record<string, unknown>).name ?? slugFromId(r.id)),
+          slug: slugFromLocaleId(r.id),
+          name: String((r.data as Record<string, unknown>).name ?? slugFromLocaleId(r.id)),
         })),
       ].filter((r) => r.slug !== slug);
 
