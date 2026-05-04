@@ -249,8 +249,7 @@ export const server = {
       let finalMeta = meta;
       if (aiMergeModel) {
         const { recordAiEvent, hashSuggestion } = await import("content-ai");
-        const metaKey = `${collection}/${slug}`;
-        const existingRecord = await store.get("meta", metaKey);
+        const existingRecord = await sidecar.read({ collection, slug });
         const existingMeta = (existingRecord?.data as Record<string, unknown>) ?? {};
         const base = meta ?? existingMeta;
         const existingEvents: AiEvent[] = Array.isArray(base["aiEvents"])
@@ -292,8 +291,7 @@ export const server = {
       let finalMeta = meta;
       if (aiMergeModel) {
         const { recordAiEvent, hashSuggestion } = await import("content-ai");
-        const metaKey = `${locale}/${slug}`;
-        const existingRecord = await store.get("ingredientMeta", metaKey);
+        const existingRecord = await sidecar.read({ collection: "ingredients", locale, slug });
         const existingMeta = (existingRecord?.data as Record<string, unknown>) ?? {};
         const base = meta ?? existingMeta;
         const existingEvents: AiEvent[] = Array.isArray(base["aiEvents"])
@@ -333,6 +331,7 @@ export const server = {
     }),
     handler: async ({ id, ingredients, description, locale, draft, image, aiMergeModel }) => {
       const store = await createStore();
+      const sidecar = createMetaSidecar(store);
       const result = await libSavePairing(store, {
         id,
         ingredients,
@@ -343,7 +342,7 @@ export const server = {
       });
       if (aiMergeModel) {
         const { recordAiEvent, hashSuggestion } = await import("content-ai");
-        const existingMetaRecord = await store.get("pairingMeta", id);
+        const existingMetaRecord = await sidecar.read({ collection: "pairings", slug: id });
         const existingMeta = (existingMetaRecord?.data as Record<string, unknown>) ?? {};
         const existingEvents: AiEvent[] = Array.isArray(existingMeta["aiEvents"])
           ? (existingMeta["aiEvents"] as AiEvent[])
@@ -357,7 +356,10 @@ export const server = {
           },
           model: aiMergeModel,
         });
-        await store.put("pairingMeta", id, { ...existingMeta, aiEvents: updatedEvents });
+        await sidecar.write(
+          { collection: "pairings", slug: id },
+          { ...existingMeta, aiEvents: updatedEvents },
+        );
       }
       return { ok: true, id: result.id };
     },
@@ -844,6 +846,7 @@ export const server = {
         buildRejectedContext,
       } = await import("content-ai");
       const store = await createStore();
+      const sidecar = createMetaSidecar(store);
 
       const existingEvents: AiEvent[] = Array.isArray(existingMeta["aiEvents"])
         ? (existingMeta["aiEvents"] as AiEvent[])
@@ -951,11 +954,11 @@ export const server = {
       }
 
       if (events !== existingEvents) {
-        const metaKey = `${locale}/${slug}`;
-        const currentMeta = (await store.get("ingredientMeta", metaKey))?.data as
+        const ingredientRef = { collection: "ingredients" as const, locale, slug };
+        const currentMeta = (await sidecar.read(ingredientRef))?.data as
           | Record<string, unknown>
           | undefined;
-        await store.put("ingredientMeta", metaKey, {
+        await sidecar.write(ingredientRef, {
           ...(currentMeta ?? existingMeta),
           aiEvents: events,
         });
@@ -1128,8 +1131,9 @@ export const server = {
       const config = resolveAiConfig();
       const { proposePairingImprovements, buildRejectedContext } = await import("content-ai");
       const store = await createStore();
+      const sidecar = createMetaSidecar(store);
 
-      const pairingMeta = (await store.get("pairingMeta", id))?.data as
+      const pairingMeta = (await sidecar.read({ collection: "pairings", slug: id }))?.data as
         | Record<string, unknown>
         | undefined;
       const existingEvents: AiEvent[] = Array.isArray(pairingMeta?.["aiEvents"])
