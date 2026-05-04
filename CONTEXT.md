@@ -177,6 +177,66 @@ Every primary entity (ingredient, pairing, recipe) has a draft state in
 its meta sidecar. Drafts are visible only in admin; the public build
 filters them out. The admin UI lets editors save-as-draft or publish.
 
+## Code-side abstractions
+
+The terms above describe content. The terms below describe shared code
+seams that those content concepts flow through. They live here (rather
+than in an ADR alone) because conversation references them constantly:
+"the EntityKind seam," "ask the AiEventLog."
+
+### EntityKind
+
+A code-side discriminator over `"ingredient" | "recipe" | "pairing"`
+that unifies the workflow concerns shared by these three peer concepts:
+draft state, AI suggestions, audit log, completeness scoring,
+translations. See ADR 0008.
+
+Critically, **`"recipe"` covers both recipe-for-a-mixture and
+recipe-for-a-dish** — the on-disk split between the `recipes/` and
+`mixtures/` collections is a routing concern (where on disk, which URL
+prefix), not a separate EntityKind. Both collections share the
+schema.org Recipe storage shape (ADR 0001) and route to
+EntityKind = `recipe`.
+
+Behind the seam, per kind: schema, AI proposer functions, diff function,
+completeness ruleset.
+
+Above the seam, shared by all kinds: form state hook, AI orchestration
+runner, auto-apply policy (global, per ADR 0004).
+
+Forms stay visually distinct — the JSX is genuinely different per kind
+— but become thin bindings over a headless contract.
+
+### AiEventLog
+
+The module that owns the read-modify-write cycle for the per-entity AI
+event log mandated by ADR 0004. Reads events from the meta sidecar via
+ContentStore, applies suppression and dedup rules, exposes a fingerprint
+cache answering "have we seen this exact AI input before," and writes
+the appended log back. Replaces today's scattered fetch-modify-write
+pattern in action handlers.
+
+`packages/content-ai/src/events.ts` (the current utility-bag of free
+functions over arrays) becomes the implementation behind this module's
+interface.
+
+### Locale storage
+
+All locale-bearing collections (ingredients, recipes, mixtures) store
+content **and** meta as folder-per-locale:
+`<collection>/<locale>/<slug>.json` and
+`<collection>/<locale>/<slug>.meta.json`. The folder is the locale
+carrier; no `language` field on the file, no filename-suffix variant.
+Pairings remain the documented ADR 0003 exception with a single file
+carrying inline `descriptions: { en, de }`.
+
+A second, equally load-bearing invariant: **no entry is ever written
+to disk without a determined locale.** Locale comes from an explicit
+user pick on the form OR from the AI language-detection auto-apply
+(ADR 0004 allowlist) — never from a silent default. Updates inherit
+locale from the existing entry; locale changes are a translation
+operation, not an edit. See ADR 0009.
+
 ## Relation taxonomy
 
 Three relations exist. Everything else is computed.
