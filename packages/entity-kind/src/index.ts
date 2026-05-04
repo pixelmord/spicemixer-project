@@ -5,7 +5,7 @@ export type { EntityKindConfig } from "./registry.ts";
 export { getConfig } from "./registry.ts";
 
 export type { FieldDiff, ItemDiff, ChangeKind, WordToken } from "./diff.ts";
-export { diffWords, diffIngredients, diffRecipes, diffPairings } from "./diff.ts";
+export { diffWords, diffIngredients, diffRecipes, diffPairings, hasChanges } from "./diff.ts";
 
 export type { CompletenessResult, CompletenessModel } from "./completeness.ts";
 export {

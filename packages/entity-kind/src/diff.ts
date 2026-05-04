@@ -190,6 +190,10 @@ export function diffRecipes(
   return diffs;
 }
 
+export function hasChanges(diffs: FieldDiff[]): boolean {
+  return diffs.some((d) => d.kind !== "unchanged");
+}
+
 // ── Pairing diff ──────────────────────────────────────────────────────────────
 
 export function diffPairings(
