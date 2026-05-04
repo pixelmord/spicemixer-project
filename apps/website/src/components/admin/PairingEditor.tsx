@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import type { EntityRef } from "@/lib/entity-ref.ts";
 import { Loader2, Save, Trash2, Link2, Sparkles, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
@@ -86,10 +85,10 @@ export default function PairingEditor({
     try {
       await actions.savePairing({
         id: pairing.id,
-        ingredients: pairing.ingredients.map((s) => ({
-          collection: "ingredients" as const,
-          slug: s,
-        })) as [EntityRef, EntityRef],
+        ingredients: [
+          { collection: "ingredients" as const, slug: pairing.ingredients[0] },
+          { collection: "ingredients" as const, slug: pairing.ingredients[1] },
+        ],
         description: desc,
         locale,
       });
