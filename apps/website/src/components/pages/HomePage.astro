@@ -3,7 +3,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import WorldmapPlaceholder from "../WorldmapPlaceholder.astro";
 import FeaturedPairingBlock from "../FeaturedPairingBlock.astro";
 import RecentlyAddedFeed from "../RecentlyAddedFeed.astro";
-import { getPublished, getPublishedIngredients, getPublishedPairings } from "../../lib/recipe-augment.ts";
+import { getPublished, getPublishedIngredients, getPublishedPairings, slugFromLocaleId } from "../../lib/recipe-augment.ts";
 import { recentlyAdded, type RecentEntry } from "../../lib/recently-added.ts";
 import { FEATURED_PAIRING_SLUG } from "../../lib/homepage.config.ts";
 import { getCollection } from "astro:content";
@@ -28,13 +28,16 @@ const ingredients = (rawIngredients as Array<{ id: string; data: { name: string 
   (e) => !draftSlugs.has(e.id),
 );
 
-const mixtureEntries: RecentEntry[] = mixtures.map((e) => ({
-  type: "mixture",
-  slug: e.id,
-  name: (e.data as { name: string }).name,
-  href: `${prefix}/mixtures/${e.id}/`,
-  datePublished: (e.data as { datePublished?: string }).datePublished,
-}));
+const mixtureEntries: RecentEntry[] = mixtures.map((e) => {
+  const slug = slugFromLocaleId(e.id);
+  return {
+    type: "mixture",
+    slug,
+    name: (e.data as { name: string }).name,
+    href: `${prefix}/mixtures/${slug}/`,
+    datePublished: (e.data as { datePublished?: string }).datePublished,
+  };
+});
 
 const ingredientEntries: RecentEntry[] = ingredients.map((e) => {
   const slug = e.id.replace(/^[a-z]{2}\//, "");

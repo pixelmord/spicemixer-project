@@ -2,6 +2,7 @@
 import type { CollectionEntry } from "astro:content";
 import RecipeMeta from "./RecipeMeta.astro";
 import { firstImage, keywordList } from "../lib/instructions.ts";
+import { slugFromLocaleId } from "../lib/recipe-augment.ts";
 import { useTranslations, type Lang } from "../i18n/translations.ts";
 
 interface Props {
@@ -10,7 +11,7 @@ interface Props {
 
 const { recipe } = Astro.props;
 const data = recipe.data;
-const slug = recipe.id;
+const slug = slugFromLocaleId(recipe.id);
 const image = firstImage(data.image);
 const tags = keywordList(data.keywords);
 const t = useTranslations((Astro.currentLocale ?? "en") as Lang);

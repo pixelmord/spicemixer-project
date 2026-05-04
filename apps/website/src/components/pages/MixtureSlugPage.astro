@@ -16,6 +16,7 @@ import {
   annotateTextHtml,
   resolveRefs,
   resolveVariants,
+  slugFromLocaleId,
   type Meta,
 } from "../../lib/recipe-augment.ts";
 import { type MixtureKind } from "../../lib/mixture-schema.ts";
@@ -147,10 +148,11 @@ const hreflang = mix ? await hreflangTags(mixSlug, "mixtures", Astro.site?.toStr
       <section class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
         {
           indexMixtures.map((mix) => {
-            const href = `${prefix}/mixtures/${mix.id}/`;
+            const slug = slugFromLocaleId(mix.id);
+            const href = `${prefix}/mixtures/${slug}/`;
             const image = firstImage(mix.data.image);
             const cardTags = keywordList(mix.data.keywords);
-            const tn = `mixture-${mix.id}`;
+            const tn = `mixture-${slug}`;
             const fallbackLabel =
               [mix.data.recipeCategory, mix.data.recipeCuisine].filter(Boolean).join(" · ") ||
               t("recipe.fallback");

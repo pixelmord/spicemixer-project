@@ -4,7 +4,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import FilterBar from "../../components/FilterBar.astro";
 import RecipeMeta from "../../components/RecipeMeta.astro";
 import { firstImage, keywordList } from "../../lib/instructions.ts";
-import { getPublished } from "../../lib/recipe-augment.ts";
+import { getPublished, slugFromLocaleId } from "../../lib/recipe-augment.ts";
 import { MIXTURE_KINDS, buildKindBySlug } from "../../lib/mixture-schema.ts";
 import { useTranslations, type Lang, type TranslationKey } from "../../i18n/translations.ts";
 
@@ -47,10 +47,11 @@ const groups = [
     <section class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
       {
         sorted.map((mix) => {
-          const href = `${prefix}/mixtures/${mix.id}/`;
+          const slug = slugFromLocaleId(mix.id);
+          const href = `${prefix}/mixtures/${slug}/`;
           const image = firstImage(mix.data.image);
           const cardTags = keywordList(mix.data.keywords);
-          const transitionName = `mixture-${mix.id}`;
+          const transitionName = `mixture-${slug}`;
           const fallbackLabel = [mix.data.recipeCategory, mix.data.recipeCuisine].filter(Boolean).join(" · ") || t("recipe.fallback");
           const kind = kindBySlug.get(mix.id) ?? "";
           return (
