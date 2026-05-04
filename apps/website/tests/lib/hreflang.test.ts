@@ -88,11 +88,29 @@ describe("hreflangTags — recipes / mixtures", () => {
     vi.clearAllMocks();
   });
 
-  test("recipe: both active locales get tags since content serves all locales", async () => {
+  test("recipe: only locales with content get tags (locale-specific per ADR 0009)", async () => {
     vi.mocked(getEntry).mockImplementation(async (collection, id) => {
-      if (collection === "recipes" && id === "miso-ramen") return makeEntry("miso-ramen") as never;
-      if (collection === "meta" && id === "recipes/miso-ramen")
-        return makeEntry("recipes/miso-ramen", { draft: false, canonicalLocale: "en" }) as never;
+      if (collection === "recipes" && id === "en/miso-ramen")
+        return makeEntry("en/miso-ramen") as never;
+      if (collection === "meta" && id === "recipes/en/miso-ramen")
+        return makeEntry("recipes/en/miso-ramen", { draft: false, canonicalLocale: "en" }) as never;
+      return null as never;
+    });
+
+    const tags = await hreflangTags("miso-ramen", "recipes");
+    expect(tags).toContainEqual({ hrefLang: "en", href: "/recipes/miso-ramen/" });
+    expect(tags).not.toContainEqual({ hrefLang: "de", href: "/de/recipes/miso-ramen/" });
+    expect(tags).toContainEqual({ hrefLang: "x-default", href: "/recipes/miso-ramen/" });
+  });
+
+  test("recipe: both locales get tags when both translations exist", async () => {
+    vi.mocked(getEntry).mockImplementation(async (collection, id) => {
+      if (collection === "recipes" && (id === "en/miso-ramen" || id === "de/miso-ramen"))
+        return makeEntry(id as string) as never;
+      if (collection === "meta" && id === "recipes/en/miso-ramen")
+        return makeEntry("recipes/en/miso-ramen", { draft: false, canonicalLocale: "en" }) as never;
+      if (collection === "meta" && id === "recipes/de/miso-ramen")
+        return makeEntry("recipes/de/miso-ramen", { draft: false }) as never;
       return null as never;
     });
 
@@ -104,9 +122,9 @@ describe("hreflangTags — recipes / mixtures", () => {
 
   test("mixture: x-default points to canonical locale URL", async () => {
     vi.mocked(getEntry).mockImplementation(async (collection, id) => {
-      if (collection === "mixtures" && id === "harissa") return makeEntry("harissa") as never;
-      if (collection === "meta" && id === "mixtures/harissa")
-        return makeEntry("mixtures/harissa", { draft: false, canonicalLocale: "en" }) as never;
+      if (collection === "mixtures" && id === "en/harissa") return makeEntry("en/harissa") as never;
+      if (collection === "meta" && id === "mixtures/en/harissa")
+        return makeEntry("mixtures/en/harissa", { draft: false, canonicalLocale: "en" }) as never;
       return null as never;
     });
 

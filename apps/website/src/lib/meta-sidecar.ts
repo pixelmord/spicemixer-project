@@ -8,6 +8,7 @@ export type SyncCollection = "ingredients" | "recipes" | "mixtures";
 
 export type MetaRef = {
   collection: Collection;
+  /** Required for ingredients, recipes, mixtures. Ignored for pairings. */
   locale?: string;
   slug: string;
 };
@@ -48,8 +49,9 @@ class MetaSidecarAdapter implements MetaSidecar {
     if (collection === "pairings") {
       return { metaCollection: PAIRING_META, key: slug };
     }
-    // recipes, mixtures, or any other recipe-collection kind
-    return { metaCollection: "meta", key: `${collection}/${slug}` };
+    // recipes, mixtures: locale-keyed per ADR 0009
+    if (!locale) throw new Error(`MetaSidecar.resolve: locale required for ${collection}`);
+    return { metaCollection: "meta", key: `${collection}/${locale}/${slug}` };
   }
 
   async read(ref: MetaRef): Promise<ContentItem | null> {

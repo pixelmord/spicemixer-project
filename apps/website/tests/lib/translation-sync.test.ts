@@ -141,24 +141,24 @@ describe("flagTranslationsStale — ingredients", () => {
 });
 
 // ---------------------------------------------------------------------------
-// flagTranslationsStale — recipes / mixtures
+// flagTranslationsStale — recipes / mixtures (folder-per-locale, ADR 0009)
 // ---------------------------------------------------------------------------
 
 describe("flagTranslationsStale — recipes", () => {
   test("stamps translationStaleSince on translation children in the same collection", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("meta", "recipes/miso-ramen", {
+    await store.put("meta", "recipes/en/miso-ramen", {
       canonicalLocale: "en",
       translations: { de: "miso-ramen-de" },
     });
-    await store.put("meta", "recipes/miso-ramen-de", {
+    await store.put("meta", "recipes/de/miso-ramen-de", {
       translationOf: "miso-ramen",
     });
 
     await flagTranslationsStale(sidecar, "recipes", "miso-ramen");
 
-    const deMeta = await store.get("meta", "recipes/miso-ramen-de");
+    const deMeta = await store.get("meta", "recipes/de/miso-ramen-de");
     expect(typeof (deMeta!.data as Record<string, unknown>)["translationStaleSince"]).toBe(
       "string",
     );
@@ -167,25 +167,25 @@ describe("flagTranslationsStale — recipes", () => {
   test("does not stamp canonical meta", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("meta", "recipes/miso-ramen", { canonicalLocale: "en" });
-    await store.put("meta", "recipes/miso-ramen-de", { translationOf: "miso-ramen" });
+    await store.put("meta", "recipes/en/miso-ramen", { canonicalLocale: "en" });
+    await store.put("meta", "recipes/de/miso-ramen-de", { translationOf: "miso-ramen" });
 
     await flagTranslationsStale(sidecar, "recipes", "miso-ramen");
 
-    const canonical = await store.get("meta", "recipes/miso-ramen");
+    const canonical = await store.get("meta", "recipes/en/miso-ramen");
     expect((canonical!.data as Record<string, unknown>)["translationStaleSince"]).toBeUndefined();
   });
 
   test("does not stamp translations in a different collection", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("meta", "mixtures/harissa-de", {
+    await store.put("meta", "mixtures/de/harissa-de", {
       translationOf: "harissa",
     });
 
     await flagTranslationsStale(sidecar, "recipes", "harissa");
 
-    const mixtureMeta = await store.get("meta", "mixtures/harissa-de");
+    const mixtureMeta = await store.get("meta", "mixtures/de/harissa-de");
     expect((mixtureMeta!.data as Record<string, unknown>)["translationStaleSince"]).toBeUndefined();
   });
 
@@ -193,14 +193,14 @@ describe("flagTranslationsStale — recipes", () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     const existingTimestamp = "2026-01-01T00:00:00.000Z";
-    await store.put("meta", "recipes/miso-ramen-de", {
+    await store.put("meta", "recipes/de/miso-ramen-de", {
       translationOf: "miso-ramen",
       translationStaleSince: existingTimestamp,
     });
 
     await flagTranslationsStale(sidecar, "recipes", "miso-ramen");
 
-    const deMeta = await store.get("meta", "recipes/miso-ramen-de");
+    const deMeta = await store.get("meta", "recipes/de/miso-ramen-de");
     expect((deMeta!.data as Record<string, unknown>)["translationStaleSince"]).toBe(
       existingTimestamp,
     );
@@ -271,36 +271,37 @@ describe("clearStaleFlag — ingredients", () => {
 });
 
 // ---------------------------------------------------------------------------
-// clearStaleFlag — recipes
+// clearStaleFlag — recipes (folder-per-locale: key is "locale/slug")
 // ---------------------------------------------------------------------------
 
 describe("clearStaleFlag — recipes", () => {
   test("clears translationStaleSince from the meta entry", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("meta", "recipes/miso-ramen-de", {
+    await store.put("meta", "recipes/de/miso-ramen-de", {
       translationOf: "miso-ramen",
       translationStaleSince: "2026-01-01T00:00:00.000Z",
     });
 
-    await clearStaleFlag(sidecar, "recipes", "miso-ramen-de");
+    // key is "locale/slug" after ADR 0009
+    await clearStaleFlag(sidecar, "recipes", "de/miso-ramen-de");
 
-    const meta = await store.get("meta", "recipes/miso-ramen-de");
+    const meta = await store.get("meta", "recipes/de/miso-ramen-de");
     expect((meta!.data as Record<string, unknown>)["translationStaleSince"]).toBeUndefined();
   });
 
   test("preserves other meta fields after clearing", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("meta", "recipes/miso-ramen-de", {
+    await store.put("meta", "recipes/de/miso-ramen-de", {
       translationOf: "miso-ramen",
       tags: ["spicy"],
       translationStaleSince: "2026-01-01T00:00:00.000Z",
     });
 
-    await clearStaleFlag(sidecar, "recipes", "miso-ramen-de");
+    await clearStaleFlag(sidecar, "recipes", "de/miso-ramen-de");
 
-    const meta = await store.get("meta", "recipes/miso-ramen-de");
+    const meta = await store.get("meta", "recipes/de/miso-ramen-de");
     const data = meta!.data as Record<string, unknown>;
     expect(data["translationOf"]).toBe("miso-ramen");
     expect(data["tags"]).toEqual(["spicy"]);
@@ -336,11 +337,10 @@ describe("listStaleEntries", () => {
     });
   });
 
-  test("includes recipe entries with translationStaleSince", async () => {
+  test("includes recipe entries with translationStaleSince (folder-per-locale)", async () => {
     const store = new InMemoryStore();
-    await store.put("meta", "recipes/miso-ramen-de", {
+    await store.put("meta", "recipes/de/miso-ramen-de", {
       translationOf: "miso-ramen",
-      locale: "de",
       translationStaleSince: "2026-03-01T00:00:00.000Z",
       canonicalLocale: "en",
     });
@@ -348,7 +348,7 @@ describe("listStaleEntries", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
       collection: "recipes",
-      key: "miso-ramen-de",
+      key: "de/miso-ramen-de",
       slug: "miso-ramen-de",
       locale: "de",
       staleSince: "2026-03-01T00:00:00.000Z",
@@ -358,16 +358,15 @@ describe("listStaleEntries", () => {
 
   test("includes mixture entries with translationStaleSince", async () => {
     const store = new InMemoryStore();
-    await store.put("meta", "mixtures/harissa-de", {
+    await store.put("meta", "mixtures/de/harissa-de", {
       translationOf: "harissa",
-      locale: "de",
       translationStaleSince: "2026-02-01T00:00:00.000Z",
     });
     const entries = await listStaleEntries(store);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
       collection: "mixtures",
-      key: "harissa-de",
+      key: "de/harissa-de",
       slug: "harissa-de",
       locale: "de",
     });
@@ -383,9 +382,8 @@ describe("listStaleEntries", () => {
       translationOf: "en/cardamom",
       translationStaleSince: "2026-01-01T00:00:00.000Z",
     });
-    await store.put("meta", "recipes/miso-ramen-de", {
+    await store.put("meta", "recipes/de/miso-ramen-de", {
       translationOf: "miso-ramen",
-      locale: "de",
       translationStaleSince: "2026-02-01T00:00:00.000Z",
     });
     const entries = await listStaleEntries(store);
@@ -404,17 +402,6 @@ describe("listStaleEntries", () => {
     });
     const entries = await listStaleEntries(store);
     expect(entries).toHaveLength(1);
-    expect(entries[0]!.locale).toBe("de");
-  });
-
-  test("falls back to language field when locale is absent on recipe meta", async () => {
-    const store = new InMemoryStore();
-    await store.put("meta", "recipes/curry-de", {
-      translationOf: "curry",
-      language: "de",
-      translationStaleSince: "2026-04-01T00:00:00.000Z",
-    });
-    const entries = await listStaleEntries(store);
     expect(entries[0]!.locale).toBe("de");
   });
 });

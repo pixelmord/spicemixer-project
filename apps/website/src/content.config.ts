@@ -184,21 +184,21 @@ const ingredientMetaSchema = z.object({
   imageAttribution: imageAttributionSchema,
 });
 
+// Content IDs are "locale/slug" (e.g. "en/miso-butter-ramen"), same layout as ingredients.
 const recipes = defineCollection({
-  loader: glob({ pattern: "[^.]+.json", base: "./src/content/recipes" }),
+  loader: glob({ pattern: "[a-z][a-z]/[^.]+.json", base: "./src/content/recipes" }),
   schema: recipeSchema,
 });
 
 const mixtures = defineCollection({
-  loader: glob({ pattern: "[^.]+.json", base: "./src/content/mixtures" }),
+  loader: glob({ pattern: "[a-z][a-z]/[^.]+.json", base: "./src/content/mixtures" }),
   schema: recipeSchema,
 });
 
-// Meta files colocated with content: recipes/slug.meta.json, mixtures/slug.meta.json, etc.
-// IDs are "recipes/slug", "mixtures/slug" — same as before.
+// Meta IDs are "kind/locale/slug" (e.g. "recipes/en/miso-butter-ramen").
 const meta = defineCollection({
   loader: glob({
-    pattern: "{recipes,mixtures}/*.meta.json",
+    pattern: "{recipes,mixtures}/[a-z][a-z]/*.meta.json",
     base: "./src/content",
     generateId: ({ entry }) => entry.replace(".meta.json", ""),
   }),

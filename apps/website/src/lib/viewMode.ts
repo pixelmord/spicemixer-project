@@ -2,7 +2,7 @@ const KEY = "spicemixer.viewMode";
 
 export type ViewMode = "cook" | "default";
 
-function getViewMode(): ViewMode {
+export function getViewMode(): ViewMode {
   try {
     return localStorage.getItem(KEY) === "cook" ? "cook" : "default";
   } catch {
@@ -10,7 +10,7 @@ function getViewMode(): ViewMode {
   }
 }
 
-function setViewMode(mode: ViewMode): void {
+export function setViewMode(mode: ViewMode): void {
   try {
     localStorage.setItem(KEY, mode);
   } catch {

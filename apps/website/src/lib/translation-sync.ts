@@ -48,7 +48,10 @@ function refFromKey(collection: SyncCollection, key: string): MetaRef {
     const slash = key.indexOf("/");
     return { collection, locale: key.slice(0, slash), slug: key.slice(slash + 1) };
   }
-  return { collection, slug: key };
+  // recipes/mixtures: key is "locale/slug" after ADR 0009 migration
+  const slash = key.indexOf("/");
+  if (slash === -1) return { collection, locale: "", slug: key };
+  return { collection, locale: key.slice(0, slash), slug: key.slice(slash + 1) };
 }
 
 export async function clearStaleFlag(
@@ -98,17 +101,32 @@ export async function listStaleEntries(store: ContentStore): Promise<StaleEntry[
   for (const item of metaItems) {
     const data = item.data as Record<string, unknown>;
     if (!data["translationStaleSince"]) continue;
-    const slash = item.id.indexOf("/");
-    if (slash === -1) continue;
-    const prefix = item.id.slice(0, slash);
+    const firstSlash = item.id.indexOf("/");
+    if (firstSlash === -1) continue;
+    const prefix = item.id.slice(0, firstSlash);
     if (prefix !== "recipes" && prefix !== "mixtures") continue;
-    const key = item.id.slice(slash + 1);
+    // After ADR 0009: id is "kind/locale/slug". Before migration: "kind/slug".
+    const rest = item.id.slice(firstSlash + 1); // "locale/slug" or just "slug"
+    const secondSlash = rest.indexOf("/");
+    let locale: string;
+    let slug: string;
+    let key: string;
+    if (secondSlash !== -1) {
+      locale = rest.slice(0, secondSlash);
+      slug = rest.slice(secondSlash + 1);
+      key = rest; // "locale/slug"
+    } else {
+      // Legacy flat format (pre-migration): fall back to data fields for locale
+      locale =
+        (data["locale"] as string | undefined) ?? (data["language"] as string | undefined) ?? "—";
+      slug = rest;
+      key = rest;
+    }
     result.push({
       collection: prefix as "recipes" | "mixtures",
       key,
-      slug: key,
-      locale:
-        (data["locale"] as string | undefined) ?? (data["language"] as string | undefined) ?? "—",
+      slug,
+      locale,
       staleSince: data["translationStaleSince"] as string,
       canonicalLocale: data["canonicalLocale"] as string | undefined,
     });

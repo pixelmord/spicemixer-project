@@ -1,7 +1,8 @@
 import { defineAction, ActionError } from "astro:actions";
 import { z } from "astro/zod";
 import { createStore } from "@/lib/content-store.ts";
-import { createMetaSidecar, INGREDIENT_META } from "@/lib/meta-sidecar.ts";
+import { createMetaSidecar, INGREDIENT_META, PAIRING_META } from "@/lib/meta-sidecar.ts";
+import { slugFromLocaleId } from "@/lib/recipe-augment.ts";
 import { entityRefSchema } from "@/lib/entity-ref.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
 import { fetchRecipe } from "recipe-ingestion";
@@ -146,14 +147,16 @@ async function buildListing() {
 
   const recipeItems = [...recipes, ...mixtures].map((item) => {
     const collection = item.collection as "recipes" | "mixtures";
+    // item.id is "locale/slug" per ADR 0009; meta key is "kind/locale/slug"
     const metaId = `${collection}/${item.id}`;
     const meta = metaMap.get(metaId) ?? {};
     const completeness = scoreRecipe(item.data as Record<string, unknown>, meta);
+    const slug = slugFromLocaleId(item.id);
     return {
       type: "recipe" as const,
       collection,
-      id: item.id,
-      name: (item.data as Record<string, unknown>).name ?? item.id,
+      id: slug,
+      name: (item.data as Record<string, unknown>).name ?? slug,
       draft: !!(meta as Record<string, unknown>).draft,
       completeness,
       updatedAt: item.updatedAt,
@@ -239,17 +242,18 @@ export const server = {
     input: z.object({
       collection: recipeCollectionEnum,
       slug: z.string().min(1),
+      locale: z.enum(["en", "de"]),
       recipe: z.record(z.string(), z.unknown()),
       meta: z.record(z.string(), z.unknown()).optional(),
       aiMergeModel: z.string().optional(),
     }),
-    handler: async ({ collection, slug, recipe, meta, aiMergeModel }) => {
+    handler: async ({ collection, slug, locale, recipe, meta, aiMergeModel }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
       let finalMeta = meta;
       if (aiMergeModel) {
         const { recordAiEvent, hashSuggestion } = await import("content-ai");
-        const existingRecord = await sidecar.read({ collection, slug });
+        const existingRecord = await sidecar.read({ collection, locale, slug });
         const existingMeta = (existingRecord?.data as Record<string, unknown>) ?? {};
         const base = meta ?? existingMeta;
         const existingEvents: AiEvent[] = Array.isArray(base["aiEvents"])
@@ -267,6 +271,7 @@ export const server = {
       }
       const result = await libSaveRecipe(store, sidecar, {
         collection,
+        locale,
         slug,
         recipe,
         meta: finalMeta,
@@ -461,7 +466,11 @@ export const server = {
       if (collection === "ingredients") {
         await libDeleteIngredient(store, sidecar, { id });
       } else {
-        await libDeleteRecipe(store, sidecar, { collection, id });
+        // id may be "locale/slug" (new format) or bare "slug" (legacy admin, assume "en")
+        const slash = id.indexOf("/");
+        const locale = slash !== -1 ? id.slice(0, slash) : "en";
+        const slug = slash !== -1 ? id.slice(slash + 1) : id;
+        await libDeleteRecipe(store, sidecar, { collection, locale, slug });
       }
       return { ok: true };
     },
@@ -469,22 +478,30 @@ export const server = {
 
   /** Set meta.draft = false (publish). */
   publish: defineAction({
-    input: z.object({ collection: recipeCollectionEnum, id: z.string() }),
-    handler: async ({ collection, id }) => {
+    input: z.object({
+      collection: recipeCollectionEnum,
+      locale: z.enum(["en", "de"]),
+      slug: z.string().min(1),
+    }),
+    handler: async ({ collection, locale, slug }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libPublishRecipe(sidecar, { collection, id });
+      await libPublishRecipe(sidecar, { collection, locale, slug });
       return { ok: true };
     },
   }),
 
   /** Set meta.draft = true (unpublish). */
   unpublish: defineAction({
-    input: z.object({ collection: recipeCollectionEnum, id: z.string() }),
-    handler: async ({ collection, id }) => {
+    input: z.object({
+      collection: recipeCollectionEnum,
+      locale: z.enum(["en", "de"]),
+      slug: z.string().min(1),
+    }),
+    handler: async ({ collection, locale, slug }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libUnpublishRecipe(sidecar, { collection, id });
+      await libUnpublishRecipe(sidecar, { collection, locale, slug });
       return { ok: true };
     },
   }),
@@ -554,13 +571,13 @@ export const server = {
       return [
         ...recipes.map((item) => ({
           collection: "recipes" as const,
-          slug: item.id,
-          name: String((item.data as Record<string, unknown>).name ?? item.id),
+          slug: slugFromLocaleId(item.id),
+          name: String((item.data as Record<string, unknown>).name ?? slugFromLocaleId(item.id)),
         })),
         ...mixtures.map((item) => ({
           collection: "mixtures" as const,
-          slug: item.id,
-          name: String((item.data as Record<string, unknown>).name ?? item.id),
+          slug: slugFromLocaleId(item.id),
+          name: String((item.data as Record<string, unknown>).name ?? slugFromLocaleId(item.id)),
         })),
       ];
     },
@@ -1170,11 +1187,12 @@ export const server = {
     input: z.object({
       collection: z.enum(["recipes", "mixtures", "ingredients"]),
       slug: z.string().min(1),
+      locale: z.string().length(2).default("en"),
     }),
-    handler: async ({ collection, slug }) => {
+    handler: async ({ collection, slug, locale }) => {
       const store = await createStore();
       type C = Parameters<typeof store.get>[0];
-      const existing = await store.get(collection as C, slug);
+      const existing = await store.get(collection as C, `${locale}/${slug}`);
       return { available: !existing };
     },
   }),
@@ -1244,10 +1262,10 @@ export const server = {
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "");
 
-      const existing = await store.get(collection, slug);
+      const existing = await store.get(collection, `${locale}/${slug}`);
       if (existing) {
         let i = 2;
-        while (await store.get(collection, `${slug}-${i}`)) i++;
+        while (await store.get(collection, `${locale}/${slug}-${i}`)) i++;
         slug = `${slug}-${i}`;
       }
       return { slug };
@@ -1337,16 +1355,16 @@ export const server = {
       const existingRecipes = [
         ...recipes.map((r) => ({
           collection: "recipes" as const,
-          slug: r.id,
-          name: String((r.data as Record<string, unknown>).name ?? r.id),
+          slug: slugFromLocaleId(r.id),
+          name: String((r.data as Record<string, unknown>).name ?? slugFromLocaleId(r.id)),
           recipeIngredient: (r.data as Record<string, unknown>).recipeIngredient as
             | string[]
             | undefined,
         })),
         ...mixtures.map((r) => ({
           collection: "mixtures" as const,
-          slug: r.id,
-          name: String((r.data as Record<string, unknown>).name ?? r.id),
+          slug: slugFromLocaleId(r.id),
+          name: String((r.data as Record<string, unknown>).name ?? slugFromLocaleId(r.id)),
         })),
       ].filter((r) => r.slug !== slug);
 
@@ -1465,7 +1483,7 @@ export const server = {
         return cache ? { ...m, aiSuggestions: { ...cache, at: "" } } : m;
       };
       if (hashContent(stripTimestamp(updatedMeta)) !== hashContent(stripTimestamp(meta))) {
-        await sidecar.write({ collection, slug }, updatedMeta);
+        await sidecar.write({ collection, locale, slug }, updatedMeta);
       }
 
       return {
@@ -1508,7 +1526,7 @@ export const server = {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
 
-      const existing = await store.get(collection, translationSlug);
+      const existing = await store.get(collection, `${targetLocale}/${translationSlug}`);
       if (existing) {
         throw new ActionError({
           code: "CONFLICT",
@@ -1525,7 +1543,7 @@ export const server = {
 
       const translatedRecipe = { ...recipe, ...translation.fields };
 
-      await store.put(collection, translationSlug, translatedRecipe);
+      await store.put(collection, `${targetLocale}/${translationSlug}`, translatedRecipe);
 
       const translationMeta: Record<string, unknown> = {
         ...meta,
@@ -1536,7 +1554,10 @@ export const server = {
         translations: {},
         variants: [],
       };
-      await sidecar.write({ collection, slug: translationSlug }, translationMeta);
+      await sidecar.write(
+        { collection, locale: targetLocale, slug: translationSlug },
+        translationMeta,
+      );
 
       // Back-link original → translation
       const currentTranslations =
@@ -1544,7 +1565,7 @@ export const server = {
           ? (meta["translations"] as Record<string, string>)
           : {};
       await sidecar.write(
-        { collection, slug },
+        { collection, locale: sourceLocale, slug },
         {
           ...meta,
           translations: { ...currentTranslations, [targetLocale]: translationSlug },
@@ -1562,11 +1583,12 @@ export const server = {
       collection: recipeCollectionEnum,
       slug: z.string().min(1),
       name: z.string().min(1),
+      locale: z.enum(["en", "de"]),
     }),
-    handler: async ({ collection, slug, name }) => {
+    handler: async ({ collection, slug, name, locale }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await store.put(collection, slug, {
+      await store.put(collection, `${locale}/${slug}`, {
         "@context": "https://schema.org",
         "@type": "Recipe",
         name,
@@ -1574,7 +1596,7 @@ export const server = {
         recipeInstructions: [{ "@type": "HowToStep", text: "" }],
       });
       await sidecar.write(
-        { collection, slug },
+        { collection, locale, slug },
         {
           draft: true,
           kind: collection === "recipes" ? "recipe" : "mixture",

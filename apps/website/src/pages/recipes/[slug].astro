@@ -12,6 +12,7 @@ import StepsLightbox from "../../components/StepsLightbox.astro";
 import {
   getMeta,
   getPublished,
+  slugFromLocaleId,
   getIngredient,
   linkIngredients,
   annotateTextHtml,
@@ -24,13 +25,14 @@ import { resolvePublished } from "../../lib/published-entity.ts";
 import { hreflangTags } from "../../lib/hreflang.ts";
 
 export async function getStaticPaths() {
-  const all = await getPublished("recipes");
+  const enEntries = await getPublished("recipes", "en");
   const paths = await Promise.all(
-    all.map(async (entry) => {
-      const resolved = await resolvePublished("recipes", entry.id, "en");
+    enEntries.map(async (entry) => {
+      const slug = slugFromLocaleId(entry.id);
+      const resolved = await resolvePublished("recipes", slug, "en");
       if (!resolved) return null;
       return {
-        params: { slug: entry.id },
+        params: { slug },
         props: {
           recipe: resolved.entity as CollectionEntry<"recipes">,
           isFallback: resolved.isFallback,
@@ -62,7 +64,7 @@ const locale = Astro.currentLocale ?? "en";
 const prefix = locale === "de" ? "/de" : "";
 const ingredientBase = `${prefix}/ingredients`;
 
-const meta = await getMeta("recipes", slug);
+const meta = await getMeta("recipes", locale, slug);
 const pagefindFilters = withPagefindFilters({
   cuisine: data.recipeCuisine ?? undefined,
   category: data.recipeCategory ?? undefined,

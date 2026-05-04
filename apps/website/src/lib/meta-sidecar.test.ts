@@ -11,14 +11,14 @@ describe("MetaSidecar.resolve", () => {
     expect(result).toEqual({ metaCollection: INGREDIENT_META, key: "en/cardamom" });
   });
 
-  test("mixture (no locale) → meta, mixtures/slug", () => {
-    const result = sidecar.resolve({ collection: "mixtures", slug: "harissa" });
-    expect(result).toEqual({ metaCollection: "meta", key: "mixtures/harissa" });
+  test("mixture (with locale) → meta, mixtures/locale/slug", () => {
+    const result = sidecar.resolve({ collection: "mixtures", locale: "en", slug: "harissa" });
+    expect(result).toEqual({ metaCollection: "meta", key: "mixtures/en/harissa" });
   });
 
-  test("recipe (no locale) → meta, recipes/slug", () => {
-    const result = sidecar.resolve({ collection: "recipes", slug: "miso-ramen" });
-    expect(result).toEqual({ metaCollection: "meta", key: "recipes/miso-ramen" });
+  test("recipe (with locale) → meta, recipes/locale/slug", () => {
+    const result = sidecar.resolve({ collection: "recipes", locale: "en", slug: "miso-ramen" });
+    expect(result).toEqual({ metaCollection: "meta", key: "recipes/en/miso-ramen" });
   });
 
   test("pairing (compound slug) → pairingMeta, compound-slug", () => {
@@ -28,6 +28,18 @@ describe("MetaSidecar.resolve", () => {
 
   test("ingredient without locale throws", () => {
     expect(() => sidecar.resolve({ collection: "ingredients", slug: "cardamom" })).toThrow(
+      /locale required/,
+    );
+  });
+
+  test("mixture without locale throws", () => {
+    expect(() => sidecar.resolve({ collection: "mixtures", slug: "harissa" })).toThrow(
+      /locale required/,
+    );
+  });
+
+  test("recipe without locale throws", () => {
+    expect(() => sidecar.resolve({ collection: "recipes", slug: "miso-ramen" })).toThrow(
       /locale required/,
     );
   });
@@ -43,16 +55,27 @@ describe("MetaSidecar.read/write/exists/remove", () => {
     expect(item?.data).toEqual({ draft: true });
   });
 
+  test("write then read returns the data for recipe", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    const ref = { collection: "recipes" as const, locale: "en", slug: "miso-ramen" };
+    await sidecar.write(ref, { draft: true });
+    const item = await sidecar.read(ref);
+    expect(item?.data).toEqual({ draft: true });
+  });
+
   test("exists returns false for missing item", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    expect(await sidecar.exists({ collection: "mixtures", slug: "ghost" })).toBe(false);
+    expect(await sidecar.exists({ collection: "mixtures", locale: "en", slug: "ghost" })).toBe(
+      false,
+    );
   });
 
   test("exists returns true after write", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    const ref = { collection: "mixtures" as const, slug: "harissa" };
+    const ref = { collection: "mixtures" as const, locale: "en", slug: "harissa" };
     await sidecar.write(ref, {});
     expect(await sidecar.exists(ref)).toBe(true);
   });
@@ -81,22 +104,22 @@ describe("MetaSidecar.listSync", () => {
   test("returns only meta items matching the collection prefix for 'recipes'", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("meta", "recipes/miso-ramen", { draft: false });
-    await store.put("meta", "mixtures/harissa", { draft: true });
+    await store.put("meta", "recipes/en/miso-ramen", { draft: false });
+    await store.put("meta", "mixtures/en/harissa", { draft: true });
     const items = await sidecar.listSync("recipes");
     expect(items).toHaveLength(1);
-    expect(items[0]?.id).toBe("recipes/miso-ramen");
+    expect(items[0]?.id).toBe("recipes/en/miso-ramen");
     expect(items[0]?.metaCollection).toBe("meta");
   });
 
   test("returns only mixtures meta items for 'mixtures'", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("meta", "mixtures/harissa", { kind: "sauce" });
-    await store.put("meta", "recipes/miso-ramen", { draft: false });
+    await store.put("meta", "mixtures/en/harissa", { kind: "sauce" });
+    await store.put("meta", "recipes/en/miso-ramen", { draft: false });
     const items = await sidecar.listSync("mixtures");
     expect(items).toHaveLength(1);
-    expect(items[0]?.id).toBe("mixtures/harissa");
+    expect(items[0]?.id).toBe("mixtures/en/harissa");
   });
 });
 
