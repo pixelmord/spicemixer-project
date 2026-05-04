@@ -20,10 +20,6 @@ describe("Pagefind: mixture detail template", () => {
     expect(src).toContain("data-pagefind-body");
   });
 
-  test("emits data-pagefind-ignore for drafts", () => {
-    expect(src).toContain("data-pagefind-ignore");
-  });
-
   test("emits data-pagefind-filter attrs", () => {
     expect(src).toContain("data-pagefind-filter");
   });
@@ -43,10 +39,6 @@ describe("Pagefind: ingredient detail template", () => {
     expect(src).toContain("data-pagefind-body");
   });
 
-  test("emits data-pagefind-ignore for drafts", () => {
-    expect(src).toContain("data-pagefind-ignore");
-  });
-
   test("emits data-pagefind-filter attrs", () => {
     expect(src).toContain("data-pagefind-filter");
   });
@@ -64,10 +56,6 @@ describe("Pagefind: recipe detail template", () => {
 
   test("emits data-pagefind-body on wrapper", () => {
     expect(src).toContain("data-pagefind-body");
-  });
-
-  test("emits data-pagefind-ignore for drafts", () => {
-    expect(src).toContain("data-pagefind-ignore");
   });
 
   test("emits data-pagefind-filter attrs", () => {

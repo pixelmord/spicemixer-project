@@ -35,7 +35,6 @@ export async function getStaticPaths() {
           recipe: resolved.entity as CollectionEntry<"recipes">,
           isFallback: resolved.isFallback,
           canonicalLocale: resolved.canonicalLocale,
-          isDraft: resolved.isDraft,
         },
       };
     }),
@@ -47,10 +46,9 @@ interface Props {
   recipe: CollectionEntry<"recipes">;
   isFallback: boolean;
   canonicalLocale: string;
-  isDraft: boolean;
 }
 
-const { recipe, isFallback, canonicalLocale, isDraft } = Astro.props;
+const { recipe, isFallback, canonicalLocale } = Astro.props;
 const data = recipe.data;
 const slug = Astro.params.slug as string;
 const image = firstImage(data.image);
@@ -70,8 +68,6 @@ const pagefindFilters = withPagefindFilters({
   category: data.recipeCategory ?? undefined,
   region: meta.region,
 });
-const pagefindBody = isDraft ? undefined : true;
-const pagefindIgnore = isDraft ? true : undefined;
 
 const linkedIngredients = linkIngredients(data.recipeIngredient, meta.ingredientLinks);
 const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
@@ -109,8 +105,7 @@ const hreflang = await hreflangTags(slug, "recipes", Astro.site?.toString().repl
 
   <main
     class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8"
-    data-pagefind-body={pagefindBody}
-    data-pagefind-ignore={pagefindIgnore}
+    data-pagefind-body
   >
     {Object.entries(pagefindFilters).map(([key, value]) => (
       <span data-pagefind-filter={`${key}:${value}`} hidden aria-hidden="true" />

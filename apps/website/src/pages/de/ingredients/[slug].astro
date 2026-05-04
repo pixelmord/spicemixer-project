@@ -27,7 +27,6 @@ export async function getStaticPaths() {
           ingredient: resolved.entity as CollectionEntry<"ingredients">,
           isFallback: resolved.isFallback,
           canonicalLocale: resolved.canonicalLocale,
-          isDraft: resolved.isDraft,
         },
       };
     }),
@@ -39,10 +38,9 @@ interface Props {
   ingredient: CollectionEntry<"ingredients">;
   isFallback: boolean;
   canonicalLocale: string;
-  isDraft: boolean;
 }
 
-const { ingredient, isFallback, canonicalLocale, isDraft } = Astro.props;
+const { ingredient, isFallback, canonicalLocale } = Astro.props;
 const data = ingredient.data;
 const slug = Astro.params.slug as string;
 
@@ -66,8 +64,6 @@ const pagefindFilters = withPagefindFilters({
   flavorProfile: data.flavorProfile,
   region: ingredientMeta?.region,
 });
-const pagefindBody = isDraft ? undefined : true;
-const pagefindIgnore = isDraft ? true : undefined;
 
 const usedIn = await getUsedIn(slug, prefix);
 
@@ -102,8 +98,7 @@ const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().
 
   <main
     class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8"
-    data-pagefind-body={pagefindBody}
-    data-pagefind-ignore={pagefindIgnore}
+    data-pagefind-body
   >
     {Object.entries(pagefindFilters).map(([key, value]) => (
       <span data-pagefind-filter={`${key}:${value}`} hidden aria-hidden="true" />

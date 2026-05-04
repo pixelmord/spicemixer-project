@@ -8,7 +8,6 @@ export type Resolved = {
   canonicalLocale: string;
   renderedLocale: string;
   isFallback: boolean;
-  isDraft: boolean;
 };
 
 async function getIngredientCanonicalLocale(slug: string, hintLocale?: string): Promise<string> {
@@ -60,7 +59,6 @@ export async function resolvePublished(
         canonicalLocale: await getIngredientCanonicalLocale(slug, requestedLocale),
         renderedLocale: requestedLocale,
         isFallback: false,
-        isDraft: false,
       };
     }
 
@@ -75,7 +73,6 @@ export async function resolvePublished(
       canonicalLocale,
       renderedLocale: canonicalLocale,
       isFallback: true,
-      isDraft: false,
     };
   }
 
@@ -89,6 +86,5 @@ export async function resolvePublished(
     canonicalLocale: await getRecipeCanonicalLocale(collection, slug),
     renderedLocale: requestedLocale,
     isFallback: false,
-    isDraft: false,
   };
 }
