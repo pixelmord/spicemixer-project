@@ -129,6 +129,9 @@ importers:
       content-ai:
         specifier: workspace:*
         version: link:../../packages/content-ai
+      entity-kind:
+        specifier: workspace:*
+        version: link:../../packages/entity-kind
       lucide-react:
         specifier: 'catalog:'
         version: 1.11.0(react@19.2.5)
