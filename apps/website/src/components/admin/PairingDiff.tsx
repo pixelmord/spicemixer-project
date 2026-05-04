@@ -53,6 +53,8 @@ const KIND_BADGE_LABEL: Record<ChangeKind, string> = {
 
 function FieldRow({ diff }: { diff: FieldDiff }) {
   if (diff.kind === "unchanged") return null;
+  const oldStr = typeof diff.oldValue === "string" ? diff.oldValue : "";
+  const newStr = typeof diff.newValue === "string" ? diff.newValue : "";
   return (
     <tr className={cn("border-b border-border", KIND_ROW_BG[diff.kind])}>
       <td className="py-2 px-3 align-top w-32">
@@ -62,18 +64,18 @@ function FieldRow({ diff }: { diff: FieldDiff }) {
         </div>
       </td>
       <td className="py-2 px-3 align-top text-xs whitespace-pre-wrap">
-        {diff.oldValue ? (
-          <span className="text-muted-foreground">{diff.oldValue as string}</span>
+        {oldStr ? (
+          <span className="text-muted-foreground">{oldStr}</span>
         ) : (
           <span className="italic text-muted-foreground/50">(empty)</span>
         )}
       </td>
       <td className="py-2 px-3 align-top text-xs whitespace-pre-wrap">
-        {diff.newValue ? (
-          diff.kind === "changed" && typeof diff.oldValue === "string" ? (
-            <InlineWordDiff before={diff.oldValue} after={diff.newValue as string} />
+        {newStr ? (
+          diff.kind === "changed" && oldStr ? (
+            <InlineWordDiff before={oldStr} after={newStr} />
           ) : (
-            <span>{diff.newValue as string}</span>
+            <span>{newStr}</span>
           )
         ) : (
           <span className="italic text-muted-foreground/50">(empty)</span>

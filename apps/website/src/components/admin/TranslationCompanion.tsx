@@ -29,6 +29,11 @@ interface FieldCompanionProps {
 export function FieldWithTranslation({ label, fieldKey, context, children }: FieldCompanionProps) {
   const [collapsed, setCollapsed] = useState(false);
   const otherValue = context.otherData[fieldKey];
+  const otherDisplay = Array.isArray(otherValue)
+    ? otherValue.join(", ")
+    : typeof otherValue === "string"
+      ? otherValue
+      : "";
 
   if (!context.showTranslation) {
     return <div className="space-y-1.5">{children}</div>;
@@ -59,13 +64,7 @@ export function FieldWithTranslation({ label, fieldKey, context, children }: Fie
               )}
             >
               {otherValue != null && otherValue !== "" ? (
-                Array.isArray(otherValue) ? (
-                  otherValue.join(", ")
-                ) : typeof otherValue === "string" ? (
-                  otherValue
-                ) : (
-                  ""
-                )
+                otherDisplay
               ) : (
                 <a
                   href={`/admin/ingredients/${fieldKey}/edit?locale=${context.otherLocale}`}
