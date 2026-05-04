@@ -1,8 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { CURATE_REGISTRY, runCurate } from "../src/run-curate.ts";
 
-// ── Registry structure ────────────────────────────────────────────────────────
-
 describe("CURATE_REGISTRY structure", () => {
   test("has entries for all three EntityKinds", () => {
     expect(CURATE_REGISTRY.ingredient).toBeDefined();
@@ -35,8 +33,6 @@ describe("CURATE_REGISTRY structure", () => {
   });
 });
 
-// ── runCurate dispatch guards ────────────────────────────────────────────────
-
 describe("runCurate error guards", () => {
   test("throws for unknown kind", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,8 +57,6 @@ describe("runCurate error guards", () => {
   });
 });
 
-// ── runCurate delegates to the right proposer ────────────────────────────────
-
 describe("runCurate delegation", () => {
   test("ingredient improve delegates to CURATE_REGISTRY.ingredient.improve", async () => {
     const called: unknown[] = [];
@@ -74,12 +68,13 @@ describe("runCurate delegation", () => {
       return { fields: [] };
     };
 
-    const snapshot = { name: "cardamom" };
-    await runCurate("ingredient", "improve", snapshot, [], {} as never);
-
-    expect(called[0]).toBe(snapshot);
-    // restore
-    (CURATE_REGISTRY.ingredient as Record<string, unknown>).improve = originalFn;
+    try {
+      const snapshot = { name: "cardamom" };
+      await runCurate("ingredient", "improve", snapshot, [], {} as never);
+      expect(called[0]).toBe(snapshot);
+    } finally {
+      (CURATE_REGISTRY.ingredient as Record<string, unknown>).improve = originalFn;
+    }
   });
 
   test("recipe tags delegates to CURATE_REGISTRY.recipe.tags", async () => {
@@ -90,12 +85,13 @@ describe("runCurate delegation", () => {
       return { tags: [] };
     };
 
-    const snapshot = { name: "ras el hanout" };
-    await runCurate("recipe", "tags", snapshot, [], {} as never);
-
-    expect(called[0]).toBe(snapshot);
-    // restore
-    (CURATE_REGISTRY.recipe as Record<string, unknown>).tags = originalFn;
+    try {
+      const snapshot = { name: "ras el hanout" };
+      await runCurate("recipe", "tags", snapshot, [], {} as never);
+      expect(called[0]).toBe(snapshot);
+    } finally {
+      (CURATE_REGISTRY.recipe as Record<string, unknown>).tags = originalFn;
+    }
   });
 
   test("pairing translate delegates to CURATE_REGISTRY.pairing.translate", async () => {
@@ -106,11 +102,12 @@ describe("runCurate delegation", () => {
       return { targetLocale: "de", fields: {} };
     };
 
-    const snapshot = { ingredient1: "cumin", ingredient2: "coriander", description: "test" };
-    await runCurate("pairing", "translate", snapshot, "en", "de", {} as never);
-
-    expect(called[0]).toBe(snapshot);
-    // restore
-    (CURATE_REGISTRY.pairing as Record<string, unknown>).translate = originalFn;
+    try {
+      const snapshot = { ingredient1: "cumin", ingredient2: "coriander", description: "test" };
+      await runCurate("pairing", "translate", snapshot, "en", "de", {} as never);
+      expect(called[0]).toBe(snapshot);
+    } finally {
+      (CURATE_REGISTRY.pairing as Record<string, unknown>).translate = originalFn;
+    }
   });
 });
