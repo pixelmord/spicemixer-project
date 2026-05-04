@@ -38,6 +38,7 @@ import QuickCreateDialog from "./QuickCreateDialog.tsx";
 import TranslationCompanion, { FieldWithTranslation } from "./TranslationCompanion.tsx";
 import IngredientEnhanceModal from "./IngredientEnhanceModal.tsx";
 import IngredientTranslateModal from "./IngredientTranslateModal.tsx";
+import AiAssistPanel from "./AiAssistPanel.tsx";
 import PairingEditor, { type Pairing } from "./PairingEditor.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
@@ -1371,8 +1372,8 @@ export default function IngredientForm({
                 </section>
               </div>
 
-              {/* Right: completeness */}
-              <aside className="sticky top-0 h-fit w-52 shrink-0 pt-1">
+              {/* Right: completeness + AI assist */}
+              <aside className="sticky top-0 h-fit w-52 shrink-0 pt-1 space-y-3">
                 <CompletenessPanel
                   result={completeness}
                   requiredFields={requiredFields}
@@ -1383,6 +1384,40 @@ export default function IngredientForm({
                   onApplySuggestion={handleApplySuggestion}
                   onDismissSuggestion={handleDismissSuggestion}
                 />
+                {!isNew && (
+                  <AiAssistPanel
+                    mode="ingredient"
+                    snapshot={buildIngredientSnapshot()}
+                    missingFields={completeness.missing}
+                    locale={locale}
+                    targetLocale={locale === "de" ? "en" : "de"}
+                    onApplyPairings={(proposals) => {
+                      setAiSuggestions((prev) => ({
+                        ...prev,
+                        pairings: [
+                          ...prev.pairings,
+                          ...proposals
+                            .filter((p) => !prev.pairings.some((x) => x.slug === p.slug))
+                            .map((p) => ({
+                              slug: p.slug,
+                              description: p.note ?? "",
+                              confidence: "medium" as const,
+                            })),
+                        ],
+                      }));
+                    }}
+                    onApplyField={(field, value) => {
+                      if (!Array.isArray(value)) {
+                        handleApplySuggestion(field, String(value));
+                      }
+                    }}
+                    onApplyTranslation={(fields) => {
+                      for (const [f, v] of Object.entries(fields)) {
+                        handleApplySuggestion(f, v);
+                      }
+                    }}
+                  />
+                )}
               </aside>
             </div>
           )}

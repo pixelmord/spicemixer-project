@@ -34,11 +34,82 @@ type ContentType = "recipe" | "ingredient" | "pairing";
 type RecipeCollection = "recipes" | "mixtures";
 type Locale = "en" | "de";
 
+interface SubmitResult {
+  result: Record<string, unknown>;
+  warnings: string[];
+  successMessage: string;
+}
+
 const TABS: Array<{ id: SourceMode; label: string; icon: React.ReactNode }> = [
   { id: "file", label: "From file", icon: <Upload size={14} /> },
   { id: "text", label: "From text", icon: <AlignLeft size={14} /> },
   { id: "prompt", label: "Generate", icon: <Sparkles size={14} /> },
 ];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+export function buildFormData(source: Source): FormData {
+  const fd = new FormData();
+  if (source.kind === "file") {
+    fd.append("file", source.file);
+    fd.append("mimeType", source.mimeType);
+  } else {
+    fd.append(
+      "text",
+      source.kind === "text" ? source.content : (source as { prompt: string }).prompt,
+    );
+  }
+  return fd;
+}
+
+async function generateRecipe(
+  prompt: string,
+  locale: Locale,
+  collection: RecipeCollection,
+): Promise<SubmitResult> {
+  const { data, error } = await actions.aiGenerateRecipe({
+    prompt,
+    locale,
+    style: collection === "recipes" ? "recipe" : "mixture",
+  });
+  if (error || !data) throw new Error(error?.message ?? "Generation failed");
+  return {
+    result: data.recipe as Record<string, unknown>,
+    warnings: data.warnings,
+    successMessage: "Recipe generated!",
+  };
+}
+
+async function extractContent(contentType: ContentType, source: Source): Promise<SubmitResult> {
+  const formData = buildFormData(source);
+  if (contentType === "recipe") {
+    const { data, error } = await actions.aiExtractRecipe(formData);
+    if (error || !data) throw new Error(error?.message ?? "Extraction failed");
+    return {
+      result: data.recipe as Record<string, unknown>,
+      warnings: data.warnings,
+      successMessage: "Recipe extracted!",
+    };
+  }
+  if (contentType === "ingredient") {
+    const { data, error } = await actions.aiExtractIngredient(formData);
+    if (error || !data) throw new Error(error?.message ?? "Extraction failed");
+    return {
+      result: data.ingredient as Record<string, unknown>,
+      warnings: data.warnings,
+      successMessage: "Ingredient extracted!",
+    };
+  }
+  const { data, error } = await actions.aiExtractPairing(formData);
+  if (error || !data) throw new Error(error?.message ?? "Extraction failed");
+  return {
+    result: data.pairing as Record<string, unknown>,
+    warnings: data.warnings,
+    successMessage: "Pairing extracted!",
+  };
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function AiComposeForm() {
   const [tab, setTab] = useState<SourceMode>("file");
@@ -66,50 +137,14 @@ export default function AiComposeForm() {
     setLoading(true);
     setError(null);
     setResult(null);
-
     try {
-      if (contentType === "recipe" && tab === "prompt") {
-        const { data, error: err } = await actions.aiGenerateRecipe({
-          prompt: (source as { prompt: string }).prompt,
-          locale,
-          style: collection === "recipes" ? "recipe" : "mixture",
-        });
-        if (err || !data) throw new Error(err?.message ?? "Generation failed");
-        setResult(data.recipe as Record<string, unknown>);
-        setWarnings(data.warnings);
-        toast.success("Recipe generated!");
-      } else {
-        const formData = new FormData();
-        if (source.kind === "file") {
-          formData.append("file", source.file);
-          formData.append("mimeType", source.mimeType);
-        } else {
-          formData.append(
-            "text",
-            source.kind === "text" ? source.content : (source as { prompt: string }).prompt,
-          );
-        }
-
-        if (contentType === "recipe") {
-          const { data, error: err } = await actions.aiExtractRecipe(formData);
-          if (err || !data) throw new Error(err?.message ?? "Extraction failed");
-          setResult(data.recipe as Record<string, unknown>);
-          setWarnings(data.warnings);
-          toast.success("Recipe extracted!");
-        } else if (contentType === "ingredient") {
-          const { data, error: err } = await actions.aiExtractIngredient(formData);
-          if (err || !data) throw new Error(err?.message ?? "Extraction failed");
-          setResult(data.ingredient as Record<string, unknown>);
-          setWarnings(data.warnings);
-          toast.success("Ingredient extracted!");
-        } else {
-          const { data, error: err } = await actions.aiExtractPairing(formData);
-          if (err || !data) throw new Error(err?.message ?? "Extraction failed");
-          setResult(data.pairing as Record<string, unknown>);
-          setWarnings(data.warnings);
-          toast.success("Pairing extracted!");
-        }
-      }
+      const submitted =
+        contentType === "recipe" && tab === "prompt"
+          ? await generateRecipe((source as { prompt: string }).prompt, locale, collection)
+          : await extractContent(contentType, source);
+      setResult(submitted.result);
+      setWarnings(submitted.warnings);
+      toast.success(submitted.successMessage);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
