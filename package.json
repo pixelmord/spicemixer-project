@@ -10,7 +10,6 @@
     "sandcastle": "node --experimental-strip-types .sandcastle/main.ts"
   },
   "devDependencies": {
-    "@ai-hero/sandcastle": "catalog:",
     "vite-plus": "catalog:"
   },
   "engines": {

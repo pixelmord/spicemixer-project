@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ENTITY_COLLECTIONS = ["ingredients", "mixtures"] as const;
+const ENTITY_COLLECTIONS = ["ingredients", "mixtures"] as const;
 export type EntityRefCollection = (typeof ENTITY_COLLECTIONS)[number];
 
 export const entityRefSchema = z.object({

@@ -1,6 +1,6 @@
 import { resolvePublished, type PublishedCollection } from "./published-entity.ts";
 
-export const ACTIVE_LOCALES = ["en", "de"] as const;
+const ACTIVE_LOCALES = ["en", "de"] as const;
 
 function localeHref(
   locale: string,

@@ -35,12 +35,9 @@
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "catalog:",
     "tw-animate-css": "catalog:",
-    "utils": "workspace:*",
     "zod": "catalog:"
   },
-  "devDependencies": {
-    "pagefind": "catalog:"
-  },
+  "devDependencies": {},
   "engines": {
     "node": ">=22.12.0"
   }

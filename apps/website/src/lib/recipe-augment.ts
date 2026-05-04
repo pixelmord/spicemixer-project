@@ -197,7 +197,7 @@ export async function getPublishedPairings(): Promise<PublishedPairing[]> {
 }
 
 /** Canonical pairing id: sort both slugs alphabetically, join with --. */
-export function pairingId(slugA: string, slugB: string): string {
+function pairingId(slugA: string, slugB: string): string {
   return [slugA, slugB].sort().join("--");
 }
 
@@ -261,7 +261,7 @@ async function findByIngredientLinks(
     .filter((x): x is NonNullable<typeof x> => x !== null);
 }
 
-export async function getRecipeUsedIn(
+async function getRecipeUsedIn(
   recipeSlug: string,
   recipeCollection: RecipeKind,
   localePrefix: string,
