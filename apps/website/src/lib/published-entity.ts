@@ -32,8 +32,12 @@ async function isIngredientDraft(locale: string, slug: string): Promise<boolean>
   return (meta?.data as { draft?: boolean } | undefined)?.draft === true;
 }
 
-async function isRecipeDraft(kind: "recipes" | "mixtures", slug: string): Promise<boolean> {
-  const meta = await getEntry("meta", `${kind}/${slug}`);
+async function isRecipeDraft(
+  kind: "recipes" | "mixtures",
+  locale: string,
+  slug: string,
+): Promise<boolean> {
+  const meta = await getEntry("meta", `${kind}/${locale}/${slug}`);
   return (meta?.data as { draft?: boolean } | undefined)?.draft === true;
 }
 
@@ -41,8 +45,18 @@ async function getRecipeCanonicalLocale(
   kind: "recipes" | "mixtures",
   slug: string,
 ): Promise<string> {
-  const meta = await getEntry("meta", `${kind}/${slug}`);
-  return (meta?.data as { canonicalLocale?: string } | undefined)?.canonicalLocale ?? "en";
+  // EN is the typical canonical; check it first to avoid a full collection scan.
+  const enMeta = await getEntry("meta", `${kind}/en/${slug}`);
+  const enData = enMeta?.data as { canonicalLocale?: string } | undefined;
+  if (enData?.canonicalLocale) return enData.canonicalLocale;
+
+  const allMeta = await getCollection("meta");
+  for (const m of allMeta as Array<{ id: string; data: { canonicalLocale?: string } }>) {
+    if (m.id.startsWith(`${kind}/`) && m.id.endsWith(`/${slug}`) && m.data.canonicalLocale) {
+      return m.data.canonicalLocale;
+    }
+  }
+  return "en";
 }
 
 // Owns draft filtering, canonical-locale lookup, and locale fallback — no other module should re-implement these.
@@ -76,15 +90,27 @@ export async function resolvePublished(
     };
   }
 
-  // recipes, mixtures — no locale prefix in ID
-  const entry = await getEntry(collection, slug);
-  if (!entry) return null;
-  if (await isRecipeDraft(collection, slug)) return null;
+  // recipes, mixtures — locale-prefixed IDs per ADR 0009
+  const requestedEntry = await getEntry(collection, `${requestedLocale}/${slug}`);
+  if (requestedEntry && !(await isRecipeDraft(collection, requestedLocale, slug))) {
+    return {
+      entity: requestedEntry,
+      canonicalLocale: await getRecipeCanonicalLocale(collection, slug),
+      renderedLocale: requestedLocale,
+      isFallback: false,
+    };
+  }
+
+  const canonicalLocale = await getRecipeCanonicalLocale(collection, slug);
+  if (canonicalLocale === requestedLocale) return null;
+
+  const canonicalEntry = await getEntry(collection, `${canonicalLocale}/${slug}`);
+  if (!canonicalEntry || (await isRecipeDraft(collection, canonicalLocale, slug))) return null;
 
   return {
-    entity: entry,
-    canonicalLocale: await getRecipeCanonicalLocale(collection, slug),
-    renderedLocale: requestedLocale,
-    isFallback: false,
+    entity: canonicalEntry,
+    canonicalLocale,
+    renderedLocale: canonicalLocale,
+    isFallback: true,
   };
 }

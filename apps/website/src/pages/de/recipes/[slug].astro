@@ -12,6 +12,7 @@ import StepsLightbox from "../../../components/StepsLightbox.astro";
 import {
   getMeta,
   getPublished,
+  slugFromLocaleId,
   getIngredient,
   linkIngredients,
   annotateTextHtml,
@@ -24,13 +25,14 @@ import { resolvePublished } from "../../../lib/published-entity.ts";
 import { hreflangTags } from "../../../lib/hreflang.ts";
 
 export async function getStaticPaths() {
-  const all = await getPublished("recipes");
+  const enEntries = await getPublished("recipes", "en");
   const paths = await Promise.all(
-    all.map(async (entry) => {
-      const resolved = await resolvePublished("recipes", entry.id, "de");
+    enEntries.map(async (entry) => {
+      const slug = slugFromLocaleId(entry.id);
+      const resolved = await resolvePublished("recipes", slug, "de");
       if (!resolved) return null;
       return {
-        params: { slug: entry.id },
+        params: { slug },
         props: {
           recipe: resolved.entity as CollectionEntry<"recipes">,
           isFallback: resolved.isFallback,
@@ -62,15 +64,14 @@ const prefix = "/de";
 const ingredientBase = "/de/ingredients";
 const locale = "de";
 
-const meta = await getMeta("recipes", slug);
+const meta = await getMeta("recipes", locale, slug);
 const pagefindFilters = withPagefindFilters({
   cuisine: data.recipeCuisine ?? undefined,
   category: data.recipeCategory ?? undefined,
   region: meta.region,
 });
-const isDraft = meta.draft === true;
-const pagefindBody = isDraft ? undefined : true;
-const pagefindIgnore = isDraft ? true : undefined;
+const pagefindBody = true;
+const pagefindIgnore = undefined;
 
 const linkedIngredients = linkIngredients(data.recipeIngredient, meta.ingredientLinks);
 const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);

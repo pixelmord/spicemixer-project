@@ -117,10 +117,10 @@ describe("resolvePublished — recipes", () => {
 
   test("returns the recipe with no fallback", async () => {
     vi.mocked(getEntry).mockImplementation(async (collection, id) => {
-      if (collection === "recipes" && id === "miso-ramen")
-        return makeEntry("miso-ramen", { name: "Miso Ramen" }) as never;
-      if (collection === "meta" && id === "recipes/miso-ramen")
-        return makeEntry("recipes/miso-ramen", { draft: false, canonicalLocale: "en" }) as never;
+      if (collection === "recipes" && id === "de/miso-ramen")
+        return makeEntry("de/miso-ramen", { name: "Miso Ramen" }) as never;
+      if (collection === "meta" && id === "recipes/de/miso-ramen")
+        return makeEntry("recipes/de/miso-ramen", { draft: false, canonicalLocale: "en" }) as never;
       return null as never;
     });
 
@@ -133,10 +133,10 @@ describe("resolvePublished — recipes", () => {
 
   test("draft recipe returns null", async () => {
     vi.mocked(getEntry).mockImplementation(async (collection, id) => {
-      if (collection === "recipes" && id === "ghost-recipe")
-        return makeEntry("ghost-recipe", { name: "Ghost" }) as never;
-      if (collection === "meta" && id === "recipes/ghost-recipe")
-        return makeEntry("recipes/ghost-recipe", { draft: true }) as never;
+      if (collection === "recipes" && id === "en/ghost-recipe")
+        return makeEntry("en/ghost-recipe", { name: "Ghost" }) as never;
+      if (collection === "meta" && id === "recipes/en/ghost-recipe")
+        return makeEntry("recipes/en/ghost-recipe", { draft: true }) as never;
       return null as never;
     });
 
@@ -153,8 +153,8 @@ describe("resolvePublished — recipes", () => {
 
   test("missing meta treated as published (no-sidecar legacy entries)", async () => {
     vi.mocked(getEntry).mockImplementation(async (collection, id) => {
-      if (collection === "recipes" && id === "legacy-recipe")
-        return makeEntry("legacy-recipe", { name: "Legacy" }) as never;
+      if (collection === "recipes" && id === "en/legacy-recipe")
+        return makeEntry("en/legacy-recipe", { name: "Legacy" }) as never;
       return null as never;
     });
 
@@ -165,10 +165,10 @@ describe("resolvePublished — recipes", () => {
 
   test("mixtures follow same pattern — no fallback", async () => {
     vi.mocked(getEntry).mockImplementation(async (collection, id) => {
-      if (collection === "mixtures" && id === "harissa")
-        return makeEntry("harissa", { name: "Harissa" }) as never;
-      if (collection === "meta" && id === "mixtures/harissa")
-        return makeEntry("mixtures/harissa", { draft: false, canonicalLocale: "en" }) as never;
+      if (collection === "mixtures" && id === "de/harissa")
+        return makeEntry("de/harissa", { name: "Harissa" }) as never;
+      if (collection === "meta" && id === "mixtures/de/harissa")
+        return makeEntry("mixtures/de/harissa", { draft: false, canonicalLocale: "en" }) as never;
       return null as never;
     });
 

@@ -70,9 +70,8 @@ const pagefindFilters = withPagefindFilters({
   flavorProfile: data.flavorProfile,
   region: ingredientMeta?.region,
 });
-const isDraft = ingredientMeta?.draft === true;
-const pagefindBody = isDraft ? undefined : true;
-const pagefindIgnore = isDraft ? true : undefined;
+const pagefindBody = true;
+const pagefindIgnore = undefined;
 
 const usedIn = await getUsedIn(slug, prefix);
 

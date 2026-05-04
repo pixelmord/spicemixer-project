@@ -13,6 +13,7 @@ import StepsLightbox from "../../../components/StepsLightbox.astro";
 import {
   getMeta,
   getPublished,
+  slugFromLocaleId,
   linkIngredients,
   annotateTextHtml,
   resolveRefs,
@@ -27,16 +28,15 @@ import { resolvePublished } from "../../../lib/published-entity.ts";
 import { hreflangTags } from "../../../lib/hreflang.ts";
 
 export async function getStaticPaths() {
-  const allMixtures = await getPublished("mixtures");
   const rawMeta = await getCollection("meta");
-
   const kindBySlug = buildKindBySlug(rawMeta);
+  const enMixtures = await getPublished("mixtures", "en");
 
   const kindPaths = MIXTURE_KINDS.map((kind) => ({
     params: { slug: MIXTURE_KIND_PLURALS[kind] },
     props: {
       kind,
-      kindMixtures: allMixtures.filter((m) => kindBySlug.get(m.id) === kind),
+      kindMixtures: enMixtures.filter((m) => kindBySlug.get(m.id) === kind),
       mix: null as CollectionEntry<"mixtures"> | null,
       isFallback: false,
       canonicalLocale: "en",
@@ -44,11 +44,12 @@ export async function getStaticPaths() {
   }));
 
   const detailPathResults = await Promise.all(
-    allMixtures.map(async (entry) => {
-      const resolved = await resolvePublished("mixtures", entry.id, "de");
+    enMixtures.map(async (entry) => {
+      const slug = slugFromLocaleId(entry.id);
+      const resolved = await resolvePublished("mixtures", slug, "de");
       if (!resolved) return null;
       return {
-        params: { slug: entry.id },
+        params: { slug },
         props: {
           kind: null as MixtureKind | null,
           kindMixtures: null as CollectionEntry<"mixtures">[] | null,
@@ -94,7 +95,7 @@ let kindBadgeLabel = "";
 
 if (mix) {
   const data = mix.data;
-  const slug = mix.id;
+  const slug = Astro.params.slug as string;
 
   detailImage = firstImage(data.image);
   detailTags = keywordList(data.keywords);
@@ -102,7 +103,7 @@ if (mix) {
   transitionName = `mixture-${slug}`;
   jsonLd = JSON.stringify(data);
 
-  meta = await getMeta("mixtures", slug);
+  meta = await getMeta("mixtures", locale, slug);
   linkedIngredients = linkIngredients(data.recipeIngredient, meta.ingredientLinks);
 
   if (meta.kind && meta.kind !== "recipe") {
@@ -132,9 +133,8 @@ const pagefindFilters = mix ? withPagefindFilters({
   cuisine: mix.data.recipeCuisine ?? undefined,
   category: mix.data.recipeCategory ?? undefined,
 }) : {};
-const isDraft = meta?.draft === true;
-const pagefindBody = isDraft ? undefined : (mix ? true : undefined);
-const pagefindIgnore = isDraft && mix ? true : undefined;
+const pagefindBody = mix ? true : undefined;
+const pagefindIgnore = undefined;
 
 const kindLabel = kind ? t(`kind.${kind}`) : "";
 const indexMixtures = (kindMixtures ?? []).sort((a, b) =>

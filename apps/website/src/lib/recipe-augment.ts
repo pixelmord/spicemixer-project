@@ -71,16 +71,20 @@ export async function getMeta(kind: RecipeKind, locale: string, slug: string): P
  * filtered out. Missing meta is treated as published (default behavior for
  * legacy entries without a sidecar).
  * Entry IDs are `locale/slug`; meta IDs are `kind/locale/slug`.
+ * Pass `locale` to scope results to a single locale (e.g. "en").
  */
-export async function getPublished<K extends RecipeKind>(kind: K) {
+export async function getPublished<K extends RecipeKind>(kind: K, locale?: string) {
   const [entries, rawMeta] = await Promise.all([getCollection(kind), getCollection("meta")]);
   const allMeta = rawMeta as MetaEntry[];
   const drafts = new Set(allMeta.filter((m) => m.data.draft === true).map((m) => m.id));
-  return entries.filter((e: { id: string }) => !drafts.has(`${kind}/${e.id}`));
+  const scoped = locale
+    ? entries.filter((e: { id: string }) => e.id.startsWith(`${locale}/`))
+    : entries;
+  return scoped.filter((e: { id: string }) => !drafts.has(`${kind}/${e.id}`));
 }
 
 /** Extract just the slug from a locale-prefixed ID like "en/miso-butter-ramen". */
-function slugFromLocaleId(id: string): string {
+export function slugFromLocaleId(id: string): string {
   const slash = id.indexOf("/");
   return slash === -1 ? id : id.slice(slash + 1);
 }

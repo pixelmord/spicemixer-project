@@ -73,7 +73,7 @@ describe("ai-contract: AI action handlers with store.put also call recordAiEvent
       "\n  aiCreateTranslation:",
     );
     expect(region, "aiRefreshSuggestions region not found").not.toBe("");
-    expect(region).toContain("store.put(");
+    expect(region).toContain("sidecar.write(");
     expect(region).toContain("recordAiEvent(");
   });
 
