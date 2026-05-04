@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { cn } from "@/lib/utils.ts";
 import { scorePairing, resolvePairingDescription } from "@/lib/completeness.ts";
+import { useEntityFormState } from "@/hooks/useEntityFormState.ts";
 import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
 import InlineSuggestion from "./InlineSuggestion.tsx";
@@ -54,8 +55,16 @@ export default function PairingForm({
   const [ingredient2, setIngredient2] = useState(initialIngredients?.[1] ?? "");
   const [descriptions, setDescriptions] = useState<Record<string, string>>(initialDescriptions);
   const [activeLocale, setActiveLocale] = useState<string>("en");
-  const [draft, setDraft] = useState(initialDraft);
-  const [saving, setSaving] = useState(false);
+
+  // Pairing id is derived from ingredient slugs — no slug state needed.
+  // localeReady is always true for pairings (ADR 0003/0009 exception).
+  const { draft, setDraft, saving, setSaving } = useEntityFormState({
+    kind: "pairing",
+    collection: "pairings",
+    isNew: isNew ?? false,
+    initialDraft,
+    initialCompleteness: { score: 0, missing: [], color: "red" },
+  });
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
   const [image, setImage] = useState(initialImage);
   const [imageAttribution, setImageAttribution] = useState<ImageAttribution | undefined>(

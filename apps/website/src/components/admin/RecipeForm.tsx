@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
@@ -20,7 +20,8 @@ import { scoreRecipe, RECIPE_REQUIRED, RECIPE_RECOMMENDED } from "@/lib/complete
 import { slugify } from "@/lib/slugify.ts";
 import type { RecipeCollection } from "@/lib/content-store.ts";
 import { MIXTURE_KINDS, type MixtureKind } from "@/lib/mixture-schema.ts";
-import { validateSlug } from "@/lib/slug-validator.ts";
+import { useEntityFormState } from "@/hooks/useEntityFormState.ts";
+import { buildPayload } from "@/lib/entity-form-payload.ts";
 interface AiSuggestion {
   field: string;
   suggestion: string;
@@ -215,6 +216,35 @@ const LANGUAGES = [
   { value: "de", label: "German" },
 ];
 
+// Shared auto-link merge handler — eliminates duplicated .then() blocks for
+// mount-only and post-save aiRefreshSuggestions calls.
+function handleRefreshResult(
+  data:
+    | { aiSuggestions: AiSuggestions; autoLinked: number; autoAppliedLinks?: string[] }
+    | undefined,
+  setAiSuggestions: (s: AiSuggestions) => void,
+  setIngredientLinks: Dispatch<SetStateAction<IngredientLink[]>>,
+) {
+  if (!data) return;
+  setAiSuggestions(data.aiSuggestions);
+  if (data.autoLinked > 0) {
+    toast.success(`Auto-linked ${data.autoLinked} ingredient${data.autoLinked !== 1 ? "s" : ""}`);
+    const autoAppliedPatterns = new Set(data.autoAppliedLinks ?? []);
+    const autoLinks = (data.aiSuggestions.ingredientLinks ?? []).filter((l) =>
+      autoAppliedPatterns.has(l.pattern),
+    );
+    if (autoLinks.length > 0) {
+      setIngredientLinks((prev) => {
+        const existingPatterns = new Set(prev.map((l) => l.pattern));
+        const toAdd = autoLinks
+          .filter((l) => !existingPatterns.has(l.pattern))
+          .map((l) => ({ pattern: l.pattern, slug: l.slug, kind: "ingredient" as const }));
+        return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+      });
+    }
+  }
+}
+
 export default function RecipeForm({
   collection,
   slug: initialSlug,
@@ -224,14 +254,30 @@ export default function RecipeForm({
 }: Props) {
   const recipe = { ...emptyRecipe(), ...initialRecipe } as RecipeData;
   const meta = { ...emptyMeta(), ...initialMeta } as MetaData;
-  const [slug, setSlug] = useState(initialSlug ?? "");
-  const [slugChecking, setSlugChecking] = useState(false);
-  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState(initialMeta?.draft ?? (isNew ? true : false));
-  const [completeness, setCompleteness] = useState(() =>
-    scoreRecipe(recipe as never, meta as never),
-  );
+
+  const {
+    slug,
+    setSlug,
+    slugChecking,
+    slugAvailable,
+    draft,
+    setDraft,
+    saving,
+    setSaving,
+    locale: language,
+    setLocale: setLanguage,
+    localeReady,
+    completeness,
+    setCompleteness,
+  } = useEntityFormState({
+    kind: "recipe",
+    collection,
+    isNew: isNew ?? false,
+    initialSlug: initialSlug ?? "",
+    initialLocale: meta.language ?? "",
+    initialDraft: initialMeta?.draft ?? (isNew ? true : false),
+    initialCompleteness: scoreRecipe(recipe as never, meta as never),
+  });
 
   const [ingredients, setIngredients] = useState<string[]>(
     recipe.recipeIngredient.length > 0 ? recipe.recipeIngredient : [""],
@@ -250,7 +296,6 @@ export default function RecipeForm({
   const [externalSources, setExternalSources] = useState(meta.externalSources);
   const [goesWellWith, setGoesWellWith] = useState(meta.goesWellWith);
   const [usesBase, setUsesBase] = useState(meta.usesBase);
-  const [language, setLanguage] = useState(meta.language ?? "");
   const [tags, setTags] = useState<string[]>(meta.tags);
   const [regions, setRegions] = useState<RegionCode[]>(meta.region ?? []);
   const [keywords, setKeywords] = useState<string[]>(
@@ -404,38 +449,15 @@ export default function RecipeForm({
         missingFields: missingKeys,
         locale: (initialMeta?.language ?? "en") as "en" | "de",
       })
-      .then((r: { data?: unknown }) => {
-        const data = r.data as
-          | {
-              aiSuggestions: AiSuggestions;
-              autoLinked: number;
-              autoAppliedLinks?: string[];
-            }
-          | undefined;
-        if (data) {
-          setAiSuggestions(data.aiSuggestions as AiSuggestions);
-          if (data.autoLinked > 0) {
-            toast.success(
-              `Auto-linked ${data.autoLinked} ingredient${data.autoLinked !== 1 ? "s" : ""}`,
-            );
-            // Merge auto-links into current client state — never replace, so
-            // any link the user added in-session isn't clobbered.
-            const autoAppliedPatterns = new Set(data.autoAppliedLinks ?? []);
-            const autoLinks = ((data.aiSuggestions as AiSuggestions)?.ingredientLinks ?? []).filter(
-              (l) => autoAppliedPatterns.has(l.pattern),
-            );
-            if (autoLinks.length > 0) {
-              setIngredientLinks((prev) => {
-                const existingPatterns = new Set(prev.map((l) => l.pattern));
-                const toAdd = autoLinks
-                  .filter((l) => !existingPatterns.has(l.pattern))
-                  .map((l) => ({ pattern: l.pattern, slug: l.slug, kind: "ingredient" as const }));
-                return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
-              });
-            }
-          }
-        }
-      })
+      .then((r: { data?: unknown }) =>
+        handleRefreshResult(
+          r.data as
+            | { aiSuggestions: AiSuggestions; autoLinked: number; autoAppliedLinks?: string[] }
+            | undefined,
+          (s) => setAiSuggestions(s),
+          setIngredientLinks,
+        ),
+      )
       .catch(() => {})
       .finally(() => setAiRefreshing(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- intentional mount-only
@@ -446,24 +468,7 @@ export default function RecipeForm({
     fetchIngredientOptions(language);
   }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Slug availability check (new recipes only)
-  useEffect(() => {
-    if (!isNew || !slug) {
-      setSlugAvailable(null);
-      return;
-    }
-    setSlugChecking(true);
-    const t = setTimeout(() => {
-      void actions
-        .checkSlugAvailable({ collection, slug })
-        .then((r: { data?: unknown }) => {
-          const data = r.data as { available: boolean } | undefined;
-          if (data) setSlugAvailable(data.available);
-        })
-        .finally(() => setSlugChecking(false));
-    }, 400);
-    return () => clearTimeout(t);
-  }, [slug, isNew, collection]);
+  // Slug availability check is handled by useEntityFormState.
 
   const form = useForm({
     defaultValues: {
@@ -487,31 +492,33 @@ export default function RecipeForm({
       datePublished: recipe.datePublished ?? "",
     },
     onSubmit: async ({ value }) => {
-      if (!slug) {
-        toast.error("Slug is required");
-        return;
-      }
-      if (isNew && slugAvailable === false) {
-        toast.error(`Slug "${slug}" is already taken`);
-        return;
-      }
-      if (collection === "mixtures") {
-        if (!kind) {
-          toast.error("Kind is required for mixtures");
-          return;
-        }
-        const slugValidation = validateSlug(slug, "mixtures", {
-          ingredients: ingredientOptions.map((o) => o.value),
-        });
-        if (!slugValidation.ok) {
+      const payloadCheck = buildPayload({
+        kind: "recipe",
+        collection,
+        slug,
+        isNew: isNew ?? false,
+        slugAvailable,
+        locale: language,
+        draft,
+        mixtureKind: kind || undefined,
+        existingSlugs:
+          collection === "mixtures" ? { ingredients: ingredientOptions.map((o) => o.value) } : {},
+      });
+      if (!payloadCheck.ok) {
+        const { errors } = payloadCheck;
+        if (errors.includes("missing-slug")) toast.error("Slug is required");
+        else if (errors.includes("slug-taken")) toast.error(`Slug "${slug}" is already taken`);
+        else if (errors.includes("slug-reserved"))
           toast.error(`Slug "${slug}" is a reserved name and cannot be used for a mixture`);
-          return;
-        }
-        if (slugValidation.warning) {
+        else if (errors.includes("missing-kind")) toast.error("Kind is required for mixtures");
+        else if (errors.includes("missing-locale")) toast.error("Language is required");
+        return;
+      }
+      for (const w of payloadCheck.warnings) {
+        if (w.type === "cross-collection-collision")
           toast.warning(
-            `Slug "${slug}" also exists in the ingredients collection — cross-collection collision (saving anyway)`,
+            `Slug "${slug}" also exists in the ${w.otherCollection} collection — cross-collection collision (saving anyway)`,
           );
-        }
       }
       setSaving(true);
 
@@ -608,40 +615,15 @@ export default function RecipeForm({
           locale: (language || "en") as "en" | "de",
           force: true,
         })
-        .then((r: { data?: unknown }) => {
-          const data = r.data as
-            | {
-                aiSuggestions: AiSuggestions;
-                autoLinked: number;
-                autoAppliedLinks?: string[];
-              }
-            | undefined;
-          if (data) {
-            setAiSuggestions(data.aiSuggestions as AiSuggestions);
-            if (data.autoLinked > 0) {
-              toast.success(
-                `Auto-linked ${data.autoLinked} ingredient${data.autoLinked !== 1 ? "s" : ""}`,
-              );
-              const autoAppliedPatterns = new Set(data.autoAppliedLinks ?? []);
-              const autoLinks = (
-                (data.aiSuggestions as AiSuggestions)?.ingredientLinks ?? []
-              ).filter((l) => autoAppliedPatterns.has(l.pattern));
-              if (autoLinks.length > 0) {
-                setIngredientLinks((prev) => {
-                  const existingPatterns = new Set(prev.map((l) => l.pattern));
-                  const toAdd = autoLinks
-                    .filter((l) => !existingPatterns.has(l.pattern))
-                    .map((l) => ({
-                      pattern: l.pattern,
-                      slug: l.slug,
-                      kind: "ingredient" as const,
-                    }));
-                  return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
-                });
-              }
-            }
-          }
-        })
+        .then((r: { data?: unknown }) =>
+          handleRefreshResult(
+            r.data as
+              | { aiSuggestions: AiSuggestions; autoLinked: number; autoAppliedLinks?: string[] }
+              | undefined,
+            (s) => setAiSuggestions(s),
+            setIngredientLinks,
+          ),
+        )
         .catch(() => {})
         .finally(() => setAiRefreshing(false));
     },
@@ -2016,7 +1998,7 @@ export default function RecipeForm({
           backHref={`/admin/${collection}`}
           previewHref={!isNew ? `/preview/${collection}/${slug}` : undefined}
           onSave={handleSave}
-          saveDisabled={isNew && !language}
+          saveDisabled={!localeReady}
         />
       </form>
 

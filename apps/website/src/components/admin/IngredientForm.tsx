@@ -20,6 +20,8 @@ import {
   INGREDIENT_REQUIRED,
   INGREDIENT_RECOMMENDED,
 } from "@/lib/completeness.ts";
+import { useEntityFormState } from "@/hooks/useEntityFormState.ts";
+import { buildPayload } from "@/lib/entity-form-payload.ts";
 import {
   INGREDIENT_PARTS,
   INGREDIENT_FLAVOR_PROFILE,
@@ -195,13 +197,27 @@ export default function IngredientForm({
   existingTranslationLocales = [],
 }: Props) {
   const data = { ...emptyIngredient(), ...initialData } as IngredientData;
-  const [slug, setSlug] = useState(initialSlug ?? "");
-  const [slugChecking, setSlugChecking] = useState(false);
-  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [draft, setDraft] = useState<boolean>(
-    isNew ? true : !!(initialMeta?.["draft"] as boolean | undefined),
-  );
+
+  const {
+    slug,
+    setSlug,
+    slugChecking,
+    slugAvailable,
+    draft,
+    setDraft,
+    saving,
+    setSaving,
+    completeness,
+    setCompleteness,
+  } = useEntityFormState({
+    kind: "ingredient",
+    collection: "ingredients",
+    isNew: isNew ?? false,
+    initialSlug: initialSlug ?? "",
+    initialLocale: locale,
+    initialDraft: isNew ? true : !!(initialMeta?.["draft"] as boolean | undefined),
+    initialCompleteness: scoreIngredient(data as never),
+  });
   const [origins, setOrigins] = useState<string[]>(data.origin.length > 0 ? data.origin : []);
   const [flavorNotes, setFlavorNotes] = useState<string[]>(
     data.flavorNotes.length > 0 ? data.flavorNotes : [],
@@ -210,7 +226,6 @@ export default function IngredientForm({
     (initialMeta?.["region"] as RegionCode[] | undefined) ?? [],
   );
   const [pairings, setPairings] = useState<Pairing[]>(initialPairings);
-  const [completeness, setCompleteness] = useState(() => scoreIngredient(data as never));
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
   const [quickCreateName] = useState("");
   const [quickCreateCallback, setQuickCreateCallback] = useState<
@@ -320,23 +335,7 @@ export default function IngredientForm({
       .finally(() => setAiRefreshing(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Slug availability check (new ingredients only)
-  useEffect(() => {
-    if (!isNew || !slug) {
-      setSlugAvailable(null);
-      return;
-    }
-    setSlugChecking(true);
-    const t = setTimeout(() => {
-      void actions
-        .checkSlugAvailable({ collection: "ingredients", slug: `${locale}/${slug}` })
-        .then((r: { data?: unknown }) => {
-          if (r.data) setSlugAvailable((r.data as { available: boolean }).available);
-        })
-        .finally(() => setSlugChecking(false));
-    }, 400);
-    return () => clearTimeout(t);
-  }, [slug, isNew, locale]);
+  // Slug availability check is handled by useEntityFormState.
 
   const form = useForm({
     defaultValues: {
@@ -357,12 +356,20 @@ export default function IngredientForm({
       seasonality: data.seasonality ?? "",
     },
     onSubmit: async ({ value }) => {
-      if (!slug) {
-        toast.error("Slug is required");
-        return;
-      }
-      if (isNew && slugAvailable === false) {
-        toast.error(`Slug "${slug}" is already taken`);
+      const payloadCheck = buildPayload({
+        kind: "ingredient",
+        collection: "ingredients",
+        slug,
+        isNew: isNew ?? false,
+        slugAvailable,
+        locale,
+        draft,
+      });
+      if (!payloadCheck.ok) {
+        const { errors } = payloadCheck;
+        if (errors.includes("missing-slug")) toast.error("Slug is required");
+        else if (errors.includes("slug-taken")) toast.error(`Slug "${slug}" is already taken`);
+        else if (errors.includes("missing-locale")) toast.error("Locale is required");
         return;
       }
       setSaving(true);

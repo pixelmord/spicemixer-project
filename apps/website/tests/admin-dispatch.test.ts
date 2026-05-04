@@ -40,9 +40,9 @@ describe("admin-dispatch: RecipeForm kind dropdown gated on mixtures collection"
     expect(src).toContain('"Kind is required for mixtures"');
   });
 
-  test("RecipeForm imports and calls validateSlug for mixtures", () => {
-    expect(src).toContain('from "@/lib/slug-validator.ts"');
-    expect(src).toContain("validateSlug(");
+  test("RecipeForm uses buildPayload for slug and kind validation (validateSlug moved to buildPayload)", () => {
+    expect(src).toContain('from "@/lib/entity-form-payload.ts"');
+    expect(src).toContain("buildPayload(");
   });
 });
 
