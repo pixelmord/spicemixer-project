@@ -38,7 +38,9 @@
     "tw-animate-css": "catalog:",
     "zod": "catalog:"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "pagefind": "catalog:"
+  },
   "engines": {
     "node": ">=22.12.0"
   }

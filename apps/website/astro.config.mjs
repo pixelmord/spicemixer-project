@@ -11,6 +11,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** Run pagefind to build per-locale search indexes after the Astro build. */
 function pagefindIntegration() {
+  const run = (bin, args) => {
+    const result = spawnSync(bin, args, { stdio: "inherit" });
+    if (result.error) throw result.error;
+    if (result.status !== 0) {
+      throw new Error(`pagefind exited with status ${result.status}: ${args.join(" ")}`);
+    }
+  };
   return {
     name: "pagefind-build",
     hooks: {
@@ -19,25 +26,17 @@ function pagefindIntegration() {
         const pagefindBin = join(__dirname, "node_modules", ".bin", "pagefind");
 
         // EN index — all pages (primary index)
-        spawnSync(
-          pagefindBin,
-          ["--site", siteDir, "--output-path", join(siteDir, "pagefind", "en")],
-          { stdio: "inherit" },
-        );
+        run(pagefindBin, ["--site", siteDir, "--output-path", join(siteDir, "pagefind", "en")]);
 
         // DE-only index — pages under de/
-        spawnSync(
-          pagefindBin,
-          [
-            "--site",
-            siteDir,
-            "--glob",
-            "de/**/*.html",
-            "--output-path",
-            join(siteDir, "pagefind", "de"),
-          ],
-          { stdio: "inherit" },
-        );
+        run(pagefindBin, [
+          "--site",
+          siteDir,
+          "--glob",
+          "de/**/*.html",
+          "--output-path",
+          join(siteDir, "pagefind", "de"),
+        ]);
       },
     },
   };
