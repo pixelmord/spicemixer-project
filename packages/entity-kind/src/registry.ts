@@ -32,7 +32,7 @@ const registry: Record<EntityKind, EntityKindConfig> = {
     completeness: {
       required: INGREDIENT_REQUIRED,
       recommended: INGREDIENT_RECOMMENDED,
-      score: (entity) => scoreIngredient(entity),
+      score: scoreIngredient,
     },
     routePrefix: "/ingredients/",
   },
@@ -44,7 +44,7 @@ const registry: Record<EntityKind, EntityKindConfig> = {
     completeness: {
       required: RECIPE_REQUIRED,
       recommended: RECIPE_RECOMMENDED,
-      score: (entity, ctx) => scoreRecipe(entity, ctx ?? {}),
+      score: scoreRecipe,
     },
     routePrefix: "/recipes/",
   },
@@ -52,7 +52,7 @@ const registry: Record<EntityKind, EntityKindConfig> = {
   pairing: {
     schema: pairingSchema,
     proposers: {},
-    diff: (existing, proposed) => diffPairings(existing, proposed),
+    diff: diffPairings,
     completeness: {
       required: PAIRING_REQUIRED,
       recommended: PAIRING_RECOMMENDED,

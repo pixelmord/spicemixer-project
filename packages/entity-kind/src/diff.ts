@@ -73,6 +73,24 @@ function diffStringItems(before: string[], after: string[]): ItemDiff[] {
   return result;
 }
 
+function diffStringArrayField(
+  field: string,
+  label: string,
+  existing: Record<string, unknown>,
+  proposed: Record<string, unknown>,
+): FieldDiff {
+  const oldArr = Array.isArray(existing[field]) ? (existing[field] as string[]) : [];
+  const newArr = Array.isArray(proposed[field]) ? (proposed[field] as string[]) : [];
+  return {
+    field,
+    label,
+    kind: changeKind(oldArr.length ? oldArr : undefined, newArr.length ? newArr : undefined),
+    oldValue: oldArr,
+    newValue: newArr,
+    itemDiffs: diffStringItems(oldArr, newArr),
+  };
+}
+
 // ── Ingredient diff ───────────────────────────────────────────────────────────
 
 const INGREDIENT_SCALAR_FIELDS: Array<{ field: string; label: string }> = [
@@ -96,36 +114,8 @@ export function diffIngredients(
       newValue: proposed[field],
     });
   }
-  const oldOrigin = Array.isArray(existing["origin"]) ? (existing["origin"] as string[]) : [];
-  const newOrigin = Array.isArray(proposed["origin"]) ? (proposed["origin"] as string[]) : [];
-  diffs.push({
-    field: "origin",
-    label: "Origin",
-    kind: changeKind(
-      oldOrigin.length ? oldOrigin : undefined,
-      newOrigin.length ? newOrigin : undefined,
-    ),
-    oldValue: oldOrigin,
-    newValue: newOrigin,
-    itemDiffs: diffStringItems(oldOrigin, newOrigin),
-  });
-  const oldNotes = Array.isArray(existing["flavorNotes"])
-    ? (existing["flavorNotes"] as string[])
-    : [];
-  const newNotes = Array.isArray(proposed["flavorNotes"])
-    ? (proposed["flavorNotes"] as string[])
-    : [];
-  diffs.push({
-    field: "flavorNotes",
-    label: "Flavor notes",
-    kind: changeKind(
-      oldNotes.length ? oldNotes : undefined,
-      newNotes.length ? newNotes : undefined,
-    ),
-    oldValue: oldNotes,
-    newValue: newNotes,
-    itemDiffs: diffStringItems(oldNotes, newNotes),
-  });
+  diffs.push(diffStringArrayField("origin", "Origin", existing, proposed));
+  diffs.push(diffStringArrayField("flavorNotes", "Flavor notes", existing, proposed));
   return diffs;
 }
 
@@ -178,30 +168,8 @@ export function diffRecipes(
       newValue: proposed[field],
     });
   }
-  const oldIng = Array.isArray(existing["recipeIngredient"])
-    ? (existing["recipeIngredient"] as string[])
-    : [];
-  const newIng = Array.isArray(proposed["recipeIngredient"])
-    ? (proposed["recipeIngredient"] as string[])
-    : [];
-  diffs.push({
-    field: "recipeIngredient",
-    label: "Ingredients",
-    kind: changeKind(oldIng.length ? oldIng : undefined, newIng.length ? newIng : undefined),
-    oldValue: oldIng,
-    newValue: newIng,
-    itemDiffs: diffStringItems(oldIng, newIng),
-  });
-  const oldKw = Array.isArray(existing["keywords"]) ? (existing["keywords"] as string[]) : [];
-  const newKw = Array.isArray(proposed["keywords"]) ? (proposed["keywords"] as string[]) : [];
-  diffs.push({
-    field: "keywords",
-    label: "Keywords",
-    kind: changeKind(oldKw.length ? oldKw : undefined, newKw.length ? newKw : undefined),
-    oldValue: oldKw,
-    newValue: newKw,
-    itemDiffs: diffStringItems(oldKw, newKw),
-  });
+  diffs.push(diffStringArrayField("recipeIngredient", "Ingredients", existing, proposed));
+  diffs.push(diffStringArrayField("keywords", "Keywords", existing, proposed));
   const oldInstr = Array.isArray(existing["recipeInstructions"])
     ? existing["recipeInstructions"]
     : [];
