@@ -1,7 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { beforeAll, describe, expect, test } from "vite-plus/test";
+import { describe, expect, test } from "vite-plus/test";
 
 const WEBSITE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const PAGES = join(WEBSITE_ROOT, "src", "pages");
@@ -55,12 +55,6 @@ describe("Locale routing dedup: de/ pages are thin wrappers", () => {
   ];
 
   for (const page of deDetailPages) {
-    let src: string;
-
-    beforeAll(async () => {
-      src = await readFile(join(PAGES, page), "utf-8");
-    });
-
     test(`${page} imports from components/pages/`, async () => {
       const content = await readFile(join(PAGES, page), "utf-8");
       expect(content).toMatch(/import\s+\w+\s+from\s+["'].*components\/pages\//);

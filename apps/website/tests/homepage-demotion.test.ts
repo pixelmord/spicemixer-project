@@ -30,6 +30,10 @@ describe("Recipe demotion: homepage must not link to /recipes/", () => {
     expect(RECIPE_LINK_PATTERN.test(homeDeSrc)).toBe(false);
   });
 
+  test("shared HomePage component contains no <a href> pointing to /recipes/", () => {
+    expect(RECIPE_LINK_PATTERN.test(homeComponentSrc)).toBe(false);
+  });
+
   test("shared HomePage component imports RecentlyAddedFeed (not a raw recipe list)", () => {
     expect(homeComponentSrc).toContain("RecentlyAddedFeed");
   });
