@@ -2,6 +2,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { createProvider, PROVIDER_OPTIONS, type AiConfig } from "./provider.ts";
 import { AiError } from "./errors.ts";
+import { normalizeConfidence } from "./curate-shared.ts";
 import type { ImprovementProposal, TranslationDraft } from "./curate-recipe.ts";
 
 export interface IngredientSnapshot {
@@ -21,11 +22,15 @@ export interface PairingProposal {
   confidence: "high" | "medium" | "low";
 }
 
-function normalizePairingConfidence(v: string): "high" | "medium" | "low" {
-  const lower = v.toLowerCase().trim();
-  if (lower === "high" || lower.includes("high")) return "high";
-  if (lower === "medium" || lower.includes("medium") || lower === "moderate") return "medium";
-  return "low";
+function buildIngredientContext(ingredient: IngredientSnapshot): string {
+  return [
+    `Name: ${ingredient.name}`,
+    ingredient.category ? `Category: ${ingredient.category}` : null,
+    ingredient.flavorNotes?.length ? `Flavor notes: ${ingredient.flavorNotes.join(", ")}` : null,
+    ingredient.origin?.length ? `Origins: ${ingredient.origin.join(", ")}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export async function proposeIngredientPairings(
@@ -50,15 +55,7 @@ export async function proposeIngredientPairings(
     ),
   });
 
-  const context = [
-    `Name: ${ingredient.name}`,
-    ingredient.category ? `Category: ${ingredient.category}` : null,
-    ingredient.flavorNotes?.length ? `Flavor notes: ${ingredient.flavorNotes.join(", ")}` : null,
-    ingredient.origin?.length ? `Origins: ${ingredient.origin.join(", ")}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
+  const context = buildIngredientContext(ingredient);
   const rejectedSection = rejectedContext ? `\n\n${rejectedContext}` : "";
 
   try {
@@ -85,7 +82,7 @@ Return up to 6 pairings. For each:
       .map((p) => ({
         slug: p.slug,
         description: p.description,
-        confidence: normalizePairingConfidence(p.confidence),
+        confidence: normalizeConfidence(p.confidence),
       }));
   } catch (e) {
     throw new AiError("EXTRACTION_FAILED", `Pairing proposal failed: ${String(e)}`);
@@ -112,15 +109,7 @@ export async function proposeIngredientImprovements(
     ),
   });
 
-  const context = [
-    `Name: ${ingredient.name}`,
-    ingredient.category ? `Category: ${ingredient.category}` : null,
-    ingredient.flavorNotes?.length ? `Flavor notes: ${ingredient.flavorNotes.join(", ")}` : null,
-    ingredient.origin?.length ? `Origins: ${ingredient.origin.join(", ")}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
+  const context = buildIngredientContext(ingredient);
   const rejectedSection = rejectedContext ? `\n\n${rejectedContext}` : "";
 
   try {
