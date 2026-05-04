@@ -36,7 +36,7 @@ import RecommendedHint from "./RecommendedHint.tsx";
 import InlineSuggestion from "./InlineSuggestion.tsx";
 import QuickCreateDialog from "./QuickCreateDialog.tsx";
 import TranslationCompanion, { FieldWithTranslation } from "./TranslationCompanion.tsx";
-import IngredientEnhanceModal from "./IngredientEnhanceModal.tsx";
+import EnhanceModal from "./EnhanceModal.tsx";
 import IngredientTranslateModal from "./IngredientTranslateModal.tsx";
 import AiAssistPanel from "./AiAssistPanel.tsx";
 import PairingEditor, { type Pairing } from "./PairingEditor.tsx";
@@ -1433,12 +1433,13 @@ export default function IngredientForm({
       </form>
 
       {/* Modals */}
-      <IngredientEnhanceModal
+      <EnhanceModal
+        kind="ingredient"
         open={enhanceOpen}
         onClose={() => setEnhanceOpen(false)}
         locale={locale}
         slug={slug}
-        existingIngredient={buildIngredientSnapshot()}
+        existing={buildIngredientSnapshot()}
         onApplied={() => window.location.reload()}
       />
 
