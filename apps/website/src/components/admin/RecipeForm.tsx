@@ -216,8 +216,6 @@ const LANGUAGES = [
   { value: "de", label: "German" },
 ];
 
-// Shared auto-link merge handler — eliminates duplicated .then() blocks for
-// mount-only and post-save aiRefreshSuggestions calls.
 function handleRefreshResult(
   data:
     | { aiSuggestions: AiSuggestions; autoLinked: number; autoAppliedLinks?: string[] }
@@ -467,8 +465,6 @@ export default function RecipeForm({
     if (!language) return;
     fetchIngredientOptions(language);
   }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Slug availability check is handled by useEntityFormState.
 
   const form = useForm({
     defaultValues: {

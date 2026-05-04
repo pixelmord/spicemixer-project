@@ -25,28 +25,22 @@ export interface BuildPayloadSuccess {
   locale: string;
   draft: boolean;
   warnings: SlugWarning[];
-  /** Narrows errors to never so callers can check result.errors without a type error. */
   errors?: never;
 }
 
 export type BuildPayloadResult = BuildPayloadFailure | BuildPayloadSuccess;
 
 export interface BuildPayloadOptions {
-  /** EntityKind discriminator — controls locale-required guard. */
   kind?: EntityKind;
-  /** Astro collection name (e.g. "ingredients", "recipes", "mixtures", "pairings"). */
   collection: string;
   slug: string;
-  /** Whether this is a new entry being created. */
   isNew: boolean;
   /** null = not yet checked; true = available; false = taken. */
   slugAvailable?: boolean | null;
-  /** Determined locale ("en", "de", …). Empty string means locale not yet set. */
+  /** Empty string means locale not yet set. */
   locale: string;
   draft: boolean;
-  /** Required when collection === "mixtures". */
   mixtureKind?: string;
-  /** Slugs in other collections, for cross-collection collision detection. */
   existingSlugs?: Partial<Record<string, string[]>>;
 }
 
@@ -66,7 +60,6 @@ export function buildPayload(opts: BuildPayloadOptions): BuildPayloadResult {
   const errors: BuildPayloadError[] = [];
   const warnings: SlugWarning[] = [];
 
-  // ── Slug ──────────────────────────────────────────────────────────────────
   if (!slug) {
     errors.push("missing-slug");
   } else {
@@ -91,14 +84,12 @@ export function buildPayload(opts: BuildPayloadOptions): BuildPayloadResult {
     }
   }
 
-  // ── Locale ────────────────────────────────────────────────────────────────
-  // Pairings are exempt — they carry inline locale-keyed descriptions (ADR 0003).
+  // Pairings are exempt — inline locale-keyed descriptions (ADR 0003).
   const localeRequired = kind !== "pairing" && collection !== "pairings";
   if (localeRequired && !locale) {
     errors.push("missing-locale");
   }
 
-  // ── Mixture kind ──────────────────────────────────────────────────────────
   if (collection === "mixtures" && !mixtureKind) {
     errors.push("missing-kind");
   }

@@ -56,8 +56,6 @@ export default function PairingForm({
   const [descriptions, setDescriptions] = useState<Record<string, string>>(initialDescriptions);
   const [activeLocale, setActiveLocale] = useState<string>("en");
 
-  // Pairing id is derived from ingredient slugs — no slug state needed.
-  // localeReady is always true for pairings (ADR 0003/0009 exception).
   const { draft, setDraft, saving, setSaving } = useEntityFormState({
     kind: "pairing",
     collection: "pairings",

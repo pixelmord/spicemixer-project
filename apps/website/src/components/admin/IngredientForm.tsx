@@ -335,8 +335,6 @@ export default function IngredientForm({
       .finally(() => setAiRefreshing(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Slug availability check is handled by useEntityFormState.
-
   const form = useForm({
     defaultValues: {
       name: data.name,
