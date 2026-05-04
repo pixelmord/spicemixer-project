@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
-import type { MetaSidecar, MetaRef, SyncCollection } from "./meta-sidecar.ts";
+import type { ContentStore } from "./content-store.ts";
+import {
+  INGREDIENT_META,
+  type MetaSidecar,
+  type MetaRef,
+  type SyncCollection,
+} from "./meta-sidecar.ts";
 
 function normalizeValue(value: unknown): unknown {
   if (value === null || value === undefined) return value;
@@ -72,7 +78,7 @@ export type StaleEntry = {
 export async function listStaleEntries(store: ContentStore): Promise<StaleEntry[]> {
   const result: StaleEntry[] = [];
 
-  const ingredientMetas = await store.list("ingredientMeta");
+  const ingredientMetas = await store.list(INGREDIENT_META);
   for (const item of ingredientMetas) {
     const data = item.data as Record<string, unknown>;
     if (!data["translationStaleSince"]) continue;
