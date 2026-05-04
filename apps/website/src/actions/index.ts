@@ -866,126 +866,22 @@ export const server = {
     }),
     handler: async ({ locale, slug, ingredient, existingMeta = {}, missingFields }) => {
       const config = resolveAiConfig();
-      const {
-        proposeIngredientImprovements,
-        proposeIngredientPairings,
-        detectLanguage,
-        isAllowedAutoApply,
-        assertAutoApplyAllowed,
-        hashSuggestion,
-        createAiEventLog,
-      } = await import("content-ai");
+      const { createAiEventLog } = await import("content-ai");
+      const { runAiRefresh } = await import("@/lib/ai/runner.ts");
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      const ingredientRef = { collection: "ingredients" as const, locale, slug };
-      const eventLog = createAiEventLog(sidecar);
-
-      const existingEvents = await eventLog.read(ingredientRef);
-      const rejectedContext = eventLog.buildRejectedContext(existingEvents);
-
-      // Build inventory (exclude self)
-      const items = await store.list("ingredients");
-      const inventory = items
-        .filter((i) => i.id.startsWith(`${locale}/`) && i.id !== `${locale}/${slug}`)
-        .map((i) => {
-          const d = i.data as Record<string, unknown>;
-          return {
-            slug: i.id.slice(3),
-            name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
-          };
-        });
-
-      // Exclude image field from improvements
-      const fieldsForAi = missingFields.filter((f) => f !== "image");
-
-      const PLACEHOLDER_PATTERNS = /example\.|placeholder\.|picsum\.|via\.placeholder\./i;
-
-      const [improvementsResult, pairingsResult, langResult] = await Promise.allSettled([
-        fieldsForAi.length
-          ? proposeIngredientImprovements(ingredient as never, fieldsForAi, config, rejectedContext)
-          : Promise.resolve({ fields: [] }),
-        inventory.length
-          ? proposeIngredientPairings(ingredient as never, inventory, config, rejectedContext)
-          : Promise.resolve([]),
-        !existingMeta["locale"]
-          ? detectLanguage(
-              [ingredient["name"], ingredient["summary"], ingredient["description"]]
-                .filter(Boolean)
-                .map(String)
-                .join(" — "),
-              config,
-            )
-          : Promise.resolve(null),
-      ]);
-
-      const rawImprovements =
-        improvementsResult.status === "fulfilled" ? improvementsResult.value.fields : [];
-      const filteredImprovements = rawImprovements.filter(
-        (f) =>
-          f.field !== "image" &&
-          !(typeof f.suggestion === "string" && PLACEHOLDER_PATTERNS.test(f.suggestion)),
-      );
-
-      const proposedPairings = pairingsResult.status === "fulfilled" ? pairingsResult.value : [];
-
-      const detectedLanguage =
-        langResult.status === "fulfilled" && langResult.value
-          ? langResult.value.language
-          : undefined;
-
-      // Language mismatch: check if detected lang differs from current locale
-      const languageMismatch = !!(detectedLanguage && detectedLanguage !== locale);
-
-      const aiSuggestions = {
-        improvements: filteredImprovements,
-        pairings: proposedPairings.map((p) => ({
-          slug: p.slug,
-          description: p.description,
-          confidence: p.confidence,
-        })),
-        detectedLanguage,
-        languageMismatch,
-      };
-
-      // Auto-apply: policy-gated pairings (additive, never overwrites)
-      const toAutoApply = proposedPairings.filter((p) =>
-        isAllowedAutoApply("pairing-slug", p.confidence, "editor"),
-      );
-      let autoLinked = 0;
-
-      if (toAutoApply.length > 0) {
-        const existingPairings = await store.list("pairings");
-        const existingIds = new Set(existingPairings.map((p) => p.id));
-        for (const pairing of toAutoApply) {
-          const id = [slug, pairing.slug].sort().join("--");
-          if (!existingIds.has(id)) {
-            assertAutoApplyAllowed("pairing-slug", pairing.confidence, "editor");
-            const ref1: EntityRef = { collection: "ingredients", slug };
-            const ref2: EntityRef = { collection: "ingredients", slug: pairing.slug };
-            const sortedRefs = [ref1, ref2].sort((a, b) => a.slug.localeCompare(b.slug)) as [
-              EntityRef,
-              EntityRef,
-            ];
-            await store.put("pairings", id, {
-              ingredients: sortedRefs,
-              description: pairing.description,
-            });
-            await eventLog.append(ingredientRef, {
-              type: "auto-applied",
-              field: "pairings",
-              suggestion: {
-                hash: hashSuggestion({ slug, pairingSlug: pairing.slug }),
-                summary: `Pairing auto-applied: ${slug} ↔ ${pairing.slug}`,
-              },
-              model: config.model,
-              confidence: pairing.confidence,
-            });
-            autoLinked++;
-          }
-        }
-      }
-
-      return { aiSuggestions, autoLinked, skipped: false };
+      return runAiRefresh({
+        kind: "ingredient",
+        metaRef: { collection: "ingredients" as const, locale, slug },
+        payload: ingredient,
+        existingMeta,
+        missingFields,
+        locale,
+        store,
+        sidecar,
+        eventLog: createAiEventLog(sidecar),
+        config,
+      });
     },
   }),
 
@@ -1150,42 +1046,21 @@ export const server = {
     }),
     handler: async ({ id, locale, pairing }) => {
       const config = resolveAiConfig();
-      const { proposePairingImprovements, buildRejectedContext } = await import("content-ai");
+      const { createAiEventLog } = await import("content-ai");
+      const { runAiRefresh } = await import("@/lib/ai/runner.ts");
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-
-      const pairingMeta = (await sidecar.read({ collection: "pairings", slug: id }))?.data as
-        | Record<string, unknown>
-        | undefined;
-      const existingEvents: AiEvent[] = Array.isArray(pairingMeta?.["aiEvents"])
-        ? (pairingMeta["aiEvents"] as AiEvent[])
-        : [];
-      const rejectedContext = buildRejectedContext(existingEvents);
-
-      const descriptions = (pairing["descriptions"] as Record<string, string>) ?? {};
-      const description =
-        descriptions[locale] ??
-        descriptions["en"] ??
-        (typeof pairing["description"] === "string" ? pairing["description"] : "");
-      const ings = pairing["ingredients"] as [EntityRef | string, EntityRef | string] | undefined;
-      const refSlug = (v: EntityRef | string | undefined): string => {
-        if (v == null) return "";
-        if (typeof v === "string") return v;
-        return v.slug;
-      };
-
-      const improvements = await proposePairingImprovements(
-        { ingredient1: refSlug(ings?.[0]), ingredient2: refSlug(ings?.[1]), description },
+      return runAiRefresh({
+        kind: "pairing",
+        metaRef: { collection: "pairings", slug: id },
+        payload: pairing,
+        missingFields: [],
         locale,
+        store,
+        sidecar,
+        eventLog: createAiEventLog(sidecar),
         config,
-        rejectedContext,
-      );
-
-      const aiSuggestions = {
-        [locale]: { improvements: improvements.fields },
-      };
-
-      return { aiSuggestions, skipped: false };
+      });
     },
   }),
 
@@ -1298,209 +1173,23 @@ export const server = {
     }),
     handler: async ({ collection, slug, recipe, meta, missingFields, locale, force }) => {
       const config = resolveAiConfig();
-      const {
-        proposeRecipeImprovements,
-        proposeTags,
-        proposeIngredientLinks,
-        proposeRelations,
-        detectLanguage,
-        isAllowedAutoApply,
-        assertAutoApplyAllowed,
-        hashSuggestion,
-        hashContent,
-        createAiEventLog,
-      } = await import("content-ai");
+      const { createAiEventLog } = await import("content-ai");
+      const { runAiRefresh } = await import("@/lib/ai/runner.ts");
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      const recipeRef = { collection, locale, slug };
-      const eventLog = createAiEventLog(sidecar);
-
-      const skipResult = await eventLog.shouldSkip(
-        recipeRef,
-        { recipe, missingFields, locale, model: config.model },
+      return runAiRefresh({
+        kind: "recipe",
+        metaRef: { collection, locale, slug },
+        payload: recipe,
+        existingMeta: meta,
+        missingFields,
+        locale,
+        store,
+        sidecar,
+        eventLog: createAiEventLog(sidecar),
+        config,
         force,
-      );
-      if (skipResult.skip) {
-        return {
-          aiSuggestions: skipResult.cachedSuggestion,
-          autoLinked: 0,
-          autoAppliedLinks: [],
-          detectedLanguage: skipResult.cachedSuggestion["detectedLanguage"] as string | undefined,
-          skipped: false,
-          cached: true,
-        };
-      }
-
-      const { fingerprint, existingEvents } = skipResult;
-      const rejectedContext = eventLog.buildRejectedContext(existingEvents);
-
-      // Build inventories
-      const ingredientItems = await store.list("ingredients");
-      const inventory = ingredientItems
-        .filter((i) => i.id.startsWith(`${locale}/`))
-        .map((i) => {
-          const d = i.data as Record<string, unknown>;
-          return {
-            slug: i.id.slice(3),
-            name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
-          };
-        });
-
-      const [recipes, mixtures] = await Promise.all([
-        store.list("recipes"),
-        store.list("mixtures"),
-      ]);
-      const existingRecipes = [
-        ...recipes.map((r) => {
-          const d = r.data as Record<string, unknown>;
-          return {
-            collection: "recipes" as const,
-            slug: slugFromLocaleId(r.id),
-            name: typeof d.name === "string" ? d.name : slugFromLocaleId(r.id),
-            recipeIngredient: d.recipeIngredient as string[] | undefined,
-          };
-        }),
-        ...mixtures.map((r) => {
-          const d = r.data as Record<string, unknown>;
-          return {
-            collection: "mixtures" as const,
-            slug: slugFromLocaleId(r.id),
-            name: typeof d.name === "string" ? d.name : slugFromLocaleId(r.id),
-          };
-        }),
-      ].filter((r) => r.slug !== slug);
-
-      const recipeIngredients = Array.isArray(recipe["recipeIngredient"])
-        ? (recipe["recipeIngredient"] as string[])
-        : [];
-
-      // Exclude "image" — AI cannot supply real image URLs, only placeholder guesses
-      const fieldsForAi = missingFields.filter((f) => f !== "image");
-
-      const [improvementsResult, tagsResult, linksResult, relationsResult, langResult] =
-        await Promise.allSettled([
-          fieldsForAi.length
-            ? proposeRecipeImprovements(recipe as never, fieldsForAi, config, rejectedContext)
-            : Promise.resolve({ fields: [] }),
-          proposeTags(recipe as never, [], config, rejectedContext),
-          recipeIngredients.length
-            ? proposeIngredientLinks(recipeIngredients, inventory, config, rejectedContext)
-            : Promise.resolve([]),
-          proposeRelations(recipe as never, existingRecipes, config, rejectedContext),
-          !meta["language"]
-            ? detectLanguage(
-                [recipe["name"], recipe["description"]].filter(Boolean).map(String).join(" — "),
-                config,
-              )
-            : Promise.resolve(null),
-        ]);
-
-      const PLACEHOLDER_PATTERNS =
-        /example\.|placeholder\.|picsum\.|via\.placeholder\.|lorempixel\.|dummyimage\./i;
-      const rawImprovements =
-        improvementsResult.status === "fulfilled" ? improvementsResult.value.fields : [];
-      const filteredImprovements = rawImprovements.filter(
-        (f) =>
-          f.field !== "image" &&
-          !(typeof f.suggestion === "string" && PLACEHOLDER_PATTERNS.test(f.suggestion)),
-      );
-
-      const detectedLanguage =
-        langResult.status === "fulfilled" && langResult.value
-          ? langResult.value.language
-          : undefined;
-      const ingredientLinks = linksResult.status === "fulfilled" ? linksResult.value : [];
-
-      const aiSuggestions = {
-        improvements: filteredImprovements,
-        tags: tagsResult.status === "fulfilled" ? tagsResult.value.tags : [],
-        ingredientLinks,
-        relations: relationsResult.status === "fulfilled" ? relationsResult.value : [],
-        detectedLanguage,
-      };
-
-      // Auto-apply: policy-gated ingredient links (additive only)
-      const existingLinks = Array.isArray(meta["ingredientLinks"])
-        ? (meta["ingredientLinks"] as Array<Record<string, unknown>>)
-        : [];
-      const existingPatterns = new Set(
-        existingLinks.map((l) => (typeof l["pattern"] === "string" ? l["pattern"] : "")),
-      );
-      const toAutoApply = ingredientLinks.filter(
-        (l) =>
-          isAllowedAutoApply("ingredient-link", l.confidence, "editor") &&
-          !existingPatterns.has(l.pattern),
-      );
-
-      const updatedMeta: Record<string, unknown> = { ...meta };
-
-      if (toAutoApply.length > 0) {
-        updatedMeta["ingredientLinks"] = [
-          ...existingLinks,
-          ...toAutoApply.map((l) => ({ pattern: l.pattern, slug: l.slug, kind: "ingredient" })),
-        ];
-        for (const link of toAutoApply) {
-          assertAutoApplyAllowed("ingredient-link", link.confidence, "editor");
-          await eventLog.append(recipeRef, {
-            type: "auto-applied",
-            field: "ingredientLinks",
-            suggestion: {
-              hash: hashSuggestion({ pattern: link.pattern, slug: link.slug }),
-              summary: `Link ${link.pattern} → ${link.slug}`,
-            },
-            model: config.model,
-            confidence: link.confidence,
-          });
-        }
-      }
-
-      // Auto-apply: detected language when none is set
-      if (!meta["language"] && detectedLanguage) {
-        assertAutoApplyAllowed("language-detection", "high", "editor");
-        updatedMeta["language"] = detectedLanguage;
-        updatedMeta["locale"] = detectedLanguage;
-        await eventLog.append(recipeRef, {
-          type: "auto-applied",
-          field: "language",
-          suggestion: {
-            hash: hashSuggestion({ language: detectedLanguage }),
-            summary: `Language detected: ${detectedLanguage}`,
-          },
-          model: config.model,
-          confidence: "high",
-        });
-      }
-
-      // Re-read: append calls above already updated aiEvents in the sidecar.
-      const freshItem = await sidecar.read(recipeRef);
-      const freshMeta = (freshItem?.data as Record<string, unknown> | undefined) ?? meta;
-      const newMeta: Record<string, unknown> = {
-        ...freshMeta,
-        ...updatedMeta,
-        aiSuggestions: {
-          fingerprint,
-          at: new Date().toISOString(),
-          model: config.model,
-          data: aiSuggestions,
-        },
-      };
-
-      const stripTimestamp = (m: Record<string, unknown>) => {
-        const cache = m["aiSuggestions"] as { at?: string } | undefined;
-        return cache ? { ...m, aiSuggestions: { ...cache, at: "" } } : m;
-      };
-      if (hashContent(stripTimestamp(newMeta)) !== hashContent(stripTimestamp(meta))) {
-        await sidecar.write(recipeRef, newMeta);
-      }
-
-      return {
-        aiSuggestions,
-        autoLinked: toAutoApply.length,
-        autoAppliedLinks: toAutoApply.map((l) => l.pattern),
-        detectedLanguage: aiSuggestions.detectedLanguage,
-        skipped: false,
-        cached: false,
-      };
+      });
     },
   }),
 

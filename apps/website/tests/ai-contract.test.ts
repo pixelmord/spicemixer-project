@@ -31,8 +31,6 @@ function extractRegion(content: string, startMarker: string, endMarker: string):
   return end === -1 ? content.slice(start) : content.slice(start, end);
 }
 
-const ACTIONS_FILE = join(SRC_ROOT, "actions", "index.ts");
-
 // ── Contract 1: No inline confidence equality checks ─────────────────────────
 // All auto-apply gating must go through isAllowedAutoApply in packages/content-ai.
 
@@ -308,16 +306,19 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
 // loader reload → form remount → repeat forever. Two guards prevent this:
 // (a) fingerprint early-return skips AI work entirely on a cache hit, and
 // (b) content-hash comparison skips the sidecar write when nothing changed.
+// Cache and write logic now lives in the runner module (issue #64).
+
+const RUNNER_FILE = join(SRC_ROOT, "lib", "ai", "runner.ts");
 
 describe("ai-contract: aiRefreshSuggestions cache-hit must not write meta sidecar", () => {
-  test("handler delegates cache check to eventLog.shouldSkip and returns cached: true on skip", async () => {
-    const content = await readFile(ACTIONS_FILE, "utf-8");
+  test("runner delegates cache check to eventLog.shouldSkip and returns cached: true on skip", async () => {
+    const content = await readFile(RUNNER_FILE, "utf-8");
     const region = extractRegion(
       content,
-      "aiRefreshSuggestions: defineAction(",
-      "\n  aiCreateTranslation:",
+      "async function runRecipeRefresh(",
+      "\nasync function runPairingRefresh(",
     );
-    expect(region, "aiRefreshSuggestions region not found").not.toBe("");
+    expect(region, "runRecipeRefresh region not found").not.toBe("");
     // The early-return path — if removed, the second call always runs AI again
     expect(region).toContain("cached: true");
     // Fingerprint + force logic is delegated to eventLog.shouldSkip
@@ -326,21 +327,21 @@ describe("ai-contract: aiRefreshSuggestions cache-hit must not write meta sideca
     expect(region).toContain("skipResult.skip");
   });
 
-  test("sidecar write is guarded by stripTimestamp content-hash comparison", async () => {
-    const content = await readFile(ACTIONS_FILE, "utf-8");
+  test("runner sidecar write is guarded by stripTimestamp content-hash comparison", async () => {
+    const content = await readFile(RUNNER_FILE, "utf-8");
     const region = extractRegion(
       content,
-      "aiRefreshSuggestions: defineAction(",
-      "\n  aiCreateTranslation:",
+      "async function runRecipeRefresh(",
+      "export async function runAiRefresh(",
     );
-    expect(region, "aiRefreshSuggestions region not found").not.toBe("");
+    expect(region, "runRecipeRefresh region not found").not.toBe("");
     // stripTimestamp must exist — its removal means at timestamp differences trigger writes
     expect(region).toContain("stripTimestamp");
     // at field must be zeroed so identical runs with a fresh timestamp are a no-op
     expect(region).toMatch(/at:\s*""/);
     // The write must be inside a conditional block, not unconditional
     const writeIdx = region.indexOf("sidecar.write(");
-    expect(writeIdx, "sidecar.write( not found in handler").toBeGreaterThan(-1);
+    expect(writeIdx, "sidecar.write( not found in runner").toBeGreaterThan(-1);
     // The if-guard using stripTimestamp must precede the write
     const beforeWrite = region.slice(0, writeIdx);
     expect(beforeWrite).toContain("stripTimestamp");
