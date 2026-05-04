@@ -69,8 +69,8 @@ function hasWrite(region: string): boolean {
   return region.includes("store.put(") || region.includes("sidecar.write(");
 }
 
-describe("ai-contract: AI action handlers with store.put also call recordAiEvent", () => {
-  test("aiRefreshSuggestions handler contains recordAiEvent before store.put", async () => {
+describe("ai-contract: AI action handlers with writes also call recordAiEvent", () => {
+  test("aiRefreshSuggestions handler contains a write and recordAiEvent", async () => {
     const content = await readFile(ACTIONS_FILE, "utf-8");
     const region = extractRegion(
       content,
@@ -82,7 +82,7 @@ describe("ai-contract: AI action handlers with store.put also call recordAiEvent
     expect(region).toContain("recordAiEvent(");
   });
 
-  test("aiRefreshIngredientSuggestions handler contains recordAiEvent before store.put", async () => {
+  test("aiRefreshIngredientSuggestions handler contains a write and recordAiEvent", async () => {
     const content = await readFile(ACTIONS_FILE, "utf-8");
     const region = extractRegion(
       content,
