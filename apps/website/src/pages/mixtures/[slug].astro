@@ -132,9 +132,7 @@ const pagefindFilters = mix ? withPagefindFilters({
   cuisine: mix.data.recipeCuisine ?? undefined,
   category: mix.data.recipeCategory ?? undefined,
 }) : {};
-const isDraft = meta?.draft === true;
-const pagefindBody = isDraft ? undefined : (mix ? true : undefined);
-const pagefindIgnore = isDraft && mix ? true : undefined;
+const pagefindBody = mix ? true : undefined;
 
 const kindLabel = kind ? t(`kind.${kind}`) : "";
 const indexMixtures = (kindMixtures ?? []).sort((a, b) =>
@@ -259,7 +257,6 @@ const hreflang = mix ? await hreflangTags(mixSlug, "mixtures", Astro.site?.toStr
     <main
       class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8"
       data-pagefind-body={pagefindBody}
-      data-pagefind-ignore={pagefindIgnore}
     >
       {Object.entries(pagefindFilters).map(([key, value]) => (
         <span data-pagefind-filter={`${key}:${value}`} hidden aria-hidden="true" />
