@@ -64,14 +64,9 @@ async function main() {
     ingredientsProcessed++;
 
     for (const p of pairings) {
-      const pairSlug =
-        typeof p === "object" && p !== null
-          ? String((p as Record<string, unknown>)["slug"] ?? "")
-          : "";
-      const note =
-        typeof p === "object" && p !== null
-          ? String((p as Record<string, unknown>)["note"] ?? "")
-          : "";
+      const pRec = typeof p === "object" && p !== null ? (p as Record<string, unknown>) : {};
+      const pairSlug = typeof pRec["slug"] === "string" ? pRec["slug"] : "";
+      const note = typeof pRec["note"] === "string" ? pRec["note"] : "";
       if (!pairSlug) continue;
 
       const id = pairingId(slug, pairSlug);

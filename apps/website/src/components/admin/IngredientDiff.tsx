@@ -106,7 +106,7 @@ function FieldCell({ diff, side }: { diff: FieldDiff; side: "old" | "new" }) {
     return <ItemListDiff items={items} kind={diff.kind} />;
   }
 
-  const str = String(value);
+  const str = typeof value === "string" ? value : "";
   if (side === "new" && diff.kind === "changed" && typeof diff.oldValue === "string") {
     return <InlineWordDiff before={diff.oldValue} after={str} />;
   }

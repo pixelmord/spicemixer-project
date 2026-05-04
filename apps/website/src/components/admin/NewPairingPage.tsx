@@ -20,9 +20,9 @@ export default function NewPairingPage({ locale = "en" }: Props) {
         const parsed = JSON.parse(stored) as { pairing: Record<string, unknown> };
         const p = parsed.pairing;
         setImportData({
-          ingredient1: String(p["ingredient1"] ?? ""),
-          ingredient2: String(p["ingredient2"] ?? ""),
-          description: String(p["description"] ?? ""),
+          ingredient1: typeof p["ingredient1"] === "string" ? p["ingredient1"] : "",
+          ingredient2: typeof p["ingredient2"] === "string" ? p["ingredient2"] : "",
+          description: typeof p["description"] === "string" ? p["description"] : "",
         });
       } catch {
         // ignore malformed data

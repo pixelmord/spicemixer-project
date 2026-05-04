@@ -32,7 +32,8 @@ export default function NewRecipePage({ collection }: Props) {
           source: { url: string; canonical?: string };
         };
         const sourceUrl = parsed.source.canonical ?? parsed.source.url;
-        const recipeName = String(parsed.recipe.name ?? "Imported recipe");
+        const recipeName =
+          typeof parsed.recipe.name === "string" ? parsed.recipe.name : "Imported recipe";
         const aiEvents = sourceUrl.trim()
           ? recordAiEvent([], {
               type: "ingested",

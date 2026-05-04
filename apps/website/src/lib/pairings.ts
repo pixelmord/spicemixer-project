@@ -24,7 +24,7 @@ export async function savePairing(
   const existingData = (existing?.data as Record<string, unknown>) ?? {};
   const existingDescriptions =
     (existingData["descriptions"] as Record<string, string>) ??
-    (existingData["description"] ? { en: String(existingData["description"]) } : {});
+    (typeof existingData["description"] === "string" ? { en: existingData["description"] } : {});
   const existingDraft = (existingData["draft"] as boolean) ?? false;
   // image: explicit value wins; undefined = preserve existing; "" = clear
   const imageValue =

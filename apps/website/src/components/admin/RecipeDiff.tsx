@@ -94,7 +94,7 @@ function FieldCell({ diff, side }: { diff: FieldDiff; side: "old" | "new" }) {
   }
 
   // Scalar text — show word-level inline diff in the "new" cell
-  const str = String(value);
+  const str = typeof value === "string" ? value : "";
   if (side === "new" && diff.kind === "changed" && typeof diff.oldValue === "string") {
     return <InlineWordDiff before={diff.oldValue} after={str} />;
   }

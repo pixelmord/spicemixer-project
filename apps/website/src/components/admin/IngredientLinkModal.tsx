@@ -98,12 +98,17 @@ function IngredientViewContent({
     );
   }
 
-  const name = String(data["name"] ?? slug);
-  const category = String(data["category"] ?? "");
-  const summary = String(data["summary"] ?? data["description"] ?? "");
+  const name = typeof data["name"] === "string" ? data["name"] : slug;
+  const category = typeof data["category"] === "string" ? data["category"] : "";
+  const summary =
+    typeof data["summary"] === "string"
+      ? data["summary"]
+      : typeof data["description"] === "string"
+        ? data["description"]
+        : "";
   const flavorNotes = Array.isArray(data["flavorNotes"]) ? (data["flavorNotes"] as string[]) : [];
   const origin = Array.isArray(data["origin"]) ? (data["origin"] as string[]) : [];
-  const image = String(data["image"] ?? "");
+  const image = typeof data["image"] === "string" ? data["image"] : "";
 
   return (
     <div className="space-y-4">
@@ -247,7 +252,7 @@ function IngredientLinkContent({
       if (error || !data) throw new Error(error?.message ?? "Extraction failed");
       const ingredient = data.ingredient as Record<string, unknown>;
       setExtracted(ingredient);
-      setExtractedSlug(slugify(String(ingredient["name"] ?? "")));
+      setExtractedSlug(slugify(typeof ingredient["name"] === "string" ? ingredient["name"] : ""));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -406,10 +411,12 @@ function IngredientLinkContent({
       {extracted && (
         <div className="space-y-3">
           <div className="rounded-md border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 p-3 space-y-1.5">
-            <p className="font-medium">{String(extracted["name"] ?? "")}</p>
+            <p className="font-medium">
+              {typeof extracted["name"] === "string" ? extracted["name"] : ""}
+            </p>
             {!!extracted["category"] && (
               <Badge variant="secondary" className="text-xs">
-                {String(extracted["category"])}
+                {typeof extracted["category"] === "string" ? extracted["category"] : ""}
               </Badge>
             )}
             {Array.isArray(extracted["flavorNotes"]) && extracted["flavorNotes"].length > 0 && (

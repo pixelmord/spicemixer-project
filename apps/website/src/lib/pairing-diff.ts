@@ -23,7 +23,7 @@ export function diffPairings(
     const descs = obj["descriptions"] as Record<string, string> | undefined;
     if (descs?.[locale]) return descs[locale];
     if (descs?.["en"]) return descs["en"];
-    return String(obj["description"] ?? "");
+    return typeof obj["description"] === "string" ? obj["description"] : "";
   };
 
   diffs.push({
