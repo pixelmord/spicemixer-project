@@ -128,17 +128,22 @@ vi.mock("content-ai", async (importOriginal) => {
   };
 });
 
+async function getHandler(name: string) {
+  const { server } = await import("../src/actions/index.ts");
+  return (server as unknown as Record<string, { handler: Function }>)[name].handler;
+}
+
 describe("ai-contract: AI action handlers with writes also persist an aiEvent", () => {
-  // Use a fresh in-memory store per test so writes don't bleed across.
+  let sidecar: ReturnType<typeof createMetaSidecar>;
+
   beforeEach(() => {
     mockStore = new InMemoryStore();
+    sidecar = createMetaSidecar(mockStore);
     process.env["AI_API_KEY"] = "test-api-key";
   });
 
   test("saveRecipe with aiMergeModel writes an accepted aiEvent to the meta sidecar", async () => {
-    const { server } = await import("../src/actions/index.ts");
-    const handler = (server.saveRecipe as unknown as { handler: Function }).handler;
-
+    const handler = await getHandler("saveRecipe");
     await handler({
       collection: "recipes",
       slug: "cardamom-rice",
@@ -147,7 +152,6 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
       aiMergeModel: "gpt-4",
     });
 
-    const sidecar = createMetaSidecar(mockStore);
     const meta = await sidecar.read({
       collection: "recipes",
       locale: "en",
@@ -162,9 +166,7 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
   });
 
   test("saveIngredient with aiMergeModel writes an accepted aiEvent to the meta sidecar", async () => {
-    const { server } = await import("../src/actions/index.ts");
-    const handler = (server.saveIngredient as unknown as { handler: Function }).handler;
-
+    const handler = await getHandler("saveIngredient");
     await handler({
       locale: "en",
       slug: "cumin",
@@ -172,7 +174,6 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
       aiMergeModel: "gpt-4",
     });
 
-    const sidecar = createMetaSidecar(mockStore);
     const meta = await sidecar.read({
       collection: "ingredients",
       locale: "en",
@@ -187,22 +188,18 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
   });
 
   test("savePairing with aiMergeModel writes an accepted aiEvent to the pairing meta sidecar", async () => {
-    const { server } = await import("../src/actions/index.ts");
-    const handler = (server.savePairing as unknown as { handler: Function }).handler;
-
-    // Pre-populate the store with the pairing (savePairing reads existing before writing meta)
-    const ingA = { collection: "ingredients" as const, slug: "cardamom" };
-    const ingB = { collection: "ingredients" as const, slug: "cumin" };
-
+    const handler = await getHandler("savePairing");
     await handler({
       id: "cardamom--cumin",
-      ingredients: [ingA, ingB],
+      ingredients: [
+        { collection: "ingredients" as const, slug: "cardamom" },
+        { collection: "ingredients" as const, slug: "cumin" },
+      ],
       description: "Fragrant combo",
       locale: "en",
       aiMergeModel: "gpt-4",
     });
 
-    const sidecar = createMetaSidecar(mockStore);
     const meta = await sidecar.read({ collection: "pairings", slug: "cardamom--cumin" });
     expect(
       meta,
@@ -216,9 +213,7 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
   });
 
   test("aiRefreshSuggestions writes aiSuggestions to the meta sidecar", async () => {
-    const { server } = await import("../src/actions/index.ts");
-    const handler = (server.aiRefreshSuggestions as unknown as { handler: Function }).handler;
-
+    const handler = await getHandler("aiRefreshSuggestions");
     await handler({
       collection: "recipes",
       slug: "cardamom-rice",
@@ -229,7 +224,6 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
       force: true,
     });
 
-    const sidecar = createMetaSidecar(mockStore);
     const meta = await sidecar.read({
       collection: "recipes",
       locale: "en",
@@ -241,24 +235,20 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
   });
 
   test("aiRefreshSuggestions records an aiEvent when auto-apply fires", async () => {
-    // Override detectLanguage to trigger language auto-apply (no existing language in meta).
     const contentAi = await import("content-ai");
     vi.mocked(contentAi.detectLanguage).mockResolvedValue({ language: "en" } as never);
 
-    const { server } = await import("../src/actions/index.ts");
-    const handler = (server.aiRefreshSuggestions as unknown as { handler: Function }).handler;
-
+    const handler = await getHandler("aiRefreshSuggestions");
     await handler({
       collection: "recipes",
       slug: "cardamom-rice",
       locale: "en",
       recipe: { name: "Cardamom Rice" },
-      meta: {}, // no language field → auto-apply will fire for language detection
+      meta: {},
       missingFields: [],
       force: true,
     });
 
-    const sidecar = createMetaSidecar(mockStore);
     const meta = await sidecar.read({
       collection: "recipes",
       locale: "en",
@@ -273,20 +263,14 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
   });
 
   test("aiRefreshIngredientSuggestions writes a pairing to the store and records an aiEvent when auto-apply fires", async () => {
-    // Stub proposeIngredientPairings to return a high-confidence pairing — this
-    // triggers the auto-apply path (store.put("pairings", ...) + recordAiEvent).
     const contentAi = await import("content-ai");
     vi.mocked(contentAi.proposeIngredientPairings).mockResolvedValue([
       { slug: "cumin", description: "Fragrant pair", confidence: "high" } as never,
     ]);
 
-    // Pre-populate the inventory so the handler has something to pair with.
     await mockStore.put("ingredients", "en/cumin", { name: "Cumin" });
 
-    const { server } = await import("../src/actions/index.ts");
-    const handler = (server.aiRefreshIngredientSuggestions as unknown as { handler: Function })
-      .handler;
-
+    const handler = await getHandler("aiRefreshIngredientSuggestions");
     await handler({
       locale: "en",
       slug: "cardamom",
@@ -295,12 +279,9 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
       missingFields: [],
     });
 
-    // Write contract: auto-applied pairing must exist in the pairings collection.
     const pairing = await mockStore.get("pairings", "cardamom--cumin");
     expect(pairing, "auto-applied pairing must be written to the store").not.toBeNull();
 
-    // Event contract: aiEvent must be recorded in the ingredient meta sidecar.
-    const sidecar = createMetaSidecar(mockStore);
     const meta = await sidecar.read({ collection: "ingredients", locale: "en", slug: "cardamom" });
     expect(meta, "ingredient meta sidecar must be written after auto-apply").not.toBeNull();
     const aiEvents = (meta!.data as Record<string, unknown>).aiEvents as AiEvent[];
