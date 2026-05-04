@@ -390,8 +390,7 @@ export async function runAiRefresh(input: AiRefreshInput): Promise<AiRefreshResu
       return runPairingRefresh(input);
     default: {
       const _exhaustive: never = input.kind;
-      void _exhaustive;
-      throw new Error("Unknown EntityKind");
+      throw new Error(`Unknown EntityKind: ${String(_exhaustive)}`);
     }
   }
 }
