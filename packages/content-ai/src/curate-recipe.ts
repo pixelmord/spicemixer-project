@@ -2,6 +2,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { createProvider, PROVIDER_OPTIONS, type AiConfig } from "./provider.ts";
 import { AiError } from "./errors.ts";
+import { normalizeConfidence } from "./curate-shared.ts";
 
 export interface RecipeSnapshot {
   name: string;
@@ -35,11 +36,18 @@ export interface TranslationDraft {
   fields: Record<string, string>;
 }
 
-function normalizeConfidence(v: string): "high" | "medium" | "low" {
-  const lower = v.toLowerCase().trim();
-  if (lower === "high" || lower.includes("high")) return "high";
-  if (lower === "medium" || lower.includes("medium") || lower === "moderate") return "medium";
-  return "low";
+function buildRecipeContext(recipe: RecipeSnapshot, maxIngredients = 8): string {
+  return [
+    `Name: ${recipe.name}`,
+    recipe.description ? `Description: ${recipe.description}` : null,
+    recipe.recipeCategory ? `Category: ${recipe.recipeCategory}` : null,
+    recipe.recipeCuisine ? `Cuisine: ${recipe.recipeCuisine}` : null,
+    recipe.recipeIngredient?.length
+      ? `Key ingredients: ${recipe.recipeIngredient.slice(0, maxIngredients).join(", ")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export async function proposeIngredientLinks(
@@ -114,17 +122,7 @@ export async function proposeTags(
 
   const schema = z.object({ tags: z.array(z.string()) });
 
-  const context = [
-    `Name: ${recipe.name}`,
-    recipe.description ? `Description: ${recipe.description}` : null,
-    recipe.recipeCategory ? `Category: ${recipe.recipeCategory}` : null,
-    recipe.recipeCuisine ? `Cuisine: ${recipe.recipeCuisine}` : null,
-    recipe.recipeIngredient?.length
-      ? `Key ingredients: ${recipe.recipeIngredient.slice(0, 8).join(", ")}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const context = buildRecipeContext(recipe);
 
   const tagHints = existingTags.length
     ? `Prefer tags from this existing vocabulary where applicable:\n${existingTags.slice(0, 60).join(", ")}`
@@ -168,18 +166,7 @@ export async function proposeRecipeImprovements(
     ),
   });
 
-  const context = [
-    `Name: ${recipe.name}`,
-    recipe.description ? `Description: ${recipe.description}` : null,
-    recipe.recipeCuisine ? `Cuisine: ${recipe.recipeCuisine}` : null,
-    recipe.recipeCategory ? `Category: ${recipe.recipeCategory}` : null,
-    recipe.recipeIngredient?.length
-      ? `Ingredients: ${recipe.recipeIngredient.slice(0, 6).join(", ")}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
+  const context = buildRecipeContext(recipe, 6);
   const rejectedSection = rejectedContext ? `\n\n${rejectedContext}` : "";
 
   try {
@@ -262,17 +249,7 @@ export async function proposeRelations(
     ),
   });
 
-  const recipeContext = [
-    `Name: ${recipe.name}`,
-    recipe.description ? `Description: ${recipe.description}` : null,
-    recipe.recipeCategory ? `Category: ${recipe.recipeCategory}` : null,
-    recipe.recipeCuisine ? `Cuisine: ${recipe.recipeCuisine}` : null,
-    recipe.recipeIngredient?.length
-      ? `Key ingredients: ${recipe.recipeIngredient.slice(0, 8).join(", ")}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const recipeContext = buildRecipeContext(recipe);
 
   const candidatesList = existingRecipes
     .slice(0, 50)

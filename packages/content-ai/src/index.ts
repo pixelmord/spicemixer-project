@@ -85,3 +85,6 @@ export {
   hasAutoApplied,
   buildRejectedContext,
 } from "./events.ts";
+
+export { runCurate, CURATE_REGISTRY } from "./run-curate.ts";
+export type { EntityKind, CurateOp } from "./run-curate.ts";
