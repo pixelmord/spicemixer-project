@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vite-plus/test";
-import { hashSuggestion, filterSuggestions, recordAiEvent } from "../src/index.ts";
+import {
+  hashSuggestion,
+  filterSuggestions,
+  recordAiEvent,
+  isAllowedAutoApply,
+} from "../src/index.ts";
 import type { AiEvent } from "../src/schemas/ai-events.ts";
 
 // Tests the data pipeline without rendering the React component.
@@ -144,5 +149,45 @@ describe("AiAssistPanel event recording", () => {
     const visible = filterSuggestions(events, suggestions);
     expect(visible).toHaveLength(1);
     expect(visible[0].summary).toBe("different text");
+  });
+});
+
+// ── auto-apply partition (used in AiAssistPanel runLinks) ─────────────────────
+
+describe("runLinks auto-apply partition", () => {
+  type Confidence = "high" | "medium" | "low";
+
+  function partition(confidences: Confidence[]): {
+    autoApplied: Confidence[];
+    suggested: Confidence[];
+  } {
+    const autoApplied: Confidence[] = [];
+    const suggested: Confidence[] = [];
+    for (const c of confidences) {
+      (isAllowedAutoApply("ingredient-link", c, "editor") ? autoApplied : suggested).push(c);
+    }
+    return { autoApplied, suggested };
+  }
+
+  test("high-confidence links are auto-applied, others suggested", () => {
+    const { autoApplied, suggested } = partition(["high", "medium", "low"]);
+    expect(autoApplied).toEqual(["high"]);
+    expect(suggested).toEqual(["medium", "low"]);
+  });
+
+  test("all high-confidence → everything auto-applied, nothing suggested", () => {
+    const { autoApplied, suggested } = partition(["high", "high"]);
+    expect(autoApplied).toHaveLength(2);
+    expect(suggested).toHaveLength(0);
+  });
+
+  test("no high-confidence → nothing auto-applied, everything suggested", () => {
+    const { autoApplied, suggested } = partition(["medium", "low"]);
+    expect(autoApplied).toHaveLength(0);
+    expect(suggested).toHaveLength(2);
+  });
+
+  test("community origin is always blocked regardless of confidence", () => {
+    expect(isAllowedAutoApply("ingredient-link", "high", "community")).toBe(false);
   });
 });

@@ -52,6 +52,7 @@ import EnhanceModal from "./EnhanceModal.tsx";
 import TranslateModal from "./TranslateModal.tsx";
 import InlineSuggestion from "./InlineSuggestion.tsx";
 import IngredientLinkModal from "./IngredientLinkModal.tsx";
+import AiAssistPanel from "./AiAssistPanel.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
@@ -1961,8 +1962,8 @@ export default function RecipeForm({
             </section>
           </div>
 
-          {/* Right: completeness */}
-          <aside className="sticky top-0 h-fit w-56 shrink-0 pt-1">
+          {/* Right: completeness + AI assist */}
+          <aside className="sticky top-0 h-fit w-56 shrink-0 pt-1 space-y-3">
             <CompletenessPanel
               result={completeness}
               requiredFields={requiredFields}
@@ -1974,6 +1975,37 @@ export default function RecipeForm({
               onApplySuggestion={handleApplySuggestion}
               onDismissSuggestion={handleDismissSuggestion}
             />
+            {!isNew && (
+              <AiAssistPanel
+                mode="recipe"
+                snapshot={buildRecipeSnapshot()}
+                missingFields={completeness.missing}
+                recipeIngredients={ingredients.filter(Boolean)}
+                locale={(language || "en") as "en" | "de"}
+                targetLocale={(language === "de" ? "en" : "de") as "en" | "de"}
+                onApplyIngredientLinks={(links) =>
+                  setIngredientLinks((prev) => {
+                    const incoming = links.filter(
+                      (l) => !prev.some((p) => p.pattern === l.pattern),
+                    );
+                    return [...prev, ...incoming];
+                  })
+                }
+                onApplyTags={(newTags) => setTags((prev) => [...new Set([...prev, ...newTags])])}
+                onApplyField={(field, value) => {
+                  if (field === "tags" && Array.isArray(value)) {
+                    setTags(value as string[]);
+                  } else {
+                    handleApplySuggestion(field, String(value));
+                  }
+                }}
+                onApplyTranslation={(fields) => {
+                  for (const [f, v] of Object.entries(fields)) {
+                    handleApplySuggestion(f, v);
+                  }
+                }}
+              />
+            )}
           </aside>
         </div>
 
