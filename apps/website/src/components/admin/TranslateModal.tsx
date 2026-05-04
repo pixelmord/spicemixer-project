@@ -71,7 +71,7 @@ export default function TranslateModal({
     const t = setTimeout(() => {
       void actions
         .checkSlugAvailable({ collection, slug: translationSlug })
-        .then(({ data }) => {
+        .then(({ data }: { data?: { available: boolean } | null }) => {
           if (data) setSlugAvailable(data.available);
         })
         .finally(() => setCheckingSlug(false));

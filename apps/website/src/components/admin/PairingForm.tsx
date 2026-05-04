@@ -132,7 +132,10 @@ export default function PairingForm({
         if (!desc) continue;
         const { error } = await actions.savePairing({
           id,
-          ingredients: [ingredient1, ingredient2] as [string, string],
+          ingredients: [
+            { collection: "ingredients" as const, slug: ingredient1 },
+            { collection: "ingredients" as const, slug: ingredient2 },
+          ],
           description: desc,
           locale,
           draft: first ? draft : undefined,

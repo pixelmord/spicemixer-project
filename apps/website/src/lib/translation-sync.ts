@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { ContentStore } from "./content-store.ts";
 import type { MetaSidecar, MetaRef, SyncCollection } from "./meta-sidecar.ts";
 
 function normalizeValue(value: unknown): unknown {
