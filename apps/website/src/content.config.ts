@@ -30,6 +30,47 @@ const imageAttributionSchema = z
   })
   .optional();
 
+const aiSuggestionsCacheSchema = z
+  .object({
+    fingerprint: z.string(),
+    at: z.string(),
+    model: z.string(),
+    data: z.object({
+      improvements: z
+        .array(
+          z.object({
+            field: z.string(),
+            suggestion: z.unknown(),
+            hash: z.string().optional(),
+            rationale: z.string().optional(),
+          }),
+        )
+        .default([]),
+      tags: z.array(z.string()).default([]),
+      ingredientLinks: z
+        .array(
+          z.object({
+            pattern: z.string(),
+            slug: z.string(),
+            confidence: z.enum(["high", "medium", "low"]),
+          }),
+        )
+        .default([]),
+      relations: z
+        .array(
+          z.object({
+            kind: z.string(),
+            collection: z.string(),
+            slug: z.string(),
+            name: z.string(),
+          }),
+        )
+        .default([]),
+      detectedLanguage: z.string().optional(),
+    }),
+  })
+  .optional();
+
 const recipeMetaSchema = z.object({
   kind: z.enum(["recipe", ...MIXTURE_KINDS]).optional(),
   draft: z.boolean().default(false),
@@ -57,6 +98,7 @@ const recipeMetaSchema = z.object({
     .default([]),
   tags: z.array(z.string()).default([]),
   aiEvents: z.array(aiEventSchema).default([]),
+  aiSuggestions: aiSuggestionsCacheSchema,
   imageAttribution: imageAttributionSchema,
   recipeInstructionsAttribution: z
     .array(

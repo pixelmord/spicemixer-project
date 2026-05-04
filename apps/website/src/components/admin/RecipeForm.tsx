@@ -111,6 +111,12 @@ interface MetaData {
   variants: string[];
   imageAttribution?: ImageAttribution;
   recipeInstructionsAttribution?: Array<{ index: number } & ImageAttribution>;
+  aiSuggestions?: {
+    fingerprint: string;
+    at: string;
+    model: string;
+    data: AiSuggestions;
+  };
 }
 
 interface Props {
@@ -275,8 +281,11 @@ export default function RecipeForm({
       }
   >({ open: false });
 
-  // AI suggestions cache (transient — not persisted in meta)
-  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestions | undefined>(undefined);
+  // AI suggestions cache. Hydrate from persisted meta on mount so a remount
+  // (e.g. Vite reload after a meta write) doesn't re-fire aiRefreshSuggestions.
+  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestions | undefined>(
+    () => initialMeta?.aiSuggestions?.data,
+  );
   const [aiRefreshing, setAiRefreshing] = useState(false);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
 
@@ -595,6 +604,7 @@ export default function RecipeForm({
           meta: metaPayload as never,
           missingFields: missingKeys,
           locale: (language || "en") as "en" | "de",
+          force: true,
         })
         .then((r: { data?: unknown }) => {
           const data = r.data as
@@ -794,6 +804,7 @@ export default function RecipeForm({
         meta: metaSnap as never,
         missingFields: missingKeys,
         locale: (language || "en") as "en" | "de",
+        force: true,
       });
       if (data) setAiSuggestions(data.aiSuggestions as AiSuggestions);
     } catch {

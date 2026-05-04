@@ -41,5 +41,6 @@
   },
   "language": "en",
   "locale": "en",
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "aiEvents": []
 }
