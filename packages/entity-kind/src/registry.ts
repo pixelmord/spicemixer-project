@@ -19,7 +19,11 @@ import {
 export interface EntityKindConfig {
   schema: ZodTypeAny;
   proposers: Record<string, (...args: unknown[]) => Promise<unknown>>;
-  diff: (existing: Record<string, unknown>, proposed: Record<string, unknown>) => FieldDiff[];
+  diff: (
+    existing: Record<string, unknown>,
+    proposed: Record<string, unknown>,
+    ctx?: Record<string, unknown>,
+  ) => FieldDiff[];
   completeness: CompletenessModel;
   routePrefix: string;
 }
@@ -52,7 +56,8 @@ const registry: Record<EntityKind, EntityKindConfig> = {
   pairing: {
     schema: pairingSchema,
     proposers: {},
-    diff: diffPairings,
+    diff: (existing, proposed, ctx) =>
+      diffPairings(existing, proposed, (ctx?.["locale"] as string | undefined) ?? "en"),
     completeness: {
       required: PAIRING_REQUIRED,
       recommended: PAIRING_RECOMMENDED,

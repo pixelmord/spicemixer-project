@@ -9,6 +9,7 @@ export default defineConfig({
       "recipe-ingestion": fileURLToPath(
         new URL("./packages/recipe-ingestion/src/index.ts", import.meta.url),
       ),
+      "entity-kind": fileURLToPath(new URL("./packages/entity-kind/src/index.ts", import.meta.url)),
     },
   },
   staged: {
