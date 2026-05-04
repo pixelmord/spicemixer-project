@@ -62,6 +62,9 @@ export type { MergeSource, MergeRecipeInput, MergeRecipeResult } from "./merge-r
 export { AiError } from "./errors.ts";
 export type { AiErrorCode } from "./errors.ts";
 
+export { AiEventLog, createAiEventLog } from "./event-log.ts";
+export type { AiEventSidecar, MetaRef, FingerprintInputs, SkipResult } from "./event-log.ts";
+
 export { searchImages } from "./search-images.ts";
 export type { ImageResult, SearchImagesOptions } from "./search-images.ts";
 
