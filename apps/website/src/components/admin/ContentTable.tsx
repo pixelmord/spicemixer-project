@@ -134,9 +134,13 @@ export default function ContentTable({ initialRows }: { initialRows: ContentRow[
     }
 
     const action = row.draft ? actions.publish : actions.unpublish;
+    const slashIdx = row.id.indexOf("/");
+    const locale = (slashIdx !== -1 ? row.id.slice(0, slashIdx) : "en") as "en" | "de";
+    const slug = slashIdx !== -1 ? row.id.slice(slashIdx + 1) : row.id;
     const { error } = await action({
       collection: row.collection as "recipes" | "mixtures",
-      id: row.id,
+      locale,
+      slug,
     });
     if (error) {
       toast.error("Failed to update status");

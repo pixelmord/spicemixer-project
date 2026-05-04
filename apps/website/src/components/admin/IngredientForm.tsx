@@ -124,7 +124,7 @@ const SECTIONS: SectionDef[] = [
 ];
 
 const LONGFORM_SECTIONS: {
-  key: keyof IngredientData & string;
+  key: keyof IngredientData;
   label: string;
   placeholder: string;
 }[] = [
@@ -555,7 +555,7 @@ export default function IngredientForm({
         missingFields: missingKeys,
       });
       if (result) {
-        setAiSuggestions(parseAiSuggestions(result));
+        setAiSuggestions(parseAiSuggestions(result as unknown as Record<string, unknown>));
       }
     } catch {
       toast.error("Could not refresh suggestions");

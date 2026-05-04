@@ -21,6 +21,7 @@ type Step = "source" | "diff";
 interface Props {
   collection: RecipeCollection;
   slug: string;
+  locale?: "en" | "de";
   existingRecipe: Record<string, unknown>;
 }
 
@@ -30,7 +31,12 @@ const TABS: Array<{ id: SourceMode; label: string }> = [
   { id: "prompt", label: "From prompt" },
 ];
 
-export default function RecipeEnhancePage({ collection, slug, existingRecipe }: Props) {
+export default function RecipeEnhancePage({
+  collection,
+  slug,
+  locale = "en",
+  existingRecipe,
+}: Props) {
   const [step, setStep] = useState<Step>("source");
   const [tab, setTab] = useState<SourceMode>("prompt");
   const [source, setSource] = useState<Source | null>(null);
@@ -88,6 +94,7 @@ export default function RecipeEnhancePage({ collection, slug, existingRecipe }: 
 
     const { error } = await actions.saveRecipe({
       collection,
+      locale,
       slug,
       recipe: recipePayload,
     });

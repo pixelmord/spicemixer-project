@@ -104,9 +104,9 @@ export default function PairingForm({
         locale: activeLocale,
         pairing: { ingredients: [ingredient1, ingredient2], descriptions },
       })
-      .then(({ data }: { data?: Record<string, unknown> }) => {
-        if (data?.["aiSuggestions"]) {
-          const s = data["aiSuggestions"] as Record<string, unknown>;
+      .then(({ data }) => {
+        if (data?.aiSuggestions) {
+          const s = data.aiSuggestions;
           const block = s[activeLocale] as Record<string, unknown> | undefined;
           if (block?.["improvements"]) {
             setAiSuggestions((prev) => ({
@@ -478,11 +478,8 @@ export default function PairingForm({
                         locale: activeLocale,
                         pairing: { ingredients: [ingredient1, ingredient2], descriptions },
                       });
-                      if ((data as Record<string, unknown> | undefined)?.["aiSuggestions"]) {
-                        const s = (data as Record<string, unknown>)["aiSuggestions"] as Record<
-                          string,
-                          unknown
-                        >;
+                      if (data?.aiSuggestions) {
+                        const s = data.aiSuggestions;
                         const block = s[activeLocale] as Record<string, unknown> | undefined;
                         if (block?.["improvements"]) {
                           setAiSuggestions((prev) => ({

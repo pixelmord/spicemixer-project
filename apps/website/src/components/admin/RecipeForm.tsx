@@ -786,7 +786,7 @@ export default function RecipeForm({
         locale: (language || "en") as "en" | "de",
         force: true,
       });
-      if (data) setAiSuggestions(data.aiSuggestions as AiSuggestions);
+      if (data) setAiSuggestions(data.aiSuggestions as unknown as AiSuggestions);
     } catch {
       toast.error("Could not refresh suggestions");
     } finally {
@@ -2004,6 +2004,7 @@ export default function RecipeForm({
         open={enhanceOpen}
         onClose={() => setEnhanceOpen(false)}
         collection={collection}
+        locale={(language || "en") as "en" | "de"}
         slug={slug}
         existing={buildRecipeSnapshot()}
         onApplied={() => window.location.reload()}

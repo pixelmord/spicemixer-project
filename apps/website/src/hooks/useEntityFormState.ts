@@ -67,7 +67,10 @@ export function useEntityFormState(opts: UseEntityFormStateOpts): UseEntityFormS
     const slugPath = collection === "ingredients" ? `${locale}/${slug}` : slug;
     const t = setTimeout(() => {
       void actions
-        .checkSlugAvailable({ collection, slug: slugPath })
+        .checkSlugAvailable({
+          collection: collection as "recipes" | "mixtures" | "ingredients",
+          slug: slugPath,
+        })
         .then((r: { data?: unknown }) => {
           const data = r.data as { available: boolean } | undefined;
           if (data) setSlugAvailable(data.available);

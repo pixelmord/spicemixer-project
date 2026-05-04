@@ -73,7 +73,7 @@ export default function QuickCreateDialog({
         if (error) throw error;
       } else {
         const collection = kind === "recipe" ? "recipes" : "mixtures";
-        const { error } = await actions.quickCreateRecipe({ collection, slug, name });
+        const { error } = await actions.quickCreateRecipe({ collection, slug, name, locale: "en" });
         if (error) throw error;
       }
       toast.success(`Created "${name}"`);

@@ -4,11 +4,22 @@ import AdminShell from "@/components/admin/AdminShell.tsx";
 import RecipeEnhancePage from "@/components/admin/RecipeEnhancePage.tsx";
 import { createStore } from "@/lib/content-store.ts";
 
+const LOCALES = ["en", "de"] as const;
+
 const { slug } = Astro.params;
 if (!slug) return Astro.redirect("/admin/mixtures");
 
 const store = await createStore();
-const item = await store.get("mixtures", slug);
+let item = null;
+let itemLocale: "en" | "de" = "en";
+for (const loc of LOCALES) {
+  const candidate = await store.get("mixtures", `${loc}/${slug}`);
+  if (candidate) {
+    item = candidate;
+    itemLocale = loc;
+    break;
+  }
+}
 if (!item) return Astro.redirect("/admin/mixtures");
 
 const currentPath = Astro.url.pathname;
@@ -26,6 +37,7 @@ const currentPath = Astro.url.pathname;
       <RecipeEnhancePage
         collection="mixtures"
         slug={slug}
+        locale={itemLocale}
         existingRecipe={item.data as never}
         client:load
       />

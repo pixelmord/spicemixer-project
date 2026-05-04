@@ -19,7 +19,7 @@ const TABS: Array<{ id: SourceMode; label: string }> = [
 ];
 
 type KindProps =
-  | { kind: "recipe"; collection: RecipeCollection; onApplied: () => void }
+  | { kind: "recipe"; collection: RecipeCollection; locale: "en" | "de"; onApplied: () => void }
   | { kind: "ingredient"; locale: "en" | "de"; onApplied: () => void }
   | {
       kind: "pairing";
@@ -134,6 +134,7 @@ export default function EnhanceModal(props: Props) {
       };
       const { error } = await actions.saveRecipe({
         collection: props.collection,
+        locale: props.locale,
         slug,
         recipe: recipePayload,
         ...(mergeModel ? { aiMergeModel: mergeModel } : {}),
