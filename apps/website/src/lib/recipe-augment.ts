@@ -13,7 +13,8 @@ export async function getIngredient(slug: string, locale: string) {
 
 export type RecipeKind = "recipes" | "mixtures";
 
-export type MetaRef = { collection: RecipeKind | "ingredients"; slug: string };
+/** Cross-collection relation reference stored in meta (goesWellWith, usesBase). No locale — links by slug only. */
+export type RelationRef = { collection: RecipeKind | "ingredients"; slug: string };
 export type IngredientLink = {
   pattern: string;
   slug: string;
@@ -32,8 +33,8 @@ export type Meta = {
   translations?: Record<string, string>;
   variantOf?: string;
   variants: string[];
-  goesWellWith: MetaRef[];
-  usesBase: MetaRef[];
+  goesWellWith: RelationRef[];
+  usesBase: RelationRef[];
   ingredientLinks: IngredientLink[];
   externalSources: ExternalSource[];
   tags: string[];
@@ -59,8 +60,8 @@ const EMPTY_META: Meta = {
   translations: {},
 };
 
-export async function getMeta(kind: RecipeKind, slug: string): Promise<Meta> {
-  const entry = await getEntry("meta", `${kind}/${slug}`);
+export async function getMeta(kind: RecipeKind, locale: string, slug: string): Promise<Meta> {
+  const entry = await getEntry("meta", `${kind}/${locale}/${slug}`);
   if (!entry) return EMPTY_META;
   return entry.data as Meta;
 }
@@ -69,12 +70,19 @@ export async function getMeta(kind: RecipeKind, slug: string): Promise<Meta> {
  * Return entries from a recipe-shaped collection with `meta.draft === true`
  * filtered out. Missing meta is treated as published (default behavior for
  * legacy entries without a sidecar).
+ * Entry IDs are `locale/slug`; meta IDs are `kind/locale/slug`.
  */
 export async function getPublished<K extends RecipeKind>(kind: K) {
   const [entries, rawMeta] = await Promise.all([getCollection(kind), getCollection("meta")]);
   const allMeta = rawMeta as MetaEntry[];
   const drafts = new Set(allMeta.filter((m) => m.data.draft === true).map((m) => m.id));
   return entries.filter((e: { id: string }) => !drafts.has(`${kind}/${e.id}`));
+}
+
+/** Extract just the slug from a locale-prefixed ID like "en/miso-butter-ramen". */
+function slugFromLocaleId(id: string): string {
+  const slash = id.indexOf("/");
+  return slash === -1 ? id : id.slice(slash + 1);
 }
 
 /**
@@ -241,6 +249,7 @@ async function findByIngredientLinks(
   const recipes = rawRecipes as NamedEntry[];
   const mixtures = rawMixtures as NamedEntry[];
 
+  // Entry IDs are "locale/slug"; build map keyed by locale/slug for name lookups.
   const byKind: Record<RecipeKind, Map<string, string>> = {
     recipes: new Map(recipes.map((r) => [r.id, r.data.name])),
     mixtures: new Map(mixtures.map((r) => [r.id, r.data.name])),
@@ -249,13 +258,15 @@ async function findByIngredientLinks(
   return allMeta
     .filter((entry) => (entry.data.ingredientLinks ?? []).some(predicate))
     .map((entry) => {
-      const slash = entry.id.indexOf("/");
-      if (slash === -1) return null;
-      const kind = entry.id.slice(0, slash) as RecipeKind;
-      const slug = entry.id.slice(slash + 1);
+      // meta ID format: "kind/locale/slug" (3 segments)
+      const firstSlash = entry.id.indexOf("/");
+      if (firstSlash === -1) return null;
+      const kind = entry.id.slice(0, firstSlash) as RecipeKind;
+      const rest = entry.id.slice(firstSlash + 1); // "locale/slug"
       if (!(kind in byKind)) return null;
-      const name = byKind[kind].get(slug);
+      const name = byKind[kind].get(rest); // byKind keyed by "locale/slug"
       if (!name) return null;
+      const slug = slugFromLocaleId(rest); // just slug for URL
       return { name, href: `${localePrefix}/${kind}/${slug}/`, kind };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
@@ -273,22 +284,28 @@ async function getRecipeUsedIn(
 }
 
 export async function resolveRefs(
-  refs: MetaRef[],
+  refs: RelationRef[],
   localePrefix: string,
+  locale = "en",
 ): Promise<Array<{ name: string; href: string }>> {
   const results = await Promise.all(
     refs.map(async ({ collection, slug }) => {
       let e: { data: { name: string } } | null | undefined;
       if (collection === "recipes") {
-        e = await getEntry("recipes", slug);
+        e =
+          (await getEntry("recipes", `${locale}/${slug}`)) ??
+          (await getEntry("recipes", `en/${slug}`));
       } else if (collection === "ingredients") {
-        e = await getEntry("ingredients", `en/${slug}`);
+        e =
+          (await getEntry("ingredients", `${locale}/${slug}`)) ??
+          (await getEntry("ingredients", `en/${slug}`));
       } else {
-        e = await getEntry("mixtures", slug);
+        e =
+          (await getEntry("mixtures", `${locale}/${slug}`)) ??
+          (await getEntry("mixtures", `en/${slug}`));
       }
       if (!e) return null;
-      const itemPath = collection + "/" + slug;
-      return { name: e.data.name, href: `${localePrefix}/${itemPath}/` };
+      return { name: e.data.name, href: localePrefix + "/" + collection + "/" + slug + "/" };
     }),
   );
   return results.filter((x): x is NonNullable<typeof x> => x !== null);
@@ -298,11 +315,16 @@ export async function resolveVariants(
   kind: RecipeKind,
   slugs: string[],
   localePrefix: string,
+  locale = "en",
 ): Promise<Array<{ name: string; href: string }>> {
   const results = await Promise.all(
     slugs.map(async (slug) => {
       const e =
-        kind === "recipes" ? await getEntry("recipes", slug) : await getEntry("mixtures", slug);
+        kind === "recipes"
+          ? ((await getEntry("recipes", `${locale}/${slug}`)) ??
+            (await getEntry("recipes", `en/${slug}`)))
+          : ((await getEntry("mixtures", `${locale}/${slug}`)) ??
+            (await getEntry("mixtures", `en/${slug}`)));
       if (!e) return null;
       return { name: e.data.name, href: `${localePrefix}/${kind}/${slug}/` };
     }),

@@ -17,9 +17,17 @@ interface Props {
   backHref: string;
   previewHref?: string;
   onSave: (draft: boolean) => void;
+  saveDisabled?: boolean;
 }
 
-export default function FormActionBar({ saving, isDraft, backHref, previewHref, onSave }: Props) {
+export default function FormActionBar({
+  saving,
+  isDraft,
+  backHref,
+  previewHref,
+  onSave,
+  saveDisabled,
+}: Props) {
   const [pendingDraft, setPendingDraft] = useState<boolean | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const effectiveDraft = pendingDraft ?? isDraft;
@@ -71,7 +79,7 @@ export default function FormActionBar({ saving, isDraft, backHref, previewHref, 
               <Button
                 type="button"
                 onClick={handlePrimary}
-                disabled={saving}
+                disabled={saving || saveDisabled}
                 className="rounded-r-none border-r-0 pr-2.5"
               >
                 {saving ? (
@@ -83,7 +91,7 @@ export default function FormActionBar({ saving, isDraft, backHref, previewHref, 
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  disabled={saving}
+                  disabled={saving || saveDisabled}
                   className={cn(
                     "flex h-8 items-center rounded-l-none rounded-r-lg border border-l border-primary/30 bg-primary px-1.5 text-primary-foreground transition-colors hover:bg-primary/80 disabled:pointer-events-none disabled:opacity-50",
                   )}

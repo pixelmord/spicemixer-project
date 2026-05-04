@@ -16,10 +16,10 @@ describe("InMemoryStore", () => {
 
   test("list filters by collection", async () => {
     const store = new InMemoryStore();
-    await store.put("recipes", "a", { name: "A" });
-    await store.put("mixtures", "b", { name: "B" });
+    await store.put("recipes", "en/a", { name: "A" });
+    await store.put("mixtures", "en/b", { name: "B" });
     const recipes = await store.list("recipes");
-    expect(recipes.map((i) => i.id)).toEqual(["a"]);
+    expect(recipes.map((i) => i.id)).toEqual(["en/a"]);
   });
 
   test("list filters ingredients to locale-prefixed ids only", async () => {
@@ -51,11 +51,11 @@ describe("InMemoryStore — mixtures collection round-trip", () => {
 
   test("list returns mixtures and not recipes", async () => {
     const store = new InMemoryStore();
-    await store.put("mixtures", "harissa", { name: "Harissa" });
-    await store.put("mixtures", "ras-el-hanout", { name: "Ras el Hanout" });
-    await store.put("recipes", "miso-ramen", { name: "Miso Ramen" });
+    await store.put("mixtures", "en/harissa", { name: "Harissa" });
+    await store.put("mixtures", "en/ras-el-hanout", { name: "Ras el Hanout" });
+    await store.put("recipes", "en/miso-ramen", { name: "Miso Ramen" });
     const mixtures = await store.list("mixtures");
-    expect(mixtures.map((i) => i.id).sort()).toEqual(["harissa", "ras-el-hanout"]);
+    expect(mixtures.map((i) => i.id).sort()).toEqual(["en/harissa", "en/ras-el-hanout"]);
   });
 
   test("delete removes only the targeted mixture", async () => {

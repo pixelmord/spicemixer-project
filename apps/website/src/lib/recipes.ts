@@ -5,6 +5,7 @@ import { contentHash, flagTranslationsStale } from "./translation-sync.ts";
 
 export interface SaveRecipeInput {
   collection: RecipeCollection;
+  locale: string;
   slug: string;
   recipe: Record<string, unknown>;
   meta?: Record<string, unknown>;
@@ -15,9 +16,9 @@ export async function saveRecipe(
   sidecar: MetaSidecar,
   input: SaveRecipeInput,
 ): Promise<{ slug: string }> {
-  await store.put(input.collection, input.slug, input.recipe);
+  await store.put(input.collection, `${input.locale}/${input.slug}`, input.recipe);
   if (input.meta !== undefined) {
-    const ref = { collection: input.collection, slug: input.slug };
+    const ref = { collection: input.collection, locale: input.locale, slug: input.slug };
     const existing = await sidecar.read(ref);
     const existingData = (existing?.data as Record<string, unknown>) ?? {};
     const canonicalLocale =
@@ -46,7 +47,8 @@ export async function saveRecipe(
 
 export interface DeleteRecipeInput {
   collection: RecipeCollection;
-  id: string;
+  locale: string;
+  slug: string;
 }
 
 export async function deleteRecipe(
@@ -54,13 +56,14 @@ export async function deleteRecipe(
   sidecar: MetaSidecar,
   input: DeleteRecipeInput,
 ): Promise<void> {
-  await store.delete(input.collection, input.id);
-  await sidecar.remove({ collection: input.collection, slug: input.id });
+  await store.delete(input.collection, `${input.locale}/${input.slug}`);
+  await sidecar.remove({ collection: input.collection, locale: input.locale, slug: input.slug });
 }
 
 export interface PublishStateInput {
   collection: RecipeCollection;
-  id: string;
+  locale: string;
+  slug: string;
 }
 
 async function setDraft(
@@ -68,7 +71,7 @@ async function setDraft(
   input: PublishStateInput,
   draft: boolean,
 ): Promise<void> {
-  const ref = { collection: input.collection, slug: input.id };
+  const ref = { collection: input.collection, locale: input.locale, slug: input.slug };
   const existing = await sidecar.read(ref);
   const meta = (existing?.data as Record<string, unknown>) ?? {};
   await sidecar.write(ref, { ...meta, draft });

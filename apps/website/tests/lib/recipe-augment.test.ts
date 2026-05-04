@@ -15,7 +15,7 @@ describe("resolveRefs", () => {
 
   test("resolves a 'recipes' collection ref", async () => {
     vi.mocked(getEntry).mockImplementation(async (collection, id) => {
-      if (collection === "recipes" && id === "miso-ramen") {
+      if (collection === "recipes" && id === "en/miso-ramen") {
         return { data: { name: "Miso Ramen" } } as never;
       }
       return null as never;
@@ -27,7 +27,7 @@ describe("resolveRefs", () => {
 
   test("resolves a 'mixtures' collection ref", async () => {
     vi.mocked(getEntry).mockImplementation(async (collection, id) => {
-      if (collection === "mixtures" && id === "harissa") {
+      if (collection === "mixtures" && id === "en/harissa") {
         return { data: { name: "Harissa" } } as never;
       }
       return null as never;
@@ -58,13 +58,13 @@ describe("resolveRefs", () => {
 
   test("prepends localePrefix to href", async () => {
     vi.mocked(getEntry).mockImplementation(async (collection, id) => {
-      if (collection === "mixtures" && id === "harissa") {
+      if (collection === "mixtures" && id === "de/harissa") {
         return { data: { name: "Harissa" } } as never;
       }
       return null as never;
     });
 
-    const result = await resolveRefs([{ collection: "mixtures", slug: "harissa" }], "/de");
+    const result = await resolveRefs([{ collection: "mixtures", slug: "harissa" }], "/de", "de");
     expect(result).toEqual([{ name: "Harissa", href: "/de/mixtures/harissa/" }]);
   });
 });

@@ -569,6 +569,7 @@ export default function RecipeForm({
       const { error } = await actions.saveRecipe({
         collection,
         slug,
+        locale: (language || "en") as "en" | "de",
         recipe: recipePayload as never,
         meta: metaPayload as never,
       });
@@ -1983,6 +1984,7 @@ export default function RecipeForm({
           backHref={`/admin/${collection}`}
           previewHref={!isNew ? `/preview/${collection}/${slug}` : undefined}
           onSave={handleSave}
+          saveDisabled={isNew && !language}
         />
       </form>
 

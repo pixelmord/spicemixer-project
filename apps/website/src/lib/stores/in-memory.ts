@@ -15,7 +15,8 @@ export class InMemoryStore implements ContentStore {
 
   async list(collection: Collection): Promise<ContentItem[]> {
     const items = Array.from(this.#items.values()).filter((i) => i.collection === collection);
-    if (collection === "ingredients") {
+    // All locale-bearing content collections use locale-prefixed IDs per ADR 0009.
+    if (collection === "ingredients" || collection === "recipes" || collection === "mixtures") {
       return items.filter((item) => /^[a-z]{2}\//.test(item.id));
     }
     return items;

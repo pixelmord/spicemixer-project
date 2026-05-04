@@ -4,54 +4,58 @@ import { createMetaSidecar } from "../../src/lib/meta-sidecar.ts";
 import { saveRecipe, deleteRecipe, publishRecipe, unpublishRecipe } from "../../src/lib/recipes.ts";
 
 describe("saveRecipe", () => {
-  test("persists a new recipe to its collection", async () => {
+  test("persists a new recipe to its collection under locale/slug", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "en",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
     });
-    const stored = await store.get("recipes", "miso-ramen");
+    const stored = await store.get("recipes", "en/miso-ramen");
     expect(stored?.data).toEqual({ name: "Miso Ramen" });
   });
 
-  test("writes the meta sidecar when meta is provided", async () => {
+  test("writes the meta sidecar under kind/locale/slug when meta is provided", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     await saveRecipe(store, sidecar, {
       collection: "mixtures",
+      locale: "en",
       slug: "harissa",
       recipe: { name: "Harissa" },
       meta: { tags: ["spicy"] },
     });
-    const meta = await store.get("meta", "mixtures/harissa");
+    const meta = await store.get("meta", "mixtures/en/harissa");
     expect(meta?.data).toEqual(expect.objectContaining({ tags: ["spicy"] }));
   });
 
   test("does not touch meta sidecar when meta is undefined", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("meta", "recipes/miso-ramen", { tags: ["existing"] });
+    await store.put("meta", "recipes/en/miso-ramen", { tags: ["existing"] });
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "en",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen v2" },
     });
-    const meta = await store.get("meta", "recipes/miso-ramen");
+    const meta = await store.get("meta", "recipes/en/miso-ramen");
     expect(meta?.data).toEqual({ tags: ["existing"] });
   });
 
   test("overwrites an existing recipe", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("recipes", "miso-ramen", { name: "Old Name", description: "old" });
+    await store.put("recipes", "en/miso-ramen", { name: "Old Name", description: "old" });
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "en",
       slug: "miso-ramen",
       recipe: { name: "New Name" },
     });
-    const stored = await store.get("recipes", "miso-ramen");
+    const stored = await store.get("recipes", "en/miso-ramen");
     expect(stored?.data).toEqual({ name: "New Name" });
   });
 });
@@ -62,11 +66,12 @@ describe("saveRecipe — canonicalLocale", () => {
     const sidecar = createMetaSidecar(store);
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "de",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
       meta: { locale: "de", draft: true },
     });
-    const meta = await store.get("meta", "recipes/miso-ramen");
+    const meta = await store.get("meta", "recipes/de/miso-ramen");
     expect((meta!.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
   });
 
@@ -75,17 +80,19 @@ describe("saveRecipe — canonicalLocale", () => {
     const sidecar = createMetaSidecar(store);
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "de",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
       meta: { locale: "de", draft: true },
     });
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "de",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
       meta: { locale: "en", draft: false },
     });
-    const meta = await store.get("meta", "recipes/miso-ramen");
+    const meta = await store.get("meta", "recipes/de/miso-ramen");
     expect((meta!.data as Record<string, unknown>)["canonicalLocale"]).toBe("de");
   });
 
@@ -94,11 +101,12 @@ describe("saveRecipe — canonicalLocale", () => {
     const sidecar = createMetaSidecar(store);
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "en",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
       meta: { draft: true },
     });
-    const meta = await store.get("meta", "recipes/miso-ramen");
+    const meta = await store.get("meta", "recipes/en/miso-ramen");
     expect((meta!.data as Record<string, unknown>)["canonicalLocale"]).toBeUndefined();
   });
 });
@@ -107,20 +115,20 @@ describe("deleteRecipe", () => {
   test("removes both the recipe and its meta sidecar", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("recipes", "miso-ramen", { name: "Miso Ramen" });
-    await store.put("meta", "recipes/miso-ramen", { tags: ["soup"] });
+    await store.put("recipes", "en/miso-ramen", { name: "Miso Ramen" });
+    await store.put("meta", "recipes/en/miso-ramen", { tags: ["soup"] });
 
-    await deleteRecipe(store, sidecar, { collection: "recipes", id: "miso-ramen" });
+    await deleteRecipe(store, sidecar, { collection: "recipes", locale: "en", slug: "miso-ramen" });
 
-    expect(await store.get("recipes", "miso-ramen")).toBeNull();
-    expect(await store.get("meta", "recipes/miso-ramen")).toBeNull();
+    expect(await store.get("recipes", "en/miso-ramen")).toBeNull();
+    expect(await store.get("meta", "recipes/en/miso-ramen")).toBeNull();
   });
 
   test("is idempotent for nonexistent items", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     await expect(
-      deleteRecipe(store, sidecar, { collection: "mixtures", id: "ghost" }),
+      deleteRecipe(store, sidecar, { collection: "mixtures", locale: "en", slug: "ghost" }),
     ).resolves.toBeUndefined();
   });
 });
@@ -129,11 +137,11 @@ describe("publishRecipe", () => {
   test("sets meta.draft to false, preserving other meta fields", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("meta", "recipes/miso-ramen", { draft: true, tags: ["soup"] });
+    await store.put("meta", "recipes/en/miso-ramen", { draft: true, tags: ["soup"] });
 
-    await publishRecipe(sidecar, { collection: "recipes", id: "miso-ramen" });
+    await publishRecipe(sidecar, { collection: "recipes", locale: "en", slug: "miso-ramen" });
 
-    const meta = await store.get("meta", "recipes/miso-ramen");
+    const meta = await store.get("meta", "recipes/en/miso-ramen");
     expect(meta?.data).toEqual({ draft: false, tags: ["soup"] });
   });
 
@@ -141,9 +149,9 @@ describe("publishRecipe", () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
 
-    await publishRecipe(sidecar, { collection: "recipes", id: "miso-ramen" });
+    await publishRecipe(sidecar, { collection: "recipes", locale: "en", slug: "miso-ramen" });
 
-    const meta = await store.get("meta", "recipes/miso-ramen");
+    const meta = await store.get("meta", "recipes/en/miso-ramen");
     expect(meta?.data).toEqual({ draft: false });
   });
 });
@@ -152,11 +160,11 @@ describe("unpublishRecipe", () => {
   test("sets meta.draft to true, preserving other meta fields", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("meta", "recipes/miso-ramen", { draft: false, tags: ["soup"] });
+    await store.put("meta", "recipes/en/miso-ramen", { draft: false, tags: ["soup"] });
 
-    await unpublishRecipe(sidecar, { collection: "recipes", id: "miso-ramen" });
+    await unpublishRecipe(sidecar, { collection: "recipes", locale: "en", slug: "miso-ramen" });
 
-    const meta = await store.get("meta", "recipes/miso-ramen");
+    const meta = await store.get("meta", "recipes/en/miso-ramen");
     expect(meta?.data).toEqual({ draft: true, tags: ["soup"] });
   });
 });
@@ -168,11 +176,12 @@ describe("save as draft (parameterized over recipe-shaped collections)", () => {
       const sidecar = createMetaSidecar(store);
       await saveRecipe(store, sidecar, {
         collection,
+        locale: "en",
         slug: "demo",
         recipe: { name: "Demo" },
         meta: { draft: true, tags: ["wip"] },
       });
-      const meta = await store.get("meta", `${collection}/demo`);
+      const meta = await store.get("meta", `${collection}/en/demo`);
       expect(meta?.data).toEqual(expect.objectContaining({ draft: true, tags: ["wip"] }));
     });
 
@@ -181,12 +190,13 @@ describe("save as draft (parameterized over recipe-shaped collections)", () => {
       const sidecar = createMetaSidecar(store);
       await saveRecipe(store, sidecar, {
         collection,
+        locale: "en",
         slug: "demo",
         recipe: { name: "Demo" },
         meta: { draft: false, tags: ["wip"] },
       });
-      await unpublishRecipe(sidecar, { collection, id: "demo" });
-      const meta = await store.get("meta", `${collection}/demo`);
+      await unpublishRecipe(sidecar, { collection, locale: "en", slug: "demo" });
+      const meta = await store.get("meta", `${collection}/en/demo`);
       expect(meta?.data).toEqual(expect.objectContaining({ draft: true, tags: ["wip"] }));
     });
   }
@@ -198,11 +208,12 @@ describe("saveRecipe — translation-sync wiring", () => {
     const sidecar = createMetaSidecar(store);
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "en",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
       meta: { locale: "en", draft: false },
     });
-    const meta = await store.get("meta", "recipes/miso-ramen");
+    const meta = await store.get("meta", "recipes/en/miso-ramen");
     expect(typeof (meta?.data as Record<string, unknown>)["canonicalContentHash"]).toBe("string");
   });
 
@@ -211,20 +222,22 @@ describe("saveRecipe — translation-sync wiring", () => {
     const sidecar = createMetaSidecar(store);
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "en",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen" },
       meta: { locale: "en", draft: false },
     });
-    await store.put("meta", "recipes/miso-ramen-de", { translationOf: "miso-ramen" });
+    await store.put("meta", "recipes/de/miso-ramen-de", { translationOf: "miso-ramen" });
 
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "en",
       slug: "miso-ramen",
       recipe: { name: "Miso Ramen updated" },
       meta: { locale: "en", draft: false },
     });
 
-    const deMeta = await store.get("meta", "recipes/miso-ramen-de");
+    const deMeta = await store.get("meta", "recipes/de/miso-ramen-de");
     expect(typeof (deMeta?.data as Record<string, unknown>)["translationStaleSince"]).toBe(
       "string",
     );
@@ -236,36 +249,39 @@ describe("saveRecipe — translation-sync wiring", () => {
     const recipe = { name: "Miso Ramen" };
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "en",
       slug: "miso-ramen",
       recipe,
       meta: { locale: "en", draft: false },
     });
-    await store.put("meta", "recipes/miso-ramen-de", { translationOf: "miso-ramen" });
+    await store.put("meta", "recipes/de/miso-ramen-de", { translationOf: "miso-ramen" });
 
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "en",
       slug: "miso-ramen",
       recipe,
       meta: { locale: "en", draft: false },
     });
 
-    const deMeta = await store.get("meta", "recipes/miso-ramen-de");
+    const deMeta = await store.get("meta", "recipes/de/miso-ramen-de");
     expect((deMeta?.data as Record<string, unknown>)["translationStaleSince"]).toBeUndefined();
   });
 
   test("translation-side save does not flag canonical", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("meta", "recipes/miso-ramen", { canonicalLocale: "en" });
+    await store.put("meta", "recipes/en/miso-ramen", { canonicalLocale: "en" });
 
     await saveRecipe(store, sidecar, {
       collection: "recipes",
+      locale: "de",
       slug: "miso-ramen-de",
       recipe: { name: "Miso Ramen DE" },
       meta: { translationOf: "miso-ramen", locale: "de", draft: false },
     });
 
-    const canonical = await store.get("meta", "recipes/miso-ramen");
+    const canonical = await store.get("meta", "recipes/en/miso-ramen");
     expect((canonical?.data as Record<string, unknown>)["translationStaleSince"]).toBeUndefined();
   });
 });
