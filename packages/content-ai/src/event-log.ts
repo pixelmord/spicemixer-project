@@ -18,7 +18,6 @@ export interface AiEventSidecar {
 }
 
 export type FingerprintInputs = {
-  /** The main content record (ingredient, recipe, etc.) */
   recipe: unknown;
   missingFields: string[];
   locale: string;
@@ -40,52 +39,37 @@ export class AiEventLog {
     this.#sidecar = sidecar;
   }
 
-  /** Read the current aiEvents array for the given entity. Returns [] if none. */
-  async read(ref: MetaRef): Promise<AiEvent[]> {
+  async #readMeta(ref: MetaRef): Promise<{ meta: Record<string, unknown>; events: AiEvent[] }> {
     const item = await this.#sidecar.read(ref);
-    if (!item) return [];
-    const data = item.data as Record<string, unknown>;
-    return Array.isArray(data["aiEvents"]) ? (data["aiEvents"] as AiEvent[]) : [];
-  }
-
-  /**
-   * Full read-modify-write: reads current meta, appends the event to aiEvents,
-   * and writes back. Stamps the current ISO timestamp automatically.
-   */
-  async append(ref: MetaRef, event: Omit<AiEvent, "at">): Promise<void> {
-    const item = await this.#sidecar.read(ref);
-    const currentMeta = (item?.data as Record<string, unknown> | undefined) ?? {};
-    const existingEvents: AiEvent[] = Array.isArray(currentMeta["aiEvents"])
-      ? (currentMeta["aiEvents"] as AiEvent[])
+    const meta = (item?.data as Record<string, unknown> | undefined) ?? {};
+    const events: AiEvent[] = Array.isArray(meta["aiEvents"])
+      ? (meta["aiEvents"] as AiEvent[])
       : [];
-    const updatedEvents = recordAiEvent(existingEvents, event);
-    await this.#sidecar.write(ref, { ...currentMeta, aiEvents: updatedEvents });
+    return { meta, events };
   }
 
-  /** Returns true if a rejected event with matching (field, hash) exists. */
+  async read(ref: MetaRef): Promise<AiEvent[]> {
+    return (await this.#readMeta(ref)).events;
+  }
+
+  /** Stamps `at` with the current ISO timestamp. */
+  async append(ref: MetaRef, event: Omit<AiEvent, "at">): Promise<void> {
+    const { meta, events } = await this.#readMeta(ref);
+    const updatedEvents = recordAiEvent(events, event);
+    await this.#sidecar.write(ref, { ...meta, aiEvents: updatedEvents });
+  }
+
   isSuppressed(events: AiEvent[], field: string, hash: string): boolean {
     return isSuppressed(events, field, hash);
   }
 
-  /** Formats rejected events into a context string for the next AI prompt. */
   buildRejectedContext(events: AiEvent[]): string {
     return buildRejectedContext(events);
   }
 
-  /**
-   * Checks whether the fingerprint cache in the stored meta matches the current
-   * inputs. Reads the entity's stored events to include rejectedHashes in the
-   * fingerprint so new rejections automatically bust the cache.
-   *
-   * Returns { skip: true, cachedSuggestion, fingerprint } when cached,
-   * or { skip: false, fingerprint, existingEvents } when a fresh run is needed.
-   */
+  // Rejected-event hashes feed the fingerprint so new rejections bust the cache.
   async shouldSkip(ref: MetaRef, inputs: FingerprintInputs, force = false): Promise<SkipResult> {
-    const item = await this.#sidecar.read(ref);
-    const meta = (item?.data as Record<string, unknown> | undefined) ?? {};
-    const existingEvents: AiEvent[] = Array.isArray(meta["aiEvents"])
-      ? (meta["aiEvents"] as AiEvent[])
-      : [];
+    const { meta, events: existingEvents } = await this.#readMeta(ref);
 
     const rejectedHashes = existingEvents
       .filter((e) => e.type === "rejected")

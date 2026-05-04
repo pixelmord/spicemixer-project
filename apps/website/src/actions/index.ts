@@ -1294,8 +1294,6 @@ export const server = {
       const recipeRef = { collection, locale, slug };
       const eventLog = createAiEventLog(sidecar);
 
-      // shouldSkip reads stored events, computes rejectedHashes, builds fingerprint,
-      // and returns the cached suggestion if the fingerprint matches.
       const skipResult = await eventLog.shouldSkip(
         recipeRef,
         { recipe, missingFields, locale, model: config.model },
@@ -1404,7 +1402,6 @@ export const server = {
           !existingPatterns.has(l.pattern),
       );
 
-      // Build the meta update for non-event fields
       const updatedMeta: Record<string, unknown> = { ...meta };
 
       if (toAutoApply.length > 0) {
@@ -1444,8 +1441,7 @@ export const server = {
         });
       }
 
-      // Read fresh meta (append calls above updated aiEvents) then write aiSuggestions
-      // and other meta changes atomically. Skip if nothing material changed.
+      // Re-read: append calls above already updated aiEvents in the sidecar.
       const freshItem = await sidecar.read(recipeRef);
       const freshMeta = (freshItem?.data as Record<string, unknown> | undefined) ?? meta;
       const newMeta: Record<string, unknown> = {
