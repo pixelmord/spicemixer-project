@@ -59,10 +59,15 @@ describe("ai-contract: no inline confidence gates in website src", () => {
   });
 });
 
-// ── Contract 2: AI handlers with store.put also call recordAiEvent ───────────
+// ── Contract 2: AI handlers with store.put/sidecar.write also call recordAiEvent ──
 // Every AI-driven write path must log the event.
+// Handlers may write directly via store.put( or via sidecar.write( (ADR 0006).
 
 const ACTIONS_FILE = join(SRC_ROOT, "actions", "index.ts");
+
+function hasWrite(region: string): boolean {
+  return region.includes("store.put(") || region.includes("sidecar.write(");
+}
 
 describe("ai-contract: AI action handlers with store.put also call recordAiEvent", () => {
   test("aiRefreshSuggestions handler contains recordAiEvent before store.put", async () => {
@@ -73,7 +78,7 @@ describe("ai-contract: AI action handlers with store.put also call recordAiEvent
       "\n  aiCreateTranslation:",
     );
     expect(region, "aiRefreshSuggestions region not found").not.toBe("");
-    expect(region).toContain("store.put(");
+    expect(hasWrite(region), "handler must contain store.put( or sidecar.write(").toBe(true);
     expect(region).toContain("recordAiEvent(");
   });
 
@@ -85,7 +90,7 @@ describe("ai-contract: AI action handlers with store.put also call recordAiEvent
       "\n  aiCreateIngredientTranslation:",
     );
     expect(region, "aiRefreshIngredientSuggestions region not found").not.toBe("");
-    expect(region).toContain("store.put(");
+    expect(hasWrite(region), "handler must contain store.put( or sidecar.write(").toBe(true);
     expect(region).toContain("recordAiEvent(");
   });
 
