@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ComponentType } from "react";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
@@ -7,16 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn } from "@/lib/utils.ts";
 import SourcePicker, { type Source, type SourceMode } from "./SourcePicker.tsx";
 import DiffPreviewModal from "./DiffPreviewModal.tsx";
+import IngredientDiff from "./IngredientDiff.tsx";
+import PairingDiff from "./PairingDiff.tsx";
 import type { RecipeCollection } from "@/lib/content-store.ts";
-
-interface Props {
-  open: boolean;
-  onClose: () => void;
-  collection: RecipeCollection;
-  slug: string;
-  existingRecipe: Record<string, unknown>;
-  onApplied: () => void;
-}
 
 const TABS: Array<{ id: SourceMode; label: string }> = [
   { id: "prompt", label: "From prompt" },
@@ -24,14 +18,39 @@ const TABS: Array<{ id: SourceMode; label: string }> = [
   { id: "text", label: "From text" },
 ];
 
-export default function EnhanceModal({
-  open,
-  onClose,
-  collection,
-  slug,
-  existingRecipe,
-  onApplied,
-}: Props) {
+type KindProps =
+  | { kind: "recipe"; collection: RecipeCollection; onApplied: () => void }
+  | { kind: "ingredient"; locale: "en" | "de"; onApplied: () => void }
+  | {
+      kind: "pairing";
+      pairingId: string;
+      locale: string;
+      onApplied: (description: string) => void;
+    };
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  slug: string;
+  existing: Record<string, unknown>;
+} & KindProps;
+
+function appendSource(formData: FormData, source: Source) {
+  if (source.kind === "file") {
+    formData.append("sourceKind", "file");
+    formData.append("file", source.file);
+    formData.append("mimeType", source.mimeType);
+  } else if (source.kind === "text") {
+    formData.append("sourceKind", "text");
+    formData.append("text", source.content);
+  } else {
+    formData.append("sourceKind", "prompt");
+    formData.append("prompt", source.prompt);
+  }
+}
+
+export default function EnhanceModal(props: Props) {
+  const { open, onClose, slug, existing } = props;
   const [tab, setTab] = useState<SourceMode>("prompt");
   const [source, setSource] = useState<Source | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,29 +79,42 @@ export default function EnhanceModal({
       return;
     }
     setLoading(true);
-
     try {
-      const formData = new FormData();
-      formData.append("existing", JSON.stringify(existingRecipe));
-
-      if (source.kind === "file") {
-        formData.append("sourceKind", "file");
-        formData.append("file", source.file);
-        formData.append("mimeType", source.mimeType);
-      } else if (source.kind === "text") {
-        formData.append("sourceKind", "text");
-        formData.append("text", source.content);
+      if (props.kind === "recipe") {
+        const formData = new FormData();
+        formData.append("existing", JSON.stringify(existing));
+        appendSource(formData, source);
+        const { data, error } = await actions.aiMergeRecipe(formData);
+        if (error || !data) throw new Error(error?.message ?? "Merge failed");
+        setProposed(data.recipe as Record<string, unknown>);
+        setWarnings(data.warnings);
+        setMergeModel(data.model ?? null);
+      } else if (props.kind === "ingredient") {
+        const formData = new FormData();
+        formData.append("existing", JSON.stringify(existing));
+        appendSource(formData, source);
+        const { data, error } = await actions.aiMergeIngredient(formData);
+        if (error || !data) throw new Error(error?.message ?? "Merge failed");
+        setProposed(data.ingredient as Record<string, unknown>);
+        setWarnings(data.warnings);
+        setMergeModel(data.model ?? null);
       } else {
-        formData.append("sourceKind", "prompt");
-        formData.append("prompt", source.prompt);
+        const descriptions = (existing["descriptions"] as Record<string, string>) ?? {};
+        const currentDesc =
+          descriptions[props.locale] ??
+          descriptions["en"] ??
+          (typeof existing["description"] === "string" ? existing["description"] : "");
+        const formData = new FormData();
+        formData.append("existing", JSON.stringify({ ...existing, description: currentDesc }));
+        formData.append("locale", props.locale);
+        appendSource(formData, source);
+        const { data, error } = await actions.aiMergePairing(formData);
+        if (error || !data) throw new Error(error?.message ?? "Merge failed");
+        const proposedDescriptions = { ...descriptions, [props.locale]: data.pairing.description };
+        setProposed({ ...existing, descriptions: proposedDescriptions });
+        setWarnings(data.warnings);
+        setMergeModel(data.model ?? null);
       }
-
-      const { data, error } = await actions.aiMergeRecipe(formData);
-      if (error || !data) throw new Error(error?.message ?? "Merge failed");
-
-      setProposed(data.recipe as Record<string, unknown>);
-      setWarnings(data.warnings);
-      setMergeModel(data.model ?? null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -94,38 +126,91 @@ export default function EnhanceModal({
     if (!proposed) return;
     setSaving(true);
 
-    const recipePayload = {
-      "@context": "https://schema.org",
-      "@type": "Recipe",
-      ...proposed,
-    };
-
-    const { error } = await actions.saveRecipe({
-      collection,
-      slug,
-      recipe: recipePayload,
-      ...(mergeModel ? { aiMergeModel: mergeModel } : {}),
-    });
-    setSaving(false);
-
-    if (error) {
-      toast.error("Save failed: " + error.message);
-      return;
+    if (props.kind === "recipe") {
+      const recipePayload = {
+        "@context": "https://schema.org",
+        "@type": "Recipe",
+        ...proposed,
+      };
+      const { error } = await actions.saveRecipe({
+        collection: props.collection,
+        slug,
+        recipe: recipePayload,
+        ...(mergeModel ? { aiMergeModel: mergeModel } : {}),
+      });
+      setSaving(false);
+      if (error) {
+        toast.error("Save failed: " + error.message);
+        return;
+      }
+      toast.success("Recipe enhanced!");
+      props.onApplied();
+    } else if (props.kind === "ingredient") {
+      const { error } = await actions.saveIngredient({
+        locale: props.locale,
+        slug,
+        ingredient: proposed,
+        ...(mergeModel ? { aiMergeModel: mergeModel } : {}),
+      });
+      setSaving(false);
+      if (error) {
+        toast.error("Save failed: " + error.message);
+        return;
+      }
+      toast.success("Ingredient enhanced!");
+      props.onApplied();
+    } else {
+      const descriptions = (proposed["descriptions"] as Record<string, string>) ?? {};
+      const newDesc = descriptions[props.locale] ?? "";
+      const rawIngredients = existing["ingredients"] as [string, string];
+      const { error } = await actions.savePairing({
+        id: props.pairingId,
+        ingredients: [
+          { collection: "ingredients" as const, slug: rawIngredients[0] },
+          { collection: "ingredients" as const, slug: rawIngredients[1] },
+        ],
+        description: newDesc,
+        locale: props.locale,
+        ...(mergeModel ? { aiMergeModel: mergeModel } : {}),
+      });
+      setSaving(false);
+      if (error) {
+        toast.error("Save failed: " + error.message);
+        return;
+      }
+      toast.success("Pairing updated!");
+      props.onApplied(newDesc);
     }
 
-    toast.success("Recipe enhanced!");
-    onApplied();
     handleClose();
   }
 
-  // Show diff modal on top when proposed exists
+  let title: string;
+  if (props.kind === "recipe") {
+    title = "Enhance recipe";
+  } else if (props.kind === "ingredient") {
+    title = "Enhance ingredient";
+  } else {
+    title = `Enhance pairing description (${props.locale.toUpperCase()})`;
+  }
+
+  let DiffComponent:
+    | ComponentType<{ existing: Record<string, unknown>; proposed: Record<string, unknown> }>
+    | undefined;
+  if (props.kind === "ingredient") {
+    DiffComponent = IngredientDiff;
+  } else if (props.kind === "pairing") {
+    const pairingLocale = props.locale;
+    DiffComponent = (p) => <PairingDiff {...p} locale={pairingLocale} />;
+  }
+
   if (proposed) {
     return (
       <DiffPreviewModal
         open={open}
         onClose={handleClose}
         title={`Enhance: ${slug}`}
-        existing={existingRecipe}
+        existing={existing}
         proposed={proposed}
         onApply={handleApply}
         applying={saving}
@@ -135,6 +220,7 @@ export default function EnhanceModal({
         }}
         backLabel="Try different source"
         warnings={warnings}
+        DiffComponent={DiffComponent}
       />
     );
   }
@@ -145,12 +231,11 @@ export default function EnhanceModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles size={16} className="text-primary" />
-            Enhance recipe
+            {title}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Mode tabs */}
           <div className="flex gap-1 rounded-lg bg-muted p-1 w-fit">
             {TABS.map((t) => (
               <button

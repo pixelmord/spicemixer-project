@@ -2000,11 +2000,12 @@ export default function RecipeForm({
 
       {/* Enhance modal */}
       <EnhanceModal
+        kind="recipe"
         open={enhanceOpen}
         onClose={() => setEnhanceOpen(false)}
         collection={collection}
         slug={slug}
-        existingRecipe={buildRecipeSnapshot()}
+        existing={buildRecipeSnapshot()}
         onApplied={() => window.location.reload()}
       />
 

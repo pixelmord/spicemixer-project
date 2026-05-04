@@ -14,7 +14,7 @@ import { useEntityFormState } from "@/hooks/useEntityFormState.ts";
 import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
 import InlineSuggestion from "./InlineSuggestion.tsx";
-import PairingEnhanceModal from "./PairingEnhanceModal.tsx";
+import EnhanceModal from "./EnhanceModal.tsx";
 import PairingTranslateModal from "./PairingTranslateModal.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
@@ -535,12 +535,14 @@ export default function PairingForm({
       {/* Modals */}
       {!isNew && initialId && (
         <>
-          <PairingEnhanceModal
+          <EnhanceModal
+            kind="pairing"
             open={enhanceOpen}
             onClose={() => setEnhanceOpen(false)}
             pairingId={initialId}
             locale={activeLocale}
-            existingPairing={{ ingredients: [ingredient1, ingredient2], descriptions }}
+            slug={initialId}
+            existing={{ ingredients: [ingredient1, ingredient2], descriptions }}
             onApplied={(desc) => setDescriptions((prev) => ({ ...prev, [activeLocale]: desc }))}
           />
           <PairingTranslateModal
