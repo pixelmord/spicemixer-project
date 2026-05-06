@@ -72,6 +72,12 @@ function editHref(row: ContentRow) {
   if (row.type === "pairing") {
     return `/admin/pairings/${encodeURIComponent(row.id)}/edit`;
   }
+  const slashIdx = row.id.indexOf("/");
+  if (slashIdx !== -1) {
+    const locale = row.id.slice(0, slashIdx);
+    const slug = row.id.slice(slashIdx + 1);
+    return `/admin/${row.collection}/${slug}/edit?locale=${locale}`;
+  }
   return `/admin/${row.collection}/${row.id}/edit`;
 }
 

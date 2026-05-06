@@ -10,11 +10,15 @@ if (!slug) return Astro.redirect("/admin/recipes");
 
 const store = await createStore();
 
-// Locale lives in the folder — scan supported locales to find the content.
+const localeParam = Astro.url.searchParams.get("locale");
+const localeOrder = LOCALES.includes(localeParam as (typeof LOCALES)[number])
+  ? ([localeParam, ...LOCALES.filter((l) => l !== localeParam)] as readonly string[])
+  : LOCALES;
+
 let item = null;
 let metaItem = null;
 let itemLocale: string | null = null;
-for (const loc of LOCALES) {
+for (const loc of localeOrder) {
   const candidate = await store.get("recipes", `${loc}/${slug}`);
   if (candidate) {
     item = candidate;

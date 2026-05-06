@@ -94,7 +94,7 @@ const hreflang = await hreflangTags(slug, "recipes", Astro.site?.toString().repl
         {t("nav.back")}
       </a>
       <a
-        href={`/admin/recipes/${slug}/edit`}
+        href={`/admin/recipes/${slug}/edit?locale=${locale}`}
         data-admin-link
         class="hidden text-xs text-stone-400 transition hover:text-stone-700"
       >

@@ -231,7 +231,7 @@ const hreflang = mix ? await hreflangTags(mixSlug, "mixtures", Astro.site?.toStr
           {t("nav.back.mixtures")}
         </a>
         <a
-          href={`/admin/mixtures/${mix!.id}/edit`}
+          href={`/admin/mixtures/${mixSlug}/edit?locale=${locale}`}
           data-admin-link
           class="hidden text-xs text-stone-400 transition hover:text-stone-700"
         >
