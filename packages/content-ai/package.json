@@ -19,16 +19,16 @@
     "prepublishOnly": "vp run build"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.0",
-    "@ai-sdk/provider": "^3.0.0",
-    "ai": "^6.0.0",
-    "pdfjs-dist": "^4.10.38",
+    "@ai-sdk/openai": "catalog:",
+    "@ai-sdk/provider": "catalog:",
+    "ai": "catalog:",
+    "pdfjs-dist": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^24",
+    "@types/node": "^25.5.0",
     "@typescript/native-preview": "catalog:",
-    "typescript": "^5",
+    "typescript": "catalog:",
     "vite-plus": "catalog:"
   },
   "engines": {

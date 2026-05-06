@@ -29,7 +29,6 @@ async function extractTextFromPdf(bytes: Uint8Array): Promise<PdfTextResult> {
     doc = await pdfjs.getDocument({
       data: bytes,
       useSystemFonts: true,
-      isEvalSupported: false,
     }).promise;
   } catch (e) {
     throw new AiError("PDF_PARSE_FAILED", `Failed to parse PDF: ${String(e)}`);

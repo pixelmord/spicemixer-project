@@ -15,6 +15,9 @@ dist-ssr
 *.local
 .pnpm-store
 
+# tsgo can leak per-file declarations next to source during `vp pack`
+packages/*/src/**/*.d.ts
+
 # Env files (keep .env.example tracked, ignore real ones)
 .env
 .env.*

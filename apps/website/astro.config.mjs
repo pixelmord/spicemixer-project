@@ -42,6 +42,28 @@ function pagefindIntegration() {
   };
 }
 
+// Workaround: Astro 6.2's astro:dev-toolbar plugin registers a deprecated
+// optimizeDeps.esbuildOptions plugin whose onEnd hook reads `result.metafile`.
+// Vite+ shims that into rolldown but feeds the hook a Proxy that throws on any
+// property access, killing dep optimization. The plugin only strips a sourcemap
+// comment from the toolbar entrypoint, so dropping it is safe.
+function dropAstroToolbarEsbuildPlugin() {
+  const NAME = "astro:strip-toolbar-sourcemap";
+  return {
+    name: "drop-astro-toolbar-esbuild-plugin",
+    configResolved(config) {
+      const ep = config.optimizeDeps?.esbuildOptions?.plugins;
+      if (Array.isArray(ep)) {
+        config.optimizeDeps.esbuildOptions.plugins = ep.filter((p) => p?.name !== NAME);
+      }
+      const rp = config.optimizeDeps?.rolldownOptions?.plugins;
+      if (Array.isArray(rp)) {
+        config.optimizeDeps.rolldownOptions.plugins = rp.filter((p) => p?.name !== NAME);
+      }
+    },
+  };
+}
+
 // https://astro.build/config
 export default defineConfig({
   output: "static",
@@ -62,7 +84,7 @@ export default defineConfig({
   },
 
   vite: {
-    plugins: [tailwindcss()],
+    plugins: [tailwindcss(), dropAstroToolbarEsbuildPlugin()],
     resolve: {
       alias: { "@": "/src" },
     },
