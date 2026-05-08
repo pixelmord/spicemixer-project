@@ -6,4 +6,7 @@ export { tracingMiddleware } from "./middleware.ts";
 export { FileTraceSink } from "./sinks/file.ts";
 export type { TraceSink, TraceEvent } from "./sinks/types.ts";
 
+export { SentrySpanSink, scrub, tracesSampler } from "./sinks/sentry.ts";
+export type { SpanScalars } from "./sinks/sentry.ts";
+
 export { generateTraceId } from "./ids.ts";

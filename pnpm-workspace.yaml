@@ -12,6 +12,7 @@ allowBuilds:
 
 catalog:
   "@ai-hero/sandcastle": ^0.5.7
+  "@sentry/node": ^9.0.0
   "@ai-sdk/openai": ^3.0.60
   "@ai-sdk/provider": ^3.0.10
   "@astrojs/react": ^5.0.4

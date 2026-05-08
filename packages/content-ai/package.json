@@ -22,6 +22,7 @@
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@noble/hashes": "^1.7.0",
+    "@sentry/node": "catalog:",
     "ai": "catalog:",
     "pdfjs-dist": "catalog:",
     "zod": "catalog:"
