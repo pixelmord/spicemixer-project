@@ -1,6 +1,7 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { existsSync } from "node:fs";
+import type { StructuredMeta } from "../src/source-store/types.ts";
 
 export interface CaptureCase {
   traceId: string;
@@ -19,16 +20,6 @@ export interface CaptureManifest {
   cases: CaptureCase[];
 }
 
-interface StructuredMeta {
-  capability: string;
-  model: string;
-  traceId: string;
-  at: string;
-  runId?: string;
-  parentTextHash?: string;
-  parentBinaryHash?: string;
-}
-
 async function readJsonSafe<T>(path: string): Promise<T | null> {
   try {
     return JSON.parse(await readFile(path, "utf8")) as T;
@@ -37,7 +28,6 @@ async function readJsonSafe<T>(path: string): Promise<T | null> {
   }
 }
 
-// Preferred text strategies, in priority order.
 const TEXT_PRIORITY = ["direct-1", "pdfjs-5"];
 
 async function findTextInput(
@@ -62,7 +52,6 @@ async function findTextInput(
     }
   }
 
-  // Fall back to first available .txt file
   if (txtFiles.length > 0) {
     const name = txtFiles[0];
     const text = await readFile(join(textDir, name), "utf8");
@@ -72,26 +61,12 @@ async function findTextInput(
   return null;
 }
 
-/**
- * Walk the source store directory, find all aiExtractRecipe structured artifacts
- * that have a text input available, and write a manifest to `output`.
- */
 export async function capture(options: {
   sourceStore: string;
   output: string;
 }): Promise<CaptureManifest> {
   const { sourceStore, output } = options;
   const cases: CaptureCase[] = [];
-
-  if (!existsSync(sourceStore)) {
-    const manifest: CaptureManifest = {
-      capturedAt: new Date().toISOString(),
-      sourceStore: resolve(sourceStore),
-      cases: [],
-    };
-    await writeFile(output, JSON.stringify(manifest, null, 2));
-    return manifest;
-  }
 
   let binaryHashes: string[];
   try {
@@ -106,7 +81,6 @@ export async function capture(options: {
 
     if (!existsSync(structuredDir)) continue;
 
-    // Require binary meta to exist
     const binaryMeta = await readJsonSafe(join(binaryDir, "source.meta.json"));
     if (!binaryMeta) continue;
 
@@ -155,7 +129,6 @@ export async function capture(options: {
   return manifest;
 }
 
-// CLI entry point
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename ?? "")) {
   const args = process.argv.slice(2);
 
