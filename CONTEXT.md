@@ -220,6 +220,67 @@ pattern in action handlers.
 functions over arrays) becomes the implementation behind this module's
 interface.
 
+`AiEventLog` is **editorial** — small, gitable, lives next to content,
+captures _decisions_ (auto-applied/accepted/rejected/ingested). It is
+distinct from **AI Trace** (below), which is ops-grade and captures
+_calls_.
+
+### AI Trace
+
+Per-call observability log for every AI capability invocation. Captures
+prompt, response, model, finish reason, token usage, timing, error, and
+the `Origin` envelope (see below). Local JSONL at `.ai-trace/YYYY-MM-DD.jsonl`,
+gitignored, durable but ephemeral; Sentry receives the same events as
+OTel `gen_ai.*` spans for dashboards and alerts — scalar attributes only,
+**no message bodies** (copyright/PII boundary). Bridges to the editorial
+log via `aiEvents.traceId` so an editor reviewing an entity can pull up
+the underlying call. Wired via AI SDK middleware (`wrapLanguageModel`)
+so coverage is by construction — no per-capability instrumentation.
+
+See ADR 0011.
+
+### Origin
+
+Code-side context envelope for an AI call: `surface`, `action`,
+`entityRef?`, `field?`, `userInitiated`, `runId`, `triggeredBy`,
+`sourceUrl?`, `sourceHash?`. Carried via `AsyncLocalStorage` from the
+Astro action handler down to the tracing middleware — capabilities don't
+thread it through their signatures. `runId` is mandatory and groups N
+AI calls in one editorial operation (e.g. `aiRefreshSuggestions` fans
+out to multiple proposers under one `runId`).
+
+### Source store
+
+Hash-keyed, content-addressable directory at `data/sources/<binary-sha256>/`
+holding every uploaded source plus its derivative pipeline artifacts.
+Decoupled from the Astro content collection — sources are large, often
+copyrighted, and editorial provenance, not site content. Gitignored,
+local Phase 1, S3-portable Phase 2 (hash-prefix maps cleanly to object-
+storage keys).
+
+The meta sidecar's `aiEvents.ingested.source` carries the `binaryHash`
+pointer; the actual binary lives in the source store, not in git.
+
+See ADR 0012.
+
+### Three-stage ingest pipeline
+
+The path from upload to structured content. Each stage is a swappable
+strategy; each artifact is preserved so evals can hold one stage fixed
+and sweep the others:
+
+- **Binary stage** — original upload, no transform. `source.<ext>`.
+- **Text stage** — strategy-named, version-suffixed extraction:
+  `text/pdfjs-5.txt`, `text/ai-vision-claude-haiku.txt`. Multiple
+  strategies coexist for the same binary. Production today: pdfjs first,
+  fallback to vision-AI on sparse text (`extractPdfContent`).
+- **Structured stage** — `aiExtract*` capability output keyed by
+  `traceId`: `structured/<traceId>.json`. Many extraction attempts per
+  source preserved.
+
+Each artifact carries a per-file meta sidecar (`*.meta.json`) describing
+its producer (strategy/version/model/parentHash). No central index.
+
 ### Locale storage
 
 All locale-bearing collections (ingredients, recipes, mixtures) store

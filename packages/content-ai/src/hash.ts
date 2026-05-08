@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { sha256 } from "@noble/hashes/sha256";
+import { bytesToHex } from "@noble/hashes/utils";
 
 export function normalizePayload(value: unknown): string {
   if (typeof value === "string") {
@@ -19,9 +20,9 @@ export function normalizePayload(value: unknown): string {
 }
 
 export function hashSuggestion(payload: unknown): string {
-  return createHash("sha256").update(normalizePayload(payload)).digest("hex").slice(0, 12);
+  return bytesToHex(sha256(normalizePayload(payload))).slice(0, 12);
 }
 
 export function hashContent(record: unknown): string {
-  return createHash("sha256").update(normalizePayload(record)).digest("hex");
+  return bytesToHex(sha256(normalizePayload(record)));
 }

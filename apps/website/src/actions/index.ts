@@ -28,7 +28,7 @@ import {
   savePairingMeta as libSavePairingMeta,
 } from "@/lib/pairings.ts";
 import { NotFoundError } from "@/lib/errors.ts";
-import type { AiEvent } from "content-ai";
+import { AiError, type AiEvent } from "content-ai";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -36,7 +36,33 @@ const fileOrTextInput = z.object({
   file: z.instanceof(File).optional(),
   mimeType: z.string().optional(),
   text: z.string().optional(),
+  /** When set to "1", the action returns model telemetry alongside the result. */
+  debug: z.string().optional(),
 });
+
+function isDebug(flag?: string): boolean {
+  return flag === "1" || flag === "true";
+}
+
+/**
+ * Convert any error from a content-ai call into an ActionError that carries
+ * the diagnostic payload so the client can render it in debug panels.
+ */
+function aiErrorToActionError(e: unknown, fallbackMessage: string): ActionError {
+  if (e instanceof AiError) {
+    const detailsPayload = e.details ? JSON.stringify(e.details) : "";
+    // ActionError.message is what reaches the client; serialize details into it
+    // so the client UI can parse and display them.
+    const message = detailsPayload ? `${e.message}\n__AI_DETAILS__${detailsPayload}` : e.message;
+    return new ActionError({ code: "INTERNAL_SERVER_ERROR", message });
+  }
+  if (e instanceof ActionError) return e;
+  const message = e instanceof Error ? e.message : String(e);
+  return new ActionError({
+    code: "INTERNAL_SERVER_ERROR",
+    message: `${fallbackMessage}: ${message}`,
+  });
+}
 
 type ContentAiFileInput =
   | { kind: "text"; content: string }
@@ -640,7 +666,15 @@ export const server = {
     handler: async (input) => {
       const config = resolveAiConfig();
       const { extractRecipeFromFile } = await import("content-ai");
-      return extractRecipeFromFile(await resolveFileInput(input), config);
+      const debug = isDebug(input.debug);
+      try {
+        const result = await extractRecipeFromFile(await resolveFileInput(input), config, {
+          debug,
+        });
+        return debug ? { ...result, model: config.model } : result;
+      } catch (e) {
+        throw aiErrorToActionError(e, "Recipe extraction failed");
+      }
     },
   }),
 
@@ -651,7 +685,15 @@ export const server = {
     handler: async (input) => {
       const config = resolveAiConfig();
       const { extractIngredientFromFile } = await import("content-ai");
-      return extractIngredientFromFile(await resolveFileInput(input), config);
+      const debug = isDebug(input.debug);
+      try {
+        const result = await extractIngredientFromFile(await resolveFileInput(input), config, {
+          debug,
+        });
+        return debug ? { ...result, model: config.model } : result;
+      } catch (e) {
+        throw aiErrorToActionError(e, "Ingredient extraction failed");
+      }
     },
   }),
 
@@ -662,11 +704,19 @@ export const server = {
       prompt: z.string().min(3),
       locale: z.enum(["en", "de"]).default("en"),
       style: z.enum(["recipe", "mixture"]).default("recipe"),
+      debug: z.boolean().optional(),
     }),
-    handler: async ({ prompt, locale, style }) => {
+    handler: async ({ prompt, locale, style, debug }) => {
       const config = resolveAiConfig();
       const { generateRecipeFromPrompt } = await import("content-ai");
-      return generateRecipeFromPrompt({ prompt, locale, style }, config);
+      try {
+        const result = await generateRecipeFromPrompt({ prompt, locale, style }, config, {
+          debug: debug === true,
+        });
+        return debug ? { ...result, model: config.model } : result;
+      } catch (e) {
+        throw aiErrorToActionError(e, "Recipe generation failed");
+      }
     },
   }),
 
@@ -680,14 +730,21 @@ export const server = {
       mimeType: z.string().optional(),
       text: z.string().optional(),
       prompt: z.string().optional(),
+      debug: z.string().optional(),
     }),
-    handler: async ({ existing, sourceKind, file, mimeType, text, prompt }) => {
+    handler: async ({ existing, sourceKind, file, mimeType, text, prompt, debug }) => {
       const config = resolveAiConfig();
       const { mergeRecipe } = await import("content-ai");
       const existingRecipe = JSON.parse(existing) as Record<string, unknown>;
       const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
-      const result = await mergeRecipe({ existing: existingRecipe as never, source }, config);
-      return { ...result, model: config.model };
+      try {
+        const result = await mergeRecipe({ existing: existingRecipe as never, source }, config, {
+          debug: isDebug(debug),
+        });
+        return { ...result, model: config.model };
+      } catch (e) {
+        throw aiErrorToActionError(e, "Recipe merge failed");
+      }
     },
   }),
 
@@ -952,11 +1009,18 @@ export const server = {
     handler: async (input) => {
       const config = resolveAiConfig();
       const { extractPairingFromFile } = await import("content-ai");
-      const resolved = await resolveFileInput(input);
-      if (resolved.kind === "pdf" || resolved.kind === "image") {
-        return extractPairingFromFile(resolved, config);
+      const debug = isDebug(input.debug);
+      try {
+        const resolved = await resolveFileInput(input);
+        const inputForExtract =
+          resolved.kind === "pdf" || resolved.kind === "image"
+            ? resolved
+            : { kind: "text" as const, content: resolved.content };
+        const result = await extractPairingFromFile(inputForExtract, config, { debug });
+        return debug ? { ...result, model: config.model } : result;
+      } catch (e) {
+        throw aiErrorToActionError(e, "Pairing extraction failed");
       }
-      return extractPairingFromFile({ kind: "text", content: resolved.content }, config);
     },
   }),
 

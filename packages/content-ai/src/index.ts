@@ -2,7 +2,9 @@ export { resolveConfig, createProvider } from "./provider.ts";
 export type { AiConfig } from "./provider.ts";
 
 export { extractRecipeFromFile } from "./extract-recipe.ts";
-export type { RecipeFileInput, RecipeExtractionResult } from "./extract-recipe.ts";
+export type { RecipeFileInput, RecipeExtractionResult, ExtractOptions } from "./extract-recipe.ts";
+
+export type { AiDebugInfo } from "./debug.ts";
 
 export { extractIngredientFromFile } from "./extract-ingredient.ts";
 export type { IngredientFileInput, IngredientExtractionResult } from "./extract-ingredient.ts";
@@ -60,7 +62,7 @@ export { mergeRecipe } from "./merge-recipe.ts";
 export type { MergeSource, MergeRecipeInput, MergeRecipeResult } from "./merge-recipe.ts";
 
 export { AiError } from "./errors.ts";
-export type { AiErrorCode } from "./errors.ts";
+export type { AiErrorCode, AiErrorDetails } from "./errors.ts";
 
 export { AiEventLog, createAiEventLog } from "./event-log.ts";
 export type { AiEventSidecar, MetaRef, FingerprintInputs, SkipResult } from "./event-log.ts";

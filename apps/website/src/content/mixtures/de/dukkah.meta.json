@@ -1,0 +1,108 @@
+{
+  "draft": true,
+  "region": [],
+  "tags": [],
+  "ingredientLinks": [
+    {
+      "pattern": "koriander",
+      "slug": "koriander",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "Kreuzkümmel",
+      "slug": "cumin",
+      "kind": "ingredient"
+    }
+  ],
+  "externalSources": [],
+  "goesWellWith": [],
+  "usesBase": [],
+  "variants": [],
+  "translations": {},
+  "aiEvents": [],
+  "language": "de",
+  "locale": "de",
+  "kind": "spicemix",
+  "canonicalLocale": "de",
+  "canonicalContentHash": "3deec6a1942dd6c6",
+  "aiSuggestions": {
+    "fingerprint": "fd4f597ea7ce5e65db6d8e937d4164d670de590fcefe5087c9cb5d572688b8c4",
+    "at": "2026-05-08T08:18:35.723Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [
+        {
+          "field": "author",
+          "suggestion": "Unbekannt",
+          "rationale": "Dukkah is a traditional recipe with no specific author attributed to it."
+        },
+        {
+          "field": "recipeYield",
+          "suggestion": "4 Portionen",
+          "rationale": "The ingredients listed suggest that the recipe would yield enough for about four servings."
+        },
+        {
+          "field": "prepTime",
+          "suggestion": "PT10M",
+          "rationale": "The preparation of Dukkah involves toasting and grinding ingredients, which typically requires about 10 minutes."
+        },
+        {
+          "field": "recipeCategory",
+          "suggestion": "Gewürzmischung",
+          "rationale": "Dukkah is categorized as a spice mix, suitable for enhancing various dishes."
+        },
+        {
+          "field": "recipeCuisine",
+          "suggestion": "Ägyptisch",
+          "rationale": "Dukkah originates from Egypt, making it part of Egyptian cuisine."
+        }
+      ],
+      "tags": [
+        "egyptian",
+        "nut-mix",
+        "spice-blend",
+        "vegan",
+        "gluten-free",
+        "flavorful",
+        "aromatic"
+      ],
+      "ingredientLinks": [
+        {
+          "pattern": "Kreuzkümmel",
+          "slug": "cumin",
+          "confidence": "high"
+        }
+      ],
+      "relations": [
+        {
+          "kind": "goesWellWith",
+          "collection": "recipes",
+          "slug": "preserved-lemon-couscous",
+          "name": "Preserved Lemon Couscous",
+          "rationale": "Dukkah adds a nutty and aromatic flavor that complements the citrus notes of preserved lemon in the couscous."
+        },
+        {
+          "kind": "goesWellWith",
+          "collection": "recipes",
+          "slug": "miso-butter-ramen",
+          "name": "Miso Butter Ramen",
+          "rationale": "The rich flavors of miso and butter can be enhanced with a sprinkle of dukkah for added texture and spice."
+        },
+        {
+          "kind": "usesBase",
+          "collection": "mixtures",
+          "slug": "ras-el-hanout",
+          "name": "Ras el Hanout",
+          "rationale": "Dukkah's spice profile can complement the complex spices found in ras el hanout, making it a suitable base for drizzling or seasoning."
+        },
+        {
+          "kind": "usesBase",
+          "collection": "mixtures",
+          "slug": "berbere",
+          "name": "Berbere",
+          "rationale": "Dukkah and berbere share similar aromatic qualities, making them compatible for enhancing the flavor of dishes."
+        }
+      ]
+    }
+  }
+}

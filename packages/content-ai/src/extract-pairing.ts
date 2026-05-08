@@ -1,6 +1,7 @@
 import { generateText, Output } from "ai";
-import { AiError } from "./errors.ts";
 import { createProvider, PROVIDER_OPTIONS, type AiConfig } from "./provider.ts";
+import { debugFromResult, toAiError, type AiDebugInfo } from "./debug.ts";
+import type { ExtractOptions } from "./extract-recipe.ts";
 import { extractPdfContent } from "./pdf.ts";
 import { toImagePart } from "./image.ts";
 import { pairingExtractSchema, type PairingExtract } from "./schemas/pairing-extract.ts";
@@ -13,25 +14,33 @@ export type PairingFileInput =
 export interface PairingExtractionResult {
   pairing: PairingExtract;
   warnings: string[];
+  debug?: AiDebugInfo;
 }
 
 const SYSTEM_PROMPT = `You are extracting culinary ingredient pairing information.
+
+LANGUAGE — non-negotiable:
+- Preserve the source language exactly for the description. If the source is in German, write the description in German; if French, French; etc. Never translate.
+- Use the source's own wording for the description rather than paraphrasing.
+
 Given text or an image about how two ingredients work together, extract:
-- ingredient1: slug/name of the first ingredient (lowercase, hyphen-separated)
-- ingredient2: slug/name of the second ingredient (lowercase, hyphen-separated)
-- description: 1-2 sentence explanation of why they pair well
+- ingredient1: slug/name of the first ingredient (lowercase, hyphen-separated, ASCII — slugs stay in English/ASCII regardless of source language)
+- ingredient2: slug/name of the second ingredient (lowercase, hyphen-separated, ASCII)
+- description: 1-2 sentence explanation of why they pair well, in the source language
 
 If you can't identify two distinct ingredients, do your best with what's available.`;
 
 export async function extractPairingFromFile(
   input: PairingFileInput,
   config: AiConfig,
+  options: ExtractOptions = {},
 ): Promise<PairingExtractionResult> {
   const model = createProvider(config);
   const warnings: string[] = [];
 
   try {
     let pairing: PairingExtract;
+    let debug: AiDebugInfo | undefined;
 
     if (input.kind === "text") {
       const r = await generateText({
@@ -42,6 +51,7 @@ export async function extractPairingFromFile(
         prompt: `Extract ingredient pairing from:\n\n${input.content}`,
       });
       pairing = r.output;
+      if (options.debug) debug = debugFromResult(r);
     } else if (input.kind === "pdf") {
       const content = await extractPdfContent(input.bytes);
       if (content.kind === "text") {
@@ -53,6 +63,7 @@ export async function extractPairingFromFile(
           prompt: `Extract ingredient pairing from:\n\n${content.text}`,
         });
         pairing = r.output;
+        if (options.debug) debug = debugFromResult(r);
       } else {
         warnings.push("PDF appears to be scanned — using vision model.");
         const r = await generateText({
@@ -71,6 +82,7 @@ export async function extractPairingFromFile(
           ],
         });
         pairing = r.output;
+        if (options.debug) debug = debugFromResult(r);
       }
     } else {
       const imagePart = toImagePart(input.bytes, input.mimeType);
@@ -90,11 +102,11 @@ export async function extractPairingFromFile(
         ],
       });
       pairing = r.output;
+      if (options.debug) debug = debugFromResult(r);
     }
 
-    return { pairing, warnings };
+    return debug ? { pairing, warnings, debug } : { pairing, warnings };
   } catch (e) {
-    if (e instanceof AiError) throw e;
-    throw new AiError("EXTRACTION_FAILED", `Pairing extraction failed: ${String(e)}`);
+    throw toAiError(e, "Pairing extraction failed");
   }
 }

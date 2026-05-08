@@ -1,6 +1,7 @@
 import { generateText, Output } from "ai";
-import { AiError } from "./errors.ts";
 import { createProvider, PROVIDER_OPTIONS, type AiConfig } from "./provider.ts";
+import { debugFromResult, toAiError, type AiDebugInfo } from "./debug.ts";
+import type { ExtractOptions } from "./extract-recipe.ts";
 import { recipeExtractSchema, type RecipeExtract } from "./schemas/recipe-extract.ts";
 
 export interface GenerateRecipeInput {
@@ -12,6 +13,7 @@ export interface GenerateRecipeInput {
 export interface GenerateRecipeResult {
   recipe: RecipeExtract;
   warnings: string[];
+  debug?: AiDebugInfo;
 }
 
 const GENERATE_SYSTEM_PROMPT = `You are a professional recipe author. Create a complete, detailed, and delicious recipe based on the user's brief.
@@ -25,6 +27,7 @@ const GENERATE_SYSTEM_PROMPT = `You are a professional recipe author. Create a c
 export async function generateRecipeFromPrompt(
   input: GenerateRecipeInput,
   config: AiConfig,
+  options: ExtractOptions = {},
 ): Promise<GenerateRecipeResult> {
   const model = createProvider(config);
   const { prompt, locale = "en", style = "recipe" } = input;
@@ -42,8 +45,10 @@ export async function generateRecipeFromPrompt(
       prompt: `Create a complete ${styleHint} for: ${prompt}\n\n${localeHint}`,
     });
 
-    return { recipe: r.output, warnings: [] };
+    return options.debug
+      ? { recipe: r.output, warnings: [], debug: debugFromResult(r) }
+      : { recipe: r.output, warnings: [] };
   } catch (e) {
-    throw new AiError("EXTRACTION_FAILED", `Recipe generation failed: ${String(e)}`);
+    throw toAiError(e, "Recipe generation failed");
   }
 }

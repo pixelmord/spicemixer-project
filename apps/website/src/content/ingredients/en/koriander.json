@@ -1,0 +1,8 @@
+{
+  "name": "Koriander",
+  "summary": "Koriander ist ein vielseitiges Gewürz, das in vielen Küchen der Welt verwendet wird.",
+  "description": "Koriander ist eine aromatische Pflanze, die sowohl für ihre Blätter (frischer Koriander) als auch für ihre Samen (Koriandersamen) bekannt ist. Die Blätter haben einen frischen, zitrusartigen Geschmack, während die Samen einen warmen, würzigen Geschmack entfalten, wenn sie gemahlen oder ganz verwendet werden.",
+  "category": "spice",
+  "origin": ["Europa", "Asien", "Amerika"],
+  "flavorNotes": ["frisch", "zitrusartig", "warm", "würzig"]
+}

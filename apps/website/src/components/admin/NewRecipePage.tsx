@@ -30,6 +30,7 @@ export default function NewRecipePage({ collection }: Props) {
         const parsed = JSON.parse(stored) as {
           recipe: Record<string, unknown>;
           source: { url: string; canonical?: string };
+          meta?: { language?: string };
         };
         const sourceUrl = parsed.source.canonical ?? parsed.source.url;
         const recipeName =
@@ -42,12 +43,14 @@ export default function NewRecipePage({ collection }: Props) {
               model: "recipe-ingestion",
             })
           : [];
+        const language = parsed.meta?.language;
         setImportData({
           recipe: parsed.recipe,
           meta: {
             draft: true,
             externalSources: [{ url: sourceUrl, title: recipeName }],
             aiEvents,
+            ...(language ? { language } : {}),
           },
         });
       } catch {

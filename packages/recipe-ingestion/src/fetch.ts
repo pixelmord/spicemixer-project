@@ -2,6 +2,7 @@ import { extractJsonLd } from "./extract.ts";
 import { findRecipe } from "./find-recipe.ts";
 import { normalizeRecipe } from "./normalize/index.ts";
 import { IngestError } from "./errors.ts";
+import { resolveLanguage } from "./util/language.ts";
 import type { FetchOptions, IngestResult } from "./types.ts";
 
 const DEFAULT_UA = "spicemixer-recipe-ingest/0.1";
@@ -76,9 +77,12 @@ export async function fetchRecipe(url: string, opts: FetchOptions = {}): Promise
 
   const { recipe, warnings } = normalizeRecipe(rawRecipe, url, jsonLd);
 
+  const language = resolveLanguage((rawRecipe as Record<string, unknown>)["inLanguage"], html);
+
   return {
     recipe,
     source: { url, canonical, siteName, fetchedAt },
     warnings,
+    language,
   };
 }

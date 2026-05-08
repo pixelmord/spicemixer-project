@@ -1,4 +1,3 @@
-import { createRequire } from "node:module";
 import { AiError } from "./errors.ts";
 
 export interface PdfTextResult {
@@ -19,6 +18,7 @@ async function extractTextFromPdf(bytes: Uint8Array): Promise<PdfTextResult> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
 
   if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+    const { createRequire } = await import("node:module");
     const require = createRequire(import.meta.url);
     const workerPath = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
     pdfjs.GlobalWorkerOptions.workerSrc = `file://${workerPath}`;
@@ -56,7 +56,8 @@ async function extractTextFromPdf(bytes: Uint8Array): Promise<PdfTextResult> {
  * return the raw PDF bytes for vision-model processing instead.
  */
 export async function extractPdfContent(bytes: Uint8Array): Promise<PdfContent> {
-  const result = await extractTextFromPdf(bytes);
+  // Pass a copy to pdfjs: it transfers the ArrayBuffer to its worker, detaching the original.
+  const result = await extractTextFromPdf(bytes.slice());
   if (result.text.trim().length >= SPARSE_TEXT_THRESHOLD) {
     return { kind: "text", ...result };
   }

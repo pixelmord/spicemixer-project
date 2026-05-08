@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { unwrapSchemaShaped } from "./preprocess.ts";
 
-export const ingredientExtractSchema = z.object({
+const ingredientExtractInner = z.object({
   name: z.string(),
   summary: z.string().optional(),
   description: z.string().optional(),
@@ -11,4 +12,6 @@ export const ingredientExtractSchema = z.object({
   flavorNotes: z.array(z.string()).optional(),
 });
 
-export type IngredientExtract = z.infer<typeof ingredientExtractSchema>;
+export const ingredientExtractSchema = z.preprocess(unwrapSchemaShaped, ingredientExtractInner);
+
+export type IngredientExtract = z.infer<typeof ingredientExtractInner>;

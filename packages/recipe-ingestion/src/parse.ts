@@ -2,6 +2,7 @@ import { extractJsonLd } from "./extract.ts";
 import { findRecipe } from "./find-recipe.ts";
 import { normalizeRecipe } from "./normalize/index.ts";
 import { IngestError } from "./errors.ts";
+import { resolveLanguage } from "./util/language.ts";
 import type { IngestResult } from "./types.ts";
 
 /**
@@ -21,12 +22,7 @@ export function parseRecipe(html: string, url: string): IngestResult {
 
   const { recipe, warnings } = normalizeRecipe(rawRecipe, url, jsonLd);
 
-  // Extract language from inLanguage field (schema.org standard)
-  const rawLang = (rawRecipe as Record<string, unknown>)["inLanguage"];
-  let language: string | undefined;
-  if (typeof rawLang === "string" && rawLang.length >= 2) {
-    language = rawLang.slice(0, 2).toLowerCase();
-  }
+  const language = resolveLanguage((rawRecipe as Record<string, unknown>)["inLanguage"], html);
 
   return {
     recipe,

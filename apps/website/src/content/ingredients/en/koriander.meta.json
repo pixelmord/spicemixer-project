@@ -1,0 +1,15 @@
+{
+  "aiEvents": [
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "fe63788ad4b6",
+        "summary": "Pairing auto-applied: koriander ↔ cumin"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "at": "2026-05-08T08:06:31.637Z"
+    }
+  ]
+}

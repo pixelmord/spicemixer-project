@@ -1,7 +1,16 @@
 {
   "draft": false,
   "region": ["western-europe"],
-  "tags": [],
+  "tags": [
+    "dessert",
+    "scandinavian",
+    "chocolate",
+    "hearty",
+    "rye-flour",
+    "baking",
+    "cookies",
+    "sweet"
+  ],
   "ingredientLinks": [],
   "externalSources": [],
   "goesWellWith": [],
@@ -11,5 +20,55 @@
   "language": "en",
   "locale": "en",
   "kind": "recipe",
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "aiSuggestions": {
+    "fingerprint": "b473b553924e95dd14632a6903d4da802991c8ab8460c5695df81a25799cb874",
+    "at": "2026-05-08T08:28:39.119Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [
+        "dark-chocolate",
+        "rye-flour",
+        "chewy-cookies",
+        "scandinavian-dessert",
+        "baking",
+        "rich-flavors",
+        "malt",
+        "quick-bake"
+      ],
+      "ingredientLinks": [],
+      "relations": [
+        {
+          "kind": "goesWellWith",
+          "collection": "recipes",
+          "slug": "miso-butter-ramen",
+          "name": "Miso Butter Ramen",
+          "rationale": "The rich umami flavor of miso complements the deep chocolate notes in the cookies, creating a unique dessert pairing."
+        },
+        {
+          "kind": "goesWellWith",
+          "collection": "recipes",
+          "slug": "preserved-lemon-couscous",
+          "name": "Preserved Lemon Couscous",
+          "rationale": "The bright acidity of preserved lemon adds a refreshing contrast to the dense and chocolatey cookies."
+        },
+        {
+          "kind": "goesWellWith",
+          "collection": "recipes",
+          "slug": "vegetable-beef-skillet",
+          "name": "Vegetable and Beef Skillet",
+          "rationale": "A hearty savory dish like this skillet can balance the sweetness of the dark chocolate cookies."
+        },
+        {
+          "kind": "usesBase",
+          "collection": "mixtures",
+          "slug": "dukkah",
+          "name": "Dukkah",
+          "rationale": "While not directly related, dukkah's nutty and spiced flavor profile can offer a unique twist when paired as a dusting alongside the cookies."
+        }
+      ]
+    }
+  },
+  "canonicalContentHash": "2655fdce375514b2"
 }

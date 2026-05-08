@@ -27,6 +27,8 @@ interface IngestResult {
   recipe: Record<string, unknown>;
   source: { url: string; canonical?: string; siteName?: string; fetchedAt: string };
   warnings: Array<{ code: string; field?: string; message: string }>;
+  /** BCP-47 primary subtag derived from JSON-LD inLanguage or <html lang>. */
+  language?: string;
 }
 
 export default function ImportFromUrl() {
@@ -61,8 +63,15 @@ export default function ImportFromUrl() {
 
   function handleEditInForm() {
     if (!result) return;
-    // Store in sessionStorage and navigate to new recipe editor
-    sessionStorage.setItem("import-recipe", JSON.stringify(result));
+    // Forward the detected language under `meta.language` — NewRecipePage maps
+    // that into the form's locale, which gates the Save button.
+    const payload = {
+      recipe: result.recipe,
+      source: result.source,
+      warnings: result.warnings,
+      ...(result.language ? { meta: { language: result.language } } : {}),
+    };
+    sessionStorage.setItem("import-recipe", JSON.stringify(payload));
     window.location.href = `/admin/${collection}/new?import=1`;
   }
 

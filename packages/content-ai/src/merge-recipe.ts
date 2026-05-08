@@ -1,6 +1,7 @@
 import { generateText, Output } from "ai";
-import { AiError } from "./errors.ts";
 import { createProvider, PROVIDER_OPTIONS, type AiConfig } from "./provider.ts";
+import { debugFromResult, toAiError, type AiDebugInfo } from "./debug.ts";
+import type { ExtractOptions } from "./extract-recipe.ts";
 import { extractPdfContent } from "./pdf.ts";
 import { toImagePart } from "./image.ts";
 import { recipeExtractSchema, type RecipeExtract } from "./schemas/recipe-extract.ts";
@@ -19,6 +20,7 @@ export interface MergeRecipeInput {
 export interface MergeRecipeResult {
   recipe: RecipeExtract;
   warnings: string[];
+  debug?: AiDebugInfo;
 }
 
 const MERGE_SYSTEM_PROMPT = `You are a recipe editor merging new content into an existing recipe.
@@ -31,11 +33,17 @@ CRITICAL — field preservation rules:
 - Combine keywords from both sources; never reduce the keyword list.
 - Do NOT invent or hallucinate values — if the new content does not address a field, copy it verbatim from the existing recipe.
 
+LANGUAGE — non-negotiable:
+- Preserve the language of the existing recipe. If existing fields are in German, keep them in German; never translate them.
+- For new content being merged in, keep it in its original language as well, unless that conflicts with the existing recipe's language — in which case match the existing recipe's language by using its existing wording where overlaps occur.
+- Never paraphrase or summarize existing content. Copy strings verbatim except where the user explicitly asks for a change.
+
 The user's prompt describes ONLY what they want changed. Everything else stays exactly as it is.`;
 
 export async function mergeRecipe(
   input: MergeRecipeInput,
   config: AiConfig,
+  options: ExtractOptions = {},
 ): Promise<MergeRecipeResult> {
   const model = createProvider(config);
   const warnings: string[] = [];
@@ -44,6 +52,7 @@ export async function mergeRecipe(
 
   try {
     let recipe: RecipeExtract;
+    let debug: AiDebugInfo | undefined;
 
     if (input.source.kind === "prompt") {
       const r = await generateText({
@@ -54,6 +63,7 @@ export async function mergeRecipe(
         prompt: `${basePrompt}\n\nREQUESTED CHANGE:\n${input.source.prompt}`,
       });
       recipe = r.output;
+      if (options.debug) debug = debugFromResult(r);
     } else if (input.source.kind === "text") {
       const r = await generateText({
         model,
@@ -63,6 +73,7 @@ export async function mergeRecipe(
         prompt: `${basePrompt}\n\nNEW CONTENT TO MERGE IN:\n${input.source.content}`,
       });
       recipe = r.output;
+      if (options.debug) debug = debugFromResult(r);
     } else if (input.source.kind === "pdf") {
       const content = await extractPdfContent(input.source.bytes);
 
@@ -75,6 +86,7 @@ export async function mergeRecipe(
           prompt: `${basePrompt}\n\nNEW CONTENT TO MERGE IN:\n${content.text}`,
         });
         recipe = r.output;
+        if (options.debug) debug = debugFromResult(r);
       } else {
         warnings.push("PDF appears to be scanned — using vision model for OCR.");
         const r = await generateText({
@@ -96,6 +108,7 @@ export async function mergeRecipe(
           ],
         });
         recipe = r.output;
+        if (options.debug) debug = debugFromResult(r);
       }
     } else {
       const imagePart = toImagePart(input.source.bytes, input.source.mimeType);
@@ -118,11 +131,11 @@ export async function mergeRecipe(
         ],
       });
       recipe = r.output;
+      if (options.debug) debug = debugFromResult(r);
     }
 
-    return { recipe, warnings };
+    return debug ? { recipe, warnings, debug } : { recipe, warnings };
   } catch (e) {
-    if (e instanceof AiError) throw e;
-    throw new AiError("EXTRACTION_FAILED", `Recipe merge failed: ${String(e)}`);
+    throw toAiError(e, "Recipe merge failed");
   }
 }
