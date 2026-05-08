@@ -1,9 +1,7 @@
 import { evalite, createScorer } from "evalite";
-import { sha256 } from "@noble/hashes/sha256";
-import { bytesToHex } from "@noble/hashes/utils";
 import { extractRecipeFromFile } from "../src/extract-recipe.ts";
 import type { RecipeExtract } from "../src/schemas/recipe-extract.ts";
-import { JsonlCache } from "./cache.ts";
+import { JsonlCache, hashPrompt } from "./cache.ts";
 import {
   schemaValid,
   requiredFieldsPresent,
@@ -11,10 +9,6 @@ import {
   instructionOrderPreserved,
   descriptionFaithful,
 } from "./scorers/index.ts";
-
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
 
 const AI_CONFIG = {
   baseUrl: process.env["AI_BASE_URL"] ?? "http://localhost:11434/v1",
@@ -29,12 +23,8 @@ function promptForText(text: string): string {
 }
 
 function hashText(text: string): string {
-  return bytesToHex(sha256(new TextEncoder().encode(promptForText(text))));
+  return hashPrompt(promptForText(text));
 }
-
-// ---------------------------------------------------------------------------
-// Synthetic fixtures  (tagged synthetic — evictable once 10 real cases exist)
-// ---------------------------------------------------------------------------
 
 interface EvalCase {
   input: string;
@@ -121,10 +111,6 @@ Steps:
   },
 ];
 
-// ---------------------------------------------------------------------------
-// Eval task
-// ---------------------------------------------------------------------------
-
 async function extractWithCache(text: string): Promise<RecipeExtract> {
   const inputHash = hashText(text);
   const cached = await cache.lookup(inputHash);
@@ -134,10 +120,6 @@ async function extractWithCache(text: string): Promise<RecipeExtract> {
   const result = await extractRecipeFromFile({ kind: "text", content: text }, AI_CONFIG);
   return result.recipe;
 }
-
-// ---------------------------------------------------------------------------
-// Evalite suite
-// ---------------------------------------------------------------------------
 
 evalite<string, RecipeExtract, RecipeExtract>("aiExtractRecipe", {
   data: () =>
@@ -187,7 +169,9 @@ evalite<string, RecipeExtract, RecipeExtract>("aiExtractRecipe", {
       scorer: async ({ output, expected }) => {
         if (!expected) return 1;
         const verdict = await descriptionFaithful(output, expected);
-        return verdict === "pass" ? 1 : verdict === "partial" ? 0.5 : 0;
+        if (verdict === "pass") return 1;
+        if (verdict === "partial") return 0.5;
+        return 0;
       },
     }),
   ],

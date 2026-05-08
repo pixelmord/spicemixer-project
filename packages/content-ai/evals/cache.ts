@@ -6,6 +6,10 @@ import type { TraceEvent } from "../src/trace/sinks/types.ts";
 
 export type TraceRecord = TraceEvent;
 
+export function hashPrompt(prompt: string): string {
+  return bytesToHex(sha256(new TextEncoder().encode(prompt)));
+}
+
 /**
  * Reads .ai-trace/*.jsonl, indexes records by sha256 of params.prompt.
  * Replaces evalite's wrapAISDKModel cache (evalite 0.19 pins @ai-sdk/provider@^2).
@@ -42,7 +46,7 @@ export class JsonlCache {
           const record = JSON.parse(trimmed) as TraceRecord;
           const prompt = record.params?.prompt;
           if (typeof prompt === "string") {
-            const key = bytesToHex(sha256(new TextEncoder().encode(prompt)));
+            const key = hashPrompt(prompt);
             if (!this.index.has(key)) {
               this.index.set(key, record);
             }
@@ -58,8 +62,4 @@ export class JsonlCache {
     await this.loadOnce();
     return this.index.get(inputHash) ?? null;
   }
-}
-
-export function hashPrompt(prompt: string): string {
-  return bytesToHex(sha256(new TextEncoder().encode(prompt)));
 }

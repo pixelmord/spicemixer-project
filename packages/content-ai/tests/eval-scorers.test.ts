@@ -7,10 +7,6 @@ import { instructionOrderPreserved } from "../evals/scorers/instruction-order.ts
 import { descriptionFaithful } from "../evals/scorers/description-faithful.ts";
 import type { Judge } from "../evals/scorers/description-faithful.ts";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function makeRecipe(overrides: Partial<RecipeExtract> = {}): RecipeExtract {
   return {
     name: "Test Recipe",
@@ -19,10 +15,6 @@ function makeRecipe(overrides: Partial<RecipeExtract> = {}): RecipeExtract {
     ...overrides,
   };
 }
-
-// ---------------------------------------------------------------------------
-// schemaValid
-// ---------------------------------------------------------------------------
 
 describe("schemaValid", () => {
   test("returns true for valid RecipeExtract", () => {
@@ -47,10 +39,6 @@ describe("schemaValid", () => {
     );
   });
 });
-
-// ---------------------------------------------------------------------------
-// requiredFieldsPresent
-// ---------------------------------------------------------------------------
 
 describe("requiredFieldsPresent", () => {
   test("returns 1 when all 4 required fields present", () => {
@@ -88,10 +76,6 @@ describe("requiredFieldsPresent", () => {
     expect(score).toBeCloseTo(0.75);
   });
 });
-
-// ---------------------------------------------------------------------------
-// ingredientRecall
-// ---------------------------------------------------------------------------
 
 describe("ingredientRecall", () => {
   test("score 1 when all expected ingredients matched", () => {
@@ -161,10 +145,6 @@ describe("ingredientRecall", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// instructionOrderPreserved
-// ---------------------------------------------------------------------------
-
 describe("instructionOrderPreserved", () => {
   test("returns true when all steps match in order", () => {
     const recipe = makeRecipe({
@@ -229,10 +209,6 @@ describe("instructionOrderPreserved", () => {
     expect(instructionOrderPreserved(actual, expected)).toBe(true);
   });
 });
-
-// ---------------------------------------------------------------------------
-// descriptionFaithful
-// ---------------------------------------------------------------------------
 
 describe("descriptionFaithful", () => {
   test("returns 'pass' when judge says pass", async () => {

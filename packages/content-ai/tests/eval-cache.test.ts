@@ -2,14 +2,8 @@ import { describe, expect, test, beforeEach, afterEach } from "vite-plus/test";
 import { mkdir, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { sha256 } from "@noble/hashes/sha256";
-import { bytesToHex } from "@noble/hashes/utils";
 import { JsonlCache, hashPrompt } from "../evals/cache.ts";
 import type { TraceRecord } from "../evals/cache.ts";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function makeTraceRecord(prompt: string, overrides: Partial<TraceRecord> = {}): TraceRecord {
   return {
@@ -33,10 +27,6 @@ function makeTraceRecord(prompt: string, overrides: Partial<TraceRecord> = {}): 
   };
 }
 
-function promptHash(prompt: string): string {
-  return bytesToHex(sha256(new TextEncoder().encode(prompt)));
-}
-
 let dir: string;
 
 beforeEach(async () => {
@@ -48,10 +38,6 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 describe("JsonlCache", () => {
   test("happy-path lookup returns matching record", async () => {
     const prompt = "Extract the recipe from the following text:\n\nMiso Ramen recipe";
@@ -59,7 +45,7 @@ describe("JsonlCache", () => {
     await writeFile(join(dir, "2026-01-01.jsonl"), JSON.stringify(record) + "\n", "utf8");
 
     const cache = new JsonlCache(dir);
-    const found = await cache.lookup(promptHash(prompt));
+    const found = await cache.lookup(hashPrompt(prompt));
     expect(found).not.toBeNull();
     expect(found?.traceId).toBe("trace-1");
   });
@@ -84,7 +70,7 @@ describe("JsonlCache", () => {
     await writeFile(join(dir, "2026-01-01.jsonl"), content, "utf8");
 
     const cache = new JsonlCache(dir);
-    expect(await cache.lookup(promptHash(prompt))).not.toBeNull();
+    expect(await cache.lookup(hashPrompt(prompt))).not.toBeNull();
   });
 
   test("indexes records from multiple .jsonl files", async () => {
@@ -102,8 +88,8 @@ describe("JsonlCache", () => {
     );
 
     const cache = new JsonlCache(dir);
-    expect((await cache.lookup(promptHash(p1)))?.traceId).toBe("t1");
-    expect((await cache.lookup(promptHash(p2)))?.traceId).toBe("t2");
+    expect((await cache.lookup(hashPrompt(p1)))?.traceId).toBe("t1");
+    expect((await cache.lookup(hashPrompt(p2)))?.traceId).toBe("t2");
   });
 
   test("non-.jsonl files are ignored", async () => {
@@ -123,7 +109,7 @@ describe("JsonlCache", () => {
     );
 
     const cache = new JsonlCache(dir);
-    expect((await cache.lookup(promptHash(prompt)))?.traceId).toBe("first");
+    expect((await cache.lookup(hashPrompt(prompt)))?.traceId).toBe("first");
   });
 
   test("records without params.prompt are not indexed", async () => {
@@ -132,7 +118,7 @@ describe("JsonlCache", () => {
     await writeFile(join(dir, "2026-01-01.jsonl"), JSON.stringify(record) + "\n", "utf8");
 
     const cache = new JsonlCache(dir);
-    expect(await cache.lookup(promptHash("irrelevant"))).toBeNull();
+    expect(await cache.lookup(hashPrompt("irrelevant"))).toBeNull();
   });
 });
 
