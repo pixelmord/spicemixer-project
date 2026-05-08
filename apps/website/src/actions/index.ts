@@ -28,7 +28,7 @@ import {
   savePairingMeta as libSavePairingMeta,
 } from "@/lib/pairings.ts";
 import { NotFoundError } from "@/lib/errors.ts";
-import { AiError, withOrigin, type AiEvent, type BinaryMeta } from "content-ai";
+import { AiError, withOrigin, type AiEvent } from "content-ai";
 import { createSourceStore } from "@/lib/stores/source-store.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -150,23 +150,63 @@ function resolveAiConfig() {
   };
 }
 
-type FileInputKind = "text" | "pdf" | "image";
+function mimeForFileInput(input: ContentAiFileInput): string {
+  switch (input.kind) {
+    case "text":
+      return "text/plain";
+    case "pdf":
+      return "application/pdf";
+    case "image":
+      return input.mimeType;
+  }
+}
 
-function binaryMetaFromInput(
-  kind: FileInputKind,
-  bytes: Uint8Array,
-  mimeType: string,
+function bytesForFileInput(input: ContentAiFileInput): Uint8Array {
+  return input.kind === "text" ? new TextEncoder().encode(input.content) : input.bytes;
+}
+
+async function persistSourceArtifacts(
+  input: ContentAiFileInput,
   filename?: string,
-): BinaryMeta {
-  const binaryKind: BinaryMeta["kind"] =
-    kind === "pdf" ? "pdf" : kind === "image" ? "image" : "text";
-  return {
-    kind: binaryKind,
-    mime: mimeType,
-    sizeBytes: bytes.length,
+): Promise<{
+  sourceStore: ReturnType<typeof createSourceStore>;
+  binaryHash: string;
+  extractionInput: ContentAiFileInput;
+  now: string;
+}> {
+  const sourceStore = createSourceStore();
+  const now = new Date().toISOString();
+  const rawBytes = bytesForFileInput(input);
+  const { binaryHash } = await sourceStore.putBinary(rawBytes, {
+    kind: input.kind,
+    mime: mimeForFileInput(input),
+    sizeBytes: rawBytes.length,
     filename,
-    uploadedAt: new Date().toISOString(),
-  };
+    uploadedAt: now,
+  });
+
+  let extractionInput: ContentAiFileInput = input;
+  if (input.kind === "text") {
+    await sourceStore.putText(binaryHash, "direct", "1", input.content, {
+      charCount: input.content.length,
+      extractedAt: now,
+      parentBinaryHash: binaryHash,
+    });
+  } else if (input.kind === "pdf") {
+    const { extractPdfContent } = await import("content-ai");
+    const pdfContent = await extractPdfContent(input.bytes);
+    if (pdfContent.kind === "text") {
+      await sourceStore.putText(binaryHash, "pdfjs", "5", pdfContent.text, {
+        charCount: pdfContent.text.length,
+        pageCount: pdfContent.pageCount,
+        extractedAt: now,
+        parentBinaryHash: binaryHash,
+      });
+      extractionInput = { kind: "text", content: pdfContent.text };
+    }
+  }
+
+  return { sourceStore, binaryHash, extractionInput, now };
 }
 
 const recipeCollectionEnum = z.enum(["recipes", "mixtures"]);
@@ -691,50 +731,16 @@ export const server = {
       userInitiated: true,
     })(async (input) => {
       const config = resolveAiConfig();
-      const { extractRecipeFromFile, extractPdfContent } = await import("content-ai");
+      const { extractRecipeFromFile } = await import("content-ai");
       const debug = isDebug(input.debug);
       const resolved = await resolveFileInput(input);
-      const mimeType =
-        resolved.kind === "text"
-          ? "text/plain"
-          : resolved.kind === "pdf"
-            ? "application/pdf"
-            : resolved.mimeType;
-      const rawBytes =
-        resolved.kind === "text" ? new TextEncoder().encode(resolved.content) : resolved.bytes;
-      const sourceStore = createSourceStore();
-      const filename = input.file?.name;
-      const { binaryHash } = await sourceStore.putBinary(
-        rawBytes,
-        binaryMetaFromInput(resolved.kind, rawBytes, mimeType, filename),
+      const { sourceStore, binaryHash, extractionInput, now } = await persistSourceArtifacts(
+        resolved,
+        input.file?.name,
       );
 
-      // For text inputs and text-extracted PDFs: persist text artifact
-      let extractionInput = resolved;
-      const now = new Date().toISOString();
-      if (resolved.kind === "text") {
-        await sourceStore.putText(binaryHash, "direct", "1", resolved.content, {
-          charCount: resolved.content.length,
-          extractedAt: now,
-          parentBinaryHash: binaryHash,
-        });
-      } else if (resolved.kind === "pdf") {
-        const pdfContent = await extractPdfContent(resolved.bytes);
-        if (pdfContent.kind === "text") {
-          await sourceStore.putText(binaryHash, "pdfjs", "5", pdfContent.text, {
-            charCount: pdfContent.text.length,
-            pageCount: pdfContent.pageCount,
-            extractedAt: now,
-            parentBinaryHash: binaryHash,
-          });
-          extractionInput = { kind: "text", content: pdfContent.text };
-        }
-      }
-
       try {
-        const result = await extractRecipeFromFile(extractionInput as typeof resolved, config, {
-          debug,
-        });
+        const result = await extractRecipeFromFile(extractionInput, config, { debug });
         const traceId = crypto.randomUUID();
         await sourceStore.putStructured(binaryHash, traceId, result.recipe, {
           capability: "aiExtractRecipe",
@@ -762,49 +768,16 @@ export const server = {
       userInitiated: true,
     })(async (input) => {
       const config = resolveAiConfig();
-      const { extractIngredientFromFile, extractPdfContent } = await import("content-ai");
+      const { extractIngredientFromFile } = await import("content-ai");
       const debug = isDebug(input.debug);
       const resolved = await resolveFileInput(input);
-      const mimeType =
-        resolved.kind === "text"
-          ? "text/plain"
-          : resolved.kind === "pdf"
-            ? "application/pdf"
-            : resolved.mimeType;
-      const rawBytes =
-        resolved.kind === "text" ? new TextEncoder().encode(resolved.content) : resolved.bytes;
-      const sourceStore = createSourceStore();
-      const filename = input.file?.name;
-      const { binaryHash } = await sourceStore.putBinary(
-        rawBytes,
-        binaryMetaFromInput(resolved.kind, rawBytes, mimeType, filename),
+      const { sourceStore, binaryHash, extractionInput, now } = await persistSourceArtifacts(
+        resolved,
+        input.file?.name,
       );
 
-      let extractionInput = resolved;
-      const now = new Date().toISOString();
-      if (resolved.kind === "text") {
-        await sourceStore.putText(binaryHash, "direct", "1", resolved.content, {
-          charCount: resolved.content.length,
-          extractedAt: now,
-          parentBinaryHash: binaryHash,
-        });
-      } else if (resolved.kind === "pdf") {
-        const pdfContent = await extractPdfContent(resolved.bytes);
-        if (pdfContent.kind === "text") {
-          await sourceStore.putText(binaryHash, "pdfjs", "5", pdfContent.text, {
-            charCount: pdfContent.text.length,
-            pageCount: pdfContent.pageCount,
-            extractedAt: now,
-            parentBinaryHash: binaryHash,
-          });
-          extractionInput = { kind: "text", content: pdfContent.text };
-        }
-      }
-
       try {
-        const result = await extractIngredientFromFile(extractionInput as typeof resolved, config, {
-          debug,
-        });
+        const result = await extractIngredientFromFile(extractionInput, config, { debug });
         const traceId = crypto.randomUUID();
         await sourceStore.putStructured(binaryHash, traceId, result.ingredient, {
           capability: "aiExtractIngredient",
@@ -869,71 +842,33 @@ export const server = {
       userInitiated: true,
     })(async ({ existing, sourceKind, file, mimeType, text, prompt, debug }) => {
       const config = resolveAiConfig();
-      const { mergeRecipe, extractPdfContent } = await import("content-ai");
+      const { mergeRecipe } = await import("content-ai");
       const existingRecipe = JSON.parse(existing) as Record<string, unknown>;
       const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
 
-      // Persist source artifact when source is a file or text (not prompt)
-      let binaryHash: string | undefined;
-      let traceId: string | undefined;
+      let artifacts: Awaited<ReturnType<typeof persistSourceArtifacts>> | undefined;
       if (source.kind !== "prompt") {
-        const sourceStore = createSourceStore();
-        const now = new Date().toISOString();
-        const srcMimeType =
-          source.kind === "text"
-            ? "text/plain"
-            : source.kind === "pdf"
-              ? "application/pdf"
-              : source.mimeType;
-        const rawBytes =
-          source.kind === "text" ? new TextEncoder().encode(source.content) : source.bytes;
-        const filename = file?.name;
-        const putResult = await sourceStore.putBinary(
-          rawBytes,
-          binaryMetaFromInput(source.kind, rawBytes, srcMimeType, filename),
-        );
-        binaryHash = putResult.binaryHash;
-
-        if (source.kind === "text") {
-          await sourceStore.putText(binaryHash, "direct", "1", source.content, {
-            charCount: source.content.length,
-            extractedAt: now,
-            parentBinaryHash: binaryHash,
-          });
-        } else if (source.kind === "pdf") {
-          const pdfContent = await extractPdfContent(source.bytes);
-          if (pdfContent.kind === "text") {
-            await sourceStore.putText(binaryHash, "pdfjs", "5", pdfContent.text, {
-              charCount: pdfContent.text.length,
-              pageCount: pdfContent.pageCount,
-              extractedAt: now,
-              parentBinaryHash: binaryHash,
-            });
-          }
-        }
-
-        try {
-          const result = await mergeRecipe({ existing: existingRecipe as never, source }, config, {
-            debug: isDebug(debug),
-          });
-          traceId = crypto.randomUUID();
-          await sourceStore.putStructured(binaryHash, traceId, result.recipe, {
-            capability: "aiMergeRecipe",
-            model: config.model,
-            at: now,
-            parentBinaryHash: binaryHash,
-          });
-          return { ...result, model: config.model, traceId, binaryHash };
-        } catch (e) {
-          throw aiErrorToActionError(e, "Recipe merge failed");
-        }
+        artifacts = await persistSourceArtifacts(source, file?.name);
       }
 
       try {
         const result = await mergeRecipe({ existing: existingRecipe as never, source }, config, {
           debug: isDebug(debug),
         });
-        return { ...result, model: config.model };
+        let traceId: string | undefined;
+        let binaryHash: string | undefined;
+        if (artifacts) {
+          traceId = crypto.randomUUID();
+          binaryHash = artifacts.binaryHash;
+          await artifacts.sourceStore.putStructured(binaryHash, traceId, result.recipe, {
+            capability: "aiMergeRecipe",
+            model: config.model,
+            at: artifacts.now,
+            parentBinaryHash: binaryHash,
+          });
+        }
+        const base = { ...result, model: config.model };
+        return traceId ? { ...base, traceId, binaryHash } : base;
       } catch (e) {
         throw aiErrorToActionError(e, "Recipe merge failed");
       }
@@ -1266,49 +1201,13 @@ export const server = {
       userInitiated: true,
     })(async (input) => {
       const config = resolveAiConfig();
-      const { extractPairingFromFile, extractPdfContent } = await import("content-ai");
+      const { extractPairingFromFile } = await import("content-ai");
       const debug = isDebug(input.debug);
       const resolved = await resolveFileInput(input);
-      const mimeType =
-        resolved.kind === "text"
-          ? "text/plain"
-          : resolved.kind === "pdf"
-            ? "application/pdf"
-            : resolved.mimeType;
-      const rawBytes =
-        resolved.kind === "text" ? new TextEncoder().encode(resolved.content) : resolved.bytes;
-      const sourceStore = createSourceStore();
-      const filename = input.file?.name;
-      const { binaryHash } = await sourceStore.putBinary(
-        rawBytes,
-        binaryMetaFromInput(resolved.kind, rawBytes, mimeType, filename),
+      const { sourceStore, binaryHash, extractionInput, now } = await persistSourceArtifacts(
+        resolved,
+        input.file?.name,
       );
-
-      let extractionInput: Parameters<typeof extractPairingFromFile>[0];
-      const now = new Date().toISOString();
-      if (resolved.kind === "text") {
-        await sourceStore.putText(binaryHash, "direct", "1", resolved.content, {
-          charCount: resolved.content.length,
-          extractedAt: now,
-          parentBinaryHash: binaryHash,
-        });
-        extractionInput = { kind: "text", content: resolved.content };
-      } else if (resolved.kind === "pdf") {
-        const pdfContent = await extractPdfContent(resolved.bytes);
-        if (pdfContent.kind === "text") {
-          await sourceStore.putText(binaryHash, "pdfjs", "5", pdfContent.text, {
-            charCount: pdfContent.text.length,
-            pageCount: pdfContent.pageCount,
-            extractedAt: now,
-            parentBinaryHash: binaryHash,
-          });
-          extractionInput = { kind: "text", content: pdfContent.text };
-        } else {
-          extractionInput = resolved;
-        }
-      } else {
-        extractionInput = resolved;
-      }
 
       try {
         const result = await extractPairingFromFile(extractionInput, config, { debug });

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join, extname } from "node:path";
 import { existsSync } from "node:fs";
 import type { SourceStore } from "./index.ts";
@@ -79,15 +79,13 @@ export class LocalSourceStore implements SourceStore {
     const dir = join(this.basePath, binaryHash);
     if (!existsSync(dir)) return null;
 
-    // Find the source file — any source.* file that's not source.meta.json
-    for (const ext of Object.values(MIME_TO_EXT)) {
+    for (const ext of new Set(Object.values(MIME_TO_EXT))) {
       const p = join(dir, `source.${ext}`);
       if (existsSync(p)) {
         const buf = await readFile(p);
         return new Uint8Array(buf);
       }
     }
-    // Fallback: source.bin
     const binPath = join(dir, "source.bin");
     if (existsSync(binPath)) {
       const buf = await readFile(binPath);
@@ -99,8 +97,6 @@ export class LocalSourceStore implements SourceStore {
   async listForBinary(binaryHash: string): Promise<{ texts: string[]; structured: string[] }> {
     const dir = join(this.basePath, binaryHash);
     if (!existsSync(dir)) return { texts: [], structured: [] };
-
-    const { readdir } = await import("node:fs/promises");
 
     const texts: string[] = [];
     const textDir = join(dir, "text");

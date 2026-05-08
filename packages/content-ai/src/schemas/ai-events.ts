@@ -31,10 +31,6 @@ export const aiEventSchema = z.object({
 
 export type AiEvent = z.infer<typeof aiEventSchema>;
 
-/**
- * Normalizes the `source` field from an aiEvents.ingested entry to the structured
- * descriptor shape. Old string URLs are wrapped as { kind: "url", url: <string> }.
- */
 export function normalizeSourceField(
   source: string | SourceDescriptor | undefined,
 ): SourceDescriptor | undefined {
