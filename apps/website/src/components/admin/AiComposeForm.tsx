@@ -102,6 +102,18 @@ const TABS: Array<{ id: SourceMode; label: string; icon: React.ReactNode }> = [
   { id: "prompt", label: "Generate", icon: <Sparkles size={14} /> },
 ];
 
+function composeAction(tab: SourceMode, contentType: ContentType): string {
+  if (tab === "prompt" && contentType === "recipe") return "aiGenerateRecipe";
+  switch (contentType) {
+    case "recipe":
+      return "aiExtractRecipe";
+    case "ingredient":
+      return "aiExtractIngredient";
+    case "pairing":
+      return "aiExtractPairing";
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function buildFormData(source: Source, debug?: boolean): FormData {
@@ -271,14 +283,7 @@ export default function AiComposeForm() {
           ? "Extract pairing"
           : "Extract ingredient";
 
-  const loadingAction =
-    tab === "prompt" && contentType === "recipe"
-      ? "aiGenerateRecipe"
-      : contentType === "recipe"
-        ? "aiExtractRecipe"
-        : contentType === "ingredient"
-          ? "aiExtractIngredient"
-          : "aiExtractPairing";
+  const loadingAction = composeAction(tab, contentType);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
