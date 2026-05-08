@@ -16,6 +16,7 @@
     "@dnd-kit/sortable": "catalog:",
     "@dnd-kit/utilities": "catalog:",
     "@fontsource-variable/geist": "catalog:",
+    "@sentry/node": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-form": "^1.14.1",
     "@tanstack/react-table": "^8.21.3",

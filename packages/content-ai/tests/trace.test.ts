@@ -310,6 +310,73 @@ describe("FileTraceSink", () => {
   });
 });
 
+// ─── scrub + tracesSampler (SentrySpanSink helpers) ──────────────────────────
+
+import { scrub, tracesSampler } from "../src/trace/sinks/sentry.ts";
+
+describe("scrub", () => {
+  test("converts TraceEvent to SpanScalars with correct OTel attributes", () => {
+    const scalars = scrub(FIXTURE_EVENT);
+    expect(scalars["gen_ai.request.model"]).toBe("gpt-4o-mini");
+    expect(scalars["gen_ai.finish_reason"]).toBe("stop");
+    expect(scalars["gen_ai.usage.input_tokens"]).toBe(5);
+    expect(scalars["gen_ai.usage.output_tokens"]).toBe(3);
+    expect(scalars["gen_ai.duration_ms"]).toBe(100);
+    expect(scalars["origin.surface"]).toBe("admin");
+    expect(scalars["origin.action"]).toBe("test");
+    expect(scalars["origin.run_id"]).toBe("run-1"); // BASE_ORIGIN.runId
+    expect(scalars["origin.triggered_by"]).toBe("editor");
+    expect(scalars["origin.user_initiated"]).toBe(true);
+    expect(scalars.outcome).toBe("ok");
+  });
+
+  test("outcome is 'error' when event has an error field", () => {
+    const event: TraceEvent = { ...FIXTURE_EVENT, error: { name: "Error", message: "boom" } };
+    expect(scrub(event).outcome).toBe("error");
+  });
+
+  test("runtime guard throws when 'messages' field is present", () => {
+    const dirty = Object.assign({}, FIXTURE_EVENT, { messages: ["forbidden"] });
+    expect(() => scrub(dirty as unknown as TraceEvent)).toThrow(/messages/);
+  });
+
+  test("runtime guard throws when 'response.text' field is present", () => {
+    const dirty = Object.assign({}, FIXTURE_EVENT, { "response.text": "forbidden" });
+    expect(() => scrub(dirty as unknown as TraceEvent)).toThrow(/response\.text/);
+  });
+
+  test("optional origin fields are included when present", () => {
+    const event: TraceEvent = {
+      ...FIXTURE_EVENT,
+      origin: { ...BASE_ORIGIN, entityKind: "recipe", field: "description" },
+    };
+    const scalars = scrub(event);
+    expect(scalars["origin.entity_kind"]).toBe("recipe");
+    expect(scalars["origin.field"]).toBe("description");
+  });
+});
+
+describe("tracesSampler", () => {
+  test("returns 1.0 when outcome is 'error'", () => {
+    expect(tracesSampler({ outcome: "error", "gen_ai.finish_reason": "stop" })).toBe(1.0);
+  });
+
+  test("returns 1.0 for non-stop finish reasons with ok outcome", () => {
+    const nonStop = ["length", "content-filter", "tool-calls", "other", "unknown"] as const;
+    for (const reason of nonStop) {
+      expect(tracesSampler({ outcome: "ok", "gen_ai.finish_reason": reason })).toBe(1.0);
+    }
+  });
+
+  test("returns 1.0 for 'error' finish reason with ok outcome", () => {
+    expect(tracesSampler({ outcome: "ok", "gen_ai.finish_reason": "error" })).toBe(1.0);
+  });
+
+  test("returns 0.25 for successful stop events", () => {
+    expect(tracesSampler({ outcome: "ok", "gen_ai.finish_reason": "stop" })).toBe(0.25);
+  });
+});
+
 // ─── aiEvents schema backward compat ─────────────────────────────────────────
 
 import { aiEventSchema } from "../src/schemas/ai-events.ts";
