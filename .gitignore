@@ -37,3 +37,6 @@ packages/*/src/**/*.d.ts
 # AI agent worktrees
 .claude/worktrees/
 .fallow/
+
+# AI call traces (local observability log, not for git)
+.ai-trace/

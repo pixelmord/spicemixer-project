@@ -28,7 +28,7 @@ import {
   savePairingMeta as libSavePairingMeta,
 } from "@/lib/pairings.ts";
 import { NotFoundError } from "@/lib/errors.ts";
-import { AiError, type AiEvent } from "content-ai";
+import { AiError, withOrigin, type AiEvent } from "content-ai";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -663,7 +663,13 @@ export const server = {
   aiExtractRecipe: defineAction({
     accept: "form",
     input: fileOrTextInput,
-    handler: async (input) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiExtractRecipe",
+      entityKind: "recipe",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async (input) => {
       const config = resolveAiConfig();
       const { extractRecipeFromFile } = await import("content-ai");
       const debug = isDebug(input.debug);
@@ -675,14 +681,20 @@ export const server = {
       } catch (e) {
         throw aiErrorToActionError(e, "Recipe extraction failed");
       }
-    },
+    }),
   }),
 
   /** Extract an Ingredient from an uploaded file (PDF/image/text) or pasted text. */
   aiExtractIngredient: defineAction({
     accept: "form",
     input: fileOrTextInput,
-    handler: async (input) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiExtractIngredient",
+      entityKind: "ingredient",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async (input) => {
       const config = resolveAiConfig();
       const { extractIngredientFromFile } = await import("content-ai");
       const debug = isDebug(input.debug);
@@ -694,7 +706,7 @@ export const server = {
       } catch (e) {
         throw aiErrorToActionError(e, "Ingredient extraction failed");
       }
-    },
+    }),
   }),
 
   /** Generate a new Recipe from a prompt. */
@@ -706,7 +718,13 @@ export const server = {
       style: z.enum(["recipe", "mixture"]).default("recipe"),
       debug: z.boolean().optional(),
     }),
-    handler: async ({ prompt, locale, style, debug }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiGenerateRecipe",
+      entityKind: "recipe",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ prompt, locale, style, debug }) => {
       const config = resolveAiConfig();
       const { generateRecipeFromPrompt } = await import("content-ai");
       try {
@@ -717,7 +735,7 @@ export const server = {
       } catch (e) {
         throw aiErrorToActionError(e, "Recipe generation failed");
       }
-    },
+    }),
   }),
 
   /** Merge new content into an existing recipe and return the proposed merged version. */
@@ -732,7 +750,13 @@ export const server = {
       prompt: z.string().optional(),
       debug: z.string().optional(),
     }),
-    handler: async ({ existing, sourceKind, file, mimeType, text, prompt, debug }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiMergeRecipe",
+      entityKind: "recipe",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ existing, sourceKind, file, mimeType, text, prompt, debug }) => {
       const config = resolveAiConfig();
       const { mergeRecipe } = await import("content-ai");
       const existingRecipe = JSON.parse(existing) as Record<string, unknown>;
@@ -745,7 +769,7 @@ export const server = {
       } catch (e) {
         throw aiErrorToActionError(e, "Recipe merge failed");
       }
-    },
+    }),
   }),
 
   // ──────────────────────────────────────────────
@@ -759,7 +783,13 @@ export const server = {
       recipeIngredients: z.array(z.string()),
       locale: z.enum(["en", "de"]).default("en"),
     }),
-    handler: async ({ recipeIngredients, locale }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiProposeIngredientLinks",
+      entityKind: "recipe",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ recipeIngredients, locale }) => {
       const config = resolveAiConfig();
       const store = await createStore();
       const items = await store.list("ingredients");
@@ -774,7 +804,7 @@ export const server = {
         });
       const { proposeIngredientLinks } = await import("content-ai");
       return proposeIngredientLinks(recipeIngredients, inventory, config);
-    },
+    }),
   }),
 
   /** Propose tags for a recipe. */
@@ -783,7 +813,13 @@ export const server = {
     input: z.object({
       recipe: z.record(z.string(), z.unknown()),
     }),
-    handler: async ({ recipe }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiProposeTags",
+      entityKind: "recipe",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ recipe }) => {
       const config = resolveAiConfig();
       const store = await createStore();
       const metas = await store.list("meta");
@@ -794,7 +830,7 @@ export const server = {
       }
       const { proposeTags } = await import("content-ai");
       return proposeTags(recipe as never, Array.from(tagSet), config);
-    },
+    }),
   }),
 
   /** Propose values for missing/weak recipe fields. */
@@ -804,11 +840,17 @@ export const server = {
       recipe: z.record(z.string(), z.unknown()),
       missingFields: z.array(z.string()),
     }),
-    handler: async ({ recipe, missingFields }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiProposeRecipeImprovements",
+      entityKind: "recipe",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ recipe, missingFields }) => {
       const config = resolveAiConfig();
       const { proposeRecipeImprovements } = await import("content-ai");
       return proposeRecipeImprovements(recipe as never, missingFields, config);
-    },
+    }),
   }),
 
   /** Draft a translation of recipe text fields into targetLocale. */
@@ -819,11 +861,17 @@ export const server = {
       sourceLocale: z.enum(["en", "de"]),
       targetLocale: z.enum(["en", "de"]),
     }),
-    handler: async ({ recipe, sourceLocale, targetLocale }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiTranslateRecipe",
+      entityKind: "recipe",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ recipe, sourceLocale, targetLocale }) => {
       const config = resolveAiConfig();
       const { proposeRecipeTranslation } = await import("content-ai");
       return proposeRecipeTranslation(recipe as never, sourceLocale, targetLocale, config);
-    },
+    }),
   }),
 
   // ──────────────────────────────────────────────
@@ -837,7 +885,13 @@ export const server = {
       ingredient: z.record(z.string(), z.unknown()),
       locale: z.enum(["en", "de"]).default("en"),
     }),
-    handler: async ({ ingredient, locale }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiProposeIngredientPairings",
+      entityKind: "ingredient",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ ingredient, locale }) => {
       const config = resolveAiConfig();
       const store = await createStore();
       const items = await store.list("ingredients");
@@ -852,7 +906,7 @@ export const server = {
         });
       const { proposeIngredientPairings } = await import("content-ai");
       return proposeIngredientPairings(ingredient as never, inventory, config);
-    },
+    }),
   }),
 
   /** Propose values for missing ingredient fields. */
@@ -862,11 +916,17 @@ export const server = {
       ingredient: z.record(z.string(), z.unknown()),
       missingFields: z.array(z.string()),
     }),
-    handler: async ({ ingredient, missingFields }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiProposeIngredientImprovements",
+      entityKind: "ingredient",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ ingredient, missingFields }) => {
       const config = resolveAiConfig();
       const { proposeIngredientImprovements } = await import("content-ai");
       return proposeIngredientImprovements(ingredient as never, missingFields, config);
-    },
+    }),
   }),
 
   /** Draft a translation of ingredient text fields into targetLocale. */
@@ -877,11 +937,17 @@ export const server = {
       sourceLocale: z.enum(["en", "de"]),
       targetLocale: z.enum(["en", "de"]),
     }),
-    handler: async ({ ingredient, sourceLocale, targetLocale }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiTranslateIngredient",
+      entityKind: "ingredient",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ ingredient, sourceLocale, targetLocale }) => {
       const config = resolveAiConfig();
       const { proposeIngredientTranslation } = await import("content-ai");
       return proposeIngredientTranslation(ingredient as never, sourceLocale, targetLocale, config);
-    },
+    }),
   }),
 
   /** Merge new content into an existing ingredient and return the proposed merged version. */
@@ -895,7 +961,13 @@ export const server = {
       text: z.string().optional(),
       prompt: z.string().optional(),
     }),
-    handler: async ({ existing, sourceKind, file, mimeType, text, prompt }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiMergeIngredient",
+      entityKind: "ingredient",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ existing, sourceKind, file, mimeType, text, prompt }) => {
       const config = resolveAiConfig();
       const { mergeIngredient } = await import("content-ai");
       const existingIngredient = JSON.parse(existing) as Record<string, unknown>;
@@ -905,7 +977,7 @@ export const server = {
         config,
       );
       return { ...result, model: config.model };
-    },
+    }),
   }),
 
   /**
@@ -921,7 +993,13 @@ export const server = {
       existingMeta: z.record(z.string(), z.unknown()).optional(),
       missingFields: z.array(z.string()).default([]),
     }),
-    handler: async ({ locale, slug, ingredient, existingMeta = {}, missingFields }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiRefreshIngredientSuggestions",
+      entityKind: "ingredient",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ locale, slug, ingredient, existingMeta = {}, missingFields }) => {
       const config = resolveAiConfig();
       const { createAiEventLog } = await import("content-ai");
       const { runAiRefresh } = await import("@/lib/ai/runner.ts");
@@ -939,7 +1017,7 @@ export const server = {
         eventLog: createAiEventLog(sidecar),
         config,
       });
-    },
+    }),
   }),
 
   /**
@@ -954,7 +1032,13 @@ export const server = {
       sourceLocale: z.enum(["en", "de"]),
       targetLocale: z.enum(["en", "de"]),
     }),
-    handler: async ({ slug, ingredient, sourceLocale, targetLocale }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiCreateIngredientTranslation",
+      entityKind: "ingredient",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ slug, ingredient, sourceLocale, targetLocale }) => {
       const config = resolveAiConfig();
       const { proposeIngredientTranslation } = await import("content-ai");
       const store = await createStore();
@@ -999,14 +1083,20 @@ export const server = {
       });
 
       return { ok: true, slug, targetLocale };
-    },
+    }),
   }),
 
   /** Extract a Pairing from an uploaded file (PDF/image/text). */
   aiExtractPairing: defineAction({
     accept: "form",
     input: fileOrTextInput,
-    handler: async (input) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiExtractPairing",
+      entityKind: "pairing",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async (input) => {
       const config = resolveAiConfig();
       const { extractPairingFromFile } = await import("content-ai");
       const debug = isDebug(input.debug);
@@ -1021,7 +1111,7 @@ export const server = {
       } catch (e) {
         throw aiErrorToActionError(e, "Pairing extraction failed");
       }
-    },
+    }),
   }),
 
   /** Merge new content into an existing pairing description and return the proposed version. */
@@ -1036,7 +1126,13 @@ export const server = {
       text: z.string().optional(),
       prompt: z.string().optional(),
     }),
-    handler: async ({ existing, locale, sourceKind, file, mimeType, text, prompt }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiMergePairing",
+      entityKind: "pairing",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ existing, locale, sourceKind, file, mimeType, text, prompt }) => {
       const config = resolveAiConfig();
       const { mergePairing } = await import("content-ai");
       const existingData = JSON.parse(existing) as Record<string, unknown>;
@@ -1046,7 +1142,7 @@ export const server = {
         config,
       );
       return { ...result, model: config.model };
-    },
+    }),
   }),
 
   /** Translate a pairing description into targetLocale and save it in the descriptions map. */
@@ -1057,7 +1153,13 @@ export const server = {
       sourceLocale: z.enum(["en", "de"]),
       targetLocale: z.enum(["en", "de"]),
     }),
-    handler: async ({ id, sourceLocale, targetLocale }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiTranslatePairing",
+      entityKind: "pairing",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ id, sourceLocale, targetLocale }) => {
       const config = resolveAiConfig();
       const { proposePairingTranslation } = await import("content-ai");
       const store = await createStore();
@@ -1091,13 +1193,13 @@ export const server = {
         config,
       );
 
-      const updatedDescriptions = {
+      const updatedDescriptions: Record<string, string> = {
         ...descriptions,
         [targetLocale]: result.fields["description"] ?? sourceDescription,
       };
       await store.put("pairings", id, { ingredients: ings, descriptions: updatedDescriptions });
       return { ok: true, description: updatedDescriptions[targetLocale] };
-    },
+    }),
   }),
 
   /** Refresh AI improvement suggestions for a pairing description in a given locale. */
@@ -1108,7 +1210,13 @@ export const server = {
       locale: z.string().length(2).default("en"),
       pairing: z.record(z.string(), z.unknown()),
     }),
-    handler: async ({ id, locale, pairing }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiRefreshPairingSuggestions",
+      entityKind: "pairing",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ id, locale, pairing }) => {
       const config = resolveAiConfig();
       const { createAiEventLog } = await import("content-ai");
       const { runAiRefresh } = await import("@/lib/ai/runner.ts");
@@ -1125,7 +1233,7 @@ export const server = {
         eventLog: createAiEventLog(sidecar),
         config,
       });
-    },
+    }),
   }),
 
   /** Check whether a slug is available in a given collection. */
@@ -1197,7 +1305,12 @@ export const server = {
       locale: z.string().length(2).default("en"),
       collection: recipeCollectionEnum,
     }),
-    handler: async ({ name, locale, collection }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiSuggestSlug",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ name, locale, collection }) => {
       const config = resolveAiConfig();
       const { proposeSlug } = await import("content-ai");
       const store = await createStore();
@@ -1216,7 +1329,7 @@ export const server = {
         slug = `${slug}-${i}`;
       }
       return { slug };
-    },
+    }),
   }),
 
   /**
@@ -1235,7 +1348,13 @@ export const server = {
       locale: z.enum(["en", "de"]).default("en"),
       force: z.boolean().default(false),
     }),
-    handler: async ({ collection, slug, recipe, meta, missingFields, locale, force }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiRefreshSuggestions",
+      entityKind: "recipe",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ collection, slug, recipe, meta, missingFields, locale, force }) => {
       const config = resolveAiConfig();
       const { createAiEventLog } = await import("content-ai");
       const { runAiRefresh } = await import("@/lib/ai/runner.ts");
@@ -1254,7 +1373,7 @@ export const server = {
         config,
         force,
       });
-    },
+    }),
   }),
 
   /**
@@ -1272,15 +1391,13 @@ export const server = {
       targetLocale: z.enum(["en", "de"]),
       translationSlug: z.string().min(1),
     }),
-    handler: async ({
-      collection,
-      slug,
-      recipe,
-      meta,
-      sourceLocale,
-      targetLocale,
-      translationSlug,
-    }) => {
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiCreateTranslation",
+      entityKind: "recipe",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ collection, slug, recipe, meta, sourceLocale, targetLocale, translationSlug }) => {
       const config = resolveAiConfig();
       const { proposeRecipeTranslation } = await import("content-ai");
       const store = await createStore();
@@ -1333,7 +1450,7 @@ export const server = {
       );
 
       return { ok: true, translationSlug };
-    },
+    }),
   }),
 
   /** Create a minimal recipe stub (name only) for inline "create new" flow. */

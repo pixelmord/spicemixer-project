@@ -12,6 +12,7 @@ export const aiEventSchema = z.object({
   confidence: z.enum(["high", "medium", "low"]).optional(),
   source: z.string().optional(),
   reason: z.string().optional(),
+  traceId: z.string().optional(),
 });
 
 export type AiEvent = z.infer<typeof aiEventSchema>;
