@@ -30,6 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge.tsx";
 import { cn } from "@/lib/utils.ts";
 import SourcePicker, { type Source, type SourceMode } from "./SourcePicker.tsx";
+import CapabilityLabel from "./CapabilityLabel.tsx";
 
 type ContentType = "recipe" | "ingredient" | "pairing";
 type RecipeCollection = "recipes" | "mixtures";
@@ -270,6 +271,15 @@ export default function AiComposeForm() {
           ? "Extract pairing"
           : "Extract ingredient";
 
+  const loadingAction =
+    tab === "prompt" && contentType === "recipe"
+      ? "aiGenerateRecipe"
+      : contentType === "recipe"
+        ? "aiExtractRecipe"
+        : contentType === "ingredient"
+          ? "aiExtractIngredient"
+          : "aiExtractPairing";
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
@@ -396,7 +406,7 @@ export default function AiComposeForm() {
             {loading ? (
               <>
                 <Loader2 size={14} className="animate-spin mr-1" />
-                Working…
+                <CapabilityLabel action={loadingAction} />
               </>
             ) : (
               <>

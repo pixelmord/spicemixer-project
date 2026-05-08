@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { cn } from "@/lib/utils.ts";
+import CapabilityLabel from "./CapabilityLabel.tsx";
 import {
   hashSuggestion,
   filterSuggestions,
@@ -655,6 +656,21 @@ function AiAssistResults({
 
 type Op = "links" | "tags" | "improve" | "translate" | "pairings";
 
+function opToAction(op: Op, isRecipe: boolean): string {
+  switch (op) {
+    case "links":
+      return "aiProposeIngredientLinks";
+    case "tags":
+      return "aiProposeTags";
+    case "improve":
+      return isRecipe ? "aiProposeRecipeImprovements" : "aiProposeIngredientImprovements";
+    case "translate":
+      return isRecipe ? "aiTranslateRecipe" : "aiTranslateIngredient";
+    case "pairings":
+      return "aiProposeIngredientPairings";
+  }
+}
+
 export default function AiAssistPanel(props: AiAssistPanelProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState<Op | null>(null);
@@ -833,6 +849,13 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
               onClick={() => run("translate")}
             />
           </div>
+
+          {loading && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 size={11} className="animate-spin shrink-0" />
+              <CapabilityLabel action={opToAction(loading, isRecipe)} />
+            </div>
+          )}
 
           {result && (
             <AiAssistResults
