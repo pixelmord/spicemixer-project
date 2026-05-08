@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, test } from "vite-plus/test";
 const WEBSITE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const COMPONENTS = join(WEBSITE_ROOT, "src", "components");
 const PAGES = join(WEBSITE_ROOT, "src", "pages");
+const LIB = join(WEBSITE_ROOT, "src", "lib");
 
 describe("TranslationFallbackBanner component", () => {
   let bannerSrc: string;
@@ -37,12 +38,14 @@ describe("Fallback banner wired into ingredient detail pages", () => {
   let enPageSrc: string;
   let dePageSrc: string;
   let sharedComponentSrc: string;
+  let factorySrc: string;
 
   beforeAll(async () => {
-    [enPageSrc, dePageSrc, sharedComponentSrc] = await Promise.all([
+    [enPageSrc, dePageSrc, sharedComponentSrc, factorySrc] = await Promise.all([
       readFile(join(PAGES, "ingredients", "[slug].astro"), "utf-8"),
       readFile(join(PAGES, "de", "ingredients", "[slug].astro"), "utf-8"),
       readFile(join(COMPONENTS, "pages", "IngredientSlugPage.astro"), "utf-8"),
+      readFile(join(LIB, "static-paths", "ingredient-slug-paths.ts"), "utf-8"),
     ]);
   });
 
@@ -61,19 +64,23 @@ describe("Fallback banner wired into ingredient detail pages", () => {
   });
 
   test("EN ingredient page imports resolvePublished", () => {
-    expect(enPageSrc).toContain("resolvePublished");
+    expect(enPageSrc).toContain("ingredientSlugPaths");
+    expect(factorySrc).toContain("resolvePublished");
   });
 
   test("DE ingredient page imports resolvePublished", () => {
-    expect(dePageSrc).toContain("resolvePublished");
+    expect(dePageSrc).toContain("ingredientSlugPaths");
+    expect(factorySrc).toContain("resolvePublished");
   });
 
   test("DE page getStaticPaths passes 'de' locale to resolvePublished", () => {
-    expect(dePageSrc).toContain(`resolvePublished("ingredients", slug, "de")`);
+    expect(dePageSrc).toContain(`ingredientSlugPaths("de")`);
+    expect(factorySrc).toContain(`resolvePublished("ingredients", slug, locale)`);
   });
 
   test("EN page getStaticPaths passes 'en' locale to resolvePublished", () => {
-    expect(enPageSrc).toContain(`resolvePublished("ingredients", slug, "en")`);
+    expect(enPageSrc).toContain(`ingredientSlugPaths("en")`);
+    expect(factorySrc).toContain(`resolvePublished("ingredients", slug, locale)`);
   });
 });
 

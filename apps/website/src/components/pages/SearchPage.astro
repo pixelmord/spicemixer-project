@@ -1,0 +1,38 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { useTranslations, type Lang } from "../../i18n/translations.ts";
+
+const locale = Astro.currentLocale as Lang;
+const t = useTranslations(locale);
+const bundlePath = `/pagefind/${locale}/`;
+---
+
+<BaseLayout title={t("page.search.title")} description={t("page.search.description")}>
+  <main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8" data-pagefind-ignore>
+    <header class="mb-8">
+      <p class="text-xs font-semibold uppercase tracking-[0.3em] text-stone-500">Spicemixer</p>
+      <h1 class="mt-2 font-serif text-5xl leading-tight text-stone-900">
+        {t("nav.search")}
+      </h1>
+      <p class="mt-3 text-lg text-stone-600">{t("page.search.description")}</p>
+    </header>
+
+    <div id="search"></div>
+  </main>
+
+  <script is:inline define:vars={{ bundlePath }}>
+    (function () {
+      var link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = bundlePath + "pagefind-ui.css";
+      document.head.appendChild(link);
+
+      var script = document.createElement("script");
+      script.src = bundlePath + "pagefind-ui.js";
+      script.onload = function () {
+        new PagefindUI({ element: "#search", bundlePath: bundlePath });
+      };
+      document.head.appendChild(script);
+    })();
+  </script>
+</BaseLayout>

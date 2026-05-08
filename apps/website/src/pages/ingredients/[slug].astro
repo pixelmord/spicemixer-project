@@ -1,28 +1,9 @@
 ---
 import type { CollectionEntry } from "astro:content";
 import IngredientSlugPage from "../../components/pages/IngredientSlugPage.astro";
-import { getPublishedIngredients } from "../../lib/recipe-augment.ts";
-import { resolvePublished } from "../../lib/published-entity.ts";
+import { ingredientSlugPaths } from "../../lib/static-paths/ingredient-slug-paths.ts";
 
-export async function getStaticPaths() {
-  const canonicalIngredients = await getPublishedIngredients("en");
-  const paths = await Promise.all(
-    canonicalIngredients.map(async (enEntry) => {
-      const slug = enEntry.id.replace(/^en\//, "");
-      const resolved = await resolvePublished("ingredients", slug, "en");
-      if (!resolved) return null;
-      return {
-        params: { slug },
-        props: {
-          ingredient: resolved.entity as CollectionEntry<"ingredients">,
-          isFallback: resolved.isFallback,
-          canonicalLocale: resolved.canonicalLocale,
-        },
-      };
-    }),
-  );
-  return paths.filter((p): p is NonNullable<typeof p> => p !== null);
-}
+export const getStaticPaths = () => ingredientSlugPaths("en");
 
 interface Props {
   ingredient: CollectionEntry<"ingredients">;

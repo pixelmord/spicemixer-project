@@ -9,7 +9,7 @@ import { FEATURED_PAIRING_SLUG } from "../../lib/homepage.config.ts";
 import { getCollection } from "astro:content";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 
-const locale = (Astro.currentLocale ?? "en") as Lang;
+const locale = Astro.currentLocale as Lang;
 const t = useTranslations(locale);
 const prefix = locale === "de" ? "/de" : "";
 

@@ -1,47 +1,10 @@
 ---
-import { type CollectionEntry, getCollection } from "astro:content";
+import { type CollectionEntry } from "astro:content";
 import MixtureSlugPage from "../../components/pages/MixtureSlugPage.astro";
-import { getPublished, slugFromLocaleId } from "../../lib/recipe-augment.ts";
-import { MIXTURE_KINDS, MIXTURE_KIND_PLURALS, buildKindBySlug, type MixtureKind } from "../../lib/mixture-schema.ts";
-import { resolvePublished } from "../../lib/published-entity.ts";
+import { mixtureSlugPaths } from "../../lib/static-paths/mixture-slug-paths.ts";
+import type { MixtureKind } from "../../lib/mixture-schema.ts";
 
-export async function getStaticPaths() {
-  const rawMeta = await getCollection("meta");
-  const kindBySlug = buildKindBySlug(rawMeta);
-  const enMixtures = await getPublished("mixtures", "en");
-
-  const kindPaths = MIXTURE_KINDS.map((kind) => ({
-    params: { slug: MIXTURE_KIND_PLURALS[kind] },
-    props: {
-      kind,
-      kindMixtures: enMixtures.filter((m) => kindBySlug.get(m.id) === kind),
-      mix: null as CollectionEntry<"mixtures"> | null,
-      isFallback: false,
-      canonicalLocale: "en",
-    },
-  }));
-
-  const detailPathResults = await Promise.all(
-    enMixtures.map(async (entry) => {
-      const slug = slugFromLocaleId(entry.id);
-      const resolved = await resolvePublished("mixtures", slug, "en");
-      if (!resolved) return null;
-      return {
-        params: { slug },
-        props: {
-          kind: null as MixtureKind | null,
-          kindMixtures: null as CollectionEntry<"mixtures">[] | null,
-          mix: resolved.entity as CollectionEntry<"mixtures">,
-          isFallback: resolved.isFallback,
-          canonicalLocale: resolved.canonicalLocale,
-        },
-      };
-    }),
-  );
-  const detailPaths = detailPathResults.filter((p): p is NonNullable<typeof p> => p !== null);
-
-  return [...kindPaths, ...detailPaths];
-}
+export const getStaticPaths = () => mixtureSlugPaths("en");
 
 interface Props {
   mix: CollectionEntry<"mixtures"> | null;

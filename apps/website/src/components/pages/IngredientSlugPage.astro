@@ -23,7 +23,7 @@ const { ingredient, isFallback, canonicalLocale } = Astro.props;
 const data = ingredient.data;
 const slug = Astro.params.slug as string;
 
-const locale = (Astro.currentLocale ?? "en") as Lang;
+const locale = Astro.currentLocale as Lang;
 const t = useTranslations(locale);
 const prefix = locale === "de" ? "/de" : "";
 

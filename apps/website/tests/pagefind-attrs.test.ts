@@ -64,10 +64,10 @@ describe("Pagefind: recipe detail template (shared RecipeSlugPage component)", (
   });
 });
 
-describe("Pagefind: pairing detail template", () => {
+describe("Pagefind: pairing detail template (shared PairingSlugPage component)", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(PAGES, "pairings", "[slug].astro"), "utf-8");
+    src = await readFile(join(COMPONENTS, "pages", "PairingSlugPage.astro"), "utf-8");
   });
 
   test("imports withPagefindFilters", () => {
@@ -101,15 +101,21 @@ describe("Pagefind: SiteNav search link", () => {
 });
 
 describe("Pagefind: search pages exist", () => {
+  let sharedSrc: string;
+  beforeAll(async () => {
+    sharedSrc = await readFile(join(COMPONENTS, "pages", "SearchPage.astro"), "utf-8");
+  });
+
   test("EN search page exists and has Pagefind UI", async () => {
     const src = await readFile(join(PAGES, "search.astro"), "utf-8");
-    expect(src).toContain("pagefind");
-    expect(src).toContain("search");
+    expect(src).toContain("SearchPage");
+    expect(sharedSrc).toContain("pagefind");
   });
 
   test("DE search page exists and loads DE index", async () => {
     const src = await readFile(join(PAGES, "de", "search.astro"), "utf-8");
-    expect(src).toContain("pagefind");
-    expect(src).toContain("de");
+    expect(src).toContain("SearchPage");
+    expect(sharedSrc).toContain("pagefind");
+    expect(sharedSrc).toContain("currentLocale");
   });
 });

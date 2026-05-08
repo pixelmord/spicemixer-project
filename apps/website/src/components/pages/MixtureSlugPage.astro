@@ -34,7 +34,7 @@ interface Props {
 }
 
 const { mix, kind, kindMixtures, isFallback, canonicalLocale } = Astro.props;
-const locale = (Astro.currentLocale ?? "en") as Lang;
+const locale = Astro.currentLocale as Lang;
 const t = useTranslations(locale);
 const prefix = locale === "de" ? "/de" : "";
 const ingredientBase = `${prefix}/ingredients`;
