@@ -4,6 +4,7 @@ packages:
   - tools/*
 allowBuilds:
   "@parcel/watcher": true
+  better-sqlite3: true
   canvas: true
   esbuild: true
   msgpackr-extract: true
@@ -11,6 +12,7 @@ allowBuilds:
   sharp: true
 
 catalog:
+  evalite: ^0.19.0
   "@ai-hero/sandcastle": ^0.5.7
   "@sentry/node": ^9.0.0
   "@ai-sdk/openai": ^3.0.60
