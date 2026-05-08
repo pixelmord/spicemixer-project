@@ -1,9 +1,7 @@
 import type { TraceSink, TraceEvent, TraceFinishReason } from "./types.ts";
 
-// ─── SpanScalars ──────────────────────────────────────────────────────────────
-// Narrowed OTel-convention attribute bag. The `never` sentinels make it a
-// compile-time error to assign an object carrying banned body fields.
-
+// The `never` sentinels make it a compile-time error to assign an object
+// carrying banned body fields (prompts, responses) to SpanScalars.
 export type SpanScalars = {
   "gen_ai.request.model": string;
   "gen_ai.usage.input_tokens": number;
@@ -18,12 +16,9 @@ export type SpanScalars = {
   "origin.run_id": string;
   "origin.triggered_by": "editor" | "system";
   outcome: "ok" | "error";
-  // Banned body fields — assigning these causes a TS error.
   messages?: never;
   "response.text"?: never;
 };
-
-// ─── Scrub ────────────────────────────────────────────────────────────────────
 
 const BANNED_FIELDS = ["messages", "response.text"] as const;
 
@@ -51,9 +46,7 @@ export function scrub(event: TraceEvent): SpanScalars {
   };
 }
 
-// ─── Sampler ──────────────────────────────────────────────────────────────────
 // 100 % for errors / non-stop finish reasons; 25 % for clean successes.
-
 export function tracesSampler(
   scalars: Pick<SpanScalars, "outcome" | "gen_ai.finish_reason">,
 ): number {
@@ -62,8 +55,6 @@ export function tracesSampler(
   }
   return 0.25;
 }
-
-// ─── SentrySpanSink ───────────────────────────────────────────────────────────
 
 type SentrySpan = { end(): void };
 
@@ -74,7 +65,6 @@ interface RootEntry {
 
 export class SentrySpanSink implements TraceSink {
   private readonly rootSpans = new Map<string, RootEntry>();
-  /** How long (ms) to keep a root span open after the last child. */
   private readonly rootTtlMs: number;
 
   constructor(rootTtlMs = 30_000) {
@@ -88,10 +78,9 @@ export class SentrySpanSink implements TraceSink {
 
     if (Math.random() > tracesSampler(scalars)) return;
 
-    // Lazy-import to keep startup cost zero when Sentry is not installed.
+    // Lazy-import: zero startup cost when Sentry is absent.
     const { startInactiveSpan, withActiveSpan } = await import("@sentry/node");
 
-    // Reuse or create the root span for this runId.
     const existing = this.rootSpans.get(event.runId);
     if (existing) clearTimeout(existing.timer);
 
@@ -116,7 +105,6 @@ export class SentrySpanSink implements TraceSink {
 
     this.rootSpans.set(event.runId, { span: rootSpan, timer });
 
-    // Emit the per-call child span under the root.
     const attrs: Record<string, string | number | boolean> = {};
     for (const [k, v] of Object.entries(scalars)) {
       if (v !== undefined && v !== null) {

@@ -1,12 +1,5 @@
-// Sentry initialization for the website app.
-//
-// The auto OpenAI/AI SDK integration is intentionally not registered here.
-// All AI observability flows through our custom tracingMiddleware + SentrySpanSink,
-// which emits only scalar OTel gen_ai.* attributes (no prompts or responses).
-//
-// recordInputs / recordOutputs are left at their SDK defaults (false when the
-// integration is absent) — no body data ever reaches Sentry.
-
+// No prompt or response body data reaches Sentry — AI observability uses
+// only scalar OTel gen_ai.* attributes via SentrySpanSink.
 export async function initSentry(): Promise<void> {
   const dsn = process.env["SENTRY_DSN"];
   if (!dsn) return;
