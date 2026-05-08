@@ -21,6 +21,7 @@ interface Props {
   bonusFields?: { key: string; label: string; filled: boolean }[];
   aiSuggestions?: AiSuggestion[];
   aiRefreshing?: boolean;
+  activeProposers?: string[];
   onRefreshSuggestions?: () => void;
   onApplySuggestion?: (field: string, value: string) => void;
   onDismissSuggestion?: (field: string) => void;
@@ -38,6 +39,7 @@ export default function CompletenessPanel({
   bonusFields = [],
   aiSuggestions = [],
   aiRefreshing = false,
+  activeProposers = [],
   onRefreshSuggestions,
   onApplySuggestion,
   onDismissSuggestion,
@@ -126,7 +128,21 @@ export default function CompletenessPanel({
             )}
           </div>
           {aiRefreshing && !aiSuggestions.length && (
-            <p className="text-xs text-muted-foreground italic">Computing…</p>
+            <div className="space-y-0.5">
+              {activeProposers.length > 0 ? (
+                activeProposers.map((name) => (
+                  <p
+                    key={name}
+                    className="flex items-center gap-1 text-xs text-muted-foreground italic"
+                  >
+                    <Loader2 size={9} className="animate-spin shrink-0" />
+                    {name}…
+                  </p>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Computing…</p>
+              )}
+            </div>
           )}
           <ul className="space-y-1">
             {aiSuggestions.map((s) => (

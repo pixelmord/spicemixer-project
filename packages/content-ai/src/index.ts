@@ -97,5 +97,9 @@ export {
   withOrigin,
   tracingMiddleware,
   FileTraceSink,
+  PubSubTraceSink,
 } from "./trace/index.ts";
 export type { Origin, OriginConfig, TraceSink, TraceEvent } from "./trace/index.ts";
+
+export { subscribe, publish } from "./pubsub.ts";
+export type { PubSubEvent } from "./pubsub.ts";

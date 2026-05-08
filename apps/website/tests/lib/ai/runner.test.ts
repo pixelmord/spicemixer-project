@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { InMemoryStore } from "../../../src/lib/stores/in-memory.ts";
 import { createMetaSidecar } from "../../../src/lib/meta-sidecar.ts";
 import { runAiRefresh } from "../../../src/lib/ai/runner.ts";
-import type { AiConfig } from "content-ai";
-import { createAiEventLog, hashContent } from "content-ai";
+import type { AiConfig, PubSubEvent } from "content-ai";
+import { createAiEventLog, hashContent, runWithOrigin, subscribe } from "content-ai";
 
 // Stub content-ai proposers to avoid network calls; keep real event/hash utilities.
 vi.mock("content-ai", async (importOriginal) => {
@@ -484,6 +484,88 @@ describe("runAiRefresh pairing", () => {
     const rejectedContext = callArgs[3];
     expect(typeof rejectedContext).toBe("string");
     expect((rejectedContext as string).length).toBeGreaterThan(0);
+  });
+});
+
+// ── Proposer progress events ──────────────────────────────────────────────────
+
+describe("runAiRefresh recipe: proposer progress events", () => {
+  test("emits proposer:start and proposer:done events to pubsub when origin is set", async () => {
+    const { store, sidecar, eventLog } = makeEnv();
+    const metaRef = { collection: "recipes" as const, locale: "en", slug: "ramen" };
+    const runId = "progress-test-run";
+
+    const events: PubSubEvent[] = [];
+    const unsub = subscribe(runId, (e) => events.push(e));
+
+    await runWithOrigin(
+      {
+        surface: "admin",
+        action: "aiRefreshSuggestions",
+        triggeredBy: "editor",
+        userInitiated: true,
+        runId,
+      },
+      () =>
+        runAiRefresh({
+          kind: "recipe",
+          metaRef,
+          payload: { name: "Ramen", recipeIngredient: ["noodles"] },
+          missingFields: ["description"],
+          locale: "en",
+          store,
+          sidecar,
+          eventLog,
+          config: CONFIG,
+          existingMeta: {},
+          force: true,
+        }),
+    );
+
+    unsub();
+
+    const startEvents = events.filter((e) => e["type"] === "proposer:start");
+    const doneEvents = events.filter((e) => e["type"] === "proposer:done");
+
+    expect(startEvents.length).toBeGreaterThan(0);
+    expect(doneEvents.length).toBeGreaterThan(0);
+    // Every started proposer has a matching done event
+    const startedNames = new Set(startEvents.map((e) => e["name"]));
+    const doneNames = new Set(doneEvents.map((e) => e["name"]));
+    for (const name of startedNames) {
+      expect(doneNames.has(name)).toBe(true);
+    }
+  });
+
+  test("does not throw if no pubsub subscriber is present", async () => {
+    const { store, sidecar, eventLog } = makeEnv();
+    const metaRef = { collection: "recipes" as const, locale: "en", slug: "ramen-no-sub" };
+
+    await expect(
+      runWithOrigin(
+        {
+          surface: "admin",
+          action: "aiRefreshSuggestions",
+          triggeredBy: "editor",
+          userInitiated: true,
+          runId: "no-subscriber-run",
+        },
+        () =>
+          runAiRefresh({
+            kind: "recipe",
+            metaRef,
+            payload: { name: "Ramen" },
+            missingFields: [],
+            locale: "en",
+            store,
+            sidecar,
+            eventLog,
+            config: CONFIG,
+            existingMeta: {},
+            force: true,
+          }),
+      ),
+    ).resolves.toBeDefined();
   });
 });
 
