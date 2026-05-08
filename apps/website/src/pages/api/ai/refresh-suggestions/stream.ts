@@ -1,19 +1,10 @@
 import type { APIRoute } from "astro";
-import { runWithOrigin, subscribe, createAiEventLog } from "content-ai";
+import { runWithOrigin, subscribe, createAiEventLog, resolveConfig } from "content-ai";
 import { createStore } from "@/lib/content-store.ts";
 import { createMetaSidecar } from "@/lib/meta-sidecar.ts";
 import { runAiRefresh } from "@/lib/ai/runner.ts";
 
 export const prerender = false;
-
-function resolveConfig() {
-  const apiKey = process.env["AI_API_KEY"] ?? process.env["OPENAI_API_KEY"] ?? "";
-  return {
-    baseUrl: process.env["AI_BASE_URL"] ?? "https://api.openai.com/v1",
-    apiKey,
-    model: process.env["AI_MODEL"] ?? "gpt-4o-mini",
-  };
-}
 
 function sse(data: unknown): Uint8Array {
   return new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);
@@ -72,14 +63,14 @@ export const POST: APIRoute = async ({ request }) => {
             runAiRefresh({
               kind: "recipe",
               metaRef: {
-                collection: collection as string,
-                locale: (locale as string) ?? "en",
-                slug: slug as string,
+                collection,
+                locale: locale ?? "en",
+                slug,
               },
               payload: recipe,
               existingMeta: meta ?? {},
               missingFields: missingFields ?? [],
-              locale: (locale as string) ?? "en",
+              locale: locale ?? "en",
               store,
               sidecar,
               eventLog,

@@ -22,6 +22,7 @@ import type { RecipeCollection } from "@/lib/content-store.ts";
 import { MIXTURE_KINDS, type MixtureKind } from "@/lib/mixture-schema.ts";
 import { useEntityFormState } from "@/hooks/useEntityFormState.ts";
 import { buildPayload } from "@/lib/entity-form-payload.ts";
+import { readSSE } from "@/lib/sse.ts";
 interface AiSuggestion {
   field: string;
   suggestion: string;
@@ -768,39 +769,21 @@ export default function RecipeForm({
     if (!response.ok || !response.body) {
       throw new Error("Refresh stream failed");
     }
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop() ?? "";
-      for (const part of parts) {
-        const line = part.trim();
-        if (!line.startsWith("data: ")) continue;
-        let event: Record<string, unknown>;
-        try {
-          event = JSON.parse(line.slice(6)) as Record<string, unknown>;
-        } catch {
-          continue;
-        }
-        if (event["type"] === "proposer:start") {
-          const name = typeof event["name"] === "string" ? event["name"] : "";
-          setActiveProposers((prev) => (prev.includes(name) ? prev : [...prev, name]));
-        } else if (event["type"] === "proposer:done") {
-          const name = typeof event["name"] === "string" ? event["name"] : "";
-          setActiveProposers((prev) => prev.filter((p) => p !== name));
-        } else if (event["type"] === "complete") {
-          const result = event["result"] as
-            | { aiSuggestions: AiSuggestions; autoLinked: number; autoAppliedLinks?: string[] }
-            | undefined;
-          if (result) onResult(result);
-        } else if (event["type"] === "error") {
-          const msg = typeof event["message"] === "string" ? event["message"] : "Refresh failed";
-          throw new Error(msg);
-        }
+    for await (const event of readSSE(response.body)) {
+      if (event["type"] === "proposer:start") {
+        const name = typeof event["name"] === "string" ? event["name"] : "";
+        setActiveProposers((prev) => (prev.includes(name) ? prev : [...prev, name]));
+      } else if (event["type"] === "proposer:done") {
+        const name = typeof event["name"] === "string" ? event["name"] : "";
+        setActiveProposers((prev) => prev.filter((p) => p !== name));
+      } else if (event["type"] === "complete") {
+        const result = event["result"] as
+          | { aiSuggestions: AiSuggestions; autoLinked: number; autoAppliedLinks?: string[] }
+          | undefined;
+        if (result) onResult(result);
+      } else if (event["type"] === "error") {
+        const msg = typeof event["message"] === "string" ? event["message"] : "Refresh failed";
+        throw new Error(msg);
       }
     }
     setActiveProposers([]);

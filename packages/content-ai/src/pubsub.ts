@@ -8,15 +8,16 @@ type Subscriber = (event: PubSubEvent) => void;
 const channels = new Map<string, Set<Subscriber>>();
 
 export function subscribe(runId: string, cb: Subscriber): () => void {
-  let s = channels.get(runId);
-  if (!s) {
-    s = new Set();
-    channels.set(runId, s);
+  let subs = channels.get(runId);
+  if (!subs) {
+    subs = new Set();
+    channels.set(runId, subs);
   }
-  s.add(cb);
+  subs.add(cb);
+  const captured = subs;
   return () => {
-    s!.delete(cb);
-    if (!s!.size) channels.delete(runId);
+    captured.delete(cb);
+    if (!captured.size) channels.delete(runId);
   };
 }
 

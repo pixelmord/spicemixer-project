@@ -1,16 +1,7 @@
 import type { APIRoute } from "astro";
-import { runWithOrigin, subscribe, generateRecipeFromPrompt } from "content-ai";
+import { runWithOrigin, subscribe, generateRecipeFromPrompt, resolveConfig } from "content-ai";
 
 export const prerender = false;
-
-function resolveConfig() {
-  const apiKey = process.env["AI_API_KEY"] ?? process.env["OPENAI_API_KEY"] ?? "";
-  return {
-    baseUrl: process.env["AI_BASE_URL"] ?? "https://api.openai.com/v1",
-    apiKey,
-    model: process.env["AI_MODEL"] ?? "gpt-4o-mini",
-  };
-}
 
 function sse(data: unknown): Uint8Array {
   return new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`);

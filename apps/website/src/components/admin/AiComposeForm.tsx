@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { cn } from "@/lib/utils.ts";
+import { readSSE } from "@/lib/sse.ts";
 import SourcePicker, { type Source, type SourceMode } from "./SourcePicker.tsx";
 import CapabilityLabel from "./CapabilityLabel.tsx";
 
@@ -135,7 +136,6 @@ async function generateRecipe(
   prompt: string,
   locale: Locale,
   collection: RecipeCollection,
-  _debug: boolean,
   onPartial?: (partial: Record<string, unknown>) => void,
 ): Promise<SubmitResult> {
   const response = await fetch("/api/ai/generate-recipe/stream", {
@@ -152,38 +152,19 @@ async function generateRecipe(
     throw new Error(`Generation failed: ${response.statusText}`);
   }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.split("\n\n");
-    buffer = parts.pop() ?? "";
-    for (const part of parts) {
-      const line = part.trim();
-      if (!line.startsWith("data: ")) continue;
-      let event: Record<string, unknown>;
-      try {
-        event = JSON.parse(line.slice(6)) as Record<string, unknown>;
-      } catch {
-        continue;
-      }
-      if (event["type"] === "partial" && onPartial) {
-        onPartial(event["recipe"] as Record<string, unknown>);
-      } else if (event["type"] === "complete") {
-        const result = event["result"] as { recipe: Record<string, unknown>; warnings: string[] };
-        return {
-          result: result.recipe,
-          warnings: result.warnings ?? [],
-          successMessage: "Recipe generated!",
-        };
-      } else if (event["type"] === "error") {
-        const msg = typeof event["message"] === "string" ? event["message"] : "Generation failed";
-        throw new Error(msg);
-      }
+  for await (const event of readSSE(response.body)) {
+    if (event["type"] === "partial" && onPartial) {
+      onPartial(event["recipe"] as Record<string, unknown>);
+    } else if (event["type"] === "complete") {
+      const result = event["result"] as { recipe: Record<string, unknown>; warnings: string[] };
+      return {
+        result: result.recipe,
+        warnings: result.warnings ?? [],
+        successMessage: "Recipe generated!",
+      };
+    } else if (event["type"] === "error") {
+      const msg = typeof event["message"] === "string" ? event["message"] : "Generation failed";
+      throw new Error(msg);
     }
   }
 
@@ -271,7 +252,6 @@ export default function AiComposeForm() {
               (source as { prompt: string }).prompt,
               locale,
               collection,
-              debugMode,
               (partial) => setPartialRecipe(partial),
             )
           : await extractContent(contentType, source, debugMode);
