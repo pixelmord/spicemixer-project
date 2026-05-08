@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { cn } from "@/lib/utils.ts";
+import { readSSE } from "@/lib/sse.ts";
 import SourcePicker, { type Source, type SourceMode } from "./SourcePicker.tsx";
 import CapabilityLabel from "./CapabilityLabel.tsx";
 
@@ -135,21 +136,39 @@ async function generateRecipe(
   prompt: string,
   locale: Locale,
   collection: RecipeCollection,
-  debug: boolean,
+  onPartial?: (partial: Record<string, unknown>) => void,
 ): Promise<SubmitResult> {
-  const { data, error } = await actions.aiGenerateRecipe({
-    prompt,
-    locale,
-    style: collection === "recipes" ? "recipe" : "mixture",
-    debug,
+  const response = await fetch("/api/ai/generate-recipe/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      locale,
+      style: collection === "recipes" ? "recipe" : "mixture",
+    }),
   });
-  if (error || !data) throw new Error(error?.message ?? "Generation failed");
-  return {
-    result: data.recipe as Record<string, unknown>,
-    warnings: data.warnings,
-    successMessage: "Recipe generated!",
-    debug: (data as { debug?: AiDebugInfo }).debug,
-  };
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Generation failed: ${response.statusText}`);
+  }
+
+  for await (const event of readSSE(response.body)) {
+    if (event["type"] === "partial" && onPartial) {
+      onPartial(event["recipe"] as Record<string, unknown>);
+    } else if (event["type"] === "complete") {
+      const result = event["result"] as { recipe: Record<string, unknown>; warnings: string[] };
+      return {
+        result: result.recipe,
+        warnings: result.warnings ?? [],
+        successMessage: "Recipe generated!",
+      };
+    } else if (event["type"] === "error") {
+      const msg = typeof event["message"] === "string" ? event["message"] : "Generation failed";
+      throw new Error(msg);
+    }
+  }
+
+  throw new Error("Stream ended without a complete event");
 }
 
 async function extractContent(
@@ -202,12 +221,14 @@ export default function AiComposeForm() {
   const [source, setSource] = useState<Source | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [partialRecipe, setPartialRecipe] = useState<Record<string, unknown> | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [debug, setDebug] = useState<AiDebugInfo | null>(null);
   const [error, setError] = useState<ErrorState | null>(null);
 
   function reset() {
     setResult(null);
+    setPartialRecipe(null);
     setError(null);
     setWarnings([]);
     setDebug(null);
@@ -222,6 +243,7 @@ export default function AiComposeForm() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setPartialRecipe(null);
     setDebug(null);
     try {
       const submitted =
@@ -230,9 +252,10 @@ export default function AiComposeForm() {
               (source as { prompt: string }).prompt,
               locale,
               collection,
-              debugMode,
+              (partial) => setPartialRecipe(partial),
             )
           : await extractContent(contentType, source, debugMode);
+      setPartialRecipe(null);
       setResult(submitted.result);
       setWarnings(submitted.warnings);
       if (submitted.debug) setDebug(submitted.debug);
@@ -529,6 +552,32 @@ export default function AiComposeForm() {
                 </pre>
               </details>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Live recipe preview while generating */}
+      {loading && partialRecipe && tab === "prompt" && contentType === "recipe" && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <Loader2 size={12} className="animate-spin" />
+              Generating…
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm">
+            {typeof partialRecipe["name"] === "string" && partialRecipe["name"] && (
+              <p className="font-semibold">{partialRecipe["name"]}</p>
+            )}
+            {typeof partialRecipe["description"] === "string" && partialRecipe["description"] && (
+              <p className="text-muted-foreground line-clamp-3">{partialRecipe["description"]}</p>
+            )}
+            {Array.isArray(partialRecipe["recipeIngredient"]) &&
+              (partialRecipe["recipeIngredient"] as string[]).length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {(partialRecipe["recipeIngredient"] as string[]).length} ingredients so far…
+                </p>
+              )}
           </CardContent>
         </Card>
       )}

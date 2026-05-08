@@ -1,8 +1,10 @@
-import { generateText, Output } from "ai";
+import { streamObject } from "ai";
 import { createProvider, PROVIDER_OPTIONS, type AiConfig } from "./provider.ts";
-import { debugFromResult, toAiError, type AiDebugInfo } from "./debug.ts";
+import { toAiError, type AiDebugInfo } from "./debug.ts";
 import type { ExtractOptions } from "./extract-recipe.ts";
 import { recipeExtractSchema, type RecipeExtract } from "./schemas/recipe-extract.ts";
+import { getCurrentOrigin } from "./trace/origin.ts";
+import { publish } from "./pubsub.ts";
 
 export interface GenerateRecipeInput {
   prompt: string;
@@ -37,17 +39,39 @@ export async function generateRecipeFromPrompt(
     locale === "de" ? "Write the recipe in German." : "Write the recipe in English.";
 
   try {
-    const r = await generateText({
+    const stream = streamObject({
       model,
-      output: Output.object({ schema: recipeExtractSchema }),
+      schema: recipeExtractSchema,
       providerOptions: PROVIDER_OPTIONS,
       system: GENERATE_SYSTEM_PROMPT,
       prompt: `Create a complete ${styleHint} for: ${prompt}\n\n${localeHint}`,
     });
 
-    return options.debug
-      ? { recipe: r.output, warnings: [], debug: debugFromResult(r) }
-      : { recipe: r.output, warnings: [] };
+    const origin = getCurrentOrigin();
+
+    for await (const partial of stream.partialObjectStream) {
+      if (origin) {
+        publish(origin.runId, { type: "partial", recipe: partial });
+      }
+    }
+
+    const recipe = await stream.object;
+
+    if (options.debug) {
+      const [finishReason, usage] = await Promise.all([stream.finishReason, stream.usage]);
+      const debug: AiDebugInfo = {
+        finishReason: finishReason ?? undefined,
+        usage: usage
+          ? {
+              inputTokens: usage.inputTokens,
+              outputTokens: usage.outputTokens,
+            }
+          : undefined,
+      };
+      return { recipe, warnings: [], debug };
+    }
+
+    return { recipe, warnings: [] };
   } catch (e) {
     throw toAiError(e, "Recipe generation failed");
   }

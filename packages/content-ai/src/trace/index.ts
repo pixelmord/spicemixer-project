@@ -4,6 +4,7 @@ export type { Origin, OriginConfig } from "./origin.ts";
 export { tracingMiddleware } from "./middleware.ts";
 
 export { FileTraceSink } from "./sinks/file.ts";
+export { PubSubTraceSink } from "./sinks/pubsub.ts";
 export type { TraceSink, TraceEvent } from "./sinks/types.ts";
 
 export { SentrySpanSink, scrub, tracesSampler } from "./sinks/sentry.ts";

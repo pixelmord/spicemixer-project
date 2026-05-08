@@ -11,6 +11,8 @@ import {
   assertAutoApplyAllowed,
   hashSuggestion,
   hashContent,
+  getCurrentOrigin,
+  publish,
 } from "content-ai";
 import type { AiConfig, AiEventLog, AiEventSidecar, MetaRef } from "content-ai";
 import type { EntityKind } from "entity-kind";
@@ -20,6 +22,21 @@ import type { EntityRef } from "@/lib/entity-ref.ts";
 function slugFromLocaleId(id: string): string {
   const slash = id.indexOf("/");
   return slash === -1 ? id : id.slice(slash + 1);
+}
+
+function withProgress<T>(name: string, fn: () => Promise<T>): Promise<T> {
+  const runId = getCurrentOrigin()?.runId;
+  if (runId) publish(runId, { type: "proposer:start", name });
+  return fn().then(
+    (result) => {
+      if (runId) publish(runId, { type: "proposer:done", name });
+      return result;
+    },
+    (err: unknown) => {
+      if (runId) publish(runId, { type: "proposer:done", name, error: String(err) });
+      throw err;
+    },
+  );
 }
 
 export interface AiRefreshInput {
@@ -234,17 +251,25 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
   const [improvementsResult, tagsResult, linksResult, relationsResult, langResult] =
     await Promise.allSettled([
       fieldsForAi.length
-        ? proposeRecipeImprovements(payload as never, fieldsForAi, config, rejectedContext)
+        ? withProgress("improvements", () =>
+            proposeRecipeImprovements(payload as never, fieldsForAi, config, rejectedContext),
+          )
         : Promise.resolve({ fields: [] }),
-      proposeTags(payload as never, [], config, rejectedContext),
+      withProgress("tags", () => proposeTags(payload as never, [], config, rejectedContext)),
       recipeIngredients.length
-        ? proposeIngredientLinks(recipeIngredients, inventory, config, rejectedContext)
+        ? withProgress("links", () =>
+            proposeIngredientLinks(recipeIngredients, inventory, config, rejectedContext),
+          )
         : Promise.resolve([]),
-      proposeRelations(payload as never, existingRecipes, config, rejectedContext),
+      withProgress("relations", () =>
+        proposeRelations(payload as never, existingRecipes, config, rejectedContext),
+      ),
       !meta["language"]
-        ? detectLanguage(
-            [payload["name"], payload["description"]].filter(Boolean).map(String).join(" — "),
-            config,
+        ? withProgress("language", () =>
+            detectLanguage(
+              [payload["name"], payload["description"]].filter(Boolean).map(String).join(" — "),
+              config,
+            ),
           )
         : Promise.resolve(null),
     ]);

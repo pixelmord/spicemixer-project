@@ -22,6 +22,7 @@ import type { RecipeCollection } from "@/lib/content-store.ts";
 import { MIXTURE_KINDS, type MixtureKind } from "@/lib/mixture-schema.ts";
 import { useEntityFormState } from "@/hooks/useEntityFormState.ts";
 import { buildPayload } from "@/lib/entity-form-payload.ts";
+import { readSSE } from "@/lib/sse.ts";
 interface AiSuggestion {
   field: string;
   suggestion: string;
@@ -331,6 +332,7 @@ export default function RecipeForm({
     () => initialMeta?.aiSuggestions?.data,
   );
   const [aiRefreshing, setAiRefreshing] = useState(false);
+  const [activeProposers, setActiveProposers] = useState<string[]>([]);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
 
   // Image attribution
@@ -438,24 +440,17 @@ export default function RecipeForm({
       return false;
     });
     setAiRefreshing(true);
-    void actions
-      .aiRefreshSuggestions({
+    void refreshViaSSE(
+      {
         collection,
         slug,
-        recipe: snap as never,
+        recipe: snap,
         meta: metaSnap,
         missingFields: missingKeys,
-        locale: (initialMeta?.language ?? "en") as "en" | "de",
-      })
-      .then((r: { data?: unknown }) =>
-        handleRefreshResult(
-          r.data as
-            | { aiSuggestions: AiSuggestions; autoLinked: number; autoAppliedLinks?: string[] }
-            | undefined,
-          (s) => setAiSuggestions(s),
-          setIngredientLinks,
-        ),
-      )
+        locale: initialMeta?.language ?? "en",
+      },
+      (data) => handleRefreshResult(data, (s) => setAiSuggestions(s), setIngredientLinks),
+    )
       .catch(() => {})
       .finally(() => setAiRefreshing(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- intentional mount-only
@@ -601,25 +596,18 @@ export default function RecipeForm({
         return false;
       });
       setAiRefreshing(true);
-      void actions
-        .aiRefreshSuggestions({
+      void refreshViaSSE(
+        {
           collection,
           slug,
-          recipe: recipePayload as never,
-          meta: metaPayload as never,
+          recipe: recipePayload as unknown as Record<string, unknown>,
+          meta: metaPayload as unknown as Record<string, unknown>,
           missingFields: missingKeys,
-          locale: (language || "en") as "en" | "de",
+          locale: language || "en",
           force: true,
-        })
-        .then((r: { data?: unknown }) =>
-          handleRefreshResult(
-            r.data as
-              | { aiSuggestions: AiSuggestions; autoLinked: number; autoAppliedLinks?: string[] }
-              | undefined,
-            (s) => setAiSuggestions(s),
-            setIngredientLinks,
-          ),
-        )
+        },
+        (data) => handleRefreshResult(data, (s) => setAiSuggestions(s), setIngredientLinks),
+      )
         .catch(() => {})
         .finally(() => setAiRefreshing(false));
     },
@@ -756,6 +744,51 @@ export default function RecipeForm({
     setDismissedSuggestions((prev) => new Set([...prev, field]));
   }
 
+  async function refreshViaSSE(
+    params: {
+      collection: string;
+      slug: string;
+      recipe: Record<string, unknown>;
+      meta: Record<string, unknown>;
+      missingFields: string[];
+      locale: string;
+      force?: boolean;
+    },
+    onResult: (data: {
+      aiSuggestions: AiSuggestions;
+      autoLinked: number;
+      autoAppliedLinks?: string[];
+    }) => void,
+  ): Promise<void> {
+    setActiveProposers([]);
+    const response = await fetch("/api/ai/refresh-suggestions/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+    if (!response.ok || !response.body) {
+      throw new Error("Refresh stream failed");
+    }
+    for await (const event of readSSE(response.body)) {
+      if (event["type"] === "proposer:start") {
+        const name = typeof event["name"] === "string" ? event["name"] : "";
+        setActiveProposers((prev) => (prev.includes(name) ? prev : [...prev, name]));
+      } else if (event["type"] === "proposer:done") {
+        const name = typeof event["name"] === "string" ? event["name"] : "";
+        setActiveProposers((prev) => prev.filter((p) => p !== name));
+      } else if (event["type"] === "complete") {
+        const result = event["result"] as
+          | { aiSuggestions: AiSuggestions; autoLinked: number; autoAppliedLinks?: string[] }
+          | undefined;
+        if (result) onResult(result);
+      } else if (event["type"] === "error") {
+        const msg = typeof event["message"] === "string" ? event["message"] : "Refresh failed";
+        throw new Error(msg);
+      }
+    }
+    setActiveProposers([]);
+  }
+
   async function handleManualRefresh() {
     const missingKeys = RECIPE_RECOMMENDED.filter((k) => !recipeFieldHas(k));
     setAiRefreshing(true);
@@ -777,16 +810,18 @@ export default function RecipeForm({
       ingredientLinks,
     };
     try {
-      const { data } = await actions.aiRefreshSuggestions({
-        collection,
-        slug,
-        recipe: snap as never,
-        meta: metaSnap as never,
-        missingFields: missingKeys,
-        locale: (language || "en") as "en" | "de",
-        force: true,
-      });
-      if (data) setAiSuggestions(data.aiSuggestions as unknown as AiSuggestions);
+      await refreshViaSSE(
+        {
+          collection,
+          slug,
+          recipe: snap,
+          meta: metaSnap,
+          missingFields: missingKeys,
+          locale: language || "en",
+          force: true,
+        },
+        (data) => setAiSuggestions(data.aiSuggestions),
+      );
     } catch {
       toast.error("Could not refresh suggestions");
     } finally {
@@ -1949,6 +1984,7 @@ export default function RecipeForm({
               bonusFields={bonusFields}
               aiSuggestions={visibleImprovements}
               aiRefreshing={aiRefreshing}
+              activeProposers={activeProposers}
               onRefreshSuggestions={!isNew ? handleManualRefresh : undefined}
               onApplySuggestion={handleApplySuggestion}
               onDismissSuggestion={handleDismissSuggestion}
