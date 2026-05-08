@@ -28,7 +28,8 @@ import {
   savePairingMeta as libSavePairingMeta,
 } from "@/lib/pairings.ts";
 import { NotFoundError } from "@/lib/errors.ts";
-import { AiError, withOrigin, type AiEvent } from "content-ai";
+import { AiError, withOrigin, type AiEvent, type BinaryMeta } from "content-ai";
+import { createSourceStore } from "@/lib/stores/source-store.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -146,6 +147,25 @@ function resolveAiConfig() {
       process.env["AI_BASE_URL"] ?? import.meta.env["AI_BASE_URL"] ?? "https://api.openai.com/v1",
     apiKey,
     model: process.env["AI_MODEL"] ?? import.meta.env["AI_MODEL"] ?? "gpt-4o-mini",
+  };
+}
+
+type FileInputKind = "text" | "pdf" | "image";
+
+function binaryMetaFromInput(
+  kind: FileInputKind,
+  bytes: Uint8Array,
+  mimeType: string,
+  filename?: string,
+): BinaryMeta {
+  const binaryKind: BinaryMeta["kind"] =
+    kind === "pdf" ? "pdf" : kind === "image" ? "image" : "text";
+  return {
+    kind: binaryKind,
+    mime: mimeType,
+    sizeBytes: bytes.length,
+    filename,
+    uploadedAt: new Date().toISOString(),
   };
 }
 
@@ -671,13 +691,59 @@ export const server = {
       userInitiated: true,
     })(async (input) => {
       const config = resolveAiConfig();
-      const { extractRecipeFromFile } = await import("content-ai");
+      const { extractRecipeFromFile, extractPdfContent } = await import("content-ai");
       const debug = isDebug(input.debug);
+      const resolved = await resolveFileInput(input);
+      const mimeType =
+        resolved.kind === "text"
+          ? "text/plain"
+          : resolved.kind === "pdf"
+            ? "application/pdf"
+            : resolved.mimeType;
+      const rawBytes =
+        resolved.kind === "text" ? new TextEncoder().encode(resolved.content) : resolved.bytes;
+      const sourceStore = createSourceStore();
+      const filename = input.file?.name;
+      const { binaryHash } = await sourceStore.putBinary(
+        rawBytes,
+        binaryMetaFromInput(resolved.kind, rawBytes, mimeType, filename),
+      );
+
+      // For text inputs and text-extracted PDFs: persist text artifact
+      let extractionInput = resolved;
+      const now = new Date().toISOString();
+      if (resolved.kind === "text") {
+        await sourceStore.putText(binaryHash, "direct", "1", resolved.content, {
+          charCount: resolved.content.length,
+          extractedAt: now,
+          parentBinaryHash: binaryHash,
+        });
+      } else if (resolved.kind === "pdf") {
+        const pdfContent = await extractPdfContent(resolved.bytes);
+        if (pdfContent.kind === "text") {
+          await sourceStore.putText(binaryHash, "pdfjs", "5", pdfContent.text, {
+            charCount: pdfContent.text.length,
+            pageCount: pdfContent.pageCount,
+            extractedAt: now,
+            parentBinaryHash: binaryHash,
+          });
+          extractionInput = { kind: "text", content: pdfContent.text };
+        }
+      }
+
       try {
-        const result = await extractRecipeFromFile(await resolveFileInput(input), config, {
+        const result = await extractRecipeFromFile(extractionInput as typeof resolved, config, {
           debug,
         });
-        return debug ? { ...result, model: config.model } : result;
+        const traceId = crypto.randomUUID();
+        await sourceStore.putStructured(binaryHash, traceId, result.recipe, {
+          capability: "aiExtractRecipe",
+          model: config.model,
+          at: now,
+          parentBinaryHash: binaryHash,
+        });
+        const base = debug ? { ...result, model: config.model } : result;
+        return { ...base, traceId, binaryHash };
       } catch (e) {
         throw aiErrorToActionError(e, "Recipe extraction failed");
       }
@@ -696,13 +762,58 @@ export const server = {
       userInitiated: true,
     })(async (input) => {
       const config = resolveAiConfig();
-      const { extractIngredientFromFile } = await import("content-ai");
+      const { extractIngredientFromFile, extractPdfContent } = await import("content-ai");
       const debug = isDebug(input.debug);
+      const resolved = await resolveFileInput(input);
+      const mimeType =
+        resolved.kind === "text"
+          ? "text/plain"
+          : resolved.kind === "pdf"
+            ? "application/pdf"
+            : resolved.mimeType;
+      const rawBytes =
+        resolved.kind === "text" ? new TextEncoder().encode(resolved.content) : resolved.bytes;
+      const sourceStore = createSourceStore();
+      const filename = input.file?.name;
+      const { binaryHash } = await sourceStore.putBinary(
+        rawBytes,
+        binaryMetaFromInput(resolved.kind, rawBytes, mimeType, filename),
+      );
+
+      let extractionInput = resolved;
+      const now = new Date().toISOString();
+      if (resolved.kind === "text") {
+        await sourceStore.putText(binaryHash, "direct", "1", resolved.content, {
+          charCount: resolved.content.length,
+          extractedAt: now,
+          parentBinaryHash: binaryHash,
+        });
+      } else if (resolved.kind === "pdf") {
+        const pdfContent = await extractPdfContent(resolved.bytes);
+        if (pdfContent.kind === "text") {
+          await sourceStore.putText(binaryHash, "pdfjs", "5", pdfContent.text, {
+            charCount: pdfContent.text.length,
+            pageCount: pdfContent.pageCount,
+            extractedAt: now,
+            parentBinaryHash: binaryHash,
+          });
+          extractionInput = { kind: "text", content: pdfContent.text };
+        }
+      }
+
       try {
-        const result = await extractIngredientFromFile(await resolveFileInput(input), config, {
+        const result = await extractIngredientFromFile(extractionInput as typeof resolved, config, {
           debug,
         });
-        return debug ? { ...result, model: config.model } : result;
+        const traceId = crypto.randomUUID();
+        await sourceStore.putStructured(binaryHash, traceId, result.ingredient, {
+          capability: "aiExtractIngredient",
+          model: config.model,
+          at: now,
+          parentBinaryHash: binaryHash,
+        });
+        const base = debug ? { ...result, model: config.model } : result;
+        return { ...base, traceId, binaryHash };
       } catch (e) {
         throw aiErrorToActionError(e, "Ingredient extraction failed");
       }
@@ -758,9 +869,66 @@ export const server = {
       userInitiated: true,
     })(async ({ existing, sourceKind, file, mimeType, text, prompt, debug }) => {
       const config = resolveAiConfig();
-      const { mergeRecipe } = await import("content-ai");
+      const { mergeRecipe, extractPdfContent } = await import("content-ai");
       const existingRecipe = JSON.parse(existing) as Record<string, unknown>;
       const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
+
+      // Persist source artifact when source is a file or text (not prompt)
+      let binaryHash: string | undefined;
+      let traceId: string | undefined;
+      if (source.kind !== "prompt") {
+        const sourceStore = createSourceStore();
+        const now = new Date().toISOString();
+        const srcMimeType =
+          source.kind === "text"
+            ? "text/plain"
+            : source.kind === "pdf"
+              ? "application/pdf"
+              : source.mimeType;
+        const rawBytes =
+          source.kind === "text" ? new TextEncoder().encode(source.content) : source.bytes;
+        const filename = file?.name;
+        const putResult = await sourceStore.putBinary(
+          rawBytes,
+          binaryMetaFromInput(source.kind, rawBytes, srcMimeType, filename),
+        );
+        binaryHash = putResult.binaryHash;
+
+        if (source.kind === "text") {
+          await sourceStore.putText(binaryHash, "direct", "1", source.content, {
+            charCount: source.content.length,
+            extractedAt: now,
+            parentBinaryHash: binaryHash,
+          });
+        } else if (source.kind === "pdf") {
+          const pdfContent = await extractPdfContent(source.bytes);
+          if (pdfContent.kind === "text") {
+            await sourceStore.putText(binaryHash, "pdfjs", "5", pdfContent.text, {
+              charCount: pdfContent.text.length,
+              pageCount: pdfContent.pageCount,
+              extractedAt: now,
+              parentBinaryHash: binaryHash,
+            });
+          }
+        }
+
+        try {
+          const result = await mergeRecipe({ existing: existingRecipe as never, source }, config, {
+            debug: isDebug(debug),
+          });
+          traceId = crypto.randomUUID();
+          await sourceStore.putStructured(binaryHash, traceId, result.recipe, {
+            capability: "aiMergeRecipe",
+            model: config.model,
+            at: now,
+            parentBinaryHash: binaryHash,
+          });
+          return { ...result, model: config.model, traceId, binaryHash };
+        } catch (e) {
+          throw aiErrorToActionError(e, "Recipe merge failed");
+        }
+      }
+
       try {
         const result = await mergeRecipe({ existing: existingRecipe as never, source }, config, {
           debug: isDebug(debug),
@@ -1098,16 +1266,61 @@ export const server = {
       userInitiated: true,
     })(async (input) => {
       const config = resolveAiConfig();
-      const { extractPairingFromFile } = await import("content-ai");
+      const { extractPairingFromFile, extractPdfContent } = await import("content-ai");
       const debug = isDebug(input.debug);
+      const resolved = await resolveFileInput(input);
+      const mimeType =
+        resolved.kind === "text"
+          ? "text/plain"
+          : resolved.kind === "pdf"
+            ? "application/pdf"
+            : resolved.mimeType;
+      const rawBytes =
+        resolved.kind === "text" ? new TextEncoder().encode(resolved.content) : resolved.bytes;
+      const sourceStore = createSourceStore();
+      const filename = input.file?.name;
+      const { binaryHash } = await sourceStore.putBinary(
+        rawBytes,
+        binaryMetaFromInput(resolved.kind, rawBytes, mimeType, filename),
+      );
+
+      let extractionInput: Parameters<typeof extractPairingFromFile>[0];
+      const now = new Date().toISOString();
+      if (resolved.kind === "text") {
+        await sourceStore.putText(binaryHash, "direct", "1", resolved.content, {
+          charCount: resolved.content.length,
+          extractedAt: now,
+          parentBinaryHash: binaryHash,
+        });
+        extractionInput = { kind: "text", content: resolved.content };
+      } else if (resolved.kind === "pdf") {
+        const pdfContent = await extractPdfContent(resolved.bytes);
+        if (pdfContent.kind === "text") {
+          await sourceStore.putText(binaryHash, "pdfjs", "5", pdfContent.text, {
+            charCount: pdfContent.text.length,
+            pageCount: pdfContent.pageCount,
+            extractedAt: now,
+            parentBinaryHash: binaryHash,
+          });
+          extractionInput = { kind: "text", content: pdfContent.text };
+        } else {
+          extractionInput = resolved;
+        }
+      } else {
+        extractionInput = resolved;
+      }
+
       try {
-        const resolved = await resolveFileInput(input);
-        const inputForExtract =
-          resolved.kind === "pdf" || resolved.kind === "image"
-            ? resolved
-            : { kind: "text" as const, content: resolved.content };
-        const result = await extractPairingFromFile(inputForExtract, config, { debug });
-        return debug ? { ...result, model: config.model } : result;
+        const result = await extractPairingFromFile(extractionInput, config, { debug });
+        const traceId = crypto.randomUUID();
+        await sourceStore.putStructured(binaryHash, traceId, result.pairing, {
+          capability: "aiExtractPairing",
+          model: config.model,
+          at: now,
+          parentBinaryHash: binaryHash,
+        });
+        const base = debug ? { ...result, model: config.model } : result;
+        return { ...base, traceId, binaryHash };
       } catch (e) {
         throw aiErrorToActionError(e, "Pairing extraction failed");
       }

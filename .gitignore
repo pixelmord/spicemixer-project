@@ -40,3 +40,6 @@ packages/*/src/**/*.d.ts
 
 # AI call traces (local observability log, not for git)
 .ai-trace/
+
+# Source artifact store (content-addressed, copyrighted binaries, not for git)
+**/data/sources/

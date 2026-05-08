@@ -99,3 +99,12 @@ export {
   FileTraceSink,
 } from "./trace/index.ts";
 export type { Origin, OriginConfig, TraceSink, TraceEvent } from "./trace/index.ts";
+
+export { LocalSourceStore, hashBinary } from "./source-store/index.ts";
+export type { SourceStore, BinaryMeta, TextMeta, StructuredMeta } from "./source-store/index.ts";
+export { binaryMetaSchema, textMetaSchema, structuredMetaSchema } from "./source-store/index.ts";
+export type { SourceDescriptor } from "./schemas/ai-events.ts";
+export { sourceDescriptorSchema, normalizeSourceField } from "./schemas/ai-events.ts";
+
+export { extractPdfContent } from "./pdf.ts";
+export type { PdfContent, PdfTextResult, PdfFileResult } from "./pdf.ts";
