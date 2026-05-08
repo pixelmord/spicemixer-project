@@ -11,7 +11,6 @@ function extractParams(params: LanguageModelV3CallOptions): TraceEvent["params"]
   const result: TraceEvent["params"] = {};
   for (const msg of params.prompt) {
     if (msg.role === "system") {
-      // In V3, system content is a plain string
       result.system = msg.content;
     } else if (msg.role === "user") {
       let bytes = 0;
@@ -31,9 +30,11 @@ function extractParams(params: LanguageModelV3CallOptions): TraceEvent["params"]
 }
 
 function extractText(result: LanguageModelV3GenerateResult): string | undefined {
-  const parts = result.content.filter((c) => c.type === "text");
-  const joined = parts.map((c) => (c as { type: "text"; text: string }).text).join("");
-  return joined || undefined;
+  let text = "";
+  for (const part of result.content) {
+    if (part.type === "text") text += part.text;
+  }
+  return text || undefined;
 }
 
 async function fan(sinks: TraceSink[], event: TraceEvent): Promise<void> {
@@ -53,13 +54,11 @@ export function tracingMiddleware(sinks: TraceSink[]): LanguageModelV3Middleware
       const start = Date.now();
 
       let result: LanguageModelV3GenerateResult;
-      let errorInfo: TraceEvent["error"];
 
       try {
         result = await doGenerate();
       } catch (err) {
         const e = err instanceof Error ? err : new Error(String(err));
-        errorInfo = { name: e.name, message: e.message, stack: e.stack };
         const event: TraceEvent = {
           traceId,
           runId: origin.runId,
@@ -71,7 +70,7 @@ export function tracingMiddleware(sinks: TraceSink[]): LanguageModelV3Middleware
           durationMs: Date.now() - start,
           params: extractParams(params),
           result: {},
-          error: errorInfo,
+          error: { name: e.name, message: e.message, stack: e.stack },
         };
         await fan(sinks, event);
         throw err;
@@ -126,7 +125,6 @@ export function tracingMiddleware(sinks: TraceSink[]): LanguageModelV3Middleware
         throw err;
       }
 
-      // Wrap the stream to capture finish reason, usage, and text as it flows
       const originalStream = streamResult.stream;
       let finishReason: TraceFinishReason = "unknown";
       let promptTokens = 0;

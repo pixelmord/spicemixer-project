@@ -91,10 +91,11 @@ export {
 export { runCurate, CURATE_REGISTRY } from "./run-curate.ts";
 export type { EntityKind, CurateOp } from "./run-curate.ts";
 
-export { runWithOrigin, getCurrentOrigin, withOrigin } from "./trace/index.ts";
-export type { Origin, OriginConfig } from "./trace/index.ts";
-
-export { tracingMiddleware } from "./trace/index.ts";
-
-export { FileTraceSink } from "./trace/index.ts";
-export type { TraceSink, TraceEvent } from "./trace/index.ts";
+export {
+  runWithOrigin,
+  getCurrentOrigin,
+  withOrigin,
+  tracingMiddleware,
+  FileTraceSink,
+} from "./trace/index.ts";
+export type { Origin, OriginConfig, TraceSink, TraceEvent } from "./trace/index.ts";

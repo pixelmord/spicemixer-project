@@ -26,19 +26,16 @@ export function getCurrentOrigin(): Origin | undefined {
 
 export type OriginConfig = Omit<Origin, "runId"> & { runId?: string };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function withOrigin(
   config: OriginConfig,
-): <H extends (...a: any[]) => Promise<any>>(handler: H) => H {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <H extends (...a: any[]) => Promise<any>>(handler: H): H => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return ((...args: any[]) => {
+): <A extends unknown[], R>(handler: (...a: A) => Promise<R>) => (...a: A) => Promise<R> {
+  return <A extends unknown[], R>(handler: (...a: A) => Promise<R>) => {
+    return (...args: A): Promise<R> => {
       const origin: Origin = {
         ...config,
         runId: config.runId ?? crypto.randomUUID(),
       };
-      return runWithOrigin(origin, () => handler(...args) as Promise<unknown>);
-    }) as H;
+      return runWithOrigin(origin, () => handler(...args));
+    };
   };
 }
