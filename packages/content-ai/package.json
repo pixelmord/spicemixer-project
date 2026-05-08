@@ -18,7 +18,8 @@
     "check": "vp check",
     "prepublishOnly": "vp run build",
     "eval": "evalite",
-    "eval:ui": "evalite serve"
+    "eval:ui": "evalite serve",
+    "evals:capture": "node --experimental-strip-types evals/capture.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "catalog:",

@@ -333,8 +333,9 @@ export const server = {
       recipe: z.record(z.string(), z.unknown()),
       meta: z.record(z.string(), z.unknown()).optional(),
       aiMergeModel: z.string().optional(),
+      traceId: z.string().optional(),
     }),
-    handler: async ({ collection, slug, locale, recipe, meta, aiMergeModel }) => {
+    handler: async ({ collection, slug, locale, recipe, meta, aiMergeModel, traceId }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
       let finalMeta = meta;
@@ -353,6 +354,7 @@ export const server = {
             summary: "AI-merged recipe accepted",
           },
           model: aiMergeModel,
+          traceId,
         });
         finalMeta = { ...base, aiEvents: updatedEvents };
       }
@@ -376,8 +378,9 @@ export const server = {
       ingredient: z.record(z.string(), z.unknown()),
       meta: z.record(z.string(), z.unknown()).optional(),
       aiMergeModel: z.string().optional(),
+      traceId: z.string().optional(),
     }),
-    handler: async ({ locale, slug, ingredient, meta, aiMergeModel }) => {
+    handler: async ({ locale, slug, ingredient, meta, aiMergeModel, traceId }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
       let finalMeta = meta;
@@ -396,6 +399,7 @@ export const server = {
             summary: "AI-merged ingredient accepted",
           },
           model: aiMergeModel,
+          traceId,
         });
         finalMeta = { ...base, aiEvents: updatedEvents };
       }
@@ -420,8 +424,18 @@ export const server = {
       draft: z.boolean().optional(),
       image: z.string().optional(),
       aiMergeModel: z.string().optional(),
+      traceId: z.string().optional(),
     }),
-    handler: async ({ id, ingredients, description, locale, draft, image, aiMergeModel }) => {
+    handler: async ({
+      id,
+      ingredients,
+      description,
+      locale,
+      draft,
+      image,
+      aiMergeModel,
+      traceId,
+    }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
       const result = await libSavePairing(store, {
@@ -448,6 +462,7 @@ export const server = {
             summary: `AI-enhanced pairing description (${locale}) accepted`,
           },
           model: aiMergeModel,
+          traceId,
         });
         await sidecar.write(pairingRef, { ...existingMeta, aiEvents: updatedEvents });
       }

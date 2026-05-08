@@ -226,6 +226,56 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
     expect(aiEvents[0].model).toBe("gpt-4");
   });
 
+  test("saveRecipe with traceId stamps it on the accepted aiEvent", async () => {
+    const handler = await getHandler("saveRecipe");
+    await handler({
+      collection: "recipes",
+      slug: "cardamom-rice",
+      locale: "en",
+      recipe: { name: "Cardamom Rice" },
+      aiMergeModel: "gpt-4",
+      traceId: "trace-abc",
+    });
+
+    const meta = await sidecar.read({ collection: "recipes", locale: "en", slug: "cardamom-rice" });
+    const aiEvents = (meta!.data as Record<string, unknown>).aiEvents as AiEvent[];
+    expect(aiEvents[0].traceId).toBe("trace-abc");
+  });
+
+  test("saveIngredient with traceId stamps it on the accepted aiEvent", async () => {
+    const handler = await getHandler("saveIngredient");
+    await handler({
+      locale: "en",
+      slug: "cumin",
+      ingredient: { name: "Cumin" },
+      aiMergeModel: "gpt-4",
+      traceId: "trace-def",
+    });
+
+    const meta = await sidecar.read({ collection: "ingredients", locale: "en", slug: "cumin" });
+    const aiEvents = (meta!.data as Record<string, unknown>).aiEvents as AiEvent[];
+    expect(aiEvents[0].traceId).toBe("trace-def");
+  });
+
+  test("savePairing with traceId stamps it on the accepted aiEvent", async () => {
+    const handler = await getHandler("savePairing");
+    await handler({
+      id: "cardamom--cumin",
+      ingredients: [
+        { collection: "ingredients" as const, slug: "cardamom" },
+        { collection: "ingredients" as const, slug: "cumin" },
+      ],
+      description: "Fragrant combo",
+      locale: "en",
+      aiMergeModel: "gpt-4",
+      traceId: "trace-ghi",
+    });
+
+    const meta = await sidecar.read({ collection: "pairings", slug: "cardamom--cumin" });
+    const aiEvents = (meta!.data as Record<string, unknown>).aiEvents as AiEvent[];
+    expect(aiEvents[0].traceId).toBe("trace-ghi");
+  });
+
   test("aiRefreshSuggestions writes aiSuggestions to the meta sidecar", async () => {
     const handler = await getHandler("aiRefreshSuggestions");
     await handler({
@@ -274,6 +324,8 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
     expect(Array.isArray(aiEvents), "aiEvents must be an array when auto-apply fires").toBe(true);
     expect(aiEvents!.length, "at least one aiEvent must be recorded").toBeGreaterThan(0);
     expect(aiEvents!.some((e) => e.type === "auto-applied")).toBe(true);
+    // auto-applied events must carry a traceId (runId from origin envelope)
+    expect(aiEvents!.filter((e) => e.type === "auto-applied").every((e) => !!e.traceId)).toBe(true);
   });
 
   test("aiRefreshIngredientSuggestions writes a pairing to the store and records an aiEvent when auto-apply fires", async () => {

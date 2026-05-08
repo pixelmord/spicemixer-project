@@ -1,7 +1,10 @@
 import { evalite, createScorer } from "evalite";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import { extractRecipeFromFile } from "../src/extract-recipe.ts";
 import type { RecipeExtract } from "../src/schemas/recipe-extract.ts";
 import { JsonlCache, hashPrompt } from "./cache.ts";
+import type { CaptureManifest } from "./capture.ts";
 import {
   schemaValid,
   requiredFieldsPresent,
@@ -26,10 +29,26 @@ function hashText(text: string): string {
   return hashPrompt(promptForText(text));
 }
 
+const MANIFEST_PATH = join(import.meta.dirname, "capture-manifest.json");
+
 interface EvalCase {
   input: string;
   expected: RecipeExtract;
   tags?: string[];
+}
+
+function loadManifestCases(): EvalCase[] {
+  if (!existsSync(MANIFEST_PATH)) return [];
+  try {
+    const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as CaptureManifest;
+    return manifest.cases.map((c) => ({
+      input: c.input,
+      expected: c.expected as RecipeExtract,
+      tags: ["captured", c.traceId],
+    }));
+  } catch {
+    return [];
+  }
 }
 
 const SYNTHETIC_FIXTURES: EvalCase[] = [
@@ -121,11 +140,15 @@ async function extractWithCache(text: string): Promise<RecipeExtract> {
   return result.recipe;
 }
 
+const manifestCases = loadManifestCases();
+const allCases = [...SYNTHETIC_FIXTURES, ...manifestCases];
+
 evalite<string, RecipeExtract, RecipeExtract>("aiExtractRecipe", {
   data: () =>
-    SYNTHETIC_FIXTURES.map((f) => ({
+    allCases.map((f) => ({
       input: f.input,
       expected: f.expected,
+      tags: f.tags,
     })),
 
   task: (input) => extractWithCache(input),

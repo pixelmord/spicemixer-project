@@ -146,6 +146,7 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
   if (toAutoApply.length > 0) {
     const existingPairings = await store.list("pairings");
     const existingIds = new Set(existingPairings.map((p) => p.id));
+    const runId = getCurrentOrigin()?.runId;
     for (const pairing of toAutoApply) {
       const id = [metaRef.slug, pairing.slug].sort().join("--");
       if (!existingIds.has(id)) {
@@ -169,6 +170,7 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
           },
           model: config.model,
           confidence: pairing.confidence,
+          traceId: runId,
         });
         autoLinked++;
       }
@@ -302,6 +304,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
   );
 
   const updatedMeta: Record<string, unknown> = { ...meta };
+  const runId = getCurrentOrigin()?.runId;
 
   if (toAutoApply.length > 0) {
     updatedMeta["ingredientLinks"] = [
@@ -319,6 +322,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
         },
         model: config.model,
         confidence: link.confidence,
+        traceId: runId,
       });
     }
   }
@@ -336,6 +340,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
       },
       model: config.model,
       confidence: "high",
+      traceId: runId,
     });
   }
 
