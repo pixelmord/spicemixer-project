@@ -1,4 +1,6 @@
 {
   "ingredients": ["chili-powder", "cumin"],
-  "description": "Cumin's warm, earthy flavor complements the smoky heat of chili powder, enhancing the savory depth of a dish. Together, they create a robust base for many Mexican and Indian recipes."
+  "descriptions": {
+    "en": "Cumin's warm, earthy flavor complements the smoky heat of chili powder, enhancing the savory depth of a dish. Together, they create a robust base for many Mexican and Indian recipes."
+  }
 }
