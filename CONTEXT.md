@@ -298,6 +298,25 @@ user pick on the form OR from the AI language-detection auto-apply
 locale from the existing entry; locale changes are a translation
 operation, not an edit. See ADR 0009.
 
+### Meta sidecar
+
+Per-entity `.meta.json` file colocated with the content file
+(`<collection>/<locale>/<slug>.meta.json`, pairings flat). Holds
+**editorial workflow state**: AI event log, draft flag, canonical
+locale, translation provenance (`translationOf`,
+`translationStaleSince`, `canonicalContentHash`), completeness
+derivations. Distinct from the content file, which holds anything
+the public site renders or queries — encyclopedia prose, taxonomy,
+`region`, image attribution credits.
+
+The split is by audience: meta mutates via the editorial loop and
+is invisible to the public site; content mutates via editorial work
+and renders to readers. ADR 0001 originally framed the sidecar as
+schema.org-Recipe displacement (recipes / mixtures can't carry
+custom fields); ADR 0013 generalises it to "workflow state, not
+site-specific data," applied uniformly across ingredient, pairing,
+recipe, mixture.
+
 ## Relation taxonomy
 
 Three relations exist. Everything else is computed.
@@ -389,8 +408,11 @@ ADR 0006.
   conservative and reversible; everything else is suggestion-only.
 - **Schema.org first.** Mixtures and recipes use schema.org Recipe
   JSON-LD as the canonical storage format. Atomic ingredients use a
-  leaner non-Recipe encyclopedia shape. Site-specific data lives in
-  `.meta.json` sidecars in both cases.
+  leaner non-Recipe encyclopedia shape. **Editorial workflow state**
+  (AI event log, draft flag, translation provenance) lives in
+  `.meta.json` sidecars across all kinds; **content fields**
+  (taxonomy, queryable region, rendered attribution captions) stay
+  on the entity. See ADR 0013.
 
 ## Public site IA
 
