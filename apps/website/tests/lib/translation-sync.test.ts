@@ -127,7 +127,7 @@ describe("flagTranslationsStale — ingredients", () => {
     await store.put(INGREDIENT_META, "de/cardamom", {
       translationOf: "en/cardamom",
       draft: false,
-      region: ["europe"],
+      canonicalLocale: "en",
     });
 
     await flagTranslationsStale(sidecar, "ingredients", "en/cardamom");
@@ -135,7 +135,7 @@ describe("flagTranslationsStale — ingredients", () => {
     const de = await store.get(INGREDIENT_META, "de/cardamom");
     const data = de!.data as Record<string, unknown>;
     expect(data["draft"]).toBe(false);
-    expect(data["region"]).toEqual(["europe"]);
+    expect(data["canonicalLocale"]).toBe("en");
     expect(typeof data["translationStaleSince"]).toBe("string");
   });
 });
@@ -232,7 +232,7 @@ describe("clearStaleFlag — ingredients", () => {
     await store.put(INGREDIENT_META, "de/cardamom", {
       translationOf: "en/cardamom",
       draft: false,
-      region: ["europe"],
+      canonicalLocale: "en",
       translationStaleSince: "2026-01-01T00:00:00.000Z",
     });
 
@@ -242,7 +242,7 @@ describe("clearStaleFlag — ingredients", () => {
     const data = de!.data as Record<string, unknown>;
     expect(data["translationOf"]).toBe("en/cardamom");
     expect(data["draft"]).toBe(false);
-    expect(data["region"]).toEqual(["europe"]);
+    expect(data["canonicalLocale"]).toBe("en");
   });
 
   test("does not touch other entries", async () => {

@@ -5,8 +5,8 @@ vi.mock("astro:content", () => ({
   getCollection: vi.fn(() => Promise.resolve([])),
 }));
 
-const { getEntry } = await import("astro:content");
-const { resolveRefs } = await import("../../src/lib/recipe-augment.ts");
+const { getEntry, getCollection } = await import("astro:content");
+const { resolveRefs, getPublishedPairings } = await import("../../src/lib/recipe-augment.ts");
 
 describe("resolveRefs", () => {
   beforeEach(() => {
@@ -66,5 +66,63 @@ describe("resolveRefs", () => {
 
     const result = await resolveRefs([{ collection: "mixtures", slug: "harissa" }], "/de", "de");
     expect(result).toEqual([{ name: "Harissa", href: "/de/mixtures/harissa/" }]);
+  });
+});
+
+describe("getPublishedPairings — region from ingredient content", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("aggregates region from ingredients collection (not ingredientMeta)", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "cardamom--cumin",
+            data: { ingredients: ["cardamom", "cumin"], draft: false, descriptions: {} },
+          },
+        ] as never;
+      }
+      if (name === "ingredients") {
+        return [
+          { id: "en/cardamom", data: { region: ["south-asia"] } },
+          { id: "en/cumin", data: { region: ["north-africa", "levant"] } },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPublishedPairings();
+    expect(result).toHaveLength(1);
+    expect(result[0].regions).toEqual(
+      expect.arrayContaining(["south-asia", "north-africa", "levant"]),
+    );
+    expect(result[0].regions).toHaveLength(3);
+  });
+
+  test("deduplicates regions shared across multiple locales of the same ingredient", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "cumin--sumac",
+            data: { ingredients: ["cumin", "sumac"], draft: false, descriptions: {} },
+          },
+        ] as never;
+      }
+      if (name === "ingredients") {
+        return [
+          { id: "en/cumin", data: { region: ["north-africa"] } },
+          { id: "de/cumin", data: { region: ["north-africa"] } },
+          { id: "en/sumac", data: { region: ["levant"] } },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPublishedPairings();
+    expect(result[0].regions).toEqual(expect.arrayContaining(["north-africa", "levant"]));
+    expect(result[0].regions).toHaveLength(2);
   });
 });

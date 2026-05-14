@@ -4,6 +4,7 @@
   "description": "Sumac brings fruity acidity without the sharpness of vinegar or the floral sweetness of lemon. It's the finishing spice on fattoush, hummus, and grilled meats, and a key flavour in za'atar blends. The deep burgundy powder loses its vibrancy quickly — buy in small quantities and use within 6 months. Its tart, astringent quality makes it ideal for cutting through rich fats in dressings and marinades.",
   "category": "spice",
   "origin": ["Lebanon", "Turkey", "Sicily"],
+  "region": ["levant", "mediterranean"],
   "flavorNotes": ["tart", "fruity", "astringent", "citrusy"],
   "images": ["https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=800&q=80"]
 }

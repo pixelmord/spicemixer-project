@@ -6,6 +6,31 @@ export type { Recipe } from "recipe-ingestion";
 
 // ── Ingredient constants ───────────────────────────────────────────────────────
 
+export const REGIONS = [
+  "north-africa",
+  "east-africa",
+  "horn-of-africa",
+  "west-africa",
+  "southern-africa",
+  "levant",
+  "gulf",
+  "caucasus",
+  "mediterranean",
+  "western-europe",
+  "central-europe",
+  "central-asia",
+  "south-asia",
+  "southeast-asia",
+  "east-asia",
+  "north-america",
+  "mesoamerica",
+  "caribbean",
+  "andean",
+  "south-atlantic",
+] as const;
+
+export type RegionCode = (typeof REGIONS)[number];
+
 export const INGREDIENT_PARTS = [
   "seed",
   "leaf",
@@ -76,6 +101,7 @@ export const ingredientSchema = z.object({
       }),
     )
     .optional(),
+  region: z.array(z.enum(REGIONS)).default([]),
   pairings: z
     .array(z.object({ slug: z.string(), note: z.string().optional() }))
     .optional()

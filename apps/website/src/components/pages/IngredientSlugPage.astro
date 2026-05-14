@@ -6,7 +6,7 @@ import RelatedList from "../RelatedList.astro";
 import TranslationFallbackBanner from "../TranslationFallbackBanner.astro";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 import IngredientTaxonomy from "../IngredientTaxonomy.astro";
-import { getUsedIn, getIngredient, getPairings, getIngredientMeta } from "../../lib/recipe-augment.ts";
+import { getUsedIn, getIngredient, getPairings } from "../../lib/recipe-augment.ts";
 import { withPagefindFilters } from "../../lib/withPagefindFilters.ts";
 import { renderInlineMarkdown } from "../../lib/inline-markdown.ts";
 import { INGREDIENT_LONGFORM_FIELDS } from "../../lib/ingredient-schema.ts";
@@ -37,11 +37,10 @@ const SECTION_LABELS: Record<(typeof INGREDIENT_LONGFORM_FIELDS)[number], string
   sourcing: t("ingredient.section.sourcing"),
 };
 
-const ingredientMeta = await getIngredientMeta(locale, slug);
 const pagefindFilters = withPagefindFilters({
   category: data.category,
   flavorProfile: data.flavorProfile,
-  region: ingredientMeta?.region,
+  region: data.region,
 });
 
 const usedIn = await getUsedIn(slug, prefix);
