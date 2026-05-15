@@ -4,6 +4,7 @@ import path from "path";
 export default defineConfig({
   resolve: {
     alias: {
+      "content-ai": path.resolve("../content-ai/src/index.ts"),
       "recipe-ingestion": path.resolve("../recipe-ingestion/src/index.ts"),
     },
   },

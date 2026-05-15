@@ -17,6 +17,7 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "paths": {
+      "content-ai": ["../content-ai/src/index.ts"],
       "recipe-ingestion": ["../recipe-ingestion/src/index.ts"]
     }
   }

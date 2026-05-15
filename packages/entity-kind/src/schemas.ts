@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { recipeSchema } from "recipe-ingestion";
+import { aiEventSchema } from "content-ai";
 
 export { recipeSchema };
 export type { Recipe } from "recipe-ingestion";
@@ -15,6 +16,20 @@ const imageAttributionSchema = z
     attribution: z.string(),
   })
   .optional();
+
+// ── Mixture constants ─────────────────────────────────────────────────────────
+
+export const MIXTURE_KINDS = [
+  "spicemix",
+  "sauce",
+  "rub",
+  "oil",
+  "pickle",
+  "chutney",
+  "marinade",
+] as const;
+
+export type MixtureKind = (typeof MIXTURE_KINDS)[number];
 
 // ── Ingredient constants ───────────────────────────────────────────────────────
 
@@ -92,7 +107,7 @@ export const ingredientSchema = z.object({
   history: z.string().optional(),
   storage: z.string().optional(),
   sourcing: z.string().optional(),
-  images: z.array(z.string()).default([]),
+  images: z.array(z.string().url()).default([]),
   category: z.enum(INGREDIENT_CATEGORIES),
   origin: z.array(z.string()).default([]),
   flavorNotes: z.array(z.string()).default([]),
@@ -108,7 +123,7 @@ export const ingredientSchema = z.object({
       z.object({
         author: z.string().optional(),
         title: z.string(),
-        url: z.string(),
+        url: z.string().url(),
         year: z.string().optional(),
       }),
     )
@@ -129,8 +144,133 @@ export const pairingSchema = z.object({
   ingredients: z.tuple([z.string(), z.string()]),
   descriptions: z.record(z.string(), z.string()).default({}),
   description: z.string().optional(),
-  image: z.string().optional(),
+  image: z.string().url().optional(),
   imageAttribution: imageAttributionSchema,
 });
 
 export type Pairing = z.infer<typeof pairingSchema>;
+
+// ── Ingredient meta schema ────────────────────────────────────────────────────
+
+export const ingredientMetaSchema = z.object({
+  draft: z.boolean().default(false),
+  canonicalLocale: z.string().length(2).optional(),
+  translationOf: z.string().optional(),
+  translationStaleSince: z.string().datetime().optional(),
+  canonicalContentHash: z.string().optional(),
+  translations: z.record(z.string(), z.string()).default({}),
+  aiEvents: z.array(aiEventSchema).default([]),
+});
+
+export type IngredientMeta = z.infer<typeof ingredientMetaSchema>;
+
+// ── Pairing meta schema ───────────────────────────────────────────────────────
+
+export const pairingMetaSchema = z.object({
+  draft: z.boolean().default(false),
+  aiEvents: z.array(aiEventSchema).default([]),
+});
+
+export type PairingMeta = z.infer<typeof pairingMetaSchema>;
+
+// ── Recipe meta schema ────────────────────────────────────────────────────────
+
+const recipeLinkRef = z.object({
+  collection: z.enum(["recipes", "ingredients", "mixtures"]),
+  slug: z.string(),
+});
+
+const ingredientLinkItem = z.object({
+  pattern: z.string(),
+  kind: z.enum(["ingredient", "recipe"]).default("ingredient"),
+  slug: z.string(),
+  collection: z.enum(["ingredients", "mixtures"]).optional(),
+});
+
+const aiSuggestionsCacheSchema = z
+  .object({
+    fingerprint: z.string(),
+    at: z.string(),
+    model: z.string(),
+    data: z.object({
+      improvements: z
+        .array(
+          z.object({
+            field: z.string(),
+            suggestion: z.unknown(),
+            hash: z.string().optional(),
+            rationale: z.string().optional(),
+          }),
+        )
+        .default([]),
+      tags: z.array(z.string()).default([]),
+      ingredientLinks: z
+        .array(
+          z.object({
+            pattern: z.string(),
+            slug: z.string(),
+            confidence: z.enum(["high", "medium", "low"]),
+          }),
+        )
+        .default([]),
+      relations: z
+        .array(
+          z.object({
+            kind: z.string(),
+            collection: z.string(),
+            slug: z.string(),
+            name: z.string(),
+          }),
+        )
+        .default([]),
+      detectedLanguage: z.string().optional(),
+    }),
+  })
+  .optional();
+
+export const recipeMetaSchema = z.object({
+  kind: z.enum(["recipe", ...MIXTURE_KINDS]).optional(),
+  draft: z.boolean().default(false),
+  region: z.array(z.enum(REGIONS)).default([]),
+  language: z.string().length(2).optional(),
+  locale: z.string().length(2).optional(),
+  canonicalLocale: z.string().length(2).optional(),
+  translationOf: z.string().optional(),
+  translationStaleSince: z.string().datetime().optional(),
+  canonicalContentHash: z.string().optional(),
+  translations: z.record(z.string(), z.string()).default({}),
+  variantOf: z.string().optional(),
+  variants: z.array(z.string()).default([]),
+  goesWellWith: z.array(recipeLinkRef).default([]),
+  usesBase: z.array(recipeLinkRef).default([]),
+  ingredientLinks: z.array(ingredientLinkItem).default([]),
+  externalSources: z
+    .array(
+      z.object({
+        url: z.string().url(),
+        title: z.string(),
+        source: z.string().optional(),
+      }),
+    )
+    .default([]),
+  tags: z.array(z.string()).default([]),
+  aiEvents: z.array(aiEventSchema).default([]),
+  aiSuggestions: aiSuggestionsCacheSchema,
+  imageAttribution: imageAttributionSchema,
+  recipeInstructionsAttribution: z
+    .array(
+      z.object({
+        index: z.number().int(),
+        source: z.string(),
+        sourceUrl: z.string().url(),
+        creator: z.string(),
+        creatorUrl: z.string().url().optional(),
+        license: z.string(),
+        licenseUrl: z.string().url(),
+        attribution: z.string(),
+      }),
+    )
+    .optional(),
+});
+
+export type RecipeMeta = z.infer<typeof recipeMetaSchema>;

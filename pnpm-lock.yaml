@@ -254,6 +254,9 @@ importers:
 
   packages/entity-kind:
     dependencies:
+      content-ai:
+        specifier: workspace:*
+        version: link:../content-ai
       recipe-ingestion:
         specifier: workspace:*
         version: link:../recipe-ingestion

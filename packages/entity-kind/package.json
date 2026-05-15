@@ -19,6 +19,7 @@
     "prepublishOnly": "vp run build"
   },
   "dependencies": {
+    "content-ai": "workspace:*",
     "recipe-ingestion": "workspace:*",
     "zod": "catalog:"
   },

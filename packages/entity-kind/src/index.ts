@@ -20,12 +20,23 @@ export {
   scorePairing,
 } from "./completeness.ts";
 
-export type { Ingredient, Pairing, Recipe } from "./schemas.ts";
+export type {
+  Ingredient,
+  IngredientMeta,
+  Pairing,
+  PairingMeta,
+  Recipe,
+  RecipeMeta,
+} from "./schemas.ts";
 export {
   ingredientSchema,
+  ingredientMetaSchema,
   pairingSchema,
+  pairingMetaSchema,
   recipeSchema,
+  recipeMetaSchema,
   INGREDIENT_PARTS,
   INGREDIENT_FLAVOR_PROFILE,
   INGREDIENT_CATEGORIES,
+  MIXTURE_KINDS,
 } from "./schemas.ts";
