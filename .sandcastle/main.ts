@@ -265,20 +265,17 @@ function logPhase(message: string) {
 //
 // On macOS, Spotlight/Finder asynchronously recreate `.DS_Store` files inside
 // `.sandcastle/worktrees/`. That races against sandcastle's
-// `git worktree remove --force` cleanup: git deletes the dir's contents but
-// the final `rmdir` sees a freshly-recreated `.DS_Store`, fails with
-// "Directory not empty", and sandcastle throws — killing the whole run and
-// leaving orphan worktree dirs behind.
+// `git worktree remove --force` cleanup. The createSandbox() path swallows
+// the resulting error (createSandbox.js:448), but sandcastle.run() lets it
+// propagate (SandboxFactory.js:87) — so all four phases here go through
+// createSandbox + sandbox.close, where the error is non-fatal.
 //
-// Three defenses, used together:
+// Two leftover hygiene tasks:
 //   1. Drop `.metadata_never_index` so Spotlight ignores the worktrees tree
-//      (drastically reduces but does not eliminate `.DS_Store` creation).
+//      (reduces `.DS_Store` creation; not load-bearing for correctness).
 //   2. At orchestrator startup, sweep any orphan dirs left from a previous
-//      run, with retries so we ride out the Finder race.
-//   3. While the orchestrator is alive, run a low-frequency timer that
-//      deletes any `.DS_Store` files under `.sandcastle/worktrees/`. This
-//      narrows the window during which sandcastle's own `git worktree
-//      remove --force` can race against a freshly-recreated `.DS_Store`.
+//      run that died before sandcastle could remove its worktree. Retries
+//      with backoff so we ride out the Finder race.
 // ---------------------------------------------------------------------------
 
 const WORKTREES_DIR = ".sandcastle/worktrees";
@@ -337,24 +334,44 @@ async function cleanupOrphanWorktrees() {
   }
 }
 
-function startDSStoreKiller(): () => void {
-  const tick = () => {
-    try {
-      execFileSync("find", [WORKTREES_DIR, "-name", ".DS_Store", "-delete"], {
-        stdio: "ignore",
-      });
-    } catch {
-      // best-effort; find returns non-zero if the dir disappeared mid-walk
-    }
-  };
-  const handle = setInterval(tick, 250);
-  handle.unref();
-  return () => clearInterval(handle);
+function branchHasCommitsAhead(branch: string): boolean {
+  try {
+    const out = execFileSync("git", ["rev-list", "--count", `HEAD..${branch}`], {
+      encoding: "utf8",
+    }).trim();
+    return Number.parseInt(out, 10) > 0;
+  } catch {
+    // Branch doesn't exist locally, or rev-list otherwise failed — treat as
+    // "no commits to merge" so callers fall back to the default code path.
+    return false;
+  }
+}
+
+function getCurrentBranch(): string {
+  return execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+    encoding: "utf8",
+  }).trim();
+}
+
+function deleteBranchIfExists(branch: string) {
+  try {
+    execFileSync("git", ["branch", "-D", branch], { stdio: "ignore" });
+  } catch {
+    // best-effort
+  }
+}
+
+function tempBranchTimestamp() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-` +
+    `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+  );
 }
 
 disableSpotlightForWorktrees();
 await cleanupOrphanWorktrees();
-const stopDSStoreKiller = startDSStoreKiller();
 
 // ---------------------------------------------------------------------------
 // Main loop
@@ -371,30 +388,38 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // parallel right now (i.e., no blocking dependencies on other open issues).
   //
   // It outputs a <plan> JSON block — we parse that to drive Phase 2.
+  //
+  // Uses createSandbox + sandbox.close() rather than sandcastle.run() so that
+  // a `WorktreeError` during teardown (the macOS Finder/.DS_Store race) is
+  // swallowed instead of crashing the orchestrator.
   // -------------------------------------------------------------------------
-  const plan = await runWithSummary(`iter${iteration}-planner`, (logging) =>
-    sandcastle.run({
-      hooks,
-      copyToWorktree,
-      sandbox: docker(),
-      // docker() is a bind-mount provider; without this, run() defaults to
-      // { type: "head" } and bind-mounts the host repo directly. The
-      // onSandboxReady `pnpm install --frozen-lockfile` hook would then
-      // detect the macOS-built node_modules as platform-incompatible and
-      // delete it (CI=true auto-confirms the prompt) — wiping the host's
-      // node_modules through the bind-mount. merge-to-head forces a git
-      // worktree so the install only touches the worktree's copy.
-      branchStrategy: { type: "merge-to-head" },
-      name: "planner",
-      // One iteration is enough: the planner just needs to read and reason,
-      // not write code.
-      maxIterations: 1,
-      // Opus for planning: dependency analysis benefits from deeper reasoning.
-      agent: sandcastle.claudeCode("claude-opus-4-6"),
-      promptFile: "./.sandcastle/plan-prompt.md",
-      logging,
-    }),
-  );
+  const plannerBranch = `sandcastle/planner-${tempBranchTimestamp()}`;
+  const plannerSandbox = await sandcastle.createSandbox({
+    branch: plannerBranch,
+    sandbox: docker(),
+    hooks,
+    copyToWorktree,
+  });
+
+  let plan;
+  try {
+    plan = await runWithSummary(`iter${iteration}-planner`, (logging) =>
+      plannerSandbox.run({
+        name: "planner",
+        // One iteration is enough: the planner just needs to read and reason,
+        // not write code.
+        maxIterations: 1,
+        // Opus for planning: dependency analysis benefits from deeper reasoning.
+        agent: sandcastle.claudeCode("claude-opus-4-6"),
+        promptFile: "./.sandcastle/plan-prompt.md",
+        logging,
+      }),
+    );
+  } finally {
+    await plannerSandbox.close();
+    // Planner makes no commits; its temp branch is just a worktree anchor.
+    deleteBranchIfExists(plannerBranch);
+  }
 
   // Extract the <plan>…</plan> block from the agent's stdout.
   const planMatch = plan.stdout.match(/<plan>([\s\S]*?)<\/plan>/);
@@ -458,8 +483,12 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
             }),
         );
 
-        // Only review if the implementer produced commits
-        if (implement.commits.length > 0) {
+        // Trigger review whenever the branch has commits ahead of the host
+        // branch — NOT just commits made in this run. A re-run on an existing
+        // sandcastle/issue-N branch can leave `implement.commits` empty even
+        // though the branch already carries prior-iteration work that should
+        // still be reviewed and merged.
+        if (branchHasCommitsAhead(issue.branch)) {
           const review = await runWithSummary(`iter${iteration}-reviewer-${issue.id}`, (logging) =>
             sandbox.run({
               name: "reviewer",
@@ -498,12 +527,14 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     }
   }
 
-  // Only pass branches that actually produced commits to the merge phase.
-  // An agent that ran successfully but made no commits has nothing to merge.
+  // Pass branches that have commits ahead of host to the merge phase. We
+  // check git directly (not `result.commits`) so that prior-iteration work
+  // sitting on an existing `sandcastle/issue-N` branch isn't stranded when
+  // the current implementer correctly makes zero new commits.
   const completedIssues = settled
     .map((outcome, i) => ({ outcome, issue: issues[i]! }))
     .filter(
-      (entry) => entry.outcome.status === "fulfilled" && entry.outcome.value.commits.length > 0,
+      (entry) => entry.outcome.status === "fulfilled" && branchHasCommitsAhead(entry.issue.branch),
     )
     .map((entry) => entry.issue);
 
@@ -523,39 +554,54 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // -------------------------------------------------------------------------
   // Phase 3: Merge
   //
-  // One agent merges all completed branches into the current branch,
-  // resolving any conflicts and running tests to confirm everything works.
-  //
-  // The {{BRANCHES}} and {{ISSUES}} prompt arguments are lists that the agent
-  // uses to know which branches to merge and which issues to close.
+  // One agent merges all completed branches into a temp branch forked from
+  // the host's current branch. After the agent finishes we fast-forward the
+  // host branch to the temp branch, so the merge commits land where the user
+  // expects them. Using createSandbox + sandbox.close() (rather than
+  // sandcastle.run with branchStrategy: merge-to-head) avoids the
+  // WorktreeError-on-teardown crash; the fast-forward we'd otherwise have
+  // gotten for free we now do explicitly with `git merge --ff-only`.
   // -------------------------------------------------------------------------
-  await runWithSummary(`iter${iteration}-merger`, (logging) =>
-    sandcastle.run({
-      hooks,
-      copyToWorktree,
-      sandbox: docker(),
-      // See planner above: without an explicit branchStrategy the docker
-      // bind-mount provider defaults to "head" and exposes host node_modules
-      // to the in-container pnpm install. merge-to-head puts the merger in
-      // a worktree; its merge commits get fast-forwarded back into head on
-      // sandbox close, so the end state on the host's branch is unchanged.
-      branchStrategy: { type: "merge-to-head" },
-      name: "merger",
-      maxIterations: 1,
-      agent: sandcastle.claudeCode("claude-opus-4-6"),
-      promptFile: "./.sandcastle/merge-prompt.md",
-      promptArgs: {
-        // A markdown list of branch names, one per line.
-        BRANCHES: completedBranches.map((b) => `- ${b}`).join("\n"),
-        // A markdown list of issue IDs and titles, one per line.
-        ISSUES: completedIssues.map((i) => `- ${i.id}: ${i.title}`).join("\n"),
-      },
-      logging,
-    }),
-  );
+  const hostBranch = getCurrentBranch();
+  const mergerBranch = `sandcastle/merger-${tempBranchTimestamp()}`;
+  const mergerSandbox = await sandcastle.createSandbox({
+    branch: mergerBranch,
+    baseBranch: hostBranch,
+    sandbox: docker(),
+    hooks,
+    copyToWorktree,
+  });
+
+  try {
+    await runWithSummary(`iter${iteration}-merger`, (logging) =>
+      mergerSandbox.run({
+        name: "merger",
+        maxIterations: 1,
+        agent: sandcastle.claudeCode("claude-opus-4-6"),
+        promptFile: "./.sandcastle/merge-prompt.md",
+        promptArgs: {
+          // A markdown list of branch names, one per line.
+          BRANCHES: completedBranches.map((b) => `- ${b}`).join("\n"),
+          // A markdown list of issue IDs and titles, one per line.
+          ISSUES: completedIssues.map((i) => `- ${i.id}: ${i.title}`).join("\n"),
+        },
+        logging,
+      }),
+    );
+
+    // Bring host's checked-out branch up to the merger's commits. ff-only
+    // refuses to do anything other than a fast-forward; if the merger
+    // diverged for some reason we surface the failure rather than create
+    // surprise merge commits in the host worktree.
+    if (branchHasCommitsAhead(mergerBranch)) {
+      execFileSync("git", ["merge", "--ff-only", mergerBranch], { stdio: "inherit" });
+    }
+  } finally {
+    await mergerSandbox.close();
+    deleteBranchIfExists(mergerBranch);
+  }
 
   logPhase("\nBranches merged.");
 }
 
-stopDSStoreKiller();
 logPhase("\nAll done.");
