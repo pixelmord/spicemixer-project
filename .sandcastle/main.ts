@@ -270,11 +270,15 @@ function logPhase(message: string) {
 // "Directory not empty", and sandcastle throws — killing the whole run and
 // leaving orphan worktree dirs behind.
 //
-// Two defenses:
+// Three defenses, used together:
 //   1. Drop `.metadata_never_index` so Spotlight ignores the worktrees tree
 //      (drastically reduces but does not eliminate `.DS_Store` creation).
 //   2. At orchestrator startup, sweep any orphan dirs left from a previous
 //      run, with retries so we ride out the Finder race.
+//   3. While the orchestrator is alive, run a low-frequency timer that
+//      deletes any `.DS_Store` files under `.sandcastle/worktrees/`. This
+//      narrows the window during which sandcastle's own `git worktree
+//      remove --force` can race against a freshly-recreated `.DS_Store`.
 // ---------------------------------------------------------------------------
 
 const WORKTREES_DIR = ".sandcastle/worktrees";
@@ -333,8 +337,24 @@ async function cleanupOrphanWorktrees() {
   }
 }
 
+function startDSStoreKiller(): () => void {
+  const tick = () => {
+    try {
+      execFileSync("find", [WORKTREES_DIR, "-name", ".DS_Store", "-delete"], {
+        stdio: "ignore",
+      });
+    } catch {
+      // best-effort; find returns non-zero if the dir disappeared mid-walk
+    }
+  };
+  const handle = setInterval(tick, 250);
+  handle.unref();
+  return () => clearInterval(handle);
+}
+
 disableSpotlightForWorktrees();
 await cleanupOrphanWorktrees();
+const stopDSStoreKiller = startDSStoreKiller();
 
 // ---------------------------------------------------------------------------
 // Main loop
@@ -537,4 +557,5 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   logPhase("\nBranches merged.");
 }
 
+stopDSStoreKiller();
 logPhase("\nAll done.");
