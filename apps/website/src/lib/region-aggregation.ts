@@ -8,11 +8,7 @@ export type AggregationEntry = {
 
 export type RegionCount = { mixtures: number; ingredients: number; recipes: number };
 
-/**
- * Aggregates published entries by region.
- * Drafts (draft === true) are excluded. Entries without a draft field are published.
- * Returns a Map keyed by every REGIONS code; unknown region values on entries are ignored.
- */
+/** Entries without a draft field are treated as published. */
 export function regionAggregation(entries: AggregationEntry[]): Map<RegionCode, RegionCount> {
   const result = new Map<RegionCode, RegionCount>();
   for (const code of REGIONS) {

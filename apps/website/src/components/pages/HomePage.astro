@@ -6,8 +6,7 @@ import RecentlyAddedFeed from "../RecentlyAddedFeed.astro";
 import { getPublished, getPublishedIngredients, getPublishedPairings, slugFromLocaleId } from "../../lib/recipe-augment.ts";
 import { recentlyAdded, type RecentEntry } from "../../lib/recently-added.ts";
 import { FEATURED_PAIRING_SLUG } from "../../lib/homepage.config.ts";
-import { regionAggregation } from "../../lib/region-aggregation.ts";
-import type { AggregationEntry } from "../../lib/region-aggregation.ts";
+import { regionAggregation, type AggregationEntry } from "../../lib/region-aggregation.ts";
 import { getCollection } from "astro:content";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 

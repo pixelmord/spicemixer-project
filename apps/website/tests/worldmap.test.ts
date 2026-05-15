@@ -26,7 +26,6 @@ describe("Worldmap component: source structure", () => {
 
   test("renders one element per region (uses REGIONS iteration)", () => {
     expect(src).toContain("REGIONS");
-    // Uses REGIONS.map or for..of to render all dots
     expect(src).toMatch(/REGIONS\.(map|forEach)|for\s*\(.*REGIONS/);
   });
 
@@ -35,7 +34,6 @@ describe("Worldmap component: source structure", () => {
   });
 
   test("renders filled state for regions with count ≥ 1", () => {
-    // Checks aggregation counts to decide filled vs empty
     expect(src).toMatch(/mixtures|ingredients|recipes/);
   });
 
@@ -44,7 +42,6 @@ describe("Worldmap component: source structure", () => {
   });
 
   test("includes tooltip text for region name and counts", () => {
-    // tooltip must show region label
     expect(src).toContain("REGION_LABELS");
   });
 });
