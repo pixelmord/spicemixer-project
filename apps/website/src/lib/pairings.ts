@@ -42,10 +42,7 @@ export async function savePairing(
   if (imageAttributionValue) data["imageAttribution"] = imageAttributionValue;
   await store.put("pairings", input.id, data);
   if (input.draft !== undefined) {
-    const pairingRef = { collection: "pairings" as const, slug: input.id };
-    const existingMeta = await sidecar.read(pairingRef);
-    const metaData = (existingMeta?.data as Record<string, unknown>) ?? {};
-    await sidecar.write(pairingRef, { ...metaData, draft: input.draft });
+    await savePairingMeta(sidecar, { id: input.id, patch: { draft: input.draft } });
   }
   return { id: input.id };
 }
@@ -57,10 +54,7 @@ export async function togglePairingDraft(
 ): Promise<void> {
   const existing = await store.get("pairings", input.id);
   if (!existing) throw new NotFoundError(`Pairing ${input.id} not found.`);
-  const pairingRef = { collection: "pairings" as const, slug: input.id };
-  const existingMeta = await sidecar.read(pairingRef);
-  const metaData = (existingMeta?.data as Record<string, unknown>) ?? {};
-  await sidecar.write(pairingRef, { ...metaData, draft: input.draft });
+  await savePairingMeta(sidecar, { id: input.id, patch: { draft: input.draft } });
 }
 
 export async function deletePairing(
