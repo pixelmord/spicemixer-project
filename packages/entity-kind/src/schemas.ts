@@ -129,7 +129,6 @@ export const pairingSchema = z.object({
   ingredients: z.tuple([z.string(), z.string()]),
   descriptions: z.record(z.string(), z.string()).default({}),
   description: z.string().optional(),
-  draft: z.boolean().default(false),
   image: z.string().optional(),
   imageAttribution: imageAttributionSchema,
 });

@@ -1,6 +1,6 @@
 import { getEntry, getCollection } from "astro:content";
 import type { MixtureKind } from "./mixture-schema.ts";
-import { INGREDIENT_META } from "./meta-sidecar.ts";
+import { INGREDIENT_META, PAIRING_META } from "./meta-sidecar.ts";
 import { regionsForPairing } from "./region-derivation.ts";
 
 /** Locale-aware ingredient lookup with EN fallback. */
@@ -46,7 +46,6 @@ type PairingData = {
   ingredients: [string, string];
   descriptions?: Record<string, string>;
   description?: string;
-  draft?: boolean;
   image?: string;
 };
 
@@ -181,10 +180,17 @@ export interface PublishedPairing {
 
 /** Get all published pairings, each annotated with the union of both endpoints' regions. */
 export async function getPublishedPairings(): Promise<PublishedPairing[]> {
-  const [rawPairings, rawIngredients] = await Promise.all([
+  const [rawPairings, rawIngredients, rawPairingMeta] = await Promise.all([
     getCollection("pairings"),
     getCollection("ingredients"),
+    getCollection(PAIRING_META),
   ]);
+
+  const draftIds = new Set(
+    (rawPairingMeta as Array<{ id: string; data: { draft?: boolean } }>)
+      .filter((m) => m.data.draft === true)
+      .map((m) => m.id),
+  );
 
   const regionsBySlug = new Map<string, string[]>();
   for (const m of rawIngredients as Array<{ id: string; data: { region?: string[] } }>) {
@@ -194,7 +200,7 @@ export async function getPublishedPairings(): Promise<PublishedPairing[]> {
   }
 
   return (rawPairings as Array<{ id: string; data: PairingData }>)
-    .filter((p) => !p.data.draft)
+    .filter((p) => !draftIds.has(p.id))
     .map((p) => {
       const [a, b] = p.data.ingredients;
       const regions = regionsForPairing(regionsBySlug.get(a), regionsBySlug.get(b));

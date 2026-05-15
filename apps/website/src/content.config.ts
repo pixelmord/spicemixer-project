@@ -164,12 +164,12 @@ const pairingSchema = z.object({
   descriptions: z.record(z.string(), z.string()).default({}),
   // Legacy single-locale field — kept optional during migration window
   description: z.string().optional(),
-  draft: z.boolean().default(false),
   image: z.string().url().optional(),
   imageAttribution: imageAttributionSchema,
 });
 
 const pairingMetaSchema = z.object({
+  draft: z.boolean().default(false),
   aiEvents: z.array(aiEventSchema).default([]),
 });
 

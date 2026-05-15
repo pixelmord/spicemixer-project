@@ -1,7 +1,7 @@
 import { defineAction, ActionError } from "astro:actions";
 import { z } from "astro/zod";
 import { createStore } from "@/lib/content-store.ts";
-import { createMetaSidecar, INGREDIENT_META } from "@/lib/meta-sidecar.ts";
+import { createMetaSidecar, INGREDIENT_META, PAIRING_META } from "@/lib/meta-sidecar.ts";
 import { slugFromLocaleId } from "@/lib/recipe-augment.ts";
 import { entityRefSchema } from "@/lib/entity-ref.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
@@ -217,18 +217,23 @@ const recipeCollectionEnum = z.enum(["recipes", "mixtures"]);
 
 async function buildListing() {
   const store = await createStore();
-  const [recipes, mixtures, metas, ingredients, ingredientMetas, pairings] = await Promise.all([
-    store.list("recipes"),
-    store.list("mixtures"),
-    store.list("meta"),
-    store.list("ingredients"),
-    store.list(INGREDIENT_META),
-    store.list("pairings"),
-  ]);
+  const [recipes, mixtures, metas, ingredients, ingredientMetas, pairings, pairingMetas] =
+    await Promise.all([
+      store.list("recipes"),
+      store.list("mixtures"),
+      store.list("meta"),
+      store.list("ingredients"),
+      store.list(INGREDIENT_META),
+      store.list("pairings"),
+      store.list(PAIRING_META),
+    ]);
 
   const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown>]));
   const ingredientMetaMap = new Map(
     ingredientMetas.map((m) => [m.id, m.data as Record<string, unknown>]),
+  );
+  const pairingMetaMap = new Map(
+    pairingMetas.map((m) => [m.id, m.data as Record<string, unknown>]),
   );
 
   const recipeItems = [...recipes, ...mixtures].map((item) => {
@@ -276,12 +281,13 @@ async function buildListing() {
       if (typeof v === "string") return v;
       return v.slug;
     };
+    const pairingMeta = pairingMetaMap.get(item.id) ?? {};
     return {
       type: "pairing" as const,
       collection: "pairings" as const,
       id: item.id,
       name: `${refSlug(ings[0])} ↔ ${refSlug(ings[1])}`,
-      draft: !!(d["draft"] as boolean),
+      draft: !!(pairingMeta["draft"] as boolean),
       completeness,
       updatedAt: item.updatedAt,
       translations,
@@ -440,7 +446,7 @@ export const server = {
     }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      const result = await libSavePairing(store, {
+      const result = await libSavePairing(store, sidecar, {
         id,
         ingredients,
         description,
@@ -479,8 +485,9 @@ export const server = {
     input: z.object({ id: z.string().min(1), draft: z.boolean() }),
     handler: async ({ id, draft }) => {
       const store = await createStore();
+      const sidecar = createMetaSidecar(store);
       try {
-        await libTogglePairingDraft(store, { id, draft });
+        await libTogglePairingDraft(store, sidecar, { id, draft });
       } catch (err) {
         if (err instanceof NotFoundError) {
           throw new ActionError({ code: "NOT_FOUND", message: err.message });

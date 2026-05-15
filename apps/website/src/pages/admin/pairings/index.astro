@@ -3,17 +3,24 @@ export const prerender = false;
 import AdminShell from "@/components/admin/AdminShell.tsx";
 import ContentTable from "@/components/admin/ContentTable.tsx";
 import { createStore } from "@/lib/content-store.ts";
+import { PAIRING_META } from "@/lib/meta-sidecar.ts";
 import { scorePairing } from "@/lib/completeness.ts";
 
 const store = await createStore();
-const items = await store.list("pairings");
+const [items, metaItems] = await Promise.all([
+  store.list("pairings"),
+  store.list(PAIRING_META),
+]);
+
+const metaMap = new Map(metaItems.map((m) => [m.id, m.data as Record<string, unknown>]));
 
 const rows = items.map((item) => {
   const d = item.data as Record<string, unknown>;
   const ings = (d["ingredients"] as string[]) ?? [];
   const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
   const translations = ["en", "de"].filter((l) => !!descriptions[l]);
-  const draft = !!(d["draft"] as boolean);
+  const meta = metaMap.get(item.id) ?? {};
+  const draft = !!(meta["draft"] as boolean);
   const completeness = scorePairing(d, "en");
   const description = descriptions["en"] ?? String(d["description"] ?? "");
   return {

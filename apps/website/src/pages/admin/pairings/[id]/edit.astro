@@ -4,6 +4,7 @@ import AdminShell from "@/components/admin/AdminShell.tsx";
 import PairingForm from "@/components/admin/PairingForm.tsx";
 import type { ImageAttribution } from "@/components/admin/ImageSearchModal.tsx";
 import { createStore } from "@/lib/content-store.ts";
+import { createMetaSidecar } from "@/lib/meta-sidecar.ts";
 
 const { id } = Astro.params;
 if (!id) return Astro.redirect("/admin/pairings");
@@ -20,7 +21,10 @@ const ingredients = (d["ingredients"] as [string, string]) ?? ["", ""];
 const descriptions =
   (d["descriptions"] as Record<string, string>) ??
   (d["description"] ? { en: String(d["description"]) } : {});
-const isDraft = !!(d["draft"] as boolean);
+const sidecar = createMetaSidecar(store);
+const metaRecord = await sidecar.read({ collection: "pairings", slug: pairingId });
+const metaData = (metaRecord?.data as Record<string, unknown>) ?? {};
+const isDraft = !!(metaData["draft"] as boolean);
 const imageUrl = typeof d["image"] === "string" ? d["image"] : "";
 const imageAttribution = d["imageAttribution"] as ImageAttribution | undefined;
 

@@ -15,6 +15,7 @@ export interface SavePairingInput {
 
 export async function savePairing(
   store: ContentStore,
+  sidecar: MetaSidecar,
   input: SavePairingInput,
 ): Promise<{ id: string }> {
   const canonical = [...input.ingredients].sort((a, b) => a.slug.localeCompare(b.slug)) as [
@@ -26,7 +27,6 @@ export async function savePairing(
   const existingDescriptions =
     (existingData["descriptions"] as Record<string, string>) ??
     (typeof existingData["description"] === "string" ? { en: existingData["description"] } : {});
-  const existingDraft = (existingData["draft"] as boolean) ?? false;
   // image / imageAttribution: explicit value wins; undefined = preserve existing; "" = clear
   const imageValue =
     input.image !== undefined ? input.image : (existingData["image"] as string | undefined);
@@ -37,24 +37,30 @@ export async function savePairing(
   const data: Record<string, unknown> = {
     ingredients: canonical,
     descriptions: { ...existingDescriptions, [input.locale]: input.description },
-    draft: input.draft !== undefined ? input.draft : existingDraft,
   };
   if (imageValue) data["image"] = imageValue;
   if (imageAttributionValue) data["imageAttribution"] = imageAttributionValue;
   await store.put("pairings", input.id, data);
+  if (input.draft !== undefined) {
+    const pairingRef = { collection: "pairings" as const, slug: input.id };
+    const existingMeta = await sidecar.read(pairingRef);
+    const metaData = (existingMeta?.data as Record<string, unknown>) ?? {};
+    await sidecar.write(pairingRef, { ...metaData, draft: input.draft });
+  }
   return { id: input.id };
 }
 
 export async function togglePairingDraft(
   store: ContentStore,
+  sidecar: MetaSidecar,
   input: { id: string; draft: boolean },
 ): Promise<void> {
   const existing = await store.get("pairings", input.id);
   if (!existing) throw new NotFoundError(`Pairing ${input.id} not found.`);
-  await store.put("pairings", input.id, {
-    ...(existing.data as Record<string, unknown>),
-    draft: input.draft,
-  });
+  const pairingRef = { collection: "pairings" as const, slug: input.id };
+  const existingMeta = await sidecar.read(pairingRef);
+  const metaData = (existingMeta?.data as Record<string, unknown>) ?? {};
+  await sidecar.write(pairingRef, { ...metaData, draft: input.draft });
 }
 
 export async function deletePairing(

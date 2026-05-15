@@ -17,7 +17,8 @@ const harissa: EntityRef = { collection: "mixtures", slug: "harissa" };
 describe("savePairing", () => {
   test("canonicalizes ingredient order alphabetically by slug", async () => {
     const store = new InMemoryStore();
-    await savePairing(store, {
+    const sidecar = createMetaSidecar(store);
+    await savePairing(store, sidecar, {
       id: "cardamom--anise",
       ingredients: [cardamom, anise],
       description: "Warm and licorice-y.",
@@ -31,7 +32,8 @@ describe("savePairing", () => {
 
   test("stores full EntityRef objects for ingredients", async () => {
     const store = new InMemoryStore();
-    await savePairing(store, {
+    const sidecar = createMetaSidecar(store);
+    await savePairing(store, sidecar, {
       id: "harissa--cardamom",
       ingredients: [harissa, cardamom],
       description: "Spicy warmth.",
@@ -45,7 +47,8 @@ describe("savePairing", () => {
 
   test("cross-collection pair: mixture endpoint alongside ingredient endpoint", async () => {
     const store = new InMemoryStore();
-    await savePairing(store, {
+    const sidecar = createMetaSidecar(store);
+    await savePairing(store, sidecar, {
       id: "cardamom--harissa",
       ingredients: [cardamom, harissa],
       description: "Spicy warmth.",
@@ -61,12 +64,12 @@ describe("savePairing", () => {
 
   test("migrates legacy single-locale description into descriptions map", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("pairings", "anise--cardamom", {
       ingredients: [anise, cardamom],
       description: "Warm and licorice-y.", // legacy field
-      draft: false,
     });
-    await savePairing(store, {
+    await savePairing(store, sidecar, {
       id: "anise--cardamom",
       ingredients: [anise, cardamom],
       description: "Warm und lakritzig.",
@@ -81,12 +84,12 @@ describe("savePairing", () => {
 
   test("merges new locale description into existing descriptions map", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("pairings", "anise--cardamom", {
       ingredients: [anise, cardamom],
       descriptions: { en: "Warm and licorice-y." },
-      draft: false,
     });
-    await savePairing(store, {
+    await savePairing(store, sidecar, {
       id: "anise--cardamom",
       ingredients: [anise, cardamom],
       description: "Warm und lakritzig.",
@@ -101,12 +104,13 @@ describe("savePairing", () => {
 
   test("preserves existing image when image is not supplied", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("pairings", "anise--cardamom", {
       ingredients: [anise, cardamom],
       descriptions: { en: "x" },
       image: "https://example.com/img.jpg",
     });
-    await savePairing(store, {
+    await savePairing(store, sidecar, {
       id: "anise--cardamom",
       ingredients: [anise, cardamom],
       description: "y",
@@ -118,21 +122,26 @@ describe("savePairing", () => {
 
   test("throws NotFoundError when togglePairingDraft targets missing pairing", async () => {
     const store = new InMemoryStore();
-    await expect(togglePairingDraft(store, { id: "ghost", draft: true })).rejects.toBeInstanceOf(
-      NotFoundError,
-    );
+    const sidecar = createMetaSidecar(store);
+    await expect(
+      togglePairingDraft(store, sidecar, { id: "ghost", draft: true }),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 
-  test("togglePairingDraft updates draft on existing pairing", async () => {
+  test("togglePairingDraft updates draft in pairingMeta sidecar, not content", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("pairings", "anise--cardamom", {
       ingredients: [anise, cardamom],
       descriptions: { en: "x" },
-      draft: false,
     });
-    await togglePairingDraft(store, { id: "anise--cardamom", draft: true });
+    await togglePairingDraft(store, sidecar, { id: "anise--cardamom", draft: true });
+    // draft NOT in content
     const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored!.data as Record<string, unknown>)["draft"]).toBe(true);
+    expect((stored!.data as Record<string, unknown>)["draft"]).toBeUndefined();
+    // draft IS in meta
+    const meta = await store.get(PAIRING_META, "anise--cardamom");
+    expect((meta!.data as Record<string, unknown>)["draft"]).toBe(true);
   });
 
   test("deletePairing removes both the pairing and its meta sidecar", async () => {
@@ -166,6 +175,7 @@ describe("savePairing", () => {
 
   test("savePairing stores imageAttribution in pairing content", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     const attribution = {
       source: "Openverse",
       sourceUrl: "https://openverse.org",
@@ -174,7 +184,7 @@ describe("savePairing", () => {
       licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
       attribution: "Test Photographer via Openverse (CC BY 2.0)",
     };
-    await savePairing(store, {
+    await savePairing(store, sidecar, {
       id: "anise--cardamom",
       ingredients: [anise, cardamom],
       description: "Warm and licorice-y.",
@@ -187,6 +197,7 @@ describe("savePairing", () => {
 
   test("savePairing preserves imageAttribution across locale saves", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     const attribution = {
       source: "Openverse",
       sourceUrl: "https://openverse.org",
@@ -195,7 +206,7 @@ describe("savePairing", () => {
       licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
       attribution: "Test Photographer via Openverse (CC BY 2.0)",
     };
-    await savePairing(store, {
+    await savePairing(store, sidecar, {
       id: "anise--cardamom",
       ingredients: [anise, cardamom],
       description: "Warm and licorice-y.",
@@ -203,7 +214,7 @@ describe("savePairing", () => {
       imageAttribution: attribution,
     });
     // Second save (de locale) without imageAttribution preserves existing
-    await savePairing(store, {
+    await savePairing(store, sidecar, {
       id: "anise--cardamom",
       ingredients: [anise, cardamom],
       description: "Warm und lakritzartig.",
@@ -213,9 +224,10 @@ describe("savePairing", () => {
     expect((stored!.data as Record<string, unknown>)["imageAttribution"]).toEqual(attribution);
   });
 
-  test("save as draft persists draft=true on first save", async () => {
+  test("savePairing routes draft=true to pairingMeta sidecar, not content", async () => {
     const store = new InMemoryStore();
-    await savePairing(store, {
+    const sidecar = createMetaSidecar(store);
+    await savePairing(store, sidecar, {
       id: "anise--cardamom",
       ingredients: [anise, cardamom],
       description: "Warm and licorice-y.",
@@ -223,29 +235,29 @@ describe("savePairing", () => {
       draft: true,
     });
     const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored!.data as Record<string, unknown>)["draft"]).toBe(true);
+    expect((stored!.data as Record<string, unknown>)["draft"]).toBeUndefined();
+    const meta = await store.get(PAIRING_META, "anise--cardamom");
+    expect((meta!.data as Record<string, unknown>)["draft"]).toBe(true);
   });
 
-  test("save without draft preserves existing draft state", async () => {
+  test("save without draft leaves existing meta draft untouched", async () => {
     const store = new InMemoryStore();
-    await store.put("pairings", "anise--cardamom", {
-      ingredients: [anise, cardamom],
-      descriptions: { en: "x" },
-      draft: true,
-    });
-    await savePairing(store, {
+    const sidecar = createMetaSidecar(store);
+    await store.put(PAIRING_META, "anise--cardamom", { aiEvents: [], draft: true });
+    await savePairing(store, sidecar, {
       id: "anise--cardamom",
       ingredients: [anise, cardamom],
       description: "y",
       locale: "en",
     });
-    const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored!.data as Record<string, unknown>)["draft"]).toBe(true);
+    const meta = await store.get(PAIRING_META, "anise--cardamom");
+    expect((meta!.data as Record<string, unknown>)["draft"]).toBe(true);
   });
 
   test("does not stamp canonicalLocale on pairingMeta (pairings excluded per ADR 0003)", async () => {
     const store = new InMemoryStore();
-    await savePairing(store, {
+    const sidecar = createMetaSidecar(store);
+    await savePairing(store, sidecar, {
       id: "anise--cardamom",
       ingredients: [anise, cardamom],
       description: "Warm and licorice-y.",
@@ -257,12 +269,13 @@ describe("savePairing", () => {
 
   test("clears image when empty string is supplied", async () => {
     const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
     await store.put("pairings", "anise--cardamom", {
       ingredients: [anise, cardamom],
       descriptions: { en: "x" },
       image: "https://example.com/img.jpg",
     });
-    await savePairing(store, {
+    await savePairing(store, sidecar, {
       id: "anise--cardamom",
       ingredients: [anise, cardamom],
       description: "y",

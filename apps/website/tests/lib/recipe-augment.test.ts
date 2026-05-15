@@ -80,7 +80,7 @@ describe("getPublishedPairings — region from ingredient content", () => {
         return [
           {
             id: "cardamom--cumin",
-            data: { ingredients: ["cardamom", "cumin"], draft: false, descriptions: {} },
+            data: { ingredients: ["cardamom", "cumin"], descriptions: {} },
           },
         ] as never;
       }
@@ -107,7 +107,7 @@ describe("getPublishedPairings — region from ingredient content", () => {
         return [
           {
             id: "cumin--sumac",
-            data: { ingredients: ["cumin", "sumac"], draft: false, descriptions: {} },
+            data: { ingredients: ["cumin", "sumac"], descriptions: {} },
           },
         ] as never;
       }
@@ -124,5 +124,38 @@ describe("getPublishedPairings — region from ingredient content", () => {
     const result = await getPublishedPairings();
     expect(result[0].regions).toEqual(expect.arrayContaining(["north-africa", "levant"]));
     expect(result[0].regions).toHaveLength(2);
+  });
+
+  test("excludes pairings whose pairingMeta has draft=true", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          { id: "caraway--cumin", data: { ingredients: ["caraway", "cumin"], descriptions: {} } },
+          { id: "cumin--sumac", data: { ingredients: ["cumin", "sumac"], descriptions: {} } },
+        ] as never;
+      }
+      if (name === "pairingMeta") {
+        return [{ id: "caraway--cumin", data: { draft: true, aiEvents: [] } }] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPublishedPairings();
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("cumin--sumac");
+  });
+
+  test("includes pairings with no pairingMeta entry (treated as published)", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          { id: "cardamom--cumin", data: { ingredients: ["cardamom", "cumin"], descriptions: {} } },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPublishedPairings();
+    expect(result).toHaveLength(1);
   });
 });
