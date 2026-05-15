@@ -148,6 +148,7 @@ const ingredientSchema = z.object({
       }),
     )
     .optional(),
+  region: z.array(z.enum(REGIONS)).default([]),
   // Legacy inline pairings — kept optional during migration window.
   // Canonical pairings now live in the `pairings` collection.
   pairings: z
@@ -174,7 +175,6 @@ const pairingMetaSchema = z.object({
 const ingredientMetaSchema = z.object({
   kind: z.literal("ingredient").default("ingredient"),
   draft: z.boolean().default(false),
-  region: z.array(z.enum(REGIONS)).default([]),
   canonicalLocale: z.string().length(2).optional(),
   translationOf: z.string().optional(),
   translationStaleSince: z.string().datetime().optional(),

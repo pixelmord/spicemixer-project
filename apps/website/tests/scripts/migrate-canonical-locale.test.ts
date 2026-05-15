@@ -29,30 +29,29 @@ async function writeMeta(path: string, data: Record<string, unknown>): Promise<v
 
 describe("backfillCanonicalLocale — ingredients", () => {
   test("sets canonicalLocale from en/ folder", async () => {
-    await writeMeta("ingredients/en/caraway.meta.json", { region: [] });
+    await writeMeta("ingredients/en/caraway.meta.json", {});
     await backfillCanonicalLocale(contentRoot);
     const meta = await readMeta("ingredients/en/caraway.meta.json");
     expect(meta.canonicalLocale).toBe("en");
   });
 
   test("sets canonicalLocale from de/ folder", async () => {
-    await writeMeta("ingredients/de/kümmel.meta.json", { region: [] });
+    await writeMeta("ingredients/de/kümmel.meta.json", {});
     await backfillCanonicalLocale(contentRoot);
     const meta = await readMeta("ingredients/de/kümmel.meta.json");
     expect(meta.canonicalLocale).toBe("de");
   });
 
   test("preserves existing fields when adding canonicalLocale", async () => {
-    await writeMeta("ingredients/en/caraway.meta.json", { region: ["europe"], draft: false });
+    await writeMeta("ingredients/en/caraway.meta.json", { draft: false });
     await backfillCanonicalLocale(contentRoot);
     const meta = await readMeta("ingredients/en/caraway.meta.json");
-    expect(meta.region).toEqual(["europe"]);
     expect(meta.draft).toBe(false);
     expect(meta.canonicalLocale).toBe("en");
   });
 
   test("does not overwrite existing canonicalLocale (idempotent)", async () => {
-    await writeMeta("ingredients/en/caraway.meta.json", { canonicalLocale: "de", region: [] });
+    await writeMeta("ingredients/en/caraway.meta.json", { canonicalLocale: "de" });
     await backfillCanonicalLocale(contentRoot);
     const meta = await readMeta("ingredients/en/caraway.meta.json");
     expect(meta.canonicalLocale).toBe("de");
@@ -118,7 +117,7 @@ describe("backfillCanonicalLocale — pairings excluded", () => {
 
 describe("backfillCanonicalLocale — stale queue stays empty", () => {
   test("does not add translationStaleSince to any entry", async () => {
-    await writeMeta("ingredients/en/caraway.meta.json", { region: [] });
+    await writeMeta("ingredients/en/caraway.meta.json", {});
     await writeMeta("recipes/miso-ramen.meta.json", { locale: "en" });
     await writeMeta("mixtures/berbere.meta.json", { locale: "en" });
     await backfillCanonicalLocale(contentRoot);
@@ -133,7 +132,7 @@ describe("backfillCanonicalLocale — stale queue stays empty", () => {
   });
 
   test("does not add canonicalContentHash to any entry", async () => {
-    await writeMeta("ingredients/en/caraway.meta.json", { region: [] });
+    await writeMeta("ingredients/en/caraway.meta.json", {});
     await writeMeta("recipes/miso-ramen.meta.json", { locale: "en" });
     await backfillCanonicalLocale(contentRoot);
     for (const path of ["ingredients/en/caraway.meta.json", "recipes/miso-ramen.meta.json"]) {
@@ -145,7 +144,7 @@ describe("backfillCanonicalLocale — stale queue stays empty", () => {
 
 describe("backfillCanonicalLocale — stats", () => {
   test("returns correct updated/skipped counts", async () => {
-    await writeMeta("ingredients/en/caraway.meta.json", { region: [] });
+    await writeMeta("ingredients/en/caraway.meta.json", {});
     await writeMeta("ingredients/en/cumin.meta.json", { canonicalLocale: "en" });
     await writeMeta("recipes/miso-ramen.meta.json", { locale: "en" });
     const stats = await backfillCanonicalLocale(contentRoot);

@@ -81,6 +81,7 @@ interface IngredientData {
   flavorProfile?: IngredientFlavorProfile[];
   safetyFlags?: string[];
   sources?: Array<{ author?: string; title: string; url: string; year?: string }>;
+  region?: RegionCode[];
 }
 
 interface AiSuggestionsState {
@@ -223,7 +224,7 @@ export default function IngredientForm({
     data.flavorNotes.length > 0 ? data.flavorNotes : [],
   );
   const [regions, setRegions] = useState<RegionCode[]>(
-    (initialMeta?.["region"] as RegionCode[] | undefined) ?? [],
+    (initialData?.["region"] as RegionCode[] | undefined) ?? [],
   );
   const [pairings, setPairings] = useState<Pairing[]>(initialPairings);
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
@@ -396,12 +397,13 @@ export default function IngredientForm({
       if (flavorProfile.length > 0) payload.flavorProfile = flavorProfile;
       if (safetyFlags.length > 0) payload.safetyFlags = safetyFlags;
       if (sources.length > 0) payload.sources = sources;
+      if (regions.length > 0) payload.region = regions;
 
       const { error } = await actions.saveIngredient({
         locale,
         slug,
         ingredient: payload as never,
-        meta: { draft, region: regions },
+        meta: { draft },
       });
 
       if (error) {

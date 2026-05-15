@@ -181,13 +181,13 @@ export interface PublishedPairing {
 
 /** Get all published pairings, each annotated with the union of both endpoints' regions. */
 export async function getPublishedPairings(): Promise<PublishedPairing[]> {
-  const [rawPairings, rawIngMeta] = await Promise.all([
+  const [rawPairings, rawIngredients] = await Promise.all([
     getCollection("pairings"),
-    getCollection(INGREDIENT_META),
+    getCollection("ingredients"),
   ]);
 
   const regionsBySlug = new Map<string, string[]>();
-  for (const m of rawIngMeta as Array<{ id: string; data: { region?: string[] } }>) {
+  for (const m of rawIngredients as Array<{ id: string; data: { region?: string[] } }>) {
     const slug = m.id.replace(/^[a-z]{2}\//, "");
     const prev = regionsBySlug.get(slug) ?? [];
     regionsBySlug.set(slug, [...new Set([...prev, ...(m.data.region ?? [])])]);

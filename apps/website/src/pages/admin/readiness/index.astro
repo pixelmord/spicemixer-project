@@ -59,7 +59,7 @@ for (const i of ingredientItems) {
     slug,
     category: data.category as string,
     flavorProfile: (data.flavorProfile as string[]) ?? [],
-    regions: (iMeta.region as string[]) ?? [],
+    regions: (data.region as string[]) ?? [],
     culinaryUse: data.culinaryUse as string | undefined,
     hasImage: ((data.images as string[]) ?? []).length > 0,
   });
