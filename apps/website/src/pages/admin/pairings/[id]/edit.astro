@@ -2,6 +2,7 @@
 export const prerender = false;
 import AdminShell from "@/components/admin/AdminShell.tsx";
 import PairingForm from "@/components/admin/PairingForm.tsx";
+import type { ImageAttribution } from "@/components/admin/ImageSearchModal.tsx";
 import { createStore } from "@/lib/content-store.ts";
 
 const { id } = Astro.params;
@@ -14,8 +15,6 @@ const store = await createStore();
 const item = await store.get("pairings", pairingId);
 if (!item) return Astro.redirect("/admin/pairings");
 
-const metaItem = await store.get("pairingMeta", pairingId);
-
 const d = item.data as Record<string, unknown>;
 const ingredients = (d["ingredients"] as [string, string]) ?? ["", ""];
 const descriptions =
@@ -23,7 +22,7 @@ const descriptions =
   (d["description"] ? { en: String(d["description"]) } : {});
 const isDraft = !!(d["draft"] as boolean);
 const imageUrl = typeof d["image"] === "string" ? d["image"] : "";
-const imageAttribution = (d["imageAttribution"] as Record<string, string>) ?? undefined;
+const imageAttribution = d["imageAttribution"] as ImageAttribution | undefined;
 
 const currentPath = Astro.url.pathname;
 ---
@@ -40,10 +39,9 @@ const currentPath = Astro.url.pathname;
         pairingId={pairingId}
         initialIngredients={ingredients}
         initialDescriptions={descriptions}
-        initialMeta={(metaItem?.data as Record<string, unknown>) ?? {}}
         initialDraft={isDraft}
         initialImage={imageUrl}
-        initialImageAttribution={imageAttribution as never}
+        initialImageAttribution={imageAttribution}
         client:load
       />
     </AdminShell>

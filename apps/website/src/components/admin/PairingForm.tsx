@@ -31,7 +31,6 @@ interface Props {
   pairingId?: string;
   initialIngredients?: [string, string];
   initialDescriptions?: Record<string, string>;
-  initialMeta?: Record<string, unknown>;
   initialDraft?: boolean;
   initialImage?: string;
   initialImageAttribution?: ImageAttribution;
@@ -47,7 +46,6 @@ export default function PairingForm({
   pairingId: initialId,
   initialIngredients,
   initialDescriptions = {},
-  initialMeta: _initialMeta = {},
   initialDraft = false,
   initialImage = "",
   initialImageAttribution,
