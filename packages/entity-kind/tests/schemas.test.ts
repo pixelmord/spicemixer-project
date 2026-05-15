@@ -78,10 +78,9 @@ describe("pairingMetaSchema", () => {
     expect(result.draft).toBe(true);
   });
 
-  test("rejects unknown fields via strict?", () => {
-    // pairingMetaSchema is not strict — extra fields are stripped (Zod default)
+  test("strips unknown fields", () => {
     const result = pairingMetaSchema.parse({ draft: false, unknown: "ignored" });
-    expect((result as Record<string, unknown>)["unknown"]).toBeUndefined();
+    expect(result).not.toHaveProperty("unknown");
   });
 });
 
