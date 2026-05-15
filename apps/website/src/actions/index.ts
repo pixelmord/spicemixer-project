@@ -1,7 +1,7 @@
 import { defineAction, ActionError } from "astro:actions";
 import { z } from "astro/zod";
 import { createStore } from "@/lib/content-store.ts";
-import { createMetaSidecar, INGREDIENT_META, PAIRING_META } from "@/lib/meta-sidecar.ts";
+import { createMetaSidecar, INGREDIENT_META } from "@/lib/meta-sidecar.ts";
 import { slugFromLocaleId } from "@/lib/recipe-augment.ts";
 import { entityRefSchema } from "@/lib/entity-ref.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
@@ -423,6 +423,7 @@ export const server = {
       locale: z.string().length(2).default("en"),
       draft: z.boolean().optional(),
       image: z.string().optional(),
+      imageAttribution: z.record(z.string(), z.unknown()).optional(),
       aiMergeModel: z.string().optional(),
       traceId: z.string().optional(),
     }),
@@ -433,6 +434,7 @@ export const server = {
       locale,
       draft,
       image,
+      imageAttribution,
       aiMergeModel,
       traceId,
     }) => {
@@ -445,6 +447,7 @@ export const server = {
         locale,
         draft,
         image,
+        imageAttribution,
       });
       if (aiMergeModel) {
         const { recordAiEvent, hashSuggestion } = await import("content-ai");
@@ -1393,7 +1396,7 @@ export const server = {
     },
   }),
 
-  /** Merge-patch an ingredient's meta sidecar (e.g. to store imageAttribution). */
+  /** Merge-patch an ingredient's meta sidecar (e.g. to store aiEvents). */
   saveIngredientMeta: defineAction({
     accept: "json",
     input: z.object({
@@ -1409,7 +1412,7 @@ export const server = {
     },
   }),
 
-  /** Merge-patch a pairing's meta sidecar (e.g. to store imageAttribution). */
+  /** Merge-patch a pairing's meta sidecar (e.g. to store aiEvents). */
   savePairingMeta: defineAction({
     accept: "json",
     input: z.object({

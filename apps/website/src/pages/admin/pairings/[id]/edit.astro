@@ -23,6 +23,7 @@ const descriptions =
   (d["description"] ? { en: String(d["description"]) } : {});
 const isDraft = !!(d["draft"] as boolean);
 const imageUrl = typeof d["image"] === "string" ? d["image"] : "";
+const imageAttribution = (d["imageAttribution"] as Record<string, string>) ?? undefined;
 
 const currentPath = Astro.url.pathname;
 ---
@@ -42,6 +43,7 @@ const currentPath = Astro.url.pathname;
         initialMeta={(metaItem?.data as Record<string, unknown>) ?? {}}
         initialDraft={isDraft}
         initialImage={imageUrl}
+        initialImageAttribution={imageAttribution as never}
         client:load
       />
     </AdminShell>

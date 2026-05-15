@@ -149,6 +149,7 @@ const ingredientSchema = z.object({
     )
     .optional(),
   region: z.array(z.enum(REGIONS)).default([]),
+  imageAttribution: imageAttributionSchema,
   // Legacy inline pairings — kept optional during migration window.
   // Canonical pairings now live in the `pairings` collection.
   pairings: z
@@ -165,11 +166,11 @@ const pairingSchema = z.object({
   description: z.string().optional(),
   draft: z.boolean().default(false),
   image: z.string().url().optional(),
+  imageAttribution: imageAttributionSchema,
 });
 
 const pairingMetaSchema = z.object({
   aiEvents: z.array(aiEventSchema).default([]),
-  imageAttribution: imageAttributionSchema,
 });
 
 const ingredientMetaSchema = z.object({
@@ -181,7 +182,6 @@ const ingredientMetaSchema = z.object({
   canonicalContentHash: z.string().optional(),
   translations: z.record(z.string(), z.string()).default({}),
   aiEvents: z.array(aiEventSchema).default([]),
-  imageAttribution: imageAttributionSchema,
 });
 
 // Content IDs are "locale/slug" (e.g. "en/miso-butter-ramen"), same layout as ingredients.

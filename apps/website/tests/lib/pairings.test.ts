@@ -139,7 +139,7 @@ describe("savePairing", () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     await store.put("pairings", "anise--cardamom", { ingredients: [anise, cardamom] });
-    await store.put(PAIRING_META, "anise--cardamom", { imageAttribution: { source: "x" } });
+    await store.put(PAIRING_META, "anise--cardamom", { aiEvents: [] });
 
     await deletePairing(store, sidecar, { id: "anise--cardamom" });
 
@@ -151,7 +151,7 @@ describe("savePairing", () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     await store.put(PAIRING_META, "anise--cardamom", {
-      imageAttribution: { source: "Openverse" },
+      aiEvents: [],
     });
     await savePairingMeta(sidecar, {
       id: "anise--cardamom",
@@ -159,9 +159,58 @@ describe("savePairing", () => {
     });
     const meta = await store.get(PAIRING_META, "anise--cardamom");
     expect(meta?.data).toEqual({
-      imageAttribution: { source: "Openverse" },
+      aiEvents: [],
       aiSuggestions: { en: { contentHash: "abc" } },
     });
+  });
+
+  test("savePairing stores imageAttribution in pairing content", async () => {
+    const store = new InMemoryStore();
+    const attribution = {
+      source: "Openverse",
+      sourceUrl: "https://openverse.org",
+      creator: "Test Photographer",
+      license: "CC BY 2.0",
+      licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+      attribution: "Test Photographer via Openverse (CC BY 2.0)",
+    };
+    await savePairing(store, {
+      id: "anise--cardamom",
+      ingredients: [anise, cardamom],
+      description: "Warm and licorice-y.",
+      locale: "en",
+      imageAttribution: attribution,
+    });
+    const stored = await store.get("pairings", "anise--cardamom");
+    expect((stored!.data as Record<string, unknown>)["imageAttribution"]).toEqual(attribution);
+  });
+
+  test("savePairing preserves imageAttribution across locale saves", async () => {
+    const store = new InMemoryStore();
+    const attribution = {
+      source: "Openverse",
+      sourceUrl: "https://openverse.org",
+      creator: "Test Photographer",
+      license: "CC BY 2.0",
+      licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+      attribution: "Test Photographer via Openverse (CC BY 2.0)",
+    };
+    await savePairing(store, {
+      id: "anise--cardamom",
+      ingredients: [anise, cardamom],
+      description: "Warm and licorice-y.",
+      locale: "en",
+      imageAttribution: attribution,
+    });
+    // Second save (de locale) without imageAttribution preserves existing
+    await savePairing(store, {
+      id: "anise--cardamom",
+      ingredients: [anise, cardamom],
+      description: "Warm und lakritzartig.",
+      locale: "de",
+    });
+    const stored = await store.get("pairings", "anise--cardamom");
+    expect((stored!.data as Record<string, unknown>)["imageAttribution"]).toEqual(attribution);
   });
 
   test("save as draft persists draft=true on first save", async () => {

@@ -64,7 +64,6 @@ describe("saveIngredient", () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     await store.put(INGREDIENT_META, "en/cardamom", {
-      imageAttribution: { source: "Openverse" },
       translations: { de: "kardamom" },
     });
     await saveIngredient(store, sidecar, {
@@ -76,12 +75,36 @@ describe("saveIngredient", () => {
     const meta = await store.get(INGREDIENT_META, "en/cardamom");
     expect(meta?.data).toEqual(
       expect.objectContaining({
-        imageAttribution: { source: "Openverse" },
         translations: { de: "kardamom" },
         draft: true,
         canonicalLocale: "en",
       }),
     );
+  });
+
+  test("saveIngredient stores imageAttribution in ingredient content", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    const attribution = {
+      source: "Openverse",
+      sourceUrl: "https://openverse.org",
+      creator: "Test Photographer",
+      license: "CC BY 2.0",
+      licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+      attribution: "Test Photographer via Openverse (CC BY 2.0)",
+    };
+    await saveIngredient(store, sidecar, {
+      locale: "en",
+      slug: "cardamom",
+      ingredient: { name: "Cardamom", category: "spice", imageAttribution: attribution },
+      meta: { draft: false },
+    });
+    const content = await store.get("ingredients", "en/cardamom");
+    expect((content!.data as Record<string, unknown>)["imageAttribution"]).toEqual(attribution);
+    const meta = await store.get(INGREDIENT_META, "en/cardamom");
+    expect(
+      (meta?.data as Record<string, unknown> | undefined)?.["imageAttribution"],
+    ).toBeUndefined();
   });
 
   test("toggling from draft to published updates only draft flag", async () => {
@@ -225,12 +248,12 @@ describe("saveIngredientMeta", () => {
     await saveIngredientMeta(sidecar, {
       locale: "en",
       slug: "cardamom",
-      patch: { imageAttribution: { source: "Openverse" } },
+      patch: { canonicalLocale: "en" },
     });
     const meta = await store.get(INGREDIENT_META, "en/cardamom");
     expect(meta?.data).toEqual({
       translations: { de: "kardamom" },
-      imageAttribution: { source: "Openverse" },
+      canonicalLocale: "en",
     });
   });
 });

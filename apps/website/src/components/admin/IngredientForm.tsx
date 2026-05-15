@@ -82,6 +82,7 @@ interface IngredientData {
   safetyFlags?: string[];
   sources?: Array<{ author?: string; title: string; url: string; year?: string }>;
   region?: RegionCode[];
+  imageAttribution?: ImageAttribution;
 }
 
 interface AiSuggestionsState {
@@ -246,7 +247,7 @@ export default function IngredientForm({
   // Image health check
   const [imageBroken, setImageBroken] = useState(false);
   const [imageAttribution, setImageAttribution] = useState<ImageAttribution | undefined>(
-    initialMeta?.["imageAttribution"] as ImageAttribution | undefined,
+    data.imageAttribution,
   );
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
 
@@ -398,6 +399,7 @@ export default function IngredientForm({
       if (safetyFlags.length > 0) payload.safetyFlags = safetyFlags;
       if (sources.length > 0) payload.sources = sources;
       if (regions.length > 0) payload.region = regions;
+      if (imageAttribution) payload.imageAttribution = imageAttribution;
 
       const { error } = await actions.saveIngredient({
         locale,
@@ -410,10 +412,6 @@ export default function IngredientForm({
         setSaving(false);
         toast.error("Save failed: " + error.message);
         return;
-      }
-
-      if (imageAttribution) {
-        await actions.saveIngredientMeta({ locale, slug, patch: { imageAttribution } });
       }
 
       setSaving(false);

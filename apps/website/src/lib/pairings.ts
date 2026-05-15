@@ -10,6 +10,7 @@ export interface SavePairingInput {
   locale: string;
   draft?: boolean;
   image?: string;
+  imageAttribution?: Record<string, unknown>;
 }
 
 export async function savePairing(
@@ -26,15 +27,20 @@ export async function savePairing(
     (existingData["descriptions"] as Record<string, string>) ??
     (typeof existingData["description"] === "string" ? { en: existingData["description"] } : {});
   const existingDraft = (existingData["draft"] as boolean) ?? false;
-  // image: explicit value wins; undefined = preserve existing; "" = clear
+  // image / imageAttribution: explicit value wins; undefined = preserve existing; "" = clear
   const imageValue =
     input.image !== undefined ? input.image : (existingData["image"] as string | undefined);
+  const imageAttributionValue =
+    input.imageAttribution !== undefined
+      ? input.imageAttribution
+      : (existingData["imageAttribution"] as Record<string, unknown> | undefined);
   const data: Record<string, unknown> = {
     ingredients: canonical,
     descriptions: { ...existingDescriptions, [input.locale]: input.description },
     draft: input.draft !== undefined ? input.draft : existingDraft,
   };
   if (imageValue) data["image"] = imageValue;
+  if (imageAttributionValue) data["imageAttribution"] = imageAttributionValue;
   await store.put("pairings", input.id, data);
   return { id: input.id };
 }
@@ -67,7 +73,7 @@ export async function savePairingMeta(
   const ref = { collection: "pairings" as const, slug: input.id };
   const existing = await sidecar.read(ref);
   await sidecar.write(ref, {
-    ...((existing?.data as Record<string, unknown>) ?? {}),
+    ...(existing?.data as Record<string, unknown>),
     ...input.patch,
   });
 }

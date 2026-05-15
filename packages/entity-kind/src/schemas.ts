@@ -4,6 +4,18 @@ import { recipeSchema } from "recipe-ingestion";
 export { recipeSchema };
 export type { Recipe } from "recipe-ingestion";
 
+const imageAttributionSchema = z
+  .object({
+    source: z.string(),
+    sourceUrl: z.string().url(),
+    creator: z.string(),
+    creatorUrl: z.string().url().optional(),
+    license: z.string(),
+    licenseUrl: z.string().url(),
+    attribution: z.string(),
+  })
+  .optional();
+
 // ── Ingredient constants ───────────────────────────────────────────────────────
 
 export const REGIONS = [
@@ -102,6 +114,7 @@ export const ingredientSchema = z.object({
     )
     .optional(),
   region: z.array(z.enum(REGIONS)).default([]),
+  imageAttribution: imageAttributionSchema,
   pairings: z
     .array(z.object({ slug: z.string(), note: z.string().optional() }))
     .optional()
@@ -118,6 +131,7 @@ export const pairingSchema = z.object({
   description: z.string().optional(),
   draft: z.boolean().default(false),
   image: z.string().optional(),
+  imageAttribution: imageAttributionSchema,
 });
 
 export type Pairing = z.infer<typeof pairingSchema>;

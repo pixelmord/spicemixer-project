@@ -34,6 +34,7 @@ interface Props {
   initialMeta?: Record<string, unknown>;
   initialDraft?: boolean;
   initialImage?: string;
+  initialImageAttribution?: ImageAttribution;
   isNew?: boolean;
 }
 
@@ -46,9 +47,10 @@ export default function PairingForm({
   pairingId: initialId,
   initialIngredients,
   initialDescriptions = {},
-  initialMeta = {},
+  initialMeta: _initialMeta = {},
   initialDraft = false,
   initialImage = "",
+  initialImageAttribution,
   isNew,
 }: Props) {
   const [ingredient1, setIngredient1] = useState(initialIngredients?.[0] ?? "");
@@ -66,7 +68,7 @@ export default function PairingForm({
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
   const [image, setImage] = useState(initialImage);
   const [imageAttribution, setImageAttribution] = useState<ImageAttribution | undefined>(
-    initialMeta["imageAttribution"] as ImageAttribution | undefined,
+    initialImageAttribution,
   );
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
 
@@ -104,7 +106,7 @@ export default function PairingForm({
         locale: activeLocale,
         pairing: { ingredients: [ingredient1, ingredient2], descriptions },
       })
-      .then(({ data }) => {
+      .then(({ data }: { data?: { aiSuggestions?: Record<string, unknown> } }) => {
         if (data?.aiSuggestions) {
           const s = data.aiSuggestions;
           const block = s[activeLocale] as Record<string, unknown> | undefined;
@@ -147,12 +149,10 @@ export default function PairingForm({
           locale,
           draft: first ? draft : undefined,
           image: image || "",
+          imageAttribution: imageAttribution ?? undefined,
         });
         if (error) throw new Error(error.message);
         first = false;
-      }
-      if (imageAttribution) {
-        await actions.savePairingMeta({ id, patch: { imageAttribution } });
       }
       toast.success("Saved");
       if (isNew) {
