@@ -24,7 +24,19 @@
 // devDependency is needed. The flag is explicit because the `engines` floor
 // is 22.12, where strip-types is opt-in.)
 
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 
 import * as sandcastle from "@ai-hero/sandcastle";
 import type { LoggingOption } from "@ai-hero/sandcastle";
@@ -247,6 +259,82 @@ function logPhase(message: string) {
   flushDots();
   console.log(message);
 }
+
+// ---------------------------------------------------------------------------
+// Worktree hygiene
+//
+// On macOS, Spotlight/Finder asynchronously recreate `.DS_Store` files inside
+// `.sandcastle/worktrees/`. That races against sandcastle's
+// `git worktree remove --force` cleanup: git deletes the dir's contents but
+// the final `rmdir` sees a freshly-recreated `.DS_Store`, fails with
+// "Directory not empty", and sandcastle throws — killing the whole run and
+// leaving orphan worktree dirs behind.
+//
+// Two defenses:
+//   1. Drop `.metadata_never_index` so Spotlight ignores the worktrees tree
+//      (drastically reduces but does not eliminate `.DS_Store` creation).
+//   2. At orchestrator startup, sweep any orphan dirs left from a previous
+//      run, with retries so we ride out the Finder race.
+// ---------------------------------------------------------------------------
+
+const WORKTREES_DIR = ".sandcastle/worktrees";
+
+function disableSpotlightForWorktrees() {
+  mkdirSync(WORKTREES_DIR, { recursive: true });
+  const marker = join(WORKTREES_DIR, ".metadata_never_index");
+  if (!existsSync(marker)) writeFileSync(marker, "");
+}
+
+async function cleanupOrphanWorktrees() {
+  if (!existsSync(WORKTREES_DIR)) return;
+
+  // git canonicalises paths via realpath; do the same on our side so set
+  // membership works when the repo lives under a symlinked path.
+  const realWorktreesDir = realpathSync(WORKTREES_DIR);
+  const listing = execFileSync("git", ["worktree", "list", "--porcelain"], {
+    encoding: "utf8",
+  });
+  const activePaths = new Set(
+    listing
+      .split("\n")
+      .filter((line) => line.startsWith("worktree "))
+      .map((line) => line.slice("worktree ".length).trim()),
+  );
+
+  for (const entry of readdirSync(realWorktreesDir)) {
+    if (entry.startsWith(".")) continue;
+    const path = join(realWorktreesDir, entry);
+    if (!statSync(path).isDirectory()) continue;
+    if (activePaths.has(path)) continue;
+
+    let removed = false;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      try {
+        rmSync(path, { recursive: true, force: true, maxRetries: 5 });
+        removed = true;
+        break;
+      } catch (err) {
+        // `.DS_Store` recreation race — wait and retry.
+        if (attempt === 7) {
+          console.warn(`could not remove orphan worktree ${path}: ${err}`);
+          break;
+        }
+        await sleep(200);
+      }
+    }
+    if (removed) console.log(`cleaned orphan worktree ${entry}`);
+  }
+
+  // Reconcile git's worktree registry with whatever is left on disk.
+  try {
+    execFileSync("git", ["worktree", "prune"], { stdio: "ignore" });
+  } catch {
+    // best-effort
+  }
+}
+
+disableSpotlightForWorktrees();
+await cleanupOrphanWorktrees();
 
 // ---------------------------------------------------------------------------
 // Main loop
