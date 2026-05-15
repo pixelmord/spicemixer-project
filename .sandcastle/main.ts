@@ -34,7 +34,16 @@ import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 
 // Maximum number of plan→execute→merge cycles before stopping.
 // Raise this if your backlog is large; lower it for a quick smoke-test run.
-const MAX_ITERATIONS = 20;
+const MAX_ITERATIONS = 5;
+
+// Files that need to land in every worktree before the install hook runs.
+// `git worktree add` checks out HEAD, so uncommitted edits in the host
+// checkout are invisible inside the worktree. pnpm-workspace.yaml is the
+// load-bearing case: pnpm 11 uses `allowBuilds` (replacing the deprecated
+// `onlyBuiltDependencies`), and without the working-tree version of this
+// file the in-container `pnpm install --frozen-lockfile` errors with
+// ERR_PNPM_IGNORED_BUILDS for sharp/esbuild/etc.
+const copyToWorktree = ["pnpm-workspace.yaml"];
 
 // Hooks run inside the sandbox before the agent starts each iteration.
 // pnpm install populates the workspace; --frozen-lockfile keeps it
@@ -42,7 +51,27 @@ const MAX_ITERATIONS = 20;
 // virtual store (.pnpm/) that breaks when copied into a fresh container.
 const hooks = {
   sandbox: {
-    onSandboxReady: [{ command: "corepack enable" }, { command: "pnpm install --frozen-lockfile" }],
+    onSandboxReady: [
+      { command: "corepack enable" },
+      // Cold install in a fresh worktree+container has no pnpm-store cache
+      // and can't hardlink across the bind-mount FS boundary, so it copies
+      // every package. The default 60s hook timeout isn't enough; 5 min
+      // covers a from-scratch install of this monorepo with margin.
+      //
+      // Redirect output to .sandcastle-pnpm-install.out inside the worktree
+      // and delete on success. Sandcastle only surfaces the hook exit
+      // code, so the redirect is the only way to recover pnpm's
+      // diagnostics on failure. The .out extension avoids the repo's
+      // root `*.log` gitignore: on failure the file is NOT gitignored,
+      // which makes the worktree dirty and blocks sandcastle from
+      // removing it — so the log survives for post-mortem. On success
+      // we `rm` the file, the worktree is clean, sandcastle cleans up.
+      {
+        command:
+          "pnpm install --frozen-lockfile >.sandcastle-pnpm-install.out 2>&1 && rm -f .sandcastle-pnpm-install.out",
+        timeoutMs: 300_000,
+      },
+    ],
   },
 };
 
@@ -94,7 +123,16 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // -------------------------------------------------------------------------
   const plan = await sandcastle.run({
     hooks,
+    copyToWorktree,
     sandbox: docker(),
+    // docker() is a bind-mount provider; without this, run() defaults to
+    // { type: "head" } and bind-mounts the host repo directly. The
+    // onSandboxReady `pnpm install --frozen-lockfile` hook would then
+    // detect the macOS-built node_modules as platform-incompatible and
+    // delete it (CI=true auto-confirms the prompt) — wiping the host's
+    // node_modules through the bind-mount. merge-to-head forces a git
+    // worktree so the install only touches the worktree's copy.
+    branchStrategy: { type: "merge-to-head" },
     name: "planner",
     // One iteration is enough: the planner just needs to read and reason,
     // not write code.
@@ -143,6 +181,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
         branch: issue.branch,
         sandbox: docker(),
         hooks,
+        copyToWorktree,
       });
 
       try {
@@ -230,7 +269,14 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
   // -------------------------------------------------------------------------
   await sandcastle.run({
     hooks,
+    copyToWorktree,
     sandbox: docker(),
+    // See planner above: without an explicit branchStrategy the docker
+    // bind-mount provider defaults to "head" and exposes host node_modules
+    // to the in-container pnpm install. merge-to-head puts the merger in
+    // a worktree; its merge commits get fast-forwarded back into head on
+    // sandbox close, so the end state on the host's branch is unchanged.
+    branchStrategy: { type: "merge-to-head" },
     name: "merger",
     maxIterations: 1,
     agent: sandcastle.claudeCode("claude-opus-4-6"),

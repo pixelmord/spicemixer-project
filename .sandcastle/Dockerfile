@@ -1,4 +1,4 @@
-FROM node:22-bookworm
+FROM node:24-bookworm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -30,11 +30,11 @@ ENV CI=true
 # the tarball into /opt/corepack now, so first `pnpm install` is offline.
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 ENV COREPACK_HOME=/opt/corepack
-RUN corepack enable && corepack prepare pnpm@10.33.2 --activate \
- && chmod -R a+rX /opt/corepack
+RUN corepack enable && corepack prepare pnpm@11.1.2 --activate \
+ && chmod -R a+rwX /opt/corepack
 
 # Pin pnpm's content-addressable store outside the bind-mounted workspace.
-# Without this, pnpm 10 detects that ~/.pnpm-store and the bind-mounted
+# Without this, pnpm detects that ~/.pnpm-store and the bind-mounted
 # workspace are on different filesystems, refuses to hardlink across them,
 # and writes the store at <workspace>/.pnpm-store instead. That store
 # (~650MB) then leaks back to the host through the bind-mount, gets
@@ -51,11 +51,18 @@ ENV npm_config_store_dir=/home/agent/.pnpm-store
 # prompts can call `vp` directly without `pnpm exec` shimming.
 RUN npm install -g vite-plus
 
-# Rename the base image's "node" user (UID 1000) to "agent".
-# This keeps UID 1000 so that --userns=keep-id (Podman) and
-# --user 1000:1000 (Docker) map to the correct home directory owner.
-RUN usermod -d /home/agent -m -l agent node
-USER agent
+# Build-args for UID/GID alignment: sandcastle docker build-image
+# defaults these to the host user's UID/GID so image-built files
+# and bind-mounted files share an owner without runtime chown.
+ARG AGENT_UID=1000
+ARG AGENT_GID=1000
+
+# Rename the base image's "node" user to "agent" and align UID/GID.
+# `-o` permits non-unique IDs: macOS hosts often use GID 20 (staff) / UID 501-502,
+# which collide with Debian's pre-existing `dialout` group / system users. The
+# container is ephemeral, so sharing the numeric ID is harmless.
+RUN groupmod -o -g $AGENT_GID node && usermod -o -u $AGENT_UID -g $AGENT_GID -d /home/agent -m -l agent node
+USER ${AGENT_UID}:${AGENT_GID}
 
 # Install Claude Code CLI
 RUN curl -fsSL https://claude.ai/install.sh | bash
@@ -67,15 +74,17 @@ WORKDIR /home/agent
 
 # Make /home/agent writable to any UID. Sandcastle's docker provider runs
 # the container with `--user $HOST_UID:$HOST_GID` (see sandboxes/docker.js).
-# On macOS that's typically UID 501 or 502 — different from the in-image
-# `agent` user (UID 1000). Without these chmods, git/claude/pnpm cannot
-# write their config files under /home/agent (e.g. `git config --global`
-# fails with "could not lock config file /home/agent/.gitconfig: Permission
-# denied" during `safe.directory` setup). The container is ephemeral, so
-# the loose perms are scoped to a single sandbox run.
+# The AGENT_UID/AGENT_GID build-args above usually align this, but if the
+# image is built without passing them (e.g. cached layer reuse, manual
+# `docker build`), the runtime UID won't match the in-image `agent` user
+# and git/claude/pnpm can't write their config files under /home/agent
+# (e.g. `git config --global` fails with "could not lock config file
+# /home/agent/.gitconfig: Permission denied" during `safe.directory`
+# setup). The container is ephemeral, so the loose perms are scoped to a
+# single sandbox run.
 USER root
 RUN chmod -R a+rwX /home/agent
-USER agent
+USER ${AGENT_UID}:${AGENT_GID}
 
 # In worktree sandbox mode, Sandcastle bind-mounts the git worktree at /home/agent/workspace
 # and overrides the working directory to /home/agent/workspace at container start.

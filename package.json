@@ -11,6 +11,7 @@
     "sandcastle": "node --experimental-strip-types .sandcastle/main.ts"
   },
   "devDependencies": {
+    "@ai-hero/sandcastle": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "vite-plus": "catalog:"
   },
