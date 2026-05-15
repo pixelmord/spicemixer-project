@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import RecipeForm from "./RecipeForm.tsx";
 import type { RecipeCollection } from "@/lib/content-store.ts";
-import { hashSuggestion, recordAiEvent } from "content-ai";
+import { hashSuggestion, recordAiEvent, type AiEvent } from "content-ai";
 
 interface Props {
   collection: RecipeCollection;
@@ -31,24 +31,51 @@ export default function NewRecipePage({ collection }: Props) {
           recipe: Record<string, unknown>;
           source: { url: string; canonical?: string };
           meta?: { language?: string };
+          sourceMeta?: {
+            kind: "pdf" | "image" | "text";
+            mime: string;
+            sizeBytes: number;
+            filename?: string;
+            hash: string;
+            ingestedAt: string;
+            traceId: string;
+          };
         };
         const sourceUrl = parsed.source.canonical ?? parsed.source.url;
         const recipeName =
           typeof parsed.recipe.name === "string" ? parsed.recipe.name : "Imported recipe";
-        const aiEvents = sourceUrl.trim()
-          ? recordAiEvent([], {
-              type: "ingested",
-              source: sourceUrl,
-              suggestion: { hash: hashSuggestion({ url: sourceUrl }), summary: recipeName },
-              model: "recipe-ingestion",
-            })
-          : [];
+
+        let aiEvents: AiEvent[];
+        if (parsed.sourceMeta) {
+          // File-based AI extraction: create ingested event with structured source descriptor
+          aiEvents = recordAiEvent([], {
+            type: "ingested",
+            source: parsed.sourceMeta,
+            suggestion: {
+              hash: hashSuggestion({ hash: parsed.sourceMeta.hash }),
+              summary: recipeName,
+            },
+            model: "ai-extraction",
+            traceId: parsed.sourceMeta.traceId,
+          });
+        } else if (sourceUrl.trim()) {
+          // URL import: create ingested event with string source (legacy format)
+          aiEvents = recordAiEvent([], {
+            type: "ingested",
+            source: sourceUrl,
+            suggestion: { hash: hashSuggestion({ url: sourceUrl }), summary: recipeName },
+            model: "recipe-ingestion",
+          });
+        } else {
+          aiEvents = [];
+        }
+
         const language = parsed.meta?.language;
         setImportData({
           recipe: parsed.recipe,
           meta: {
             draft: true,
-            externalSources: [{ url: sourceUrl, title: recipeName }],
+            externalSources: sourceUrl.trim() ? [{ url: sourceUrl, title: recipeName }] : [],
             aiEvents,
             ...(language ? { language } : {}),
           },

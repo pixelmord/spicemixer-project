@@ -44,11 +44,22 @@ interface AiDebugInfo {
   rawText?: string;
 }
 
+interface SourceMeta {
+  kind: "pdf" | "image" | "text";
+  mime: string;
+  sizeBytes: number;
+  filename?: string;
+  hash: string;
+  ingestedAt: string;
+  traceId: string;
+}
+
 interface SubmitResult {
   result: Record<string, unknown>;
   warnings: string[];
   successMessage: string;
   debug?: AiDebugInfo;
+  sourceMeta?: SourceMeta;
 }
 
 interface ErrorState {
@@ -171,6 +182,43 @@ async function generateRecipe(
   throw new Error("Stream ended without a complete event");
 }
 
+function sourceKindFromMime(mime: string): "pdf" | "image" | "text" {
+  if (mime === "application/pdf") return "pdf";
+  if (mime.startsWith("image/")) return "image";
+  return "text";
+}
+
+function buildSourceMeta(
+  source: Source,
+  data: { traceId?: string; binaryHash?: string },
+): SourceMeta | undefined {
+  if (!data.traceId || !data.binaryHash) return undefined;
+  if (source.kind === "file") {
+    const mime = source.mimeType;
+    return {
+      kind: sourceKindFromMime(mime),
+      mime,
+      sizeBytes: source.file.size,
+      filename: source.file.name,
+      hash: data.binaryHash,
+      ingestedAt: new Date().toISOString(),
+      traceId: data.traceId,
+    };
+  }
+  if (source.kind === "text") {
+    const bytes = new TextEncoder().encode(source.content).length;
+    return {
+      kind: "text",
+      mime: "text/plain",
+      sizeBytes: bytes,
+      hash: data.binaryHash,
+      ingestedAt: new Date().toISOString(),
+      traceId: data.traceId,
+    };
+  }
+  return undefined;
+}
+
 async function extractContent(
   contentType: ContentType,
   source: Source,
@@ -185,6 +233,7 @@ async function extractContent(
       warnings: data.warnings,
       successMessage: "Recipe extracted!",
       debug: (data as { debug?: AiDebugInfo }).debug,
+      sourceMeta: buildSourceMeta(source, data),
     };
   }
   if (contentType === "ingredient") {
@@ -195,6 +244,7 @@ async function extractContent(
       warnings: data.warnings,
       successMessage: "Ingredient extracted!",
       debug: (data as { debug?: AiDebugInfo }).debug,
+      sourceMeta: buildSourceMeta(source, data),
     };
   }
   const { data, error } = await actions.aiExtractPairing(formData);
@@ -204,6 +254,7 @@ async function extractContent(
     warnings: data.warnings,
     successMessage: "Pairing extracted!",
     debug: (data as { debug?: AiDebugInfo }).debug,
+    sourceMeta: buildSourceMeta(source, data),
   };
 }
 
@@ -225,6 +276,7 @@ export default function AiComposeForm() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [debug, setDebug] = useState<AiDebugInfo | null>(null);
   const [error, setError] = useState<ErrorState | null>(null);
+  const [sourceMeta, setSourceMeta] = useState<SourceMeta | null>(null);
 
   function reset() {
     setResult(null);
@@ -233,6 +285,7 @@ export default function AiComposeForm() {
     setWarnings([]);
     setDebug(null);
     setSource(null);
+    setSourceMeta(null);
   }
 
   async function handleSubmit() {
@@ -259,6 +312,7 @@ export default function AiComposeForm() {
       setResult(submitted.result);
       setWarnings(submitted.warnings);
       if (submitted.debug) setDebug(submitted.debug);
+      if (submitted.sourceMeta) setSourceMeta(submitted.sourceMeta);
       // Auto-detect source language for recipes when user hasn't picked one.
       if (contentType === "recipe" && !localeUserSet) {
         const detected = detectRecipeLanguage(submitted.result);
@@ -285,6 +339,7 @@ export default function AiComposeForm() {
           source: { url: "" },
           warnings,
           meta: { language: locale },
+          sourceMeta: sourceMeta ?? undefined,
         }),
       );
       window.location.href = `/admin/${collection}/new?import=1`;
