@@ -44,7 +44,7 @@ interface AiDebugInfo {
   rawText?: string;
 }
 
-interface SourceMeta {
+export interface SourceMeta {
   kind: "pdf" | "image" | "text";
   mime: string;
   sizeBytes: number;

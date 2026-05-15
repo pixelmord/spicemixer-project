@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import RecipeForm from "./RecipeForm.tsx";
 import type { RecipeCollection } from "@/lib/content-store.ts";
 import { hashSuggestion, recordAiEvent, type AiEvent } from "content-ai";
+import type { SourceMeta } from "./AiComposeForm.tsx";
 
 interface Props {
   collection: RecipeCollection;
@@ -31,15 +32,7 @@ export default function NewRecipePage({ collection }: Props) {
           recipe: Record<string, unknown>;
           source: { url: string; canonical?: string };
           meta?: { language?: string };
-          sourceMeta?: {
-            kind: "pdf" | "image" | "text";
-            mime: string;
-            sizeBytes: number;
-            filename?: string;
-            hash: string;
-            ingestedAt: string;
-            traceId: string;
-          };
+          sourceMeta?: SourceMeta;
         };
         const sourceUrl = parsed.source.canonical ?? parsed.source.url;
         const recipeName =
@@ -47,7 +40,6 @@ export default function NewRecipePage({ collection }: Props) {
 
         let aiEvents: AiEvent[];
         if (parsed.sourceMeta) {
-          // File-based AI extraction: create ingested event with structured source descriptor
           aiEvents = recordAiEvent([], {
             type: "ingested",
             source: parsed.sourceMeta,
@@ -59,7 +51,7 @@ export default function NewRecipePage({ collection }: Props) {
             traceId: parsed.sourceMeta.traceId,
           });
         } else if (sourceUrl.trim()) {
-          // URL import: create ingested event with string source (legacy format)
+          // Legacy string-source format; new code should use structured sourceMeta
           aiEvents = recordAiEvent([], {
             type: "ingested",
             source: sourceUrl,

@@ -19,7 +19,8 @@ export const GET: APIRoute = async ({ params }) => {
 
   const meta = await readSourceBinaryMeta(hash);
   const mime = meta?.mime ?? "application/octet-stream";
-  const filename = meta?.filename ?? `source-${hash.slice(0, 12)}`;
+  const rawFilename = meta?.filename ?? `source-${hash.slice(0, 12)}`;
+  const filename = rawFilename.replace(/[\x00-\x1f"]/g, "");
 
   return new Response(Buffer.from(bytes), {
     status: 200,
