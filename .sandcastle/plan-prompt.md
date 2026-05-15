@@ -1,6 +1,8 @@
 # ISSUES
 
-Here are the open issues in the repo:
+The `<issues-json>` block below is the **authoritative** set of candidates. It is pre-filtered to issues labeled `ready-for-agent`. Do **not** re-query GitHub for more issues, do **not** consider issues outside this list, and do **not** strip the label filter — issues without `ready-for-agent` are intentionally excluded.
+
+If `<issues-json>` is empty or `[]`, output `<plan>{"issues": []}</plan>` and stop. An empty list is a valid result, not an error.
 
 <issues-json>
 
@@ -36,4 +38,4 @@ Output your plan as a JSON object wrapped in `<plan>` tags:
 {"issues": [{"id": "42", "title": "Fix auth bug", "branch": "sandcastle/issue-42-fix-auth-bug"}]}
 </plan>
 
-Include only unblocked issues. If every issue is blocked, include the single highest-priority candidate (the one with the fewest or weakest dependencies).
+Include only unblocked issues from `<issues-json>`. If every issue in `<issues-json>` is blocked, output `<plan>{"issues": []}</plan>` — do not pick a fallback candidate, and never include an issue absent from `<issues-json>`.
