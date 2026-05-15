@@ -1,11 +1,13 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import WorldmapPlaceholder from "../WorldmapPlaceholder.astro";
+import Worldmap from "../Worldmap.astro";
 import FeaturedPairingBlock from "../FeaturedPairingBlock.astro";
 import RecentlyAddedFeed from "../RecentlyAddedFeed.astro";
 import { getPublished, getPublishedIngredients, getPublishedPairings, slugFromLocaleId } from "../../lib/recipe-augment.ts";
 import { recentlyAdded, type RecentEntry } from "../../lib/recently-added.ts";
 import { FEATURED_PAIRING_SLUG } from "../../lib/homepage.config.ts";
+import { regionAggregation } from "../../lib/region-aggregation.ts";
+import type { AggregationEntry } from "../../lib/region-aggregation.ts";
 import { getCollection } from "astro:content";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 
@@ -13,11 +15,12 @@ const locale = Astro.currentLocale as Lang;
 const t = useTranslations(locale);
 const prefix = locale === "de" ? "/de" : "";
 
-const [mixtures, rawIngredients, pairings, allIngredientsMeta] = await Promise.all([
+const [mixtures, rawIngredients, pairings, allIngredientsMeta, allMeta] = await Promise.all([
   getPublished("mixtures"),
   getPublishedIngredients(locale),
   getPublishedPairings(),
   getCollection("ingredientMeta"),
+  getCollection("meta"),
 ]);
 const draftSlugs = new Set(
   (allIngredientsMeta as Array<{ id: string; data: { draft?: boolean } }>)
@@ -27,6 +30,27 @@ const draftSlugs = new Set(
 const ingredients = (rawIngredients as Array<{ id: string; data: { name: string } }>).filter(
   (e) => !draftSlugs.has(e.id),
 );
+
+// Build aggregation entries for the worldmap (locale-scoped to avoid double-counting)
+const ingredientAggEntries: AggregationEntry[] = (
+  rawIngredients as Array<{ id: string; data: { region?: string[] } }>
+)
+  .filter((e) => !draftSlugs.has(e.id))
+  .map((e) => ({ type: "ingredient", region: e.data.region ?? [] }));
+
+const metaAggEntries: AggregationEntry[] = (
+  allMeta as Array<{ id: string; data: { draft?: boolean; region?: string[] } }>
+)
+  .filter((m) => {
+    const parts = m.id.split("/");
+    return parts[1] === locale && m.data.draft !== true;
+  })
+  .map((m) => ({
+    type: m.id.startsWith("mixtures/") ? ("mixture" as const) : ("recipe" as const),
+    region: m.data.region ?? [],
+  }));
+
+const aggregation = regionAggregation([...ingredientAggEntries, ...metaAggEntries]);
 
 const mixtureEntries: RecentEntry[] = mixtures.map((e) => {
   const slug = slugFromLocaleId(e.id);
@@ -74,7 +98,7 @@ const featuredPairing = pairings.find((p) => p.id === FEATURED_PAIRING_SLUG) ?? 
       <p class="mt-3 max-w-2xl text-lg text-stone-600">{t("page.home.description")}</p>
     </header>
 
-    <WorldmapPlaceholder caption={t("page.home.worldmapPlaceholder")} />
+    <Worldmap aggregation={aggregation} locale={locale} />
 
     {
       featuredPairing && (
