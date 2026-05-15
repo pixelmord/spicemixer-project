@@ -174,7 +174,6 @@ const pairingMetaSchema = z.object({
 });
 
 const ingredientMetaSchema = z.object({
-  kind: z.literal("ingredient").default("ingredient"),
   draft: z.boolean().default(false),
   canonicalLocale: z.string().length(2).optional(),
   translationOf: z.string().optional(),

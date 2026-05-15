@@ -375,3 +375,44 @@ describe("saveIngredient — translation-sync wiring", () => {
     expect((canonical?.data as Record<string, unknown>)["translationStaleSince"]).toBeUndefined();
   });
 });
+
+describe("ingredientMeta — no kind field", () => {
+  test("quickCreateIngredient does not write kind to meta", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    await quickCreateIngredient(store, sidecar, {
+      locale: "en",
+      slug: "cardamom",
+      name: "Cardamom",
+      category: "spice",
+    });
+    const meta = await store.get(INGREDIENT_META, "en/cardamom");
+    expect((meta?.data as Record<string, unknown>)["kind"]).toBeUndefined();
+  });
+
+  test("saveIngredient does not write kind to meta", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    await saveIngredient(store, sidecar, {
+      locale: "en",
+      slug: "cardamom",
+      ingredient: { name: "Cardamom", category: "spice" },
+      meta: { draft: true },
+    });
+    const meta = await store.get(INGREDIENT_META, "en/cardamom");
+    expect((meta?.data as Record<string, unknown>)["kind"]).toBeUndefined();
+  });
+
+  test("translation meta write omits kind field", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    // Mirrors the meta shape written by aiCreateIngredientTranslation action
+    const translationMeta = { translationOf: "en/cardamom", translations: {} };
+    await sidecar.write(
+      { collection: "ingredients", locale: "de", slug: "kardamom" },
+      translationMeta,
+    );
+    const meta = await store.get(INGREDIENT_META, "de/kardamom");
+    expect((meta?.data as Record<string, unknown>)["kind"]).toBeUndefined();
+  });
+});

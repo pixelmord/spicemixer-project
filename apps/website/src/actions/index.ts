@@ -1193,7 +1193,7 @@ export const server = {
       // Create minimal ingredient meta for the translation
       await sidecar.write(
         { collection: "ingredients", locale: targetLocale, slug },
-        { kind: "ingredient", translationOf: `${sourceLocale}/${slug}`, translations: {} },
+        { translationOf: `${sourceLocale}/${slug}`, translations: {} },
       );
 
       // Back-link: update source meta to record the translation
