@@ -2,6 +2,7 @@ import type { ContentStore } from "./content-store.ts";
 import type { MetaSidecar } from "./meta-sidecar.ts";
 import type { EntityRef } from "./entity-ref.ts";
 import { NotFoundError } from "./errors.ts";
+import { entityMeta } from "content-ai";
 
 export interface BuildPairingDataInput {
   id: string;
@@ -65,9 +66,5 @@ export async function savePairingMeta(
   input: { id: string; patch: Record<string, unknown> },
 ): Promise<void> {
   const ref = { collection: "pairings" as const, slug: input.id };
-  const existing = await sidecar.read(ref);
-  await sidecar.write(ref, {
-    ...(existing?.data as Record<string, unknown>),
-    ...input.patch,
-  });
+  await entityMeta.merge(sidecar, ref, input.patch);
 }

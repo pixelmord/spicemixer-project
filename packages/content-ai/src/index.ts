@@ -120,3 +120,6 @@ export { diffFieldHashes, classifyRefreshKind } from "./field-diff.ts";
 export type { RefreshKind } from "./field-diff.ts";
 
 export { ingredientFieldConfig, recipeFieldConfig, pairingFieldConfig } from "./contracts/index.ts";
+
+export { entityMeta, entityMetaSchema } from "./entity-meta.ts";
+export type { EntityMeta, EntityMetaSidecar, EntityMetaRef } from "./entity-meta.ts";

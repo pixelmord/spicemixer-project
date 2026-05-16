@@ -27,7 +27,7 @@ import {
 } from "@/lib/pairings.ts";
 import { saveEntity as libSaveEntity } from "@/lib/save-entity.ts";
 import { NotFoundError } from "@/lib/errors.ts";
-import { AiError, withOrigin, type AiEvent } from "content-ai";
+import { AiError, withOrigin, entityMeta, type AiEvent } from "content-ai";
 import { createSourceStore } from "@/lib/stores/source-store.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -231,8 +231,7 @@ async function buildListing() {
       const slug = slugFromLocaleId(item.id);
       const slash = item.id.indexOf("/");
       const locale = slash === -1 ? "en" : item.id.slice(0, slash);
-      const metaItem = await sidecar.read({ collection, locale, slug });
-      const meta = (metaItem?.data ?? {}) as Record<string, unknown>;
+      const meta = await entityMeta.read(sidecar, { collection, locale, slug });
       const completeness = computeCompletenessFromBlob(
         "recipe",
         item.data as Record<string, unknown>,
@@ -243,7 +242,7 @@ async function buildListing() {
         collection,
         id: slug,
         name: (item.data as Record<string, unknown>).name ?? slug,
-        draft: !!meta.draft,
+        draft: meta.draft,
         completeness,
         updatedAt: item.updatedAt,
       };
@@ -255,8 +254,7 @@ async function buildListing() {
       const slash = item.id.indexOf("/");
       const locale = slash === -1 ? "en" : item.id.slice(0, slash);
       const slug = slugFromLocaleId(item.id);
-      const metaItem = await sidecar.read({ collection: "ingredients", locale, slug });
-      const meta = (metaItem?.data ?? {}) as Record<string, unknown>;
+      const meta = await entityMeta.read(sidecar, { collection: "ingredients", locale, slug });
       const completeness = computeCompletenessFromBlob(
         "ingredient",
         item.data as Record<string, unknown>,
@@ -267,7 +265,7 @@ async function buildListing() {
         collection: "ingredients" as const,
         id: item.id,
         name: (item.data as Record<string, unknown>).name ?? item.id,
-        draft: !!meta.draft,
+        draft: meta.draft,
         completeness,
         updatedAt: item.updatedAt,
       };
@@ -279,8 +277,7 @@ async function buildListing() {
       const d = item.data as Record<string, unknown>;
       const ings = (d["ingredients"] as Array<EntityRef | string>) ?? [];
       const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
-      const metaItem = await sidecar.read({ collection: "pairings", slug: item.id });
-      const pairingMeta = (metaItem?.data ?? {}) as Record<string, unknown>;
+      const pairingMeta = await entityMeta.read(sidecar, { collection: "pairings", slug: item.id });
       const completeness = computeCompletenessFromBlob("pairing", d, pairingMeta);
       const translations = ["en", "de"].filter((l) => !!descriptions[l]);
       const description =
@@ -295,7 +292,7 @@ async function buildListing() {
         collection: "pairings" as const,
         id: item.id,
         name: `${refSlug(ings[0])} ↔ ${refSlug(ings[1])}`,
-        draft: !!(pairingMeta["draft"] as boolean),
+        draft: pairingMeta.draft,
         completeness,
         updatedAt: item.updatedAt,
         translations,
@@ -356,12 +353,11 @@ export const server = {
       let finalMeta = meta;
       if (aiMergeModel) {
         const { recordAiEvent, hashSuggestion } = await import("content-ai");
-        const existingRecord = await sidecar.read({ collection, locale, slug });
-        const existingMeta = (existingRecord?.data as Record<string, unknown>) ?? {};
-        const base = meta ?? existingMeta;
+        const storedMeta = await entityMeta.read(sidecar, { collection, locale, slug });
+        const base: Record<string, unknown> = meta ?? { ...storedMeta };
         const existingEvents: AiEvent[] = Array.isArray(base["aiEvents"])
           ? (base["aiEvents"] as AiEvent[])
-          : [];
+          : storedMeta.aiEvents;
         const updatedEvents = recordAiEvent(existingEvents, {
           type: "accepted",
           suggestion: {
@@ -399,12 +395,15 @@ export const server = {
       let finalMeta = meta;
       if (aiMergeModel) {
         const { recordAiEvent, hashSuggestion } = await import("content-ai");
-        const existingRecord = await sidecar.read({ collection: "ingredients", locale, slug });
-        const existingMeta = (existingRecord?.data as Record<string, unknown>) ?? {};
-        const base = meta ?? existingMeta;
+        const storedMeta = await entityMeta.read(sidecar, {
+          collection: "ingredients",
+          locale,
+          slug,
+        });
+        const base: Record<string, unknown> = meta ?? { ...storedMeta };
         const existingEvents: AiEvent[] = Array.isArray(base["aiEvents"])
           ? (base["aiEvents"] as AiEvent[])
-          : [];
+          : storedMeta.aiEvents;
         const updatedEvents = recordAiEvent(existingEvents, {
           type: "accepted",
           suggestion: {
@@ -468,12 +467,8 @@ export const server = {
       if (aiMergeModel) {
         const { recordAiEvent, hashSuggestion } = await import("content-ai");
         const pairingRef = { collection: "pairings" as const, slug: id };
-        const existingMetaRecord = await sidecar.read(pairingRef);
-        const existingMeta = (existingMetaRecord?.data as Record<string, unknown>) ?? {};
-        const existingEvents: AiEvent[] = Array.isArray(existingMeta["aiEvents"])
-          ? (existingMeta["aiEvents"] as AiEvent[])
-          : [];
-        const updatedEvents = recordAiEvent(existingEvents, {
+        const storedMeta = await entityMeta.read(sidecar, pairingRef);
+        const updatedEvents = recordAiEvent(storedMeta.aiEvents, {
           type: "accepted",
           field: "description",
           suggestion: {
@@ -483,7 +478,7 @@ export const server = {
           model: aiMergeModel,
           traceId,
         });
-        await sidecar.write(pairingRef, { ...existingMeta, aiEvents: updatedEvents });
+        await entityMeta.merge(sidecar, pairingRef, { aiEvents: updatedEvents });
       }
       return { ok: true, id };
     },
@@ -1208,16 +1203,12 @@ export const server = {
 
       // Back-link: update source meta to record the translation
       const sourceRef = { collection: "ingredients" as const, locale: sourceLocale, slug };
-      const sourceMeta = (await sidecar.read(sourceRef))?.data as
-        | Record<string, unknown>
-        | undefined;
-      const currentTranslations =
-        typeof sourceMeta?.["translations"] === "object" && sourceMeta["translations"] !== null
-          ? (sourceMeta["translations"] as Record<string, string>)
-          : {};
-      await sidecar.write(sourceRef, {
-        ...sourceMeta,
-        translations: { ...currentTranslations, [targetLocale]: `${targetLocale}/${slug}` },
+      const sourceMeta = await entityMeta.read(sidecar, sourceRef);
+      await entityMeta.merge(sidecar, sourceRef, {
+        translations: {
+          ...sourceMeta.translations,
+          [targetLocale]: `${targetLocale}/${slug}`,
+        },
       });
 
       return { ok: true, slug, targetLocale };

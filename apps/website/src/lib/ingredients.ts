@@ -1,5 +1,6 @@
 import type { ContentStore } from "./content-store.ts";
 import type { MetaSidecar } from "./meta-sidecar.ts";
+import { entityMeta } from "content-ai";
 
 export type Locale = "en" | "de";
 
@@ -54,11 +55,7 @@ export async function saveIngredientMeta(
   input: SaveIngredientMetaInput,
 ): Promise<void> {
   const ref = { collection: "ingredients" as const, locale: input.locale, slug: input.slug };
-  const existing = await sidecar.read(ref);
-  await sidecar.write(ref, {
-    ...((existing?.data as Record<string, unknown>) ?? {}),
-    ...input.patch,
-  });
+  await entityMeta.merge(sidecar, ref, input.patch);
 }
 
 export interface IngredientPublishStateInput {
@@ -72,9 +69,7 @@ async function setIngredientDraft(
   draft: boolean,
 ): Promise<void> {
   const ref = { collection: "ingredients" as const, locale: input.locale, slug: input.slug };
-  const existing = await sidecar.read(ref);
-  const meta = (existing?.data as Record<string, unknown>) ?? {};
-  await sidecar.write(ref, { ...meta, draft });
+  await entityMeta.merge(sidecar, ref, { draft });
 }
 
 export async function publishIngredient(

@@ -1,6 +1,7 @@
 import type { ContentStore } from "./content-store.ts";
 import type { RecipeCollection } from "./content-store.ts";
 import type { MetaSidecar } from "./meta-sidecar.ts";
+import { entityMeta } from "content-ai";
 
 export interface DeleteRecipeInput {
   collection: RecipeCollection;
@@ -29,9 +30,7 @@ async function setDraft(
   draft: boolean,
 ): Promise<void> {
   const ref = { collection: input.collection, locale: input.locale, slug: input.slug };
-  const existing = await sidecar.read(ref);
-  const meta = (existing?.data as Record<string, unknown>) ?? {};
-  await sidecar.write(ref, { ...meta, draft });
+  await entityMeta.merge(sidecar, ref, { draft });
 }
 
 export async function publishRecipe(sidecar: MetaSidecar, input: PublishStateInput): Promise<void> {
