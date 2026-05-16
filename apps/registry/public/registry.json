@@ -253,6 +253,31 @@
           "type": "registry:ui"
         }
       ]
+    },
+    {
+      "name": "use-ai-suggestions",
+      "type": "registry:hook",
+      "title": "useAiSuggestions",
+      "description": "Headless orchestration hook owning run state, per-field accept/reject/revert flows, viewed-field tracking, and accept-all gating.",
+      "files": [
+        {
+          "path": "hooks/use-ai-suggestions.tsx",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "suggestion-flow-provider",
+      "type": "registry:hook",
+      "title": "SuggestionFlowProvider",
+      "description": "Context provider that hosts useAiSuggestions return for deep forms, with useSuggestionFlowContext() reader.",
+      "registryDependencies": ["use-ai-suggestions"],
+      "files": [
+        {
+          "path": "hooks/suggestion-flow-provider.tsx",
+          "type": "registry:hook"
+        }
+      ]
     }
   ]
 }
