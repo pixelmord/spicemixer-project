@@ -8,6 +8,7 @@ import type {
   AppliedSuggestion,
   AutoApplyPolicy,
   FieldSuggestion,
+  FieldWritePolicy,
   PromptContext,
   RunRefineParams,
   RunRefineResult,
@@ -28,14 +29,20 @@ function summarizeValue(field: string, value: unknown): string {
   return `${field}: ${String(value)}`;
 }
 
+const CONFIDENCE_SCORES: Record<"high" | "medium" | "low", number> = {
+  high: 1.0,
+  medium: 0.5,
+  low: 0.0,
+};
+
 function confidenceScore(level: "high" | "medium" | "low"): number {
-  return level === "high" ? 1.0 : level === "medium" ? 0.5 : 0.0;
+  return CONFIDENCE_SCORES[level];
 }
 
 function resolveAutoApply<S extends ZodSchema, Source>(
   fieldAutoApply:
-    | import("./types.ts").AutoApplyPolicy
-    | ((ctx: PromptContext<S, Source>) => import("./types.ts").AutoApplyPolicy)
+    | AutoApplyPolicy
+    | ((ctx: PromptContext<S, Source>) => AutoApplyPolicy)
     | undefined,
   ctx: PromptContext<S, Source>,
   presetOverride?: AutoApplyPolicy,
@@ -49,7 +56,7 @@ function resolveAutoApply<S extends ZodSchema, Source>(
 function shouldSkipByPolicy(
   field: string,
   currentData: Record<string, unknown>,
-  policy: import("./types.ts").FieldWritePolicy<unknown> | undefined,
+  policy: FieldWritePolicy<unknown> | undefined,
 ): boolean {
   if (!policy) return false;
   if (policy === "preserve" || policy === "fill-if-empty") {

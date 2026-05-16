@@ -27,12 +27,9 @@ export const pairingContract: AiContract<PairingSchema, PairingRefineContext> = 
     description: {
       systemPrompt: ({ currentData, sourceContext }) => {
         const locale = sourceContext?.locale ?? "en";
-        const ing1 = Array.isArray(currentData?.ingredients)
-          ? (currentData.ingredients[0] ?? "")
-          : "";
-        const ing2 = Array.isArray(currentData?.ingredients)
-          ? (currentData.ingredients[1] ?? "")
-          : "";
+        const ings = Array.isArray(currentData?.ingredients) ? currentData.ingredients : [];
+        const ing1 = ings[0] ?? "";
+        const ing2 = ings[1] ?? "";
         const currentDesc =
           typeof currentData?.description === "string" ? currentData.description : "";
 

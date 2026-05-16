@@ -45,7 +45,6 @@ const presets = [
 
 // Prose improvement fields (replacing proposeIngredientImprovements)
 const textFieldConfig = (
-  fieldLabel: string,
   instruction: string,
 ): FieldConfig<IngredientSchema, IngredientRefineContext> => ({
   systemPrompt: ({ currentData }) => {
@@ -81,40 +80,26 @@ export const ingredientContract: AiContract<IngredientSchema, IngredientRefineCo
   schema: ingredientSchema,
   presets,
   fields: {
-    summary: textFieldConfig("summary", "Write a concise 1-2 sentence summary of this ingredient."),
+    summary: textFieldConfig("Write a concise 1-2 sentence summary of this ingredient."),
     description: textFieldConfig(
-      "description",
       "Write a detailed encyclopedia-style description of this ingredient.",
     ),
-    culinaryUse: textFieldConfig(
-      "culinaryUse",
-      "Describe how this ingredient is used in cooking and cuisine.",
-    ),
+    culinaryUse: textFieldConfig("Describe how this ingredient is used in cooking and cuisine."),
     medicinalUses: textFieldConfig(
-      "medicinalUses",
       "Describe traditional and documented medicinal uses of this ingredient.",
     ),
     healthBenefits: textFieldConfig(
-      "healthBenefits",
       "Describe the health benefits of this ingredient based on available research.",
     ),
     safetyNotes: textFieldConfig(
-      "safetyNotes",
       "Describe any safety considerations, contraindications, or warnings for this ingredient.",
     ),
-    history: textFieldConfig(
-      "history",
-      "Describe the history and cultural significance of this ingredient.",
-    ),
-    storage: textFieldConfig("storage", "Describe how to properly store this ingredient."),
+    history: textFieldConfig("Describe the history and cultural significance of this ingredient."),
+    storage: textFieldConfig("Describe how to properly store this ingredient."),
     sourcing: textFieldConfig(
-      "sourcing",
       "Describe how to source and select high-quality versions of this ingredient.",
     ),
-    seasonality: textFieldConfig(
-      "seasonality",
-      "Describe the seasonal availability of this ingredient.",
-    ),
+    seasonality: textFieldConfig("Describe the seasonal availability of this ingredient."),
     // Language detection — replaces detectLanguage for ingredients
     language: {
       systemPrompt: ({ currentData }) => {
