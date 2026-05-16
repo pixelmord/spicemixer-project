@@ -1,10 +1,10 @@
 import type { ContentStore } from "./content-store.ts";
 import type { MetaSidecar, SyncCollection } from "./meta-sidecar.ts";
 import { contentHash, flagTranslationsStale } from "./translation-sync.ts";
-import { getConfig, collectionToKind } from "entity-kind";
+import { getConfig, collectionToKind, type ContentCollection } from "entity-kind";
 
 export interface SaveEntityRef {
-  collection: "recipes" | "mixtures" | "ingredients" | "pairings";
+  collection: ContentCollection;
   locale?: string;
   slug: string;
 }

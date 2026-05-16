@@ -1,10 +1,9 @@
 import { describe, expect, test } from "vite-plus/test";
 import { InMemoryStore } from "../../src/lib/stores/in-memory.ts";
+import type { Collection } from "../../src/lib/content-store.ts";
 import { createMetaSidecar, INGREDIENT_META } from "../../src/lib/meta-sidecar.ts";
 import { saveEntity } from "../../src/lib/save-entity.ts";
 import type { SaveEntityRef } from "../../src/lib/save-entity.ts";
-
-// ── basic persistence ──────────────────────────────────────────────────────
 
 describe("saveEntity — content write", () => {
   test("persists ingredient under locale/slug", async () => {
@@ -53,8 +52,6 @@ describe("saveEntity — content write", () => {
   });
 });
 
-// ── meta write ─────────────────────────────────────────────────────────────
-
 describe("saveEntity — meta write", () => {
   test("writes ingredient meta sidecar when meta is provided", async () => {
     const store = new InMemoryStore();
@@ -95,8 +92,6 @@ describe("saveEntity — meta write", () => {
     expect((meta!.data as Record<string, unknown>)["draft"]).toBe(true);
   });
 });
-
-// ── canonicalLocale ────────────────────────────────────────────────────────
 
 describe("saveEntity — canonicalLocale (translatable kinds)", () => {
   test("stamps canonicalLocale from ref.locale on first ingredient save", async () => {
@@ -153,8 +148,6 @@ describe("saveEntity — canonicalLocale (translatable kinds)", () => {
   });
 });
 
-// ── canonicalContentHash ───────────────────────────────────────────────────
-
 describe("saveEntity — canonicalContentHash (translatable kinds)", () => {
   test("stamps canonicalContentHash into meta for canonical ingredient save", async () => {
     const store = new InMemoryStore();
@@ -181,14 +174,12 @@ describe("saveEntity — canonicalContentHash (translatable kinds)", () => {
   });
 });
 
-// ── translation-sync contract (parameterised over translatable EntityKinds) ─
-
 type KindCase = {
   kind: string;
   ref: SaveEntityRef;
   content1: Record<string, unknown>;
   content2: Record<string, unknown>;
-  childMetaCollection: string;
+  childMetaCollection: Collection;
   childId: string;
   translationOf: string;
 };
@@ -233,7 +224,7 @@ describe("saveEntity — translation-sync contract (parameterised over translata
           content: content1,
           meta: { locale: ref.locale, draft: false },
         });
-        await store.put(childMetaCollection as Parameters<typeof store.put>[0], childId, {
+        await store.put(childMetaCollection, childId, {
           translationOf,
         });
         await saveEntity(store, sidecar, {
@@ -241,10 +232,7 @@ describe("saveEntity — translation-sync contract (parameterised over translata
           content: content2,
           meta: { locale: ref.locale, draft: false },
         });
-        const child = await store.get(
-          childMetaCollection as Parameters<typeof store.get>[0],
-          childId,
-        );
+        const child = await store.get(childMetaCollection, childId);
         expect(typeof (child!.data as Record<string, unknown>)["translationStaleSince"]).toBe(
           "string",
         );
@@ -258,7 +246,7 @@ describe("saveEntity — translation-sync contract (parameterised over translata
           content: content1,
           meta: { locale: ref.locale, draft: false },
         });
-        await store.put(childMetaCollection as Parameters<typeof store.put>[0], childId, {
+        await store.put(childMetaCollection, childId, {
           translationOf,
         });
         await saveEntity(store, sidecar, {
@@ -266,10 +254,7 @@ describe("saveEntity — translation-sync contract (parameterised over translata
           content: content1,
           meta: { locale: ref.locale, draft: false },
         });
-        const child = await store.get(
-          childMetaCollection as Parameters<typeof store.get>[0],
-          childId,
-        );
+        const child = await store.get(childMetaCollection, childId);
         expect((child!.data as Record<string, unknown>)["translationStaleSince"]).toBeUndefined();
       });
 
@@ -283,7 +268,7 @@ describe("saveEntity — translation-sync contract (parameterised over translata
           meta: { locale: ref.locale, draft: false },
         });
         const canonicalMeta = await store.get(
-          childMetaCollection as Parameters<typeof store.get>[0],
+          childMetaCollection,
           kind === "ingredient"
             ? `${ref.locale}/${ref.slug}`
             : `${ref.collection}/${ref.locale}/${ref.slug}`,
@@ -306,7 +291,7 @@ describe("saveEntity — translation-sync contract (parameterised over translata
 
         // Canonical should not be flagged stale
         const canonicalMetaAfter = await store.get(
-          childMetaCollection as Parameters<typeof store.get>[0],
+          childMetaCollection,
           kind === "ingredient"
             ? `${ref.locale}/${ref.slug}`
             : `${ref.collection}/${ref.locale}/${ref.slug}`,

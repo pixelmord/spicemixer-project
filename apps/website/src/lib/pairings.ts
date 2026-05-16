@@ -12,7 +12,6 @@ export interface BuildPairingDataInput {
   imageAttribution?: Record<string, unknown>;
 }
 
-/** Reads the existing pairing and merges in the new locale description, image, and ingredients. */
 export async function buildPairingData(
   store: ContentStore,
   input: BuildPairingDataInput,
