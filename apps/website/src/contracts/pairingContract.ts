@@ -1,5 +1,5 @@
 import { pairingSchema } from "entity-kind";
-import type { AiContract } from "content-ai-refine";
+import type { AiContract } from "@pixelmord/content-ai-refine";
 
 type PairingSchema = typeof pairingSchema;
 

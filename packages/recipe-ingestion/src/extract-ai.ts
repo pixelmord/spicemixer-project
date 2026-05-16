@@ -1,4 +1,4 @@
-import { runFill, type AiConfig, type IngestContract } from "content-ai-ingest";
+import { runFill, type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
 import { z } from "zod";
 
 // Extraction schema — simpler than the full schema.org shape, optimised for LLM output.

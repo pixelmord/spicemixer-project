@@ -122,9 +122,9 @@ vi.mock("content-ai", async (importOriginal) => {
   };
 });
 
-// Stub runRefine (content-ai-refine) to avoid network calls in integration tests.
-vi.mock("content-ai-refine", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("content-ai-refine")>();
+// Stub runRefine (@pixelmord/content-ai-refine) to avoid network calls in integration tests.
+vi.mock("@pixelmord/content-ai-refine", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@pixelmord/content-ai-refine")>();
   return {
     ...actual,
     runRefine: vi.fn().mockResolvedValue({
@@ -292,7 +292,7 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
   });
 
   test("aiRefreshSuggestions records an aiEvent when auto-apply fires", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     vi.mocked(refine.runRefine).mockResolvedValueOnce({
       suggestions: new Map(),
       autoApplied: new Map([
@@ -331,7 +331,7 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
   });
 
   test("aiRefreshIngredientSuggestions writes a pairing to the store and records an aiEvent when auto-apply fires", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     vi.mocked(refine.runRefine).mockResolvedValueOnce({
       suggestions: new Map([
         [

@@ -7,8 +7,8 @@ import {
   publish,
 } from "content-ai";
 import type { AiConfig, AiEventSidecar, MetaRef, SidecarEventLog, Confidence } from "content-ai";
-import { runRefine } from "content-ai-refine";
-import type { AiEvent as RefineAiEvent } from "content-ai-refine";
+import { runRefine } from "@pixelmord/content-ai-refine";
+import type { AiEvent as RefineAiEvent } from "@pixelmord/content-ai-refine";
 import { ingredientContract } from "@/contracts/ingredientContract.ts";
 import { recipeContract } from "@/contracts/recipeContract.ts";
 import { pairingContract } from "@/contracts/pairingContract.ts";

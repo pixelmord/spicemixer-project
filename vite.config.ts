@@ -6,8 +6,11 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./apps/website/src", import.meta.url)),
       "content-ai": fileURLToPath(new URL("./packages/content-ai/src/index.ts", import.meta.url)),
-      "content-ai-ingest": fileURLToPath(
+      "@pixelmord/content-ai-ingest": fileURLToPath(
         new URL("./packages/content-ai-ingest/src/index.ts", import.meta.url),
+      ),
+      "@pixelmord/content-ai-refine": fileURLToPath(
+        new URL("./packages/content-ai-refine/src/index.ts", import.meta.url),
       ),
       "@pixelmord/content-ai-core": fileURLToPath(
         new URL("./packages/content-ai-core/src/index.ts", import.meta.url),

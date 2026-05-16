@@ -1,4 +1,4 @@
-import { runFill, type AiConfig, type IngestContract } from "content-ai-ingest";
+import { runFill, type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
 import { debugFromResult, toAiError, type AiDebugInfo } from "./debug.ts";
 import { toImagePart } from "./image.ts";
 import { extractPdfContent } from "./pdf.ts";

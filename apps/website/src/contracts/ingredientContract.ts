@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ingredientSchema } from "entity-kind";
-import type { AiContract, FieldConfig } from "content-ai-refine";
+import type { AiContract, FieldConfig } from "@pixelmord/content-ai-refine";
 
 type IngredientSchema = typeof ingredientSchema;
 

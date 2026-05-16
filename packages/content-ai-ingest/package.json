@@ -1,15 +1,23 @@
 {
-  "name": "content-ai-ingest",
-  "version": "0.0.0",
+  "name": "@pixelmord/content-ai-ingest",
+  "version": "0.1.0",
   "description": "runFill runner — source-context typed AI fill for content entities.",
   "license": "MIT",
   "files": [
     "dist"
   ],
   "type": "module",
+  "types": "./dist/index.d.mts",
   "exports": {
-    ".": "./dist/index.mjs",
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "build": "vp pack",
