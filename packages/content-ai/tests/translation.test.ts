@@ -8,8 +8,6 @@ import { ingredientFieldConfig } from "../src/contracts/ingredient.ts";
 import { recipeFieldConfig } from "../src/contracts/recipe.ts";
 import { pairingFieldConfig } from "../src/contracts/pairing.ts";
 
-// ── TranslationBehavior schema parsing ────────────────────────────────────────
-
 describe("translationBehaviorSchema — each mode parses", () => {
   test("translate", () => {
     expect(translationBehaviorSchema.parse({ mode: "translate" })).toEqual({ mode: "translate" });
@@ -38,8 +36,6 @@ describe("translationBehaviorSchema — each mode parses", () => {
   });
 });
 
-// ── FieldConfig.translation default ──────────────────────────────────────────
-
 describe("resolveTranslation — default applied when omitted", () => {
   test("undefined config → translate", () => {
     expect(resolveTranslation(undefined)).toEqual({ mode: "translate" });
@@ -65,8 +61,6 @@ describe("resolveTranslation — default applied when omitted", () => {
     expect(resolveTranslation(cfg)).toEqual({ mode: "skip" });
   });
 });
-
-// ── Ingredient contract ───────────────────────────────────────────────────────
 
 describe("ingredientFieldConfig", () => {
   test("name → translate", () => {
@@ -113,8 +107,6 @@ describe("ingredientFieldConfig", () => {
   });
 });
 
-// ── Recipe contract ───────────────────────────────────────────────────────────
-
 describe("recipeFieldConfig", () => {
   test("name → translate", () => {
     expect(recipeFieldConfig.name?.translation?.mode).toBe("translate");
@@ -151,8 +143,6 @@ describe("recipeFieldConfig", () => {
     }
   });
 });
-
-// ── Pairing contract ──────────────────────────────────────────────────────────
 
 describe("pairingFieldConfig", () => {
   test("description → translate", () => {

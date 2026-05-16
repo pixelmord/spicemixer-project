@@ -1,10 +1,5 @@
 import type { FieldConfig } from "../translation.ts";
 
-/**
- * Per-field translation declarations for the recipe entity (schema.org Recipe shape).
- * slug is recipe/mixture-specific (different per locale) → translate.
- * Absent fields default to { mode: "translate" } at runtime.
- */
 export const recipeFieldConfig: Record<string, FieldConfig> = {
   // Prose / labels → translate
   name: { translation: { mode: "translate" } },
@@ -13,6 +8,7 @@ export const recipeFieldConfig: Record<string, FieldConfig> = {
   recipeCategory: { translation: { mode: "translate" } },
   recipeIngredient: { translation: { mode: "translate" } },
   recipeInstructions: { translation: { mode: "translate" } },
+  // per-locale (different slug per language)
   slug: { translation: { mode: "translate" } },
 
   // Per-locale vocabulary → localize

@@ -1,10 +1,5 @@
 import type { FieldConfig } from "../translation.ts";
 
-/**
- * Per-field translation declarations for the ingredient entity.
- * Keys use dot-bracket notation for nested array fields (sources[].url).
- * Absent fields default to { mode: "translate" } at runtime.
- */
 export const ingredientFieldConfig: Record<string, FieldConfig> = {
   // Prose → translate
   name: { translation: { mode: "translate" } },
