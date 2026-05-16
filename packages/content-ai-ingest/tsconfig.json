@@ -15,11 +15,6 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
-    "skipLibCheck": true,
-    "paths": {
-      "content-ai": ["../content-ai/src/index.ts"],
-      "content-ai-ingest": ["../content-ai-ingest/src/index.ts"],
-      "recipe-ingestion": ["../recipe-ingestion/src/index.ts"]
-    }
+    "skipLibCheck": true
   }
 }

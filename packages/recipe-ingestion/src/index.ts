@@ -1,4 +1,6 @@
 export { fetchRecipe } from "./fetch.ts";
+export { extractRecipeFromText } from "./extract-ai.ts";
+export type { RecipeAiExtract, AiExtractionResult } from "./extract-ai.ts";
 export { parseRecipe } from "./parse.ts";
 export { extractJsonLd } from "./extract.ts";
 export { findRecipe } from "./find-recipe.ts";

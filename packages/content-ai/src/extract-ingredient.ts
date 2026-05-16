@@ -1,15 +1,20 @@
-import { generateText, Output } from "ai";
-import { createProvider, PROVIDER_OPTIONS, type AiConfig } from "./provider.ts";
+import { runFill, type AiConfig, type IngestContract } from "content-ai-ingest";
 import { debugFromResult, toAiError, type AiDebugInfo } from "./debug.ts";
-import type { ExtractOptions } from "./extract-recipe.ts";
-import { extractPdfContent } from "./pdf.ts";
 import { toImagePart } from "./image.ts";
+import { extractPdfContent } from "./pdf.ts";
 import { ingredientExtractSchema, type IngredientExtract } from "./schemas/ingredient-extract.ts";
+import type { ExtractOptions } from "./extract-recipe.ts";
 
 export type IngredientFileInput =
   | { kind: "pdf"; bytes: Uint8Array }
   | { kind: "image"; bytes: Uint8Array; mimeType: string }
   | { kind: "text"; content: string };
+
+export interface IngredientExtractionResult {
+  ingredient: IngredientExtract;
+  warnings: string[];
+  debug?: AiDebugInfo;
+}
 
 const INGREDIENT_SYSTEM_PROMPT = `You are a culinary ingredient data extractor. Given text or an image about a spice, herb, or ingredient, extract structured information.
 
@@ -25,94 +30,93 @@ Extraction rules:
 - summary should be 1-2 sentences in the source language; description should preserve the source verbatim and may be longer
 - If a field is not present in the source, omit it`;
 
-export interface IngredientExtractionResult {
-  ingredient: IngredientExtract;
-  warnings: string[];
-  debug?: AiDebugInfo;
-}
+const ingredientIngestContract: IngestContract<
+  typeof ingredientExtractSchema,
+  IngredientFileInput
+> = {
+  schema: ingredientExtractSchema,
+  systemPrompt: INGREDIENT_SYSTEM_PROMPT,
+  buildMessages: async (input) => {
+    const warnings: string[] = [];
+
+    if (input.kind === "text") {
+      return {
+        prompt: `Extract ingredient information from the following text:\n\n${input.content}`,
+        warnings,
+      };
+    }
+
+    if (input.kind === "pdf") {
+      const content = await extractPdfContent(input.bytes);
+      if (content.kind === "text") {
+        return {
+          prompt: `Extract ingredient information from the following text:\n\n${content.text}`,
+          warnings,
+        };
+      }
+      warnings.push(
+        "PDF appears to be a scanned image. Sending to vision model for OCR — requires a vision-capable model (e.g. gpt-4o).",
+      );
+      return {
+        messages: [
+          {
+            role: "user" as const,
+            content: [
+              { type: "file" as const, data: content.bytes, mediaType: "application/pdf" as const },
+              {
+                type: "text" as const,
+                text: "Extract ingredient information from this scanned PDF.",
+              },
+            ],
+          },
+        ],
+        warnings,
+      };
+    }
+
+    const imagePart = toImagePart(input.bytes, input.mimeType);
+    return {
+      messages: [
+        {
+          role: "user" as const,
+          content: [
+            imagePart,
+            { type: "text" as const, text: "Extract ingredient information from this image." },
+          ],
+        },
+      ],
+      warnings,
+    };
+  },
+};
 
 export async function extractIngredientFromFile(
   input: IngredientFileInput,
   config: AiConfig,
   options: ExtractOptions = {},
 ): Promise<IngredientExtractionResult> {
-  const model = createProvider(config);
-  const warnings: string[] = [];
-
   try {
-    let ingredient: IngredientExtract;
-    let debug: AiDebugInfo | undefined;
+    const result = await runFill({
+      contract: ingredientIngestContract,
+      sourceContext: input,
+      config,
+    });
 
-    if (input.kind === "text") {
-      const r = await generateText({
-        model,
-        output: Output.object({ schema: ingredientExtractSchema }),
-        providerOptions: PROVIDER_OPTIONS,
-        system: INGREDIENT_SYSTEM_PROMPT,
-        prompt: `Extract ingredient information from the following text:\n\n${input.content}`,
-      });
-      ingredient = r.output;
-      if (options.debug) debug = debugFromResult(r);
-    } else if (input.kind === "pdf") {
-      const content = await extractPdfContent(input.bytes);
-
-      if (content.kind === "text") {
-        const r = await generateText({
-          model,
-          output: Output.object({ schema: ingredientExtractSchema }),
-          providerOptions: PROVIDER_OPTIONS,
-          system: INGREDIENT_SYSTEM_PROMPT,
-          prompt: `Extract ingredient information from the following text:\n\n${content.text}`,
-        });
-        ingredient = r.output;
-        if (options.debug) debug = debugFromResult(r);
-      } else {
-        warnings.push(
-          "PDF appears to be a scanned image. Sending to vision model for OCR — requires a vision-capable model (e.g. gpt-4o).",
-        );
-        const r = await generateText({
-          model,
-          output: Output.object({ schema: ingredientExtractSchema }),
-          providerOptions: PROVIDER_OPTIONS,
-          system: INGREDIENT_SYSTEM_PROMPT,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "file", data: content.bytes, mediaType: "application/pdf" },
-                {
-                  type: "text",
-                  text: "Extract ingredient information from this scanned PDF.",
-                },
-              ],
-            },
-          ],
-        });
-        ingredient = r.output;
-        if (options.debug) debug = debugFromResult(r);
-      }
-    } else {
-      const imagePart = toImagePart(input.bytes, input.mimeType);
-      const r = await generateText({
-        model,
-        output: Output.object({ schema: ingredientExtractSchema }),
-        providerOptions: PROVIDER_OPTIONS,
-        system: INGREDIENT_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: [
-              imagePart,
-              { type: "text", text: "Extract ingredient information from this image." },
-            ],
-          },
-        ],
-      });
-      ingredient = r.output;
-      if (options.debug) debug = debugFromResult(r);
+    const ingredient: Record<string, unknown> = {};
+    for (const [field, suggestion] of result.suggestions) {
+      if (suggestion.kind === "single") ingredient[field] = suggestion.value;
     }
 
-    return debug ? { ingredient, warnings, debug } : { ingredient, warnings };
+    const base: IngredientExtractionResult = {
+      ingredient: ingredient as IngredientExtract,
+      warnings: result.warnings,
+    };
+
+    if (options.debug) {
+      base.debug = debugFromResult({ response: { modelId: config.model } });
+    }
+
+    return base;
   } catch (e) {
     throw toAiError(e, "Ingredient extraction failed");
   }

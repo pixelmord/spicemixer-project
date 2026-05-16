@@ -1,10 +1,9 @@
-import { generateText, Output } from "ai";
-import { createProvider, PROVIDER_OPTIONS, type AiConfig } from "./provider.ts";
+import { runFill, type AiConfig, type IngestContract } from "content-ai-ingest";
 import { debugFromResult, toAiError, type AiDebugInfo } from "./debug.ts";
-import type { ExtractOptions } from "./extract-recipe.ts";
-import { extractPdfContent } from "./pdf.ts";
 import { toImagePart } from "./image.ts";
+import { extractPdfContent } from "./pdf.ts";
 import { pairingExtractSchema, type PairingExtract } from "./schemas/pairing-extract.ts";
+import type { ExtractOptions } from "./extract-recipe.ts";
 
 export type PairingFileInput =
   | { kind: "pdf"; bytes: Uint8Array }
@@ -17,7 +16,7 @@ export interface PairingExtractionResult {
   debug?: AiDebugInfo;
 }
 
-const SYSTEM_PROMPT = `You are extracting culinary ingredient pairing information.
+const PAIRING_SYSTEM_PROMPT = `You are extracting culinary ingredient pairing information.
 
 LANGUAGE — non-negotiable:
 - Preserve the source language exactly for the description. If the source is in German, write the description in German; if French, French; etc. Never translate.
@@ -30,82 +29,79 @@ Given text or an image about how two ingredients work together, extract:
 
 If you can't identify two distinct ingredients, do your best with what's available.`;
 
+const pairingIngestContract: IngestContract<typeof pairingExtractSchema, PairingFileInput> = {
+  schema: pairingExtractSchema,
+  systemPrompt: PAIRING_SYSTEM_PROMPT,
+  buildMessages: async (input) => {
+    const warnings: string[] = [];
+
+    if (input.kind === "text") {
+      return { prompt: `Extract ingredient pairing from:\n\n${input.content}`, warnings };
+    }
+
+    if (input.kind === "pdf") {
+      const content = await extractPdfContent(input.bytes);
+      if (content.kind === "text") {
+        return { prompt: `Extract ingredient pairing from:\n\n${content.text}`, warnings };
+      }
+      warnings.push("PDF appears to be scanned — using vision model.");
+      return {
+        messages: [
+          {
+            role: "user" as const,
+            content: [
+              { type: "file" as const, data: content.bytes, mediaType: "application/pdf" as const },
+              { type: "text" as const, text: "Extract ingredient pairing from this document." },
+            ],
+          },
+        ],
+        warnings,
+      };
+    }
+
+    const imagePart = toImagePart(input.bytes, input.mimeType);
+    return {
+      messages: [
+        {
+          role: "user" as const,
+          content: [
+            imagePart,
+            { type: "text" as const, text: "Extract ingredient pairing from this image." },
+          ],
+        },
+      ],
+      warnings,
+    };
+  },
+};
+
 export async function extractPairingFromFile(
   input: PairingFileInput,
   config: AiConfig,
   options: ExtractOptions = {},
 ): Promise<PairingExtractionResult> {
-  const model = createProvider(config);
-  const warnings: string[] = [];
-
   try {
-    let pairing: PairingExtract;
-    let debug: AiDebugInfo | undefined;
+    const result = await runFill({
+      contract: pairingIngestContract,
+      sourceContext: input,
+      config,
+    });
 
-    if (input.kind === "text") {
-      const r = await generateText({
-        model,
-        output: Output.object({ schema: pairingExtractSchema }),
-        providerOptions: PROVIDER_OPTIONS,
-        system: SYSTEM_PROMPT,
-        prompt: `Extract ingredient pairing from:\n\n${input.content}`,
-      });
-      pairing = r.output;
-      if (options.debug) debug = debugFromResult(r);
-    } else if (input.kind === "pdf") {
-      const content = await extractPdfContent(input.bytes);
-      if (content.kind === "text") {
-        const r = await generateText({
-          model,
-          output: Output.object({ schema: pairingExtractSchema }),
-          providerOptions: PROVIDER_OPTIONS,
-          system: SYSTEM_PROMPT,
-          prompt: `Extract ingredient pairing from:\n\n${content.text}`,
-        });
-        pairing = r.output;
-        if (options.debug) debug = debugFromResult(r);
-      } else {
-        warnings.push("PDF appears to be scanned — using vision model.");
-        const r = await generateText({
-          model,
-          output: Output.object({ schema: pairingExtractSchema }),
-          providerOptions: PROVIDER_OPTIONS,
-          system: SYSTEM_PROMPT,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "file", data: content.bytes, mediaType: "application/pdf" },
-                { type: "text", text: "Extract ingredient pairing from this document." },
-              ],
-            },
-          ],
-        });
-        pairing = r.output;
-        if (options.debug) debug = debugFromResult(r);
-      }
-    } else {
-      const imagePart = toImagePart(input.bytes, input.mimeType);
-      const r = await generateText({
-        model,
-        output: Output.object({ schema: pairingExtractSchema }),
-        providerOptions: PROVIDER_OPTIONS,
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: [
-              imagePart,
-              { type: "text", text: "Extract ingredient pairing from this image." },
-            ],
-          },
-        ],
-      });
-      pairing = r.output;
-      if (options.debug) debug = debugFromResult(r);
+    const pairing: Record<string, unknown> = {};
+    for (const [field, suggestion] of result.suggestions) {
+      if (suggestion.kind === "single") pairing[field] = suggestion.value;
     }
 
-    return debug ? { pairing, warnings, debug } : { pairing, warnings };
+    const base: PairingExtractionResult = {
+      pairing: pairing as PairingExtract,
+      warnings: result.warnings,
+    };
+
+    if (options.debug) {
+      base.debug = debugFromResult({ response: { modelId: config.model } });
+    }
+
+    return base;
   } catch (e) {
     throw toAiError(e, "Pairing extraction failed");
   }

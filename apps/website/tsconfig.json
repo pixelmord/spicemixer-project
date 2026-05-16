@@ -7,6 +7,7 @@
       "@/*": ["./src/*"],
       "recipe-ingestion": ["../../packages/recipe-ingestion/src/index.ts"],
       "content-ai": ["../../packages/content-ai/src/index.ts"],
+      "content-ai-ingest": ["../../packages/content-ai-ingest/src/index.ts"],
       "entity-kind": ["../../packages/entity-kind/src/index.ts"]
     },
     "jsx": "react-jsx",

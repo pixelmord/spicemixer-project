@@ -86,7 +86,10 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss(), dropAstroToolbarEsbuildPlugin()],
     resolve: {
-      alias: { "@": "/src" },
+      alias: {
+        "@": "/src",
+        "content-ai-ingest": join(__dirname, "../../packages/content-ai-ingest/src/index.ts"),
+      },
     },
   },
 });

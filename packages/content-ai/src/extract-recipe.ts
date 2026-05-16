@@ -1,8 +1,7 @@
-import { generateText, Output } from "ai";
-import { createProvider, PROVIDER_OPTIONS, type AiConfig } from "./provider.ts";
+import { runFill, type AiConfig, type IngestContract } from "content-ai-ingest";
 import { debugFromResult, toAiError, type AiDebugInfo } from "./debug.ts";
-import { extractPdfContent } from "./pdf.ts";
 import { toImagePart } from "./image.ts";
+import { extractPdfContent } from "./pdf.ts";
 import { recipeExtractSchema, type RecipeExtract } from "./schemas/recipe-extract.ts";
 
 export type RecipeFileInput =
@@ -11,8 +10,13 @@ export type RecipeFileInput =
   | { kind: "text"; content: string };
 
 export interface ExtractOptions {
-  /** When true, the result includes raw model telemetry for debugging. */
   debug?: boolean;
+}
+
+export interface RecipeExtractionResult {
+  recipe: RecipeExtract;
+  warnings: string[];
+  debug?: AiDebugInfo;
 }
 
 const RECIPE_SYSTEM_PROMPT = `You are a culinary data extractor. Given text or an image of a recipe, extract it into a structured JSON object.
@@ -29,96 +33,90 @@ Extraction rules:
 - Extract keywords as individual tags, not comma-separated strings — keep them in the source language
 - If a field is not present in the source, omit it`;
 
-export interface RecipeExtractionResult {
-  recipe: RecipeExtract;
-  warnings: string[];
-  debug?: AiDebugInfo;
-}
+const recipeIngestContract: IngestContract<typeof recipeExtractSchema, RecipeFileInput> = {
+  schema: recipeExtractSchema,
+  systemPrompt: RECIPE_SYSTEM_PROMPT,
+  buildMessages: async (input) => {
+    const warnings: string[] = [];
+
+    if (input.kind === "text") {
+      return {
+        prompt: `Extract the recipe from the following text:\n\n${input.content}`,
+        warnings,
+      };
+    }
+
+    if (input.kind === "pdf") {
+      const content = await extractPdfContent(input.bytes);
+      if (content.kind === "text") {
+        if (content.pageCount > 20) {
+          warnings.push(`PDF has ${content.pageCount} pages — only first pages were processed`);
+        }
+        return {
+          prompt: `Extract the recipe from the following text:\n\n${content.text}`,
+          warnings,
+        };
+      }
+      warnings.push(
+        "PDF appears to be a scanned image. Sending to vision model for OCR — requires a vision-capable model (e.g. gpt-4o).",
+      );
+      return {
+        messages: [
+          {
+            role: "user" as const,
+            content: [
+              { type: "file" as const, data: content.bytes, mediaType: "application/pdf" as const },
+              { type: "text" as const, text: "Extract the recipe from this scanned PDF." },
+            ],
+          },
+        ],
+        warnings,
+      };
+    }
+
+    const imagePart = toImagePart(input.bytes, input.mimeType);
+    return {
+      messages: [
+        {
+          role: "user" as const,
+          content: [
+            imagePart,
+            { type: "text" as const, text: "Extract the recipe from this image." },
+          ],
+        },
+      ],
+      warnings,
+    };
+  },
+};
 
 export async function extractRecipeFromFile(
   input: RecipeFileInput,
   config: AiConfig,
   options: ExtractOptions = {},
 ): Promise<RecipeExtractionResult> {
-  const model = createProvider(config);
-  const warnings: string[] = [];
-
   try {
-    let recipe: RecipeExtract;
-    let debug: AiDebugInfo | undefined;
+    const result = await runFill({
+      contract: recipeIngestContract,
+      sourceContext: input,
+      config,
+    });
 
-    if (input.kind === "text") {
-      const r = await generateText({
-        model,
-        output: Output.object({ schema: recipeExtractSchema }),
-        providerOptions: PROVIDER_OPTIONS,
-        system: RECIPE_SYSTEM_PROMPT,
-        prompt: `Extract the recipe from the following text:\n\n${input.content}`,
-      });
-      recipe = r.output;
-      if (options.debug) debug = debugFromResult(r);
-    } else if (input.kind === "pdf") {
-      const content = await extractPdfContent(input.bytes);
-
-      if (content.kind === "text") {
-        if (content.pageCount > 20) {
-          warnings.push(`PDF has ${content.pageCount} pages — only first pages were processed`);
-        }
-        const r = await generateText({
-          model,
-          output: Output.object({ schema: recipeExtractSchema }),
-          providerOptions: PROVIDER_OPTIONS,
-          system: RECIPE_SYSTEM_PROMPT,
-          prompt: `Extract the recipe from the following text:\n\n${content.text}`,
-        });
-        recipe = r.output;
-        if (options.debug) debug = debugFromResult(r);
-      } else {
-        // Scanned PDF — send raw bytes as a file part for vision models
-        warnings.push(
-          "PDF appears to be a scanned image. Sending to vision model for OCR — requires a vision-capable model (e.g. gpt-4o).",
-        );
-        const r = await generateText({
-          model,
-          output: Output.object({ schema: recipeExtractSchema }),
-          providerOptions: PROVIDER_OPTIONS,
-          system: RECIPE_SYSTEM_PROMPT,
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "file",
-                  data: content.bytes,
-                  mediaType: "application/pdf",
-                },
-                { type: "text", text: "Extract the recipe from this scanned PDF." },
-              ],
-            },
-          ],
-        });
-        recipe = r.output;
-        if (options.debug) debug = debugFromResult(r);
-      }
-    } else {
-      const imagePart = toImagePart(input.bytes, input.mimeType);
-      const r = await generateText({
-        model,
-        output: Output.object({ schema: recipeExtractSchema }),
-        providerOptions: PROVIDER_OPTIONS,
-        system: RECIPE_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: [imagePart, { type: "text", text: "Extract the recipe from this image." }],
-          },
-        ],
-      });
-      recipe = r.output;
-      if (options.debug) debug = debugFromResult(r);
+    const recipe: Record<string, unknown> = {};
+    for (const [field, suggestion] of result.suggestions) {
+      if (suggestion.kind === "single") recipe[field] = suggestion.value;
     }
 
-    return debug ? { recipe, warnings, debug } : { recipe, warnings };
+    const base: RecipeExtractionResult = {
+      recipe: recipe as RecipeExtract,
+      warnings: result.warnings,
+    };
+
+    if (options.debug) {
+      base.debug = debugFromResult({ response: { modelId: config.model } });
+    }
+
+    return base;
   } catch (e) {
     throw toAiError(e, "Recipe extraction failed");
   }

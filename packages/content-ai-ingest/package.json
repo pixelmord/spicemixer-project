@@ -1,7 +1,7 @@
 {
-  "name": "content-ai",
+  "name": "content-ai-ingest",
   "version": "0.0.0",
-  "description": "AI-powered content ingestion and curation for SpiceMixer.",
+  "description": "runFill runner — source-context typed AI fill for content entities.",
   "license": "MIT",
   "files": [
     "dist"
@@ -16,25 +16,18 @@
     "dev": "vp pack --watch",
     "test": "vp test",
     "check": "vp check",
-    "prepublishOnly": "vp run build",
-    "eval": "evalite",
-    "eval:ui": "evalite serve",
-    "evals:capture": "node --experimental-strip-types evals/capture.ts"
+    "prepublishOnly": "vp run build"
   },
   "dependencies": {
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@noble/hashes": "^1.7.0",
-    "@sentry/node": "catalog:",
     "ai": "catalog:",
-    "content-ai-ingest": "workspace:*",
-    "pdfjs-dist": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
+    "@types/node": "^24",
     "@typescript/native-preview": "catalog:",
-    "evalite": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   },
