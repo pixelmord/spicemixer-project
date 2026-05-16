@@ -108,6 +108,7 @@ vi.mock("content-ai", async (importOriginal) => {
   const actual = await importOriginal<typeof import("content-ai")>();
   return {
     aiEventSchema: actual.aiEventSchema,
+    entityMeta: actual.entityMeta,
     recordAiEvent: actual.recordAiEvent,
     hashSuggestion: actual.hashSuggestion,
     hashContent: actual.hashContent,

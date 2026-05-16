@@ -4,10 +4,8 @@ import type { EntityMeta, EntityMetaSidecar, EntityMetaRef } from "../src/entity
 
 // ── fake sidecar ──────────────────────────────────────────────────────────────
 
-function makeSidecar(
-  initial: Record<string, unknown> = {},
-): EntityMetaSidecar & { store: Map<string, unknown> } {
-  const store = new Map<string, unknown>(Object.entries(initial));
+function makeSidecar(): EntityMetaSidecar & { store: Map<string, unknown> } {
+  const store = new Map<string, unknown>();
 
   function key(ref: EntityMetaRef): string {
     return `${ref.collection}/${ref.locale ?? "_"}/${ref.slug}`;
