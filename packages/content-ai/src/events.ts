@@ -24,7 +24,6 @@ export function planPrune(events: AiEvent[], capHint = MAX_EVENTS): AiEvent[] {
   return events.filter((e) => !removeSet.has(e));
 }
 
-// Priority: oldest auto-applied pruned first, then oldest accepted. Rejected/ingested are never pruned.
 export function prune(events: AiEvent[]): AiEvent[] {
   return planPrune(events, MAX_EVENTS);
 }

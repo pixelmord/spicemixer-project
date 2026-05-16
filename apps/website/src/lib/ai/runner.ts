@@ -14,8 +14,7 @@ import {
   getCurrentOrigin,
   publish,
 } from "content-ai";
-import type { AiConfig, AiEventSidecar, MetaRef } from "content-ai";
-import type { SidecarEventLog } from "content-ai";
+import type { AiConfig, AiEventSidecar, MetaRef, SidecarEventLog } from "content-ai";
 import type { EntityKind } from "entity-kind";
 import type { ContentStore } from "@/lib/content-store.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";

@@ -56,10 +56,7 @@ function refKey(ref: MetaRef): string {
 // Allows concurrent appends across different entities while serialising within one.
 const pendingAppends = new Map<string, Promise<void>>();
 
-/**
- * SidecarEventLog implements AiEventLog over an AiEventSidecar + fingerprint cache.
- * Use createAiEventLog(sidecar) to construct.
- */
+/** SidecarEventLog implements AiEventLog over an AiEventSidecar + fingerprint cache. */
 export class SidecarEventLog implements AiEventLog {
   #sidecar: AiEventSidecar;
 
