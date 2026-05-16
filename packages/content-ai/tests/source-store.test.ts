@@ -444,6 +444,208 @@ describe("LocalSourceStore — three-artifact roundtrip + lineage", () => {
   });
 });
 
+// ─── getBinaryMeta ────────────────────────────────────────────────────────────
+
+describe("LocalSourceStore — getBinaryMeta", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = join(tmpdir(), `source-store-test-${crypto.randomUUID()}`);
+  });
+
+  test("returns BinaryMeta for a known hash", async () => {
+    const store = makeStore(dir);
+    const bytes = new TextEncoder().encode("pdf bytes");
+    const { binaryHash } = await store.putBinary(bytes, BINARY_META);
+    const meta = await store.getBinaryMeta(binaryHash);
+    expect(meta).toBeDefined();
+    expect(meta!.mime).toBe("application/pdf");
+    expect(meta!.kind).toBe("pdf");
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  test("returns undefined for an unknown hash", async () => {
+    const store = makeStore(dir);
+    const meta = await store.getBinaryMeta("0".repeat(64));
+    expect(meta).toBeUndefined();
+  });
+});
+
+// ─── getTextArtifact ──────────────────────────────────────────────────────────
+
+describe("LocalSourceStore — getTextArtifact", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = join(tmpdir(), `source-store-test-${crypto.randomUUID()}`);
+  });
+
+  test("returns text content for known hash+strategy+version", async () => {
+    const store = makeStore(dir);
+    const bytes = new TextEncoder().encode("pdf bytes");
+    const { binaryHash } = await store.putBinary(bytes, BINARY_META);
+    await store.putText(binaryHash, "pdfjs", "5", "extracted text", {
+      ...TEXT_META_PARTIAL,
+      parentBinaryHash: binaryHash,
+    });
+    const text = await store.getTextArtifact(binaryHash, "pdfjs", "5");
+    expect(text).toBe("extracted text");
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  test("returns undefined for unknown strategy/version", async () => {
+    const store = makeStore(dir);
+    const bytes = new TextEncoder().encode("pdf bytes");
+    const { binaryHash } = await store.putBinary(bytes, BINARY_META);
+    const text = await store.getTextArtifact(binaryHash, "pdfjs", "99");
+    expect(text).toBeUndefined();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  test("returns undefined for unknown hash", async () => {
+    const store = makeStore(dir);
+    const text = await store.getTextArtifact("0".repeat(64), "pdfjs", "5");
+    expect(text).toBeUndefined();
+  });
+});
+
+// ─── getStructuredArtifact ────────────────────────────────────────────────────
+
+describe("LocalSourceStore — getStructuredArtifact", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = join(tmpdir(), `source-store-test-${crypto.randomUUID()}`);
+  });
+
+  test("returns structured data for known hash+traceId", async () => {
+    const store = makeStore(dir);
+    const bytes = new TextEncoder().encode("pdf bytes");
+    const { binaryHash } = await store.putBinary(bytes, BINARY_META);
+    const traceId = crypto.randomUUID();
+    const data = { name: "Pasta", recipeIngredient: ["100g pasta"] };
+    await store.putStructured(binaryHash, traceId, data, {
+      ...STRUCTURED_META_PARTIAL,
+      parentBinaryHash: binaryHash,
+    });
+    const result = await store.getStructuredArtifact(binaryHash, traceId);
+    expect(result).toEqual(data);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  test("returns undefined for unknown traceId", async () => {
+    const store = makeStore(dir);
+    const bytes = new TextEncoder().encode("pdf bytes");
+    const { binaryHash } = await store.putBinary(bytes, BINARY_META);
+    const result = await store.getStructuredArtifact(binaryHash, "no-such-trace");
+    expect(result).toBeUndefined();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  test("returns undefined for unknown hash", async () => {
+    const store = makeStore(dir);
+    const result = await store.getStructuredArtifact("0".repeat(64), "any-trace");
+    expect(result).toBeUndefined();
+  });
+});
+
+// ─── InMemorySourceStore + parity tests ───────────────────────────────────────
+
+import { InMemorySourceStore } from "../src/source-store/in-memory.ts";
+
+type StoreFactory = () => { store: SourceStore; cleanup?: () => Promise<void> };
+
+function makeLocalFactory(): StoreFactory {
+  return () => {
+    const d = join(tmpdir(), `source-store-test-${crypto.randomUUID()}`);
+    const store = new LocalSourceStore(d);
+    return {
+      store,
+      cleanup: () => rm(d, { recursive: true, force: true }),
+    };
+  };
+}
+
+function makeInMemoryFactory(): StoreFactory {
+  return () => ({ store: new InMemorySourceStore() });
+}
+
+import type { SourceStore } from "../src/source-store/index.ts";
+
+const PARITY_CASES: Array<[string, StoreFactory]> = [
+  ["LocalSourceStore", makeLocalFactory()],
+  ["InMemorySourceStore", makeInMemoryFactory()],
+];
+
+for (const [name, factory] of PARITY_CASES) {
+  describe(`${name} — parity: put-then-get round-trips`, () => {
+    test("getBinaryMeta round-trip", async () => {
+      const { store, cleanup } = factory();
+      const bytes = new TextEncoder().encode("binary content");
+      const { binaryHash } = await store.putBinary(bytes, BINARY_META);
+      const meta = await store.getBinaryMeta(binaryHash);
+      expect(meta).toBeDefined();
+      expect(meta!.mime).toBe(BINARY_META.mime);
+      expect(meta!.kind).toBe(BINARY_META.kind);
+      expect(meta!.filename).toBe(BINARY_META.filename);
+      await cleanup?.();
+    });
+
+    test("getBinaryMeta returns undefined for missing hash", async () => {
+      const { store, cleanup } = factory();
+      const meta = await store.getBinaryMeta("0".repeat(64));
+      expect(meta).toBeUndefined();
+      await cleanup?.();
+    });
+
+    test("getTextArtifact round-trip", async () => {
+      const { store, cleanup } = factory();
+      const bytes = new TextEncoder().encode("pdf bytes");
+      const { binaryHash } = await store.putBinary(bytes, BINARY_META);
+      await store.putText(binaryHash, "pdfjs", "5", "hello text", {
+        ...TEXT_META_PARTIAL,
+        parentBinaryHash: binaryHash,
+      });
+      const text = await store.getTextArtifact(binaryHash, "pdfjs", "5");
+      expect(text).toBe("hello text");
+      await cleanup?.();
+    });
+
+    test("getTextArtifact returns undefined for missing artifact", async () => {
+      const { store, cleanup } = factory();
+      const bytes = new TextEncoder().encode("pdf bytes");
+      const { binaryHash } = await store.putBinary(bytes, BINARY_META);
+      const text = await store.getTextArtifact(binaryHash, "pdfjs", "99");
+      expect(text).toBeUndefined();
+      await cleanup?.();
+    });
+
+    test("getStructuredArtifact round-trip", async () => {
+      const { store, cleanup } = factory();
+      const bytes = new TextEncoder().encode("pdf bytes");
+      const { binaryHash } = await store.putBinary(bytes, BINARY_META);
+      const traceId = "test-trace-roundtrip";
+      const data = { name: "Pasta", recipeIngredient: ["100g pasta"] };
+      await store.putStructured(binaryHash, traceId, data, {
+        ...STRUCTURED_META_PARTIAL,
+        parentBinaryHash: binaryHash,
+      });
+      const result = await store.getStructuredArtifact(binaryHash, traceId);
+      expect(result).toEqual(data);
+      await cleanup?.();
+    });
+
+    test("getStructuredArtifact returns undefined for missing artifact", async () => {
+      const { store, cleanup } = factory();
+      const bytes = new TextEncoder().encode("pdf bytes");
+      const { binaryHash } = await store.putBinary(bytes, BINARY_META);
+      const result = await store.getStructuredArtifact(binaryHash, "no-such-trace");
+      expect(result).toBeUndefined();
+      await cleanup?.();
+    });
+  });
+}
+
 // ─── aiEvents source schema migration ────────────────────────────────────────
 
 import { aiEventSchema, sourceDescriptorSchema } from "../src/schemas/ai-events.ts";

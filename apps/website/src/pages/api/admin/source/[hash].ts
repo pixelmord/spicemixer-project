@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { createSourceStore, readSourceBinaryMeta } from "@/lib/stores/source-store.ts";
+import { createSourceStore } from "@/lib/stores/source-store.ts";
 
 export const prerender = false;
 
@@ -17,7 +17,7 @@ export const GET: APIRoute = async ({ params }) => {
     return new Response("Source artifact not found", { status: 404 });
   }
 
-  const meta = await readSourceBinaryMeta(hash);
+  const meta = await store.getBinaryMeta(hash);
   const mime = meta?.mime ?? "application/octet-stream";
   const rawFilename = meta?.filename ?? `source-${hash.slice(0, 12)}`;
   const filename = rawFilename.replace(/[\x00-\x1f"]/g, "");

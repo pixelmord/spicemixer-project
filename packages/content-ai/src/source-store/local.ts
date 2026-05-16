@@ -3,6 +3,7 @@ import { join, extname } from "node:path";
 import { existsSync } from "node:fs";
 import type { SourceStore } from "./index.ts";
 import type { BinaryMeta, TextMeta, StructuredMeta } from "./types.ts";
+import { binaryMetaSchema } from "./types.ts";
 import { hashBinary } from "./ids.ts";
 
 const MIME_TO_EXT: Record<string, string> = {
@@ -92,6 +93,42 @@ export class LocalSourceStore implements SourceStore {
       return new Uint8Array(buf);
     }
     return null;
+  }
+
+  async getBinaryMeta(hash: string): Promise<BinaryMeta | undefined> {
+    const metaPath = join(this.basePath, hash, "source.meta.json");
+    if (!existsSync(metaPath)) return undefined;
+    try {
+      const raw = JSON.parse(await readFile(metaPath, "utf8"));
+      const parsed = binaryMetaSchema.safeParse(raw);
+      return parsed.success ? parsed.data : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  async getTextArtifact(
+    hash: string,
+    strategy: string,
+    version: string,
+  ): Promise<string | undefined> {
+    const textPath = join(this.basePath, hash, "text", `${strategy}-${version}.txt`);
+    if (!existsSync(textPath)) return undefined;
+    try {
+      return await readFile(textPath, "utf8");
+    } catch {
+      return undefined;
+    }
+  }
+
+  async getStructuredArtifact(hash: string, traceId: string): Promise<unknown> {
+    const jsonPath = join(this.basePath, hash, "structured", `${traceId}.json`);
+    if (!existsSync(jsonPath)) return undefined;
+    try {
+      return JSON.parse(await readFile(jsonPath, "utf8"));
+    } catch {
+      return undefined;
+    }
   }
 
   async listForBinary(binaryHash: string): Promise<{ texts: string[]; structured: string[] }> {
