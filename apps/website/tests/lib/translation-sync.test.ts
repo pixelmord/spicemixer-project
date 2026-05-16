@@ -404,4 +404,77 @@ describe("listStaleEntries", () => {
     expect(entries).toHaveLength(1);
     expect(entries[0]!.locale).toBe("de");
   });
+
+  test("includes canonicalFieldHashes when stored in meta", async () => {
+    const store = new InMemoryStore();
+    const fieldHashes = { name: "abc123", description: "def456" };
+    await store.put("ingredientMeta", "de/cardamom", {
+      translationOf: "en/cardamom",
+      translationStaleSince: "2026-01-01T00:00:00.000Z",
+      canonicalFieldHashes: fieldHashes,
+    });
+    const entries = await listStaleEntries(store);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.canonicalFieldHashes).toEqual(fieldHashes);
+  });
+
+  test("returns undefined canonicalFieldHashes when not stored", async () => {
+    const store = new InMemoryStore();
+    await store.put("ingredientMeta", "de/cardamom", {
+      translationOf: "en/cardamom",
+      translationStaleSince: "2026-01-01T00:00:00.000Z",
+    });
+    const entries = await listStaleEntries(store);
+    expect(entries[0]!.canonicalFieldHashes).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// flagTranslationsStale — canonicalFieldHashes update
+// ---------------------------------------------------------------------------
+
+describe("flagTranslationsStale — canonicalFieldHashes", () => {
+  test("stores newFieldHashes as canonicalFieldHashes in translation metas when provided", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    await store.put(INGREDIENT_META, "de/cardamom", {
+      translationOf: "en/cardamom",
+    });
+
+    const newHashes = { name: "new123", description: "new456" };
+    await flagTranslationsStale(sidecar, "ingredients", "en/cardamom", newHashes);
+
+    const de = await store.get(INGREDIENT_META, "de/cardamom");
+    const data = de!.data as Record<string, unknown>;
+    expect(data["canonicalFieldHashes"]).toEqual(newHashes);
+    expect(typeof data["translationStaleSince"]).toBe("string");
+  });
+
+  test("does not set canonicalFieldHashes when newFieldHashes is not provided", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    await store.put(INGREDIENT_META, "de/cardamom", {
+      translationOf: "en/cardamom",
+    });
+
+    await flagTranslationsStale(sidecar, "ingredients", "en/cardamom");
+
+    const de = await store.get(INGREDIENT_META, "de/cardamom");
+    expect((de!.data as Record<string, unknown>)["canonicalFieldHashes"]).toBeUndefined();
+  });
+
+  test("overwrites existing canonicalFieldHashes when newFieldHashes provided", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    await store.put(INGREDIENT_META, "de/cardamom", {
+      translationOf: "en/cardamom",
+      canonicalFieldHashes: { name: "old123" },
+    });
+
+    const newHashes = { name: "new456", description: "new789" };
+    await flagTranslationsStale(sidecar, "ingredients", "en/cardamom", newHashes);
+
+    const de = await store.get(INGREDIENT_META, "de/cardamom");
+    expect((de!.data as Record<string, unknown>)["canonicalFieldHashes"]).toEqual(newHashes);
+  });
 });

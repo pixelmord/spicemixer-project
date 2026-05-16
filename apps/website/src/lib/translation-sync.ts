@@ -32,6 +32,7 @@ export async function flagTranslationsStale(
   sidecar: MetaSidecar,
   collection: SyncCollection,
   canonicalKey: string,
+  newFieldHashes?: Record<string, string>,
 ): Promise<void> {
   const now = new Date().toISOString();
   const items = await sidecar.listSync(collection);
@@ -39,7 +40,9 @@ export async function flagTranslationsStale(
     const d = data as Record<string, unknown>;
     if (d["translationOf"] !== canonicalKey) continue;
     if (d["translationStaleSince"] != null) continue;
-    await sidecar.updateById(metaCollection, id, { ...d, translationStaleSince: now });
+    const update: Record<string, unknown> = { ...d, translationStaleSince: now };
+    if (newFieldHashes !== undefined) update["canonicalFieldHashes"] = newFieldHashes;
+    await sidecar.updateById(metaCollection, id, update);
   }
 }
 
@@ -76,6 +79,7 @@ export type StaleEntry = {
   locale: string;
   staleSince: string;
   canonicalLocale: string | undefined;
+  canonicalFieldHashes: Record<string, string> | undefined;
 };
 
 export async function listStaleEntries(store: ContentStore): Promise<StaleEntry[]> {
@@ -94,6 +98,7 @@ export async function listStaleEntries(store: ContentStore): Promise<StaleEntry[
       locale: item.id.slice(0, slash),
       staleSince: data["translationStaleSince"] as string,
       canonicalLocale: data["canonicalLocale"] as string | undefined,
+      canonicalFieldHashes: data["canonicalFieldHashes"] as Record<string, string> | undefined,
     });
   }
 
@@ -129,6 +134,7 @@ export async function listStaleEntries(store: ContentStore): Promise<StaleEntry[
       locale,
       staleSince: data["translationStaleSince"] as string,
       canonicalLocale: data["canonicalLocale"] as string | undefined,
+      canonicalFieldHashes: data["canonicalFieldHashes"] as Record<string, string> | undefined,
     });
   }
 

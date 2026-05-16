@@ -158,6 +158,7 @@ export const ingredientMetaSchema = z.object({
   translationOf: z.string().optional(),
   translationStaleSince: z.string().datetime().optional(),
   canonicalContentHash: z.string().optional(),
+  canonicalFieldHashes: z.record(z.string(), z.string()).optional(),
   translations: z.record(z.string(), z.string()).default({}),
   aiEvents: z.array(aiEventSchema).default([]),
 });
@@ -168,6 +169,10 @@ export type IngredientMeta = z.infer<typeof ingredientMetaSchema>;
 
 export const pairingMetaSchema = z.object({
   draft: z.boolean().default(false),
+  canonicalLocale: z.string().length(2).optional(),
+  translationOf: z.string().optional(),
+  translationStaleSince: z.string().datetime().optional(),
+  canonicalFieldHashes: z.record(z.string(), z.string()).optional(),
   aiEvents: z.array(aiEventSchema).default([]),
 });
 
@@ -238,6 +243,7 @@ export const recipeMetaSchema = z.object({
   translationOf: z.string().optional(),
   translationStaleSince: z.string().datetime().optional(),
   canonicalContentHash: z.string().optional(),
+  canonicalFieldHashes: z.record(z.string(), z.string()).optional(),
   translations: z.record(z.string(), z.string()).default({}),
   variantOf: z.string().optional(),
   variants: z.array(z.string()).default([]),
