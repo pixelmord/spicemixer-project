@@ -112,3 +112,8 @@ export type { PdfContent, PdfTextResult, PdfFileResult } from "./pdf.ts";
 
 export { subscribe, publish } from "./pubsub.ts";
 export type { PubSubEvent } from "./pubsub.ts";
+
+export { translationBehaviorSchema, resolveTranslation } from "./translation.ts";
+export type { TranslationBehavior, FieldConfig } from "./translation.ts";
+
+export { ingredientFieldConfig, recipeFieldConfig, pairingFieldConfig } from "./contracts/index.ts";
