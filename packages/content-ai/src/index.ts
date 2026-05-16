@@ -107,3 +107,5 @@ export { ingredientFieldConfig, recipeFieldConfig, pairingFieldConfig } from "./
 
 export { entityMeta, entityMetaSchema } from "./entity-meta.ts";
 export type { EntityMeta, EntityMetaSidecar, EntityMetaRef } from "./entity-meta.ts";
+
+export { InMemoryAiEventLog } from "./testing/index.ts";
