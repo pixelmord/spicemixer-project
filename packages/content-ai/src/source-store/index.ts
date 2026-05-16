@@ -17,9 +17,13 @@ export interface SourceStore {
   ): Promise<void>;
   readBinary(binaryHash: string): Promise<Uint8Array | null>;
   listForBinary(binaryHash: string): Promise<{ texts: string[]; structured: string[] }>;
+  getBinaryMeta(hash: string): Promise<BinaryMeta | undefined>;
+  getTextArtifact(hash: string, strategy: string, version: string): Promise<string | undefined>;
+  getStructuredArtifact(hash: string, traceId: string): Promise<unknown>;
 }
 
 export { LocalSourceStore } from "./local.ts";
+export { InMemorySourceStore } from "./in-memory.ts";
 export { hashBinary } from "./ids.ts";
 export type { BinaryMeta, TextMeta, StructuredMeta } from "./types.ts";
 export { binaryMetaSchema, textMetaSchema, structuredMetaSchema } from "./types.ts";
