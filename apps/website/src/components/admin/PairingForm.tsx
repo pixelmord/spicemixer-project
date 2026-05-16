@@ -77,9 +77,9 @@ export default function PairingForm({
     defaultValues: {
       ingredient1: initialIngredients?.[0] ?? "",
       ingredient2: initialIngredients?.[1] ?? "",
-      descriptions: initialDescriptions as Record<string, string>,
+      descriptions: initialDescriptions,
       image: initialImage,
-      imageAttribution: initialImageAttribution as ImageAttribution | undefined,
+      imageAttribution: initialImageAttribution,
     },
     onSubmit: async ({ value }) => {
       if (!value.ingredient1 || !value.ingredient2) {
@@ -126,6 +126,13 @@ export default function PairingForm({
   });
 
   const formValues = useStore(form.store, (s) => s.values);
+
+  function setDescription(locale: string, value: string) {
+    form.setFieldValue(
+      "descriptions" as never,
+      { ...formValues.descriptions, [locale]: value } as never,
+    );
+  }
 
   useEffect(() => {
     void actions
@@ -248,13 +255,7 @@ export default function PairingForm({
 
   function handleApplySuggestion(field: string, value: string) {
     // Pairings only have a description field — always apply to it
-    form.setFieldValue(
-      "descriptions" as never,
-      {
-        ...formValues.descriptions,
-        [activeLocale]: value,
-      } as never,
-    );
+    setDescription(activeLocale, value);
     setDismissedSuggestions((prev) => new Set([...prev, `${activeLocale}:${field}`]));
   }
 
@@ -367,45 +368,39 @@ export default function PairingForm({
                 <CardTitle>Image</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1.5">
-                <form.Field name="image">
-                  {(field) => (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor={field.name}>Image URL</Label>
-                        <button
-                          type="button"
-                          onClick={() => setImageSearchOpen(true)}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          Search image…
-                        </button>
-                      </div>
-                      <Input
-                        id={field.name}
-                        type="url"
-                        value={field.state.value}
-                        onChange={(e) => {
-                          field.handleChange(e.target.value);
-                          if (!e.target.value)
-                            form.setFieldValue("imageAttribution" as never, undefined as never);
-                        }}
-                        placeholder="https://example.com/image.jpg"
-                      />
-                      {field.state.value && (
-                        <img
-                          src={field.state.value}
-                          alt=""
-                          className="mt-2 h-24 rounded border border-border object-cover"
-                        />
-                      )}
-                      {formValues.imageAttribution && (
-                        <p className="text-[11px] text-muted-foreground">
-                          {formValues.imageAttribution.attribution}
-                        </p>
-                      )}
-                    </>
-                  )}
-                </form.Field>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="pairing-image">Image URL</Label>
+                  <button
+                    type="button"
+                    onClick={() => setImageSearchOpen(true)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Search image…
+                  </button>
+                </div>
+                <Input
+                  id="pairing-image"
+                  type="url"
+                  value={formValues.image}
+                  onChange={(e) => {
+                    form.setFieldValue("image" as never, e.target.value as never);
+                    if (!e.target.value)
+                      form.setFieldValue("imageAttribution" as never, undefined as never);
+                  }}
+                  placeholder="https://example.com/image.jpg"
+                />
+                {formValues.image && (
+                  <img
+                    src={formValues.image}
+                    alt=""
+                    className="mt-2 h-24 rounded border border-border object-cover"
+                  />
+                )}
+                {formValues.imageAttribution && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {formValues.imageAttribution.attribution}
+                  </p>
+                )}
               </CardContent>
             </Card>
           </section>
@@ -460,15 +455,7 @@ export default function PairingForm({
                 <div className="space-y-1.5">
                   <Textarea
                     value={currentDesc}
-                    onChange={(e) =>
-                      form.setFieldValue(
-                        "descriptions" as never,
-                        {
-                          ...formValues.descriptions,
-                          [activeLocale]: e.target.value,
-                        } as never,
-                      )
-                    }
+                    onChange={(e) => setDescription(activeLocale, e.target.value)}
                     rows={4}
                     placeholder={`Why do ${formValues.ingredient1 || "these"} and ${formValues.ingredient2 || "these"} pair well? (${activeLocale.toUpperCase()})`}
                   />
@@ -582,15 +569,7 @@ export default function PairingForm({
               ingredients: [formValues.ingredient1, formValues.ingredient2],
               descriptions: formValues.descriptions,
             }}
-            onApplied={(desc) =>
-              form.setFieldValue(
-                "descriptions" as never,
-                {
-                  ...formValues.descriptions,
-                  [activeLocale]: desc,
-                } as never,
-              )
-            }
+            onApplied={(desc) => setDescription(activeLocale, desc)}
           />
           <PairingTranslateModal
             open={translateOpen}
@@ -599,13 +578,7 @@ export default function PairingForm({
             currentLocale={activeLocale}
             hasDescriptionForLocale={(l) => !!formValues.descriptions[l]}
             onTranslated={(locale, desc) => {
-              form.setFieldValue(
-                "descriptions" as never,
-                {
-                  ...formValues.descriptions,
-                  [locale]: desc,
-                } as never,
-              );
+              setDescription(locale, desc);
               setTranslateOpen(false);
               toast.success(`${locale.toUpperCase()} translation added`);
             }}
