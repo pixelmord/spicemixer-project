@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "suggestion-flow-provider",
+  "type": "registry:hook",
+  "title": "SuggestionFlowProvider",
+  "description": "Context provider that hosts useAiSuggestions return for deep forms, with useSuggestionFlowContext() reader.",
+  "registryDependencies": ["use-ai-suggestions"],
+  "files": [
+    {
+      "path": "hooks/suggestion-flow-provider.tsx",
+      "type": "registry:hook",
+      "content": "import { createContext, useContext } from \"react\";\nimport type { UseAiSuggestionsReturn } from \"./use-ai-suggestions\";\n\nconst SuggestionFlowContext = createContext<UseAiSuggestionsReturn | null>(null);\n\ninterface SuggestionFlowProviderProps {\n  value: UseAiSuggestionsReturn;\n  children: React.ReactNode;\n}\n\nexport function SuggestionFlowProvider({ value, children }: SuggestionFlowProviderProps) {\n  return <SuggestionFlowContext.Provider value={value}>{children}</SuggestionFlowContext.Provider>;\n}\n\nexport function useSuggestionFlowContext(): UseAiSuggestionsReturn {\n  const ctx = useContext(SuggestionFlowContext);\n  if (!ctx) {\n    throw new Error(\"useSuggestionFlowContext must be used within SuggestionFlowProvider\");\n  }\n  return ctx;\n}\n"
+    }
+  ]
+}
