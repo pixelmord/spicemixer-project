@@ -22,8 +22,6 @@ function accepted(field: string, hash: string): AiEvent {
   };
 }
 
-// ── isSuppressed ──────────────────────────────────────────────────────────────
-
 describe("isSuppressed", () => {
   test("returns true when a rejected event matches field+hash", () => {
     const events: AiEvent[] = [rejected("name", "abc123def456")];
@@ -50,8 +48,6 @@ describe("isSuppressed", () => {
   });
 });
 
-// ── filterSuggestions ─────────────────────────────────────────────────────────
-
 describe("filterSuggestions", () => {
   test("removes suppressed suggestions", () => {
     const events: AiEvent[] = [rejected("name", "abc123def456")];
@@ -70,8 +66,6 @@ describe("filterSuggestions", () => {
     expect(result).toHaveLength(1);
   });
 });
-
-// ── buildRejectedContext ──────────────────────────────────────────────────────
 
 describe("buildRejectedContext", () => {
   test("returns empty string when no rejected events", () => {

@@ -14,7 +14,6 @@ export interface Origin {
   sourceHash?: string;
 }
 
-// Exported as `originContext` per the PRD interface spec.
 export const originContext = new AsyncLocalStorage<Origin>();
 
 export function withOrigin<T>(origin: Origin, fn: () => Promise<T>): Promise<T> {
@@ -23,7 +22,6 @@ export function withOrigin<T>(origin: Origin, fn: () => Promise<T>): Promise<T> 
 
 export type OriginConfig = Omit<Origin, "runId"> & { runId?: string };
 
-// Convenience: wrap a handler so every call runs inside a fresh Origin.
 export function wrapWithOrigin(
   config: OriginConfig,
 ): <A extends unknown[], R>(handler: (...a: A) => Promise<R>) => (...a: A) => Promise<R> {

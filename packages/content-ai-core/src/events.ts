@@ -1,13 +1,9 @@
 import { z } from "zod";
 
-// ── EntityRef ─────────────────────────────────────────────────────────────────
-
 export interface EntityRef {
   kind: string;
   id: string;
 }
-
-// ── AiEvent ───────────────────────────────────────────────────────────────────
 
 export const aiEventSchema = z.object({
   type: z.enum(["auto-applied", "accepted", "rejected", "ingested"]),
@@ -25,20 +21,16 @@ export const aiEventSchema = z.object({
 
 export type AiEvent = z.infer<typeof aiEventSchema>;
 
-// ── AiEventLog interface ──────────────────────────────────────────────────────
 // Append must be serialisable per entityRef — documented contract.
 // Adapters with size pressure call planPrune before write; adapters without
 // (Convex tables) just append.
-
 export interface AiEventLog {
   read(ref: EntityRef): Promise<AiEvent[]>;
   append(ref: EntityRef, event: AiEvent): Promise<void>;
 }
 
-// ── isPrunable / planPrune ────────────────────────────────────────────────────
 // ADR 0004: rejected and ingested events are NEVER prunable — they form the
 // suppression history and source-attribution record respectively.
-
 export function isPrunable(event: AiEvent): boolean {
   return event.type !== "rejected" && event.type !== "ingested";
 }

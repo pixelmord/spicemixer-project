@@ -12,8 +12,6 @@ function makeEvent(type: AiEvent["type"], at = new Date().toISOString(), field?:
   };
 }
 
-// ── isPrunable ────────────────────────────────────────────────────────────────
-
 describe("isPrunable", () => {
   test("auto-applied is prunable", () => {
     expect(isPrunable(makeEvent("auto-applied"))).toBe(true);
@@ -31,8 +29,6 @@ describe("isPrunable", () => {
     expect(isPrunable(makeEvent("ingested"))).toBe(false);
   });
 });
-
-// ── planPrune ─────────────────────────────────────────────────────────────────
 
 describe("planPrune", () => {
   test("returns all events when under cap", () => {
@@ -94,8 +90,6 @@ describe("planPrune", () => {
     expect(result).toContain(recentAccepted);
   });
 });
-
-// ── AiEvent schema ────────────────────────────────────────────────────────────
 
 describe("aiEventSchema", () => {
   test("parses a valid event", () => {

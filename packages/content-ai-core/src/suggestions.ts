@@ -1,13 +1,9 @@
-// ── FieldWritePolicy ──────────────────────────────────────────────────────────
-
 export type FieldWritePolicy<T = unknown> =
   | "preserve"
   | "replace"
   | "fill-if-empty"
   | { mode: "merge-function"; merge: (current: T, proposed: T) => T }
   | { mode: "merge-instructions"; instruction: string };
-
-// ── FieldSuggestion ───────────────────────────────────────────────────────────
 
 export type FieldSuggestion<T = unknown> =
   | {
@@ -30,16 +26,12 @@ export type FieldSuggestion<T = unknown> =
       traceId: string;
     };
 
-// ── AppliedSuggestion ─────────────────────────────────────────────────────────
-
 export interface AppliedSuggestion {
   value: unknown;
   hash: string;
   summary: string;
   confidence: "high" | "medium" | "low";
 }
-
-// ── TraceSummary ──────────────────────────────────────────────────────────────
 
 export interface TraceSummary {
   traceId: string;

@@ -1,22 +1,15 @@
 import type { ZodSchema, z } from "zod";
 import type { FieldWritePolicy } from "./suggestions.ts";
 
-// ── TranslationBehavior ───────────────────────────────────────────────────────
-// Staged here; wired into the translation runner in PRD 10.
-
 export type TranslationBehavior =
   | { mode: "translate" }
   | { mode: "copy" }
   | { mode: "localize"; instruction?: string }
   | { mode: "skip" };
 
-// ── AutoApplyPolicy ───────────────────────────────────────────────────────────
-
 export type AutoApplyPolicy =
   | { policy: "never" }
   | { policy: "high-confidence"; threshold: number };
-
-// ── PromptContext ─────────────────────────────────────────────────────────────
 
 export interface PromptContext<S extends ZodSchema, Source> {
   currentData?: z.infer<S>;
@@ -24,8 +17,6 @@ export interface PromptContext<S extends ZodSchema, Source> {
   userPrompt?: string;
   preset?: string;
 }
-
-// ── Preset ───────────────────────────────────────────────────────────────────
 
 export interface Preset<S extends ZodSchema = ZodSchema, Source = never> {
   id: string;
@@ -36,11 +27,8 @@ export interface Preset<S extends ZodSchema = ZodSchema, Source = never> {
   autoApplyOverride?: AutoApplyPolicy;
 }
 
-// ── FieldConfig ───────────────────────────────────────────────────────────────
-// All AI fields are optional during the transition period (PRD 8 migration
-// sequence step 2). Contracts that only set translation?: TranslationBehavior
-// continue to typecheck.
-
+// All AI fields are optional so contracts that only set translation
+// continue to typecheck during the migration to full field configs.
 export interface FieldConfig<S extends ZodSchema = ZodSchema, Source = never> {
   systemPrompt?: (ctx: PromptContext<S, Source>) => string;
   autoApply?: AutoApplyPolicy | ((ctx: PromptContext<S, Source>) => AutoApplyPolicy);
@@ -48,8 +36,6 @@ export interface FieldConfig<S extends ZodSchema = ZodSchema, Source = never> {
   writePolicy?: FieldWritePolicy<unknown>;
   translation?: TranslationBehavior;
 }
-
-// ── AiContract ────────────────────────────────────────────────────────────────
 
 export interface AiContract<S extends ZodSchema, Source = never> {
   schema: S;

@@ -14,8 +14,6 @@ function makeEvent(type: AiEvent["type"]): AiEvent {
 
 const REF: EntityRef = { kind: "recipe", id: "rec-1" };
 
-// ── InMemoryAiEventLog ────────────────────────────────────────────────────────
-
 describe("InMemoryAiEventLog", () => {
   let log: InMemoryAiEventLog;
 
@@ -67,8 +65,6 @@ describe("InMemoryAiEventLog", () => {
     expect(await log.read(REF)).toEqual([]);
   });
 });
-
-// ── InMemoryTraceSink ─────────────────────────────────────────────────────────
 
 describe("InMemoryTraceSink", () => {
   let sink: InMemoryTraceSink;

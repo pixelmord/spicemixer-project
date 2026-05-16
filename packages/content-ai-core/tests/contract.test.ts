@@ -2,10 +2,6 @@ import { describe, expect, test } from "vite-plus/test";
 import { z } from "zod";
 import type { AiContract, FieldConfig, Preset } from "../src/contract.ts";
 
-// ── Type validity — these compile-time checks catch regressions ───────────────
-// If the imports above compile and the objects below are accepted without type
-// errors the contract type invariants hold.
-
 const recipeSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
