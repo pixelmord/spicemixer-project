@@ -1,4 +1,4 @@
-import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
+import { useState, useEffect, useMemo, type Dispatch, type SetStateAction } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
@@ -56,9 +56,10 @@ import CompletenessPanel from "./CompletenessPanel.tsx";
 import RecommendedHint from "./RecommendedHint.tsx";
 import EnhanceModal from "./EnhanceModal.tsx";
 import TranslateModal from "./TranslateModal.tsx";
-import InlineSuggestion from "./InlineSuggestion.tsx";
 import IngredientLinkModal from "./IngredientLinkModal.tsx";
-import AiAssistPanel from "./AiAssistPanel.tsx";
+import { useAiSuggestions, type RunResult, type FieldSuggestion } from "@/hooks/use-ai-suggestions";
+import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
+import { InlineFieldSuggestion } from "./InlineFieldSuggestion.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
@@ -246,6 +247,33 @@ function handleRefreshResult(
       });
     }
   }
+}
+
+function adaptAiSuggestionsToRunResult(data: AiSuggestions | undefined): RunResult {
+  if (!data) return { suggestions: {}, autoApplied: {}, traces: {} };
+  const suggestions: Record<string, FieldSuggestion> = {};
+  let counter = 0;
+  for (const imp of data.improvements ?? []) {
+    suggestions[imp.field] = {
+      kind: "single",
+      value: TIME_FIELDS.has(imp.field) ? toIsoDuration(imp.suggestion) : imp.suggestion,
+      confidence: "medium",
+      summary: imp.rationale,
+      hash: `${imp.field}-${counter++}`,
+      traceId: "legacy",
+    };
+  }
+  if (data.tags && data.tags.length > 0) {
+    suggestions.tags = {
+      kind: "single",
+      value: data.tags,
+      confidence: "medium",
+      summary: `${data.tags.length} AI-suggested tags`,
+      hash: `tags-${counter++}`,
+      traceId: "legacy",
+    };
+  }
+  return { suggestions, autoApplied: {}, traces: {} };
 }
 
 export default function RecipeForm({
@@ -717,6 +745,68 @@ export default function RecipeForm({
     (s) => !dismissedSuggestions.has(s.field),
   );
 
+  // ── useAiSuggestions hook ────────────────────────────────────────────────────
+  const aiEventLog = useMemo(
+    () => ({
+      read: async () => [],
+      append: async (_ref: unknown, event: unknown) => {
+        if (slug && collection) {
+          await actions.aiRecordEvent({
+            collection,
+            locale: (language || "en") as "en" | "de",
+            slug,
+            event: event as Record<string, unknown>,
+          });
+        }
+      },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [slug, collection, language],
+  );
+
+  const aiEntityRef = useMemo(() => ({ kind: "recipe", id: slug ?? "" }), [slug]);
+
+  const aiFlow = useAiSuggestions({
+    contract: { presets: [], fields: {} },
+    onRefine: async () => {
+      const snap = buildRecipeSnapshot();
+      const metaSnap = buildMetaSnapshot();
+      const missingKeys = RECIPE_RECOMMENDED.filter((k) => !recipeFieldHas(k));
+      let captured: AiSuggestions | undefined;
+      setAiRefreshing(true);
+      try {
+        await refreshViaSSE(
+          {
+            collection,
+            slug: slug ?? "",
+            recipe: snap,
+            meta: metaSnap,
+            missingFields: missingKeys,
+            locale: language ?? "en",
+            force: true,
+          },
+          (data) => {
+            captured = data.aiSuggestions;
+            handleRefreshResult(data, (s) => setAiSuggestions(s), setIngredientLinks);
+          },
+        );
+      } finally {
+        setAiRefreshing(false);
+      }
+      return adaptAiSuggestionsToRunResult(captured);
+    },
+    aiEventLog,
+    entityRef: aiEntityRef,
+    origin: {
+      surface: "admin",
+      action: "refine",
+      entityKind: "recipe",
+      userInitiated: true,
+      runId: `recipe-${slug ?? "new"}`,
+      triggeredBy: "editor",
+    },
+  });
+
   function handleApplySuggestion(field: string, value: string) {
     const coerced = TIME_FIELDS.has(field) ? toIsoDuration(value) : value;
     if (field === "tags") setTags((prev) => [...new Set([...prev, coerced])]);
@@ -798,42 +888,11 @@ export default function RecipeForm({
   }
 
   async function handleManualRefresh() {
-    const missingKeys = RECIPE_RECOMMENDED.filter((k) => !recipeFieldHas(k));
-    setAiRefreshing(true);
     setDismissedSuggestions(new Set());
-    const snap = {
-      "@context": "https://schema.org",
-      "@type": "Recipe",
-      name: formValues.name,
-      description: formValues.description,
-      recipeIngredient: ingredients.filter(Boolean),
-      recipeCategory: formValues.recipeCategory,
-      recipeCuisine: formValues.recipeCuisine,
-      keywords,
-    };
-    const metaSnap = {
-      ...meta,
-      language,
-      tags,
-      ingredientLinks,
-    };
     try {
-      await refreshViaSSE(
-        {
-          collection,
-          slug,
-          recipe: snap,
-          meta: metaSnap,
-          missingFields: missingKeys,
-          locale: language || "en",
-          force: true,
-        },
-        (data) => setAiSuggestions(data.aiSuggestions),
-      );
+      await aiFlow.run();
     } catch {
       toast.error("Could not refresh suggestions");
-    } finally {
-      setAiRefreshing(false);
     }
   }
 
@@ -932,1219 +991,1222 @@ export default function RecipeForm({
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
-      {/* Header */}
-      <div className="mb-6 flex items-center gap-3">
-        <LinkButton variant="ghost" size="icon" href={`/admin/${collection}`}>
-          <ArrowLeft size={16} />
-        </LinkButton>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold">
-            {isNew ? `New ${collection.slice(0, -1)}` : "Edit recipe"}
-          </h1>
-          {!isNew && <p className="text-sm text-muted-foreground">{slug}</p>}
+    <SuggestionFlowProvider value={aiFlow}>
+      <div className="mx-auto max-w-6xl">
+        {/* Header */}
+        <div className="mb-6 flex items-center gap-3">
+          <LinkButton variant="ghost" size="icon" href={`/admin/${collection}`}>
+            <ArrowLeft size={16} />
+          </LinkButton>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold">
+              {isNew ? `New ${collection.slice(0, -1)}` : "Edit recipe"}
+            </h1>
+            {!isNew && <p className="text-sm text-muted-foreground">{slug}</p>}
+          </div>
+          {!isNew && slug && (
+            <Button type="button" variant="outline" size="sm" onClick={() => setEnhanceOpen(true)}>
+              <Sparkles size={14} className="mr-1.5" />
+              Enhance with AI
+            </Button>
+          )}
         </div>
-        {!isNew && slug && (
-          <Button type="button" variant="outline" size="sm" onClick={() => setEnhanceOpen(true)}>
-            <Sparkles size={14} className="mr-1.5" />
-            Enhance with AI
-          </Button>
-        )}
-      </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void form.handleSubmit();
-        }}
-      >
-        <div className="flex gap-6">
-          {/* Left: section nav */}
-          <aside className="sticky top-0 h-fit w-40 shrink-0 pt-1">
-            <SectionNav sections={SECTIONS} />
-          </aside>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void form.handleSubmit();
+          }}
+        >
+          <div className="flex gap-6">
+            {/* Left: section nav */}
+            <aside className="sticky top-0 h-fit w-40 shrink-0 pt-1">
+              <SectionNav sections={SECTIONS} />
+            </aside>
 
-          {/* Center: form body */}
-          <div className="min-w-0 flex-1 space-y-8 pb-24">
-            {/* ── Basic info ── */}
-            <section id="section-basic" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Basic info</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isNew && (
-                    <div className="space-y-1.5">
-                      <Label>Slug</Label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Input
-                            value={slug}
-                            onChange={(e) => setSlug(e.target.value)}
-                            placeholder="my-recipe"
-                          />
-                          {slug && isNew && (
-                            <span
-                              className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium ${
-                                slugChecking
-                                  ? "text-muted-foreground"
+            {/* Center: form body */}
+            <div className="min-w-0 flex-1 space-y-8 pb-24">
+              {/* ── Basic info ── */}
+              <section id="section-basic" className="scroll-mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Basic info</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {isNew && (
+                      <div className="space-y-1.5">
+                        <Label>Slug</Label>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Input
+                              value={slug}
+                              onChange={(e) => setSlug(e.target.value)}
+                              placeholder="my-recipe"
+                            />
+                            {slug && isNew && (
+                              <span
+                                className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium ${
+                                  slugChecking
+                                    ? "text-muted-foreground"
+                                    : slugAvailable === true
+                                      ? "text-emerald-600"
+                                      : slugAvailable === false
+                                        ? "text-red-500"
+                                        : ""
+                                }`}
+                              >
+                                {slugChecking
+                                  ? "…"
                                   : slugAvailable === true
-                                    ? "text-emerald-600"
+                                    ? "✓ available"
                                     : slugAvailable === false
-                                      ? "text-red-500"
-                                      : ""
-                              }`}
+                                      ? "✗ taken"
+                                      : ""}
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            title="AI suggest slug"
+                            onClick={async () => {
+                              const name = form.getFieldValue("name" as never) as string;
+                              if (!name) return;
+                              try {
+                                const { data } = await actions.aiSuggestSlug({
+                                  name,
+                                  locale: language || "en",
+                                  collection,
+                                });
+                                if (data) setSlug(data.slug);
+                              } catch {
+                                toast.error("Could not suggest slug");
+                              }
+                            }}
+                          >
+                            <Sparkles size={12} />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <form.Field name="name">
+                      {(field) => (
+                        <div className="space-y-1.5">
+                          <Label htmlFor={field.name}>Name *</Label>
+                          <Input
+                            id={field.name}
+                            value={field.state.value}
+                            onChange={(e) => {
+                              field.handleChange(e.target.value);
+                              if (isNew && !slug) setSlug(slugify(e.target.value));
+                            }}
+                            onBlur={field.handleBlur}
+                            placeholder="Ras el Hanout"
+                          />
+                        </div>
+                      )}
+                    </form.Field>
+
+                    <form.Field name="description">
+                      {(field) => (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor={field.name}>
+                              Description
+                              <RecommendedHint show={!field.state.value} />
+                            </Label>
+                          </div>
+                          <Textarea
+                            id={field.name}
+                            value={field.state.value}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            onBlur={field.handleBlur}
+                            rows={3}
+                            placeholder="A warming North African spice blend…"
+                          />
+                          <InlineFieldSuggestion
+                            fieldPath="description"
+                            currentValue={field.state.value}
+                            onApply={(v) => field.handleChange(String(v))}
+                            kind="text"
+                          />
+                        </div>
+                      )}
+                    </form.Field>
+
+                    <form.Field name="image">
+                      {(field) => (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor={field.name}>
+                              Image URL
+                              <RecommendedHint show={!field.state.value} />
+                            </Label>
+                            <button
+                              type="button"
+                              onClick={() => setImageSearchTarget("main")}
+                              className="text-xs text-primary hover:underline"
                             >
-                              {slugChecking
-                                ? "…"
-                                : slugAvailable === true
-                                  ? "✓ available"
-                                  : slugAvailable === false
-                                    ? "✗ taken"
-                                    : ""}
-                            </span>
+                              Search image…
+                            </button>
+                          </div>
+                          <Input
+                            id={field.name}
+                            type="url"
+                            value={field.state.value}
+                            onChange={(e) => {
+                              field.handleChange(e.target.value);
+                              if (!e.target.value) setImageAttribution(undefined);
+                              // Re-check broken status when URL changes
+                              setImageBroken(false);
+                              if (e.target.value) {
+                                const img = new window.Image();
+                                img.onerror = () => setImageBroken(true);
+                                img.onload = () => setImageBroken(false);
+                                img.src = e.target.value;
+                              }
+                            }}
+                            onBlur={field.handleBlur}
+                            placeholder="https://example.com/image.jpg"
+                            className={imageBroken ? "border-amber-400" : ""}
+                          />
+                          {imageBroken && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                              ⚠ Image URL appears broken or unreachable
+                            </p>
+                          )}
+                          {imageAttribution && (
+                            <p className="text-[11px] text-muted-foreground">
+                              {imageAttribution.attribution}
+                            </p>
                           )}
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          title="AI suggest slug"
-                          onClick={async () => {
-                            const name = form.getFieldValue("name" as never) as string;
-                            if (!name) return;
-                            try {
-                              const { data } = await actions.aiSuggestSlug({
-                                name,
-                                locale: language || "en",
-                                collection,
-                              });
-                              if (data) setSlug(data.slug);
-                            } catch {
-                              toast.error("Could not suggest slug");
-                            }
-                          }}
-                        >
-                          <Sparkles size={12} />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                      )}
+                    </form.Field>
 
-                  <form.Field name="name">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>Name *</Label>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => {
-                            field.handleChange(e.target.value);
-                            if (isNew && !slug) setSlug(slugify(e.target.value));
-                          }}
-                          onBlur={field.handleBlur}
-                          placeholder="Ras el Hanout"
-                        />
-                      </div>
-                    )}
-                  </form.Field>
-
-                  <form.Field name="description">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor={field.name}>
-                            Description
-                            <RecommendedHint show={!field.state.value} />
-                          </Label>
-                        </div>
-                        <Textarea
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          onBlur={field.handleBlur}
-                          rows={3}
-                          placeholder="A warming North African spice blend…"
-                        />
-                        {/* Inline suggestion from completeness panel */}
-                        {(() => {
-                          const s = visibleImprovements.find((s) => s.field === "description");
-                          if (!s || field.state.value) return null;
-                          return (
-                            <InlineSuggestion
-                              label="AI suggestion"
-                              current={field.state.value}
-                              suggested={s.suggestion}
-                              rationale={s.rationale}
-                              onAccept={(v) => {
-                                field.handleChange(v);
-                                handleDismissSuggestion("description");
-                              }}
-                              onDismiss={() => handleDismissSuggestion("description")}
+                    <div className="grid grid-cols-2 gap-4">
+                      <form.Field name="authorName">
+                        {(field) => (
+                          <div className="space-y-1.5">
+                            <Label htmlFor={field.name}>
+                              Author
+                              <RecommendedHint show={!field.state.value} />
+                            </Label>
+                            <Input
+                              id={field.name}
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                              placeholder="Jane Smith"
                             />
+                          </div>
+                        )}
+                      </form.Field>
+                      <form.Field name="authorType">
+                        {(field) => (
+                          <div className="space-y-1.5">
+                            <Label>Author type</Label>
+                            <Select
+                              value={field.state.value}
+                              onValueChange={(v) =>
+                                v && field.handleChange(v as "Person" | "Organization")
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Person">Person</SelectItem>
+                                <SelectItem value="Organization">Organization</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </form.Field>
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* ── Timing & yield ── */}
+              <section id="section-timing" className="scroll-mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Timing &amp; yield</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-4">
+                    {(["prepTime", "cookTime", "totalTime"] as const).map((name, idx) => (
+                      <form.Field key={name} name={name}>
+                        {(field) => {
+                          const hasValue = !!field.state.value;
+                          const invalid =
+                            hasValue && !ISO_DURATION_RE.test(field.state.value.trim());
+                          const minTotalMin =
+                            parseDurationMinutes(formValues.prepTime ?? "") +
+                            parseDurationMinutes(formValues.cookTime ?? "");
+                          const totalTooShort =
+                            name === "totalTime" &&
+                            minTotalMin > 0 &&
+                            hasValue &&
+                            !invalid &&
+                            parseDurationMinutes(field.state.value) < minTotalMin;
+                          return (
+                            <div className="space-y-1.5">
+                              <Label htmlFor={field.name}>
+                                {["Prep time", "Cook time", "Total time"][idx]}
+                                <RecommendedHint show={!hasValue} />
+                              </Label>
+                              <Input
+                                id={field.name}
+                                value={field.state.value}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                onBlur={(e) => {
+                                  const coerced = toIsoDuration(e.target.value);
+                                  if (coerced !== e.target.value) field.handleChange(coerced);
+                                  field.handleBlur();
+                                  // Auto-fill totalTime when it's empty or below prep+cook sum
+                                  if (name !== "totalTime") {
+                                    const prep =
+                                      name === "prepTime" ? coerced : (formValues.prepTime ?? "");
+                                    const cook =
+                                      name === "cookTime" ? coerced : (formValues.cookTime ?? "");
+                                    const sumMin =
+                                      parseDurationMinutes(prep) + parseDurationMinutes(cook);
+                                    if (sumMin > 0) {
+                                      const currentTotal = formValues.totalTime ?? "";
+                                      if (parseDurationMinutes(currentTotal) < sumMin) {
+                                        form.setFieldValue(
+                                          "totalTime" as never,
+                                          minutesToIsoDuration(sumMin) as never,
+                                        );
+                                      }
+                                    }
+                                  }
+                                }}
+                                placeholder={["PT15M", "PT30M", "PT45M"][idx]}
+                                className={invalid || totalTooShort ? "border-amber-400" : ""}
+                              />
+                              {invalid && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400">
+                                  Use ISO 8601 format, e.g. PT15M or PT1H30M
+                                </p>
+                              )}
+                              {totalTooShort && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400">
+                                  Must be at least {minutesToIsoDuration(minTotalMin)} (prep + cook)
+                                </p>
+                              )}
+                            </div>
                           );
-                        })()}
-                      </div>
-                    )}
-                  </form.Field>
-
-                  <form.Field name="image">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor={field.name}>
-                            Image URL
-                            <RecommendedHint show={!field.state.value} />
-                          </Label>
-                          <button
-                            type="button"
-                            onClick={() => setImageSearchTarget("main")}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            Search image…
-                          </button>
-                        </div>
-                        <Input
-                          id={field.name}
-                          type="url"
-                          value={field.state.value}
-                          onChange={(e) => {
-                            field.handleChange(e.target.value);
-                            if (!e.target.value) setImageAttribution(undefined);
-                            // Re-check broken status when URL changes
-                            setImageBroken(false);
-                            if (e.target.value) {
-                              const img = new window.Image();
-                              img.onerror = () => setImageBroken(true);
-                              img.onload = () => setImageBroken(false);
-                              img.src = e.target.value;
-                            }
-                          }}
-                          onBlur={field.handleBlur}
-                          placeholder="https://example.com/image.jpg"
-                          className={imageBroken ? "border-amber-400" : ""}
-                        />
-                        {imageBroken && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                            ⚠ Image URL appears broken or unreachable
-                          </p>
-                        )}
-                        {imageAttribution && (
-                          <p className="text-[11px] text-muted-foreground">
-                            {imageAttribution.attribution}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </form.Field>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <form.Field name="authorName">
+                        }}
+                      </form.Field>
+                    ))}
+                    <form.Field name="recipeYield">
                       {(field) => (
                         <div className="space-y-1.5">
                           <Label htmlFor={field.name}>
-                            Author
+                            Yield / servings
                             <RecommendedHint show={!field.state.value} />
                           </Label>
                           <Input
                             id={field.name}
                             value={field.state.value}
                             onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                            placeholder="Jane Smith"
+                            placeholder="4 servings"
+                          />
+                          <InlineFieldSuggestion
+                            fieldPath="recipeYield"
+                            currentValue={field.state.value}
+                            onApply={(v) => field.handleChange(String(v))}
+                            kind="text"
                           />
                         </div>
                       )}
                     </form.Field>
-                    <form.Field name="authorType">
-                      {(field) => (
-                        <div className="space-y-1.5">
-                          <Label>Author type</Label>
-                          <Select
-                            value={field.state.value}
-                            onValueChange={(v) =>
-                              v && field.handleChange(v as "Person" | "Organization")
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Person">Person</SelectItem>
-                              <SelectItem value="Organization">Organization</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </form.Field>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
+                  </CardContent>
+                </Card>
+              </section>
 
-            {/* ── Timing & yield ── */}
-            <section id="section-timing" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Timing &amp; yield</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                  {(["prepTime", "cookTime", "totalTime"] as const).map((name, idx) => (
-                    <form.Field key={name} name={name}>
-                      {(field) => {
-                        const hasValue = !!field.state.value;
-                        const invalid = hasValue && !ISO_DURATION_RE.test(field.state.value.trim());
-                        const minTotalMin =
-                          parseDurationMinutes(formValues.prepTime ?? "") +
-                          parseDurationMinutes(formValues.cookTime ?? "");
-                        const totalTooShort =
-                          name === "totalTime" &&
-                          minTotalMin > 0 &&
-                          hasValue &&
-                          !invalid &&
-                          parseDurationMinutes(field.state.value) < minTotalMin;
+              {/* ── Ingredients ── */}
+              <section id="section-ingredients" className="scroll-mt-4">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Ingredients</CardTitle>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={runProposeLinks}
+                        disabled={aiLinksLoading || ingredients.filter(Boolean).length === 0}
+                        className="h-7 text-xs gap-1"
+                      >
+                        {aiLinksLoading ? (
+                          <Loader2 size={11} className="animate-spin" />
+                        ) : (
+                          <Link2 size={11} />
+                        )}
+                        Auto-link
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <SortableArrayField
+                      items={ingredients}
+                      onChange={setIngredients}
+                      onAdd={() => setIngredients((prev) => [...prev, ""])}
+                      addLabel="Add ingredient"
+                      renderItem={(ing, i) => {
+                        const existingLink = findLinkForIngredient(ing);
+                        const aiSuggestion = findAiLinkSuggestion(ing);
                         return (
-                          <div className="space-y-1.5">
-                            <Label htmlFor={field.name}>
-                              {["Prep time", "Cook time", "Total time"][idx]}
-                              <RecommendedHint show={!hasValue} />
-                            </Label>
+                          <div className="flex items-center gap-1.5 flex-1">
                             <Input
-                              id={field.name}
-                              value={field.state.value}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              onBlur={(e) => {
-                                const coerced = toIsoDuration(e.target.value);
-                                if (coerced !== e.target.value) field.handleChange(coerced);
-                                field.handleBlur();
-                                // Auto-fill totalTime when it's empty or below prep+cook sum
-                                if (name !== "totalTime") {
-                                  const prep =
-                                    name === "prepTime" ? coerced : (formValues.prepTime ?? "");
-                                  const cook =
-                                    name === "cookTime" ? coerced : (formValues.cookTime ?? "");
-                                  const sumMin =
-                                    parseDurationMinutes(prep) + parseDurationMinutes(cook);
-                                  if (sumMin > 0) {
-                                    const currentTotal = formValues.totalTime ?? "";
-                                    if (parseDurationMinutes(currentTotal) < sumMin) {
-                                      form.setFieldValue(
-                                        "totalTime" as never,
-                                        minutesToIsoDuration(sumMin) as never,
-                                      );
-                                    }
-                                  }
-                                }
-                              }}
-                              placeholder={["PT15M", "PT30M", "PT45M"][idx]}
-                              className={invalid || totalTooShort ? "border-amber-400" : ""}
+                              value={ing}
+                              onChange={(e) =>
+                                setIngredients((prev) =>
+                                  prev.map((v, j) => (j === i ? e.target.value : v)),
+                                )
+                              }
+                              placeholder="2 tsp cumin seeds"
+                              className="flex-1"
                             />
-                            {invalid && (
-                              <p className="text-xs text-amber-600 dark:text-amber-400">
-                                Use ISO 8601 format, e.g. PT15M or PT1H30M
-                              </p>
-                            )}
-                            {totalTooShort && (
-                              <p className="text-xs text-amber-600 dark:text-amber-400">
-                                Must be at least {minutesToIsoDuration(minTotalMin)} (prep + cook)
-                              </p>
+                            {/* Link button — always shown, opens IngredientLinkModal */}
+                            {existingLink ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setLinkModalState({
+                                    open: true,
+                                    mode: "view",
+                                    slug: existingLink.slug,
+                                    ingredientIndex: i,
+                                  })
+                                }
+                                className="shrink-0 flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 text-[10px] text-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-950/40"
+                                title={`Linked → ${existingLink.slug} · click to view`}
+                              >
+                                <Link2 size={9} />
+                                {existingLink.slug}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setLinkModalState({
+                                    open: true,
+                                    mode: "link",
+                                    ingredientIndex: i,
+                                    ingredientString: ing,
+                                    aiSuggestion: aiSuggestion ?? undefined,
+                                  })
+                                }
+                                className={
+                                  aiSuggestion
+                                    ? "shrink-0 flex items-center gap-1 rounded border border-amber-200 bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 text-[10px] text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-950/40"
+                                    : "shrink-0 flex items-center gap-1 rounded border border-dashed border-border px-1.5 py-0.5 text-[10px] text-muted-foreground/50 hover:text-muted-foreground hover:border-border/80"
+                                }
+                                title={
+                                  aiSuggestion
+                                    ? `AI suggests → ${aiSuggestion.slug} · click to link`
+                                    : "Click to link ingredient"
+                                }
+                              >
+                                {aiSuggestion ? (
+                                  <>
+                                    <Sparkles size={9} />
+                                    {aiSuggestion.slug}
+                                  </>
+                                ) : (
+                                  <Link2 size={9} />
+                                )}
+                              </button>
                             )}
                           </div>
                         );
                       }}
-                    </form.Field>
-                  ))}
-                  <form.Field name="recipeYield">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>
-                          Yield / servings
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="4 servings"
-                        />
-                      </div>
-                    )}
-                  </form.Field>
-                </CardContent>
-              </Card>
-            </section>
+                    />
 
-            {/* ── Ingredients ── */}
-            <section id="section-ingredients" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Ingredients</CardTitle>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={runProposeLinks}
-                      disabled={aiLinksLoading || ingredients.filter(Boolean).length === 0}
-                      className="h-7 text-xs gap-1"
-                    >
-                      {aiLinksLoading ? (
-                        <Loader2 size={11} className="animate-spin" />
-                      ) : (
-                        <Link2 size={11} />
-                      )}
-                      Auto-link
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <SortableArrayField
-                    items={ingredients}
-                    onChange={setIngredients}
-                    onAdd={() => setIngredients((prev) => [...prev, ""])}
-                    addLabel="Add ingredient"
-                    renderItem={(ing, i) => {
-                      const existingLink = findLinkForIngredient(ing);
-                      const aiSuggestion = findAiLinkSuggestion(ing);
-                      return (
-                        <div className="flex items-center gap-1.5 flex-1">
-                          <Input
-                            value={ing}
-                            onChange={(e) =>
-                              setIngredients((prev) =>
-                                prev.map((v, j) => (j === i ? e.target.value : v)),
-                              )
-                            }
-                            placeholder="2 tsp cumin seeds"
-                            className="flex-1"
-                          />
-                          {/* Link button — always shown, opens IngredientLinkModal */}
-                          {existingLink ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setLinkModalState({
-                                  open: true,
-                                  mode: "view",
-                                  slug: existingLink.slug,
-                                  ingredientIndex: i,
-                                })
-                              }
-                              className="shrink-0 flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 text-[10px] text-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-950/40"
-                              title={`Linked → ${existingLink.slug} · click to view`}
-                            >
-                              <Link2 size={9} />
-                              {existingLink.slug}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setLinkModalState({
-                                  open: true,
-                                  mode: "link",
-                                  ingredientIndex: i,
-                                  ingredientString: ing,
-                                  aiSuggestion: aiSuggestion ?? undefined,
-                                })
-                              }
-                              className={
-                                aiSuggestion
-                                  ? "shrink-0 flex items-center gap-1 rounded border border-amber-200 bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 text-[10px] text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-950/40"
-                                  : "shrink-0 flex items-center gap-1 rounded border border-dashed border-border px-1.5 py-0.5 text-[10px] text-muted-foreground/50 hover:text-muted-foreground hover:border-border/80"
-                              }
-                              title={
-                                aiSuggestion
-                                  ? `AI suggests → ${aiSuggestion.slug} · click to link`
-                                  : "Click to link ingredient"
-                              }
-                            >
-                              {aiSuggestion ? (
-                                <>
-                                  <Sparkles size={9} />
-                                  {aiSuggestion.slug}
-                                </>
-                              ) : (
-                                <Link2 size={9} />
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    }}
-                  />
-
-                  {/* Pending link suggestions summary */}
-                  {pendingLinks && pendingLinks.length > 0 && (
-                    <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2 space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-amber-800 dark:text-amber-300">
-                          {pendingLinks.length} link{pendingLinks.length !== 1 ? "s" : ""} suggested
-                        </span>
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              pendingLinks.forEach(applyLinkSuggestion);
-                              setPendingLinks(null);
-                            }}
-                            className="flex items-center gap-1 rounded bg-amber-700 px-2 py-0.5 text-white hover:opacity-90"
-                          >
-                            <Check size={9} />
-                            Apply all
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPendingLinks(null)}
-                            className="flex items-center gap-1 rounded px-2 py-0.5 text-amber-700 hover:bg-amber-100"
-                          >
-                            <X size={9} />
-                            Dismiss
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Manual link management */}
-                  <details className="group">
-                    <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none list-none flex items-center gap-1 pt-1">
-                      <Link2 size={11} />
-                      Ingredient links ({ingredientLinks.length})
-                      <span className="ml-auto group-open:rotate-180 transition-transform">▾</span>
-                    </summary>
-                    <div className="mt-2">
-                      <SortableArrayField
-                        items={ingredientLinks}
-                        onChange={setIngredientLinks}
-                        onAdd={() =>
-                          setIngredientLinks((prev) => [
-                            ...prev,
-                            { pattern: "", slug: "", kind: "ingredient" },
-                          ])
-                        }
-                        addLabel="Add link"
-                        getKey={(_, i) => `ilink-${i}`}
-                        renderItem={(link, i) => (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={link.pattern}
-                              onChange={(e) =>
-                                setIngredientLinks((prev) =>
-                                  prev.map((l, j) =>
-                                    j === i ? { ...l, pattern: e.target.value } : l,
-                                  ),
-                                )
-                              }
-                              placeholder="cumin seeds"
-                              className="flex-1"
-                            />
-                            <span className="shrink-0 text-sm text-muted-foreground">→</span>
-                            <EntityCombobox
-                              value={link.slug}
-                              onChange={(v) =>
-                                setIngredientLinks((prev) =>
-                                  prev.map((l, j) => (j === i ? { ...l, slug: v } : l)),
-                                )
-                              }
-                              options={ingredientOptions}
-                              placeholder="ingredient"
-                              className="flex-1"
-                              onCreateNew={(name) =>
-                                openQuickCreate("ingredient", name, (newSlug, newLabel) => {
-                                  setIngredientOptions((prev) => [
-                                    ...prev,
-                                    { value: newSlug, label: newLabel, sublabel: newSlug },
-                                  ]);
-                                  setIngredientLinks((prev) =>
-                                    prev.map((l, j) => (j === i ? { ...l, slug: newSlug } : l)),
-                                  );
-                                })
-                              }
-                            />
-                          </div>
-                        )}
-                      />
-                    </div>
-                  </details>
-                </CardContent>
-              </Card>
-            </section>
-
-            {/* ── Instructions ── */}
-            <section id="section-instructions" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Instructions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SortableArrayField
-                    items={instructions}
-                    onChange={setInstructions}
-                    onAdd={() =>
-                      setInstructions((prev) => [...prev, { "@type": "HowToStep", text: "" }])
-                    }
-                    addLabel="Add step"
-                    getKey={(_, i) => `step-${i}`}
-                    renderItem={(step, i) => (
-                      <div className="space-y-2 rounded-md border border-border p-3">
+                    {/* Pending link suggestions summary */}
+                    {pendingLinks && pendingLinks.length > 0 && (
+                      <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2 space-y-1.5 text-xs">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-muted-foreground">
-                            Step {i + 1}
+                          <span className="font-medium text-amber-800 dark:text-amber-300">
+                            {pendingLinks.length} link{pendingLinks.length !== 1 ? "s" : ""}{" "}
+                            suggested
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => setImageSearchTarget(i)}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            {step.image ? "Change image" : "Add image"}
-                          </button>
-                        </div>
-                        <Input
-                          value={step.name ?? ""}
-                          onChange={(e) =>
-                            setInstructions((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, name: e.target.value } : s)),
-                            )
-                          }
-                          placeholder="Step name (optional)"
-                        />
-                        <Textarea
-                          value={step.text}
-                          onChange={(e) =>
-                            setInstructions((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, text: e.target.value } : s)),
-                            )
-                          }
-                          rows={2}
-                          placeholder="Description of this step…"
-                        />
-                        {step.image && (
-                          <div className="flex items-center gap-2">
-                            <img
-                              src={step.image}
-                              alt=""
-                              className="h-12 w-12 rounded object-cover border border-border"
-                            />
-                            {stepAttributions.get(i) && (
-                              <p className="text-[11px] text-muted-foreground flex-1 truncate">
-                                {stepAttributions.get(i)?.attribution}
-                              </p>
-                            )}
+                          <div className="flex gap-1">
                             <button
                               type="button"
                               onClick={() => {
-                                setInstructions((prev) =>
-                                  prev.map((s, j) => (j === i ? { ...s, image: undefined } : s)),
-                                );
-                                setStepAttributions((prev) => {
-                                  const next = new Map(prev);
-                                  next.delete(i);
-                                  return next;
-                                });
+                                pendingLinks.forEach(applyLinkSuggestion);
+                                setPendingLinks(null);
                               }}
-                              className="text-xs text-muted-foreground hover:text-destructive shrink-0"
+                              className="flex items-center gap-1 rounded bg-amber-700 px-2 py-0.5 text-white hover:opacity-90"
                             >
-                              Remove
+                              <Check size={9} />
+                              Apply all
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPendingLinks(null)}
+                              className="flex items-center gap-1 rounded px-2 py-0.5 text-amber-700 hover:bg-amber-100"
+                            >
+                              <X size={9} />
+                              Dismiss
                             </button>
                           </div>
-                        )}
+                        </div>
                       </div>
                     )}
-                  />
-                </CardContent>
-              </Card>
-            </section>
 
-            {/* ── Classification ── */}
-            <section id="section-classification" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Classification</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                  {collection === "mixtures" && (
+                    {/* Manual link management */}
+                    <details className="group">
+                      <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none list-none flex items-center gap-1 pt-1">
+                        <Link2 size={11} />
+                        Ingredient links ({ingredientLinks.length})
+                        <span className="ml-auto group-open:rotate-180 transition-transform">
+                          ▾
+                        </span>
+                      </summary>
+                      <div className="mt-2">
+                        <SortableArrayField
+                          items={ingredientLinks}
+                          onChange={setIngredientLinks}
+                          onAdd={() =>
+                            setIngredientLinks((prev) => [
+                              ...prev,
+                              { pattern: "", slug: "", kind: "ingredient" },
+                            ])
+                          }
+                          addLabel="Add link"
+                          getKey={(_, i) => `ilink-${i}`}
+                          renderItem={(link, i) => (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={link.pattern}
+                                onChange={(e) =>
+                                  setIngredientLinks((prev) =>
+                                    prev.map((l, j) =>
+                                      j === i ? { ...l, pattern: e.target.value } : l,
+                                    ),
+                                  )
+                                }
+                                placeholder="cumin seeds"
+                                className="flex-1"
+                              />
+                              <span className="shrink-0 text-sm text-muted-foreground">→</span>
+                              <EntityCombobox
+                                value={link.slug}
+                                onChange={(v) =>
+                                  setIngredientLinks((prev) =>
+                                    prev.map((l, j) => (j === i ? { ...l, slug: v } : l)),
+                                  )
+                                }
+                                options={ingredientOptions}
+                                placeholder="ingredient"
+                                className="flex-1"
+                                onCreateNew={(name) =>
+                                  openQuickCreate("ingredient", name, (newSlug, newLabel) => {
+                                    setIngredientOptions((prev) => [
+                                      ...prev,
+                                      { value: newSlug, label: newLabel, sublabel: newSlug },
+                                    ]);
+                                    setIngredientLinks((prev) =>
+                                      prev.map((l, j) => (j === i ? { ...l, slug: newSlug } : l)),
+                                    );
+                                  })
+                                }
+                              />
+                            </div>
+                          )}
+                        />
+                      </div>
+                    </details>
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* ── Instructions ── */}
+              <section id="section-instructions" className="scroll-mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Instructions</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <SortableArrayField
+                      items={instructions}
+                      onChange={setInstructions}
+                      onAdd={() =>
+                        setInstructions((prev) => [...prev, { "@type": "HowToStep", text: "" }])
+                      }
+                      addLabel="Add step"
+                      getKey={(_, i) => `step-${i}`}
+                      renderItem={(step, i) => (
+                        <div className="space-y-2 rounded-md border border-border p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                              Step {i + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setImageSearchTarget(i)}
+                              className="text-xs text-primary hover:underline"
+                            >
+                              {step.image ? "Change image" : "Add image"}
+                            </button>
+                          </div>
+                          <Input
+                            value={step.name ?? ""}
+                            onChange={(e) =>
+                              setInstructions((prev) =>
+                                prev.map((s, j) => (j === i ? { ...s, name: e.target.value } : s)),
+                              )
+                            }
+                            placeholder="Step name (optional)"
+                          />
+                          <Textarea
+                            value={step.text}
+                            onChange={(e) =>
+                              setInstructions((prev) =>
+                                prev.map((s, j) => (j === i ? { ...s, text: e.target.value } : s)),
+                              )
+                            }
+                            rows={2}
+                            placeholder="Description of this step…"
+                          />
+                          {step.image && (
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={step.image}
+                                alt=""
+                                className="h-12 w-12 rounded object-cover border border-border"
+                              />
+                              {stepAttributions.get(i) && (
+                                <p className="text-[11px] text-muted-foreground flex-1 truncate">
+                                  {stepAttributions.get(i)?.attribution}
+                                </p>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInstructions((prev) =>
+                                    prev.map((s, j) => (j === i ? { ...s, image: undefined } : s)),
+                                  );
+                                  setStepAttributions((prev) => {
+                                    const next = new Map(prev);
+                                    next.delete(i);
+                                    return next;
+                                  });
+                                }}
+                                className="text-xs text-muted-foreground hover:text-destructive shrink-0"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* ── Classification ── */}
+              <section id="section-classification" className="scroll-mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Classification</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-4">
+                    {collection === "mixtures" && (
+                      <div className="col-span-2 space-y-1.5">
+                        <Label>
+                          Kind <span className="text-destructive">*</span>
+                        </Label>
+                        <Select value={kind} onValueChange={(v) => v && setKind(v as MixtureKind)}>
+                          <SelectTrigger data-testid="mixture-kind-select">
+                            <SelectValue placeholder="Select mixture kind…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MIXTURE_KINDS.map((k) => (
+                              <SelectItem key={k} value={k}>
+                                {k}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <form.Field name="recipeCategory">
+                      {(field) => (
+                        <div className="space-y-1.5">
+                          <Label htmlFor={field.name}>
+                            Category
+                            <RecommendedHint show={!field.state.value} />
+                          </Label>
+                          <Input
+                            id={field.name}
+                            value={field.state.value}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            placeholder="Main Course"
+                          />
+                          <InlineFieldSuggestion
+                            fieldPath="recipeCategory"
+                            currentValue={field.state.value}
+                            onApply={(v) => field.handleChange(String(v))}
+                            kind="text"
+                          />
+                        </div>
+                      )}
+                    </form.Field>
+                    <form.Field name="recipeCuisine">
+                      {(field) => (
+                        <div className="space-y-1.5">
+                          <Label htmlFor={field.name}>
+                            Cuisine
+                            <RecommendedHint show={!field.state.value} />
+                          </Label>
+                          <Input
+                            id={field.name}
+                            value={field.state.value}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            placeholder="Moroccan"
+                          />
+                          <InlineFieldSuggestion
+                            fieldPath="recipeCuisine"
+                            currentValue={field.state.value}
+                            onApply={(v) => field.handleChange(String(v))}
+                            kind="text"
+                          />
+                        </div>
+                      )}
+                    </form.Field>
                     <div className="col-span-2 space-y-1.5">
-                      <Label>
-                        Kind <span className="text-destructive">*</span>
-                      </Label>
-                      <Select value={kind} onValueChange={(v) => v && setKind(v as MixtureKind)}>
-                        <SelectTrigger data-testid="mixture-kind-select">
-                          <SelectValue placeholder="Select mixture kind…" />
+                      <div className="flex items-center justify-between">
+                        <Label>
+                          Keywords
+                          <RecommendedHint show={keywords.length === 0} />
+                        </Label>
+                        <button
+                          type="button"
+                          onClick={() => runProposeTags(true)}
+                          disabled={aiKeywordsLoading}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          {aiKeywordsLoading ? (
+                            <Loader2 size={11} className="animate-spin" />
+                          ) : (
+                            <Sparkles size={11} />
+                          )}
+                          AI suggest
+                        </button>
+                      </div>
+                      <TagInput
+                        value={keywords}
+                        onChange={setKeywords}
+                        suggestions={tagSuggestions}
+                        placeholder="vegan, pantry, quick"
+                      />
+                      <InlineFieldSuggestion
+                        fieldPath="keywords"
+                        currentValue={keywords}
+                        onApply={(v) => {
+                          if (Array.isArray(v))
+                            setKeywords((prev) => [...new Set([...prev, ...v.map(String)])]);
+                        }}
+                        kind="array"
+                      />
+                      {pendingKeywords && pendingKeywords.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {pendingKeywords
+                            .filter((t) => !keywords.includes(t))
+                            .map((t) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setKeywords((prev) => [...prev, t])}
+                                className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
+                              >
+                                + {t}
+                              </button>
+                            ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const toAdd = pendingKeywords.filter((t) => !keywords.includes(t));
+                              setKeywords((prev) => [...new Set([...prev, ...toAdd])]);
+                              setPendingKeywords(null);
+                            }}
+                            className="text-xs text-muted-foreground hover:text-foreground px-1"
+                          >
+                            Add all
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPendingKeywords(null)}
+                            className="text-xs text-muted-foreground hover:text-foreground px-1"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-span-2 space-y-1.5">
+                      <Label>Suitable for diet</Label>
+                      <TagInput
+                        value={dietTags}
+                        onChange={setDietTags}
+                        suggestions={[
+                          "VegetarianDiet",
+                          "VeganDiet",
+                          "GlutenFreeDiet",
+                          "LowCalorieDiet",
+                        ]}
+                        placeholder="VegetarianDiet, VeganDiet"
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-1.5">
+                      <Label>Regions</Label>
+                      <EntityMultiCombobox
+                        value={regions}
+                        onChange={(vals) => setRegions(vals as RegionCode[])}
+                        options={REGION_OPTIONS}
+                        placeholder="Select culinary macro-regions…"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Closed enum — different from{" "}
+                        <span className="font-mono">recipeCuisine</span> (schema.org cuisine).
+                      </p>
+                    </div>
+                    <form.Field name="datePublished">
+                      {(field) => (
+                        <div className="space-y-1.5">
+                          <Label htmlFor={field.name}>
+                            Date published
+                            <RecommendedHint show={!field.state.value} />
+                          </Label>
+                          <Input
+                            type="date"
+                            id={field.name}
+                            value={field.state.value}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                          />
+                        </div>
+                      )}
+                    </form.Field>
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* ── Publishing ── */}
+              <section id="section-publishing" className="scroll-mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Publishing</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label>Tags</Label>
+                        <button
+                          type="button"
+                          onClick={() => runProposeTags(false)}
+                          disabled={aiTagsLoading}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          {aiTagsLoading ? (
+                            <Loader2 size={11} className="animate-spin" />
+                          ) : (
+                            <Tag size={11} />
+                          )}
+                          AI suggest
+                        </button>
+                      </div>
+                      <TagInput
+                        value={tags}
+                        onChange={setTags}
+                        suggestions={tagSuggestions}
+                        placeholder="weeknight, make-ahead"
+                      />
+                      <InlineFieldSuggestion
+                        fieldPath="tags"
+                        currentValue={tags}
+                        onApply={(v) => {
+                          if (Array.isArray(v))
+                            setTags((prev) => [...new Set([...prev, ...v.map(String)])]);
+                        }}
+                        kind="array"
+                      />
+                      {pendingTags && pendingTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {pendingTags
+                            .filter((t) => !tags.includes(t))
+                            .map((t) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setTags((prev) => [...prev, t])}
+                                className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
+                              >
+                                + {t}
+                              </button>
+                            ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const toAdd = pendingTags.filter((t) => !tags.includes(t));
+                              setTags((prev) => [...new Set([...prev, ...toAdd])]);
+                              setPendingTags(null);
+                            }}
+                            className="text-xs text-muted-foreground hover:text-foreground px-1"
+                          >
+                            Add all
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPendingTags(null)}
+                            className="text-xs text-muted-foreground hover:text-foreground px-1"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label>Language</Label>
+                        {!isNew && (
+                          <button
+                            type="button"
+                            onClick={() => setTranslateOpen(true)}
+                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            <Languages size={11} />
+                            Create translation
+                          </button>
+                        )}
+                      </div>
+                      <Select value={language} onValueChange={(v) => v && setLanguage(v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select language…" />
                         </SelectTrigger>
                         <SelectContent>
-                          {MIXTURE_KINDS.map((k) => (
-                            <SelectItem key={k} value={k}>
-                              {k}
+                          {LANGUAGES.map((l) => (
+                            <SelectItem key={l.value} value={l.value}>
+                              {l.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                  )}
-                  <form.Field name="recipeCategory">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>
-                          Category
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="Main Course"
-                        />
-                      </div>
-                    )}
-                  </form.Field>
-                  <form.Field name="recipeCuisine">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>
-                          Cuisine
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="Moroccan"
-                        />
-                      </div>
-                    )}
-                  </form.Field>
-                  <div className="col-span-2 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label>
-                        Keywords
-                        <RecommendedHint show={keywords.length === 0} />
-                      </Label>
-                      <button
-                        type="button"
-                        onClick={() => runProposeTags(true)}
-                        disabled={aiKeywordsLoading}
-                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        {aiKeywordsLoading ? (
-                          <Loader2 size={11} className="animate-spin" />
-                        ) : (
-                          <Sparkles size={11} />
-                        )}
-                        AI suggest
-                      </button>
-                    </div>
-                    <TagInput
-                      value={keywords}
-                      onChange={setKeywords}
-                      suggestions={tagSuggestions}
-                      placeholder="vegan, pantry, quick"
-                    />
-                    {pendingKeywords && pendingKeywords.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {pendingKeywords
-                          .filter((t) => !keywords.includes(t))
-                          .map((t) => (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => setKeywords((prev) => [...prev, t])}
-                              className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
-                            >
-                              + {t}
-                            </button>
-                          ))}
+                      {/* Show detected language suggestion */}
+                      {!language && aiSuggestions?.detectedLanguage && (
                         <button
                           type="button"
-                          onClick={() => {
-                            const toAdd = pendingKeywords.filter((t) => !keywords.includes(t));
-                            setKeywords((prev) => [...new Set([...prev, ...toAdd])]);
-                            setPendingKeywords(null);
-                          }}
-                          className="text-xs text-muted-foreground hover:text-foreground px-1"
+                          onClick={() => setLanguage(aiSuggestions.detectedLanguage!)}
+                          className="text-xs text-primary hover:underline"
                         >
-                          Add all
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPendingKeywords(null)}
-                          className="text-xs text-muted-foreground hover:text-foreground px-1"
-                        >
-                          Dismiss
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-span-2 space-y-1.5">
-                    <Label>Suitable for diet</Label>
-                    <TagInput
-                      value={dietTags}
-                      onChange={setDietTags}
-                      suggestions={[
-                        "VegetarianDiet",
-                        "VeganDiet",
-                        "GlutenFreeDiet",
-                        "LowCalorieDiet",
-                      ]}
-                      placeholder="VegetarianDiet, VeganDiet"
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-1.5">
-                    <Label>Regions</Label>
-                    <EntityMultiCombobox
-                      value={regions}
-                      onChange={(vals) => setRegions(vals as RegionCode[])}
-                      options={REGION_OPTIONS}
-                      placeholder="Select culinary macro-regions…"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Closed enum — different from <span className="font-mono">recipeCuisine</span>{" "}
-                      (schema.org cuisine).
-                    </p>
-                  </div>
-                  <form.Field name="datePublished">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>
-                          Date published
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
-                        <Input
-                          type="date"
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                        />
-                      </div>
-                    )}
-                  </form.Field>
-                </CardContent>
-              </Card>
-            </section>
-
-            {/* ── Publishing ── */}
-            <section id="section-publishing" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Publishing</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label>Tags</Label>
-                      <button
-                        type="button"
-                        onClick={() => runProposeTags(false)}
-                        disabled={aiTagsLoading}
-                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        {aiTagsLoading ? (
-                          <Loader2 size={11} className="animate-spin" />
-                        ) : (
-                          <Tag size={11} />
-                        )}
-                        AI suggest
-                      </button>
-                    </div>
-                    <TagInput
-                      value={tags}
-                      onChange={setTags}
-                      suggestions={tagSuggestions}
-                      placeholder="weeknight, make-ahead"
-                    />
-                    {pendingTags && pendingTags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {pendingTags
-                          .filter((t) => !tags.includes(t))
-                          .map((t) => (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => setTags((prev) => [...prev, t])}
-                              className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
-                            >
-                              + {t}
-                            </button>
-                          ))}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const toAdd = pendingTags.filter((t) => !tags.includes(t));
-                            setTags((prev) => [...new Set([...prev, ...toAdd])]);
-                            setPendingTags(null);
-                          }}
-                          className="text-xs text-muted-foreground hover:text-foreground px-1"
-                        >
-                          Add all
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPendingTags(null)}
-                          className="text-xs text-muted-foreground hover:text-foreground px-1"
-                        >
-                          Dismiss
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label>Language</Label>
-                      {!isNew && (
-                        <button
-                          type="button"
-                          onClick={() => setTranslateOpen(true)}
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          <Languages size={11} />
-                          Create translation
+                          ✦ AI detected: {aiSuggestions.detectedLanguage}
                         </button>
                       )}
-                    </div>
-                    <Select value={language} onValueChange={(v) => v && setLanguage(v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select language…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LANGUAGES.map((l) => (
-                          <SelectItem key={l.value} value={l.value}>
-                            {l.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {/* Show detected language suggestion */}
-                    {!language && aiSuggestions?.detectedLanguage && (
-                      <button
-                        type="button"
-                        onClick={() => setLanguage(aiSuggestions.detectedLanguage!)}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        ✦ AI detected: {aiSuggestions.detectedLanguage}
-                      </button>
-                    )}
-                    {/* Show linked translations */}
-                    {meta.translations && Object.entries(meta.translations).length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {Object.entries(meta.translations).map(([locale, tSlug]) => (
-                          <a
-                            key={locale}
-                            href={`/admin/${collection}/${tSlug}/edit`}
-                            className="flex items-center gap-1 rounded border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30"
-                          >
-                            <Languages size={9} />
-                            {locale}: {tSlug}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            {/* ── Relations ── */}
-            <section id="section-relations" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Relations</CardTitle>
-                    {aiSuggestions?.relations && aiSuggestions.relations.length > 0 && (
-                      <span className="text-xs text-primary">
-                        {aiSuggestions.relations.length} AI suggestion
-                        {aiSuggestions.relations.length !== 1 ? "s" : ""}
-                      </span>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* AI relation suggestions */}
-                  {aiSuggestions?.relations && aiSuggestions.relations.length > 0 && (
-                    <div className="rounded-md border border-primary/20 bg-primary/5 p-2 space-y-1.5">
-                      {aiSuggestions.relations.map((r, i) => (
-                        <div key={i} className="flex items-center gap-2 text-xs">
-                          <span className="text-muted-foreground capitalize shrink-0">
-                            {r.kind === "goesWellWith" ? "Pairs with" : "Uses base"}
-                          </span>
-                          <span className="font-medium">{r.name}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const ref = { collection: r.collection, slug: r.slug };
-                              if (r.kind === "goesWellWith") {
-                                setGoesWellWith((prev) =>
-                                  prev.some((x) => x.slug === r.slug) ? prev : [...prev, ref],
-                                );
-                              } else {
-                                setUsesBase((prev) =>
-                                  prev.some((x) => x.slug === r.slug) ? prev : [...prev, ref],
-                                );
-                              }
-                            }}
-                            className="ml-auto flex items-center gap-1 rounded border border-primary/20 px-1.5 py-0.5 text-primary hover:bg-primary/10"
-                          >
-                            <Check size={9} />
-                            Add
-                          </button>
+                      {/* Show linked translations */}
+                      {meta.translations && Object.entries(meta.translations).length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {Object.entries(meta.translations).map(([locale, tSlug]) => (
+                            <a
+                              key={locale}
+                              href={`/admin/${collection}/${tSlug}/edit`}
+                              className="flex items-center gap-1 rounded border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                            >
+                              <Languages size={9} />
+                              {locale}: {tSlug}
+                            </a>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
+                  </CardContent>
+                </Card>
+              </section>
 
-                  <div className="space-y-1.5">
-                    <Label>Goes well with</Label>
-                    <EntityMultiCombobox
-                      value={goesWellWith.map((r) => `${r.collection}/${r.slug}`)}
-                      onChange={(vals) =>
-                        setGoesWellWith(
-                          vals.map((v) => {
-                            const [col, ...rest] = v.split("/");
-                            return { collection: col!, slug: rest.join("/") };
-                          }),
-                        )
-                      }
-                      options={recipeOptions}
-                      placeholder="Select recipes, mixtures…"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Uses base</Label>
-                    <EntityMultiCombobox
-                      value={usesBase.map((r) => `${r.collection}/${r.slug}`)}
-                      onChange={(vals) =>
-                        setUsesBase(
-                          vals.map((v) => {
-                            const [col, ...rest] = v.split("/");
-                            return { collection: col!, slug: rest.join("/") };
-                          }),
-                        )
-                      }
-                      options={recipeOptions}
-                      placeholder="Select base recipes or mixtures…"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-
-            {/* ── External sources ── */}
-            <section id="section-sources" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>External sources</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SortableArrayField
-                    items={externalSources}
-                    onChange={setExternalSources}
-                    onAdd={() =>
-                      setExternalSources((prev) => [...prev, { url: "", title: "", source: "" }])
-                    }
-                    addLabel="Add source"
-                    getKey={(_, i) => `src-${i}`}
-                    renderItem={(src, i) => (
-                      <div className="space-y-2 rounded-md border border-border p-3">
-                        <span className="text-xs font-semibold text-muted-foreground">
-                          Source {i + 1}
+              {/* ── Relations ── */}
+              <section id="section-relations" className="scroll-mt-4">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Relations</CardTitle>
+                      {aiSuggestions?.relations && aiSuggestions.relations.length > 0 && (
+                        <span className="text-xs text-primary">
+                          {aiSuggestions.relations.length} AI suggestion
+                          {aiSuggestions.relations.length !== 1 ? "s" : ""}
                         </span>
-                        <Input
-                          value={src.url}
-                          onChange={(e) =>
-                            setExternalSources((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, url: e.target.value } : s)),
-                            )
-                          }
-                          type="url"
-                          placeholder="https://…"
-                        />
-                        <Input
-                          value={src.title}
-                          onChange={(e) =>
-                            setExternalSources((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, title: e.target.value } : s)),
-                            )
-                          }
-                          placeholder="Title"
-                        />
-                        <Input
-                          value={src.source ?? ""}
-                          onChange={(e) =>
-                            setExternalSources((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, source: e.target.value } : s)),
-                            )
-                          }
-                          placeholder="Source name (e.g. Serious Eats)"
-                        />
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* AI relation suggestions */}
+                    {aiSuggestions?.relations && aiSuggestions.relations.length > 0 && (
+                      <div className="rounded-md border border-primary/20 bg-primary/5 p-2 space-y-1.5">
+                        {aiSuggestions.relations.map((r, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs">
+                            <span className="text-muted-foreground capitalize shrink-0">
+                              {r.kind === "goesWellWith" ? "Pairs with" : "Uses base"}
+                            </span>
+                            <span className="font-medium">{r.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const ref = { collection: r.collection, slug: r.slug };
+                                if (r.kind === "goesWellWith") {
+                                  setGoesWellWith((prev) =>
+                                    prev.some((x) => x.slug === r.slug) ? prev : [...prev, ref],
+                                  );
+                                } else {
+                                  setUsesBase((prev) =>
+                                    prev.some((x) => x.slug === r.slug) ? prev : [...prev, ref],
+                                  );
+                                }
+                              }}
+                              className="ml-auto flex items-center gap-1 rounded border border-primary/20 px-1.5 py-0.5 text-primary hover:bg-primary/10"
+                            >
+                              <Check size={9} />
+                              Add
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
-                  />
-                </CardContent>
-              </Card>
-            </section>
+
+                    <div className="space-y-1.5">
+                      <Label>Goes well with</Label>
+                      <EntityMultiCombobox
+                        value={goesWellWith.map((r) => `${r.collection}/${r.slug}`)}
+                        onChange={(vals) =>
+                          setGoesWellWith(
+                            vals.map((v) => {
+                              const [col, ...rest] = v.split("/");
+                              return { collection: col!, slug: rest.join("/") };
+                            }),
+                          )
+                        }
+                        options={recipeOptions}
+                        placeholder="Select recipes, mixtures…"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Uses base</Label>
+                      <EntityMultiCombobox
+                        value={usesBase.map((r) => `${r.collection}/${r.slug}`)}
+                        onChange={(vals) =>
+                          setUsesBase(
+                            vals.map((v) => {
+                              const [col, ...rest] = v.split("/");
+                              return { collection: col!, slug: rest.join("/") };
+                            }),
+                          )
+                        }
+                        options={recipeOptions}
+                        placeholder="Select base recipes or mixtures…"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* ── External sources ── */}
+              <section id="section-sources" className="scroll-mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>External sources</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <SortableArrayField
+                      items={externalSources}
+                      onChange={setExternalSources}
+                      onAdd={() =>
+                        setExternalSources((prev) => [...prev, { url: "", title: "", source: "" }])
+                      }
+                      addLabel="Add source"
+                      getKey={(_, i) => `src-${i}`}
+                      renderItem={(src, i) => (
+                        <div className="space-y-2 rounded-md border border-border p-3">
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            Source {i + 1}
+                          </span>
+                          <Input
+                            value={src.url}
+                            onChange={(e) =>
+                              setExternalSources((prev) =>
+                                prev.map((s, j) => (j === i ? { ...s, url: e.target.value } : s)),
+                              )
+                            }
+                            type="url"
+                            placeholder="https://…"
+                          />
+                          <Input
+                            value={src.title}
+                            onChange={(e) =>
+                              setExternalSources((prev) =>
+                                prev.map((s, j) => (j === i ? { ...s, title: e.target.value } : s)),
+                              )
+                            }
+                            placeholder="Title"
+                          />
+                          <Input
+                            value={src.source ?? ""}
+                            onChange={(e) =>
+                              setExternalSources((prev) =>
+                                prev.map((s, j) =>
+                                  j === i ? { ...s, source: e.target.value } : s,
+                                ),
+                              )
+                            }
+                            placeholder="Source name (e.g. Serious Eats)"
+                          />
+                        </div>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+              </section>
+            </div>
+
+            {/* Right: completeness + AI assist */}
+            <aside className="sticky top-0 h-fit w-56 shrink-0 pt-1 space-y-3">
+              <CompletenessPanel
+                result={completeness}
+                requiredFields={requiredFields}
+                recommendedFields={recommendedFields}
+                bonusFields={bonusFields}
+                aiSuggestions={visibleImprovements}
+                aiRefreshing={aiRefreshing}
+                activeProposers={activeProposers}
+                onRefreshSuggestions={!isNew ? handleManualRefresh : undefined}
+                onApplySuggestion={handleApplySuggestion}
+                onDismissSuggestion={handleDismissSuggestion}
+              />
+            </aside>
           </div>
 
-          {/* Right: completeness + AI assist */}
-          <aside className="sticky top-0 h-fit w-56 shrink-0 pt-1 space-y-3">
-            <CompletenessPanel
-              result={completeness}
-              requiredFields={requiredFields}
-              recommendedFields={recommendedFields}
-              bonusFields={bonusFields}
-              aiSuggestions={visibleImprovements}
-              aiRefreshing={aiRefreshing}
-              activeProposers={activeProposers}
-              onRefreshSuggestions={!isNew ? handleManualRefresh : undefined}
-              onApplySuggestion={handleApplySuggestion}
-              onDismissSuggestion={handleDismissSuggestion}
-            />
-            {!isNew && (
-              <AiAssistPanel
-                mode="recipe"
-                snapshot={buildRecipeSnapshot()}
-                missingFields={completeness.missing}
-                recipeIngredients={ingredients.filter(Boolean)}
-                locale={(language || "en") as "en" | "de"}
-                targetLocale={(language === "de" ? "en" : "de") as "en" | "de"}
-                onApplyIngredientLinks={(links) =>
-                  setIngredientLinks((prev) => {
-                    const incoming = links.filter(
-                      (l) => !prev.some((p) => p.pattern === l.pattern),
-                    );
-                    return [...prev, ...incoming];
-                  })
-                }
-                onApplyTags={(newTags) => setTags((prev) => [...new Set([...prev, ...newTags])])}
-                onApplyField={(field, value) => {
-                  if (field === "tags" && Array.isArray(value)) {
-                    setTags(value as string[]);
-                  } else {
-                    handleApplySuggestion(field, String(value));
-                  }
-                }}
-                onApplyTranslation={(fields) => {
-                  for (const [f, v] of Object.entries(fields)) {
-                    handleApplySuggestion(f, v);
-                  }
-                }}
-              />
-            )}
-          </aside>
-        </div>
+          {/* Sticky footer */}
+          <FormActionBar
+            saving={saving}
+            isDraft={draft}
+            backHref={`/admin/${collection}`}
+            previewHref={!isNew ? `/preview/${collection}/${slug}` : undefined}
+            onSave={handleSave}
+            saveDisabled={!localeReady}
+          />
+        </form>
 
-        {/* Sticky footer */}
-        <FormActionBar
-          saving={saving}
-          isDraft={draft}
-          backHref={`/admin/${collection}`}
-          previewHref={!isNew ? `/preview/${collection}/${slug}` : undefined}
-          onSave={handleSave}
-          saveDisabled={!localeReady}
-        />
-      </form>
-
-      {/* Enhance modal */}
-      <EnhanceModal
-        kind="recipe"
-        open={enhanceOpen}
-        onClose={() => setEnhanceOpen(false)}
-        collection={collection}
-        locale={(language || "en") as "en" | "de"}
-        slug={slug}
-        existing={buildRecipeSnapshot()}
-        onApplied={() => window.location.reload()}
-      />
-
-      {/* Translate modal */}
-      <TranslateModal
-        open={translateOpen}
-        onClose={() => setTranslateOpen(false)}
-        collection={collection}
-        slug={slug}
-        recipe={buildRecipeSnapshot()}
-        meta={buildMetaSnapshot()}
-        currentLocale={language || "en"}
-      />
-
-      {/* Quick create dialog */}
-      {quickCreateKind && (
-        <QuickCreateDialog
-          open
-          onClose={() => setQuickCreateKind(null)}
-          kind={quickCreateKind}
-          initialName={quickCreateName}
-          onCreated={(newSlug, newLabel) => {
-            quickCreateCallback?.(newSlug, newLabel);
-            setQuickCreateKind(null);
-          }}
-        />
-      )}
-
-      {/* Ingredient link modal */}
-      {linkModalState.open && linkModalState.mode === "view" && (
-        <IngredientLinkModal
-          open
-          onClose={() => setLinkModalState({ open: false })}
-          mode="view"
-          slug={linkModalState.slug}
-          locale={language || "en"}
-          onUnlink={() => {
-            const idx = linkModalState.ingredientIndex;
-            const ing = ingredients[idx] ?? "";
-            setIngredientLinks((prev) =>
-              prev.filter((l) => !ing.toLowerCase().includes(l.pattern.toLowerCase())),
-            );
-            setLinkModalState({ open: false });
-          }}
-        />
-      )}
-      {linkModalState.open && linkModalState.mode === "link" && (
-        <IngredientLinkModal
-          open
-          onClose={() => setLinkModalState({ open: false })}
-          mode="link"
-          ingredientString={linkModalState.ingredientString}
-          aiSuggestion={linkModalState.aiSuggestion}
-          ingredientOptions={ingredientOptions}
-          locale={language || "en"}
+        {/* Enhance modal */}
+        <EnhanceModal
+          kind="recipe"
+          open={enhanceOpen}
+          onClose={() => setEnhanceOpen(false)}
           collection={collection}
-          onLinked={(newSlug, pattern) => {
-            setIngredientLinks((prev) => {
-              if (prev.some((l) => l.pattern === pattern)) return prev;
-              return [...prev, { pattern, slug: newSlug, kind: "ingredient" as const }];
-            });
-            // Also add to ingredientOptions cache if not present
-            if (!ingredientOptions.some((o) => o.value === newSlug)) {
-              setIngredientOptions((prev) => [
-                ...prev,
-                { value: newSlug, label: newSlug, sublabel: newSlug },
-              ]);
+          locale={(language || "en") as "en" | "de"}
+          slug={slug}
+          existing={buildRecipeSnapshot()}
+          onApplied={() => window.location.reload()}
+        />
+
+        {/* Translate modal */}
+        <TranslateModal
+          open={translateOpen}
+          onClose={() => setTranslateOpen(false)}
+          collection={collection}
+          slug={slug}
+          recipe={buildRecipeSnapshot()}
+          meta={buildMetaSnapshot()}
+          currentLocale={language || "en"}
+        />
+
+        {/* Quick create dialog */}
+        {quickCreateKind && (
+          <QuickCreateDialog
+            open
+            onClose={() => setQuickCreateKind(null)}
+            kind={quickCreateKind}
+            initialName={quickCreateName}
+            onCreated={(newSlug, newLabel) => {
+              quickCreateCallback?.(newSlug, newLabel);
+              setQuickCreateKind(null);
+            }}
+          />
+        )}
+
+        {/* Ingredient link modal */}
+        {linkModalState.open && linkModalState.mode === "view" && (
+          <IngredientLinkModal
+            open
+            onClose={() => setLinkModalState({ open: false })}
+            mode="view"
+            slug={linkModalState.slug}
+            locale={language || "en"}
+            onUnlink={() => {
+              const idx = linkModalState.ingredientIndex;
+              const ing = ingredients[idx] ?? "";
+              setIngredientLinks((prev) =>
+                prev.filter((l) => !ing.toLowerCase().includes(l.pattern.toLowerCase())),
+              );
+              setLinkModalState({ open: false });
+            }}
+          />
+        )}
+        {linkModalState.open && linkModalState.mode === "link" && (
+          <IngredientLinkModal
+            open
+            onClose={() => setLinkModalState({ open: false })}
+            mode="link"
+            ingredientString={linkModalState.ingredientString}
+            aiSuggestion={linkModalState.aiSuggestion}
+            ingredientOptions={ingredientOptions}
+            locale={language || "en"}
+            collection={collection}
+            onLinked={(newSlug, pattern) => {
+              setIngredientLinks((prev) => {
+                if (prev.some((l) => l.pattern === pattern)) return prev;
+                return [...prev, { pattern, slug: newSlug, kind: "ingredient" as const }];
+              });
+              // Also add to ingredientOptions cache if not present
+              if (!ingredientOptions.some((o) => o.value === newSlug)) {
+                setIngredientOptions((prev) => [
+                  ...prev,
+                  { value: newSlug, label: newSlug, sublabel: newSlug },
+                ]);
+              }
+              setLinkModalState({ open: false });
+            }}
+          />
+        )}
+
+        {/* Image search modal */}
+        <ImageSearchModal
+          open={imageSearchTarget !== null}
+          onClose={() => setImageSearchTarget(null)}
+          defaultQuery={
+            imageSearchTarget === "main"
+              ? (form.getFieldValue("name" as never) as string)
+              : undefined
+          }
+          onSelect={(selected: SelectedImage) => {
+            if (imageSearchTarget === "main") {
+              form.setFieldValue("image" as never, selected.url as never);
+              setImageBroken(false);
+              setImageAttribution(selected.attribution);
+            } else if (typeof imageSearchTarget === "number") {
+              const i = imageSearchTarget;
+              setInstructions((prev) =>
+                prev.map((s, j) => (j === i ? { ...s, image: selected.url } : s)),
+              );
+              setStepAttributions((prev) => new Map(prev).set(i, selected.attribution));
             }
-            setLinkModalState({ open: false });
           }}
         />
-      )}
-
-      {/* Image search modal */}
-      <ImageSearchModal
-        open={imageSearchTarget !== null}
-        onClose={() => setImageSearchTarget(null)}
-        defaultQuery={
-          imageSearchTarget === "main" ? (form.getFieldValue("name" as never) as string) : undefined
-        }
-        onSelect={(selected: SelectedImage) => {
-          if (imageSearchTarget === "main") {
-            form.setFieldValue("image" as never, selected.url as never);
-            setImageBroken(false);
-            setImageAttribution(selected.attribution);
-          } else if (typeof imageSearchTarget === "number") {
-            const i = imageSearchTarget;
-            setInstructions((prev) =>
-              prev.map((s, j) => (j === i ? { ...s, image: selected.url } : s)),
-            );
-            setStepAttributions((prev) => new Map(prev).set(i, selected.attribution));
-          }
-        }}
-      />
-    </div>
+      </div>
+    </SuggestionFlowProvider>
   );
 }
