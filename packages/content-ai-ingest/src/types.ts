@@ -1,4 +1,4 @@
-import type { ZodSchema } from "zod";
+import type { ZodSchema, z } from "zod";
 import type { ModelMessage } from "ai";
 
 // ── AiConfig ─────────────────────────────────────────────────────────────────
@@ -26,6 +26,32 @@ export type FieldWritePolicy<T = unknown> =
   | { mode: "merge-function"; merge: (current: T, proposed: T) => T }
   | { mode: "merge-instructions"; instruction: string };
 
+// ── TranslationBehavior ───────────────────────────────────────────────────────
+
+export type TranslationBehavior =
+  | { mode: "translate" }
+  | { mode: "copy" }
+  | { mode: "localize"; instruction?: string }
+  | { mode: "skip" };
+
+// ── EntityRef ─────────────────────────────────────────────────────────────────
+
+export interface EntityRef {
+  id: string;
+  kind: string;
+}
+
+// ── SiblingLocaleSource ───────────────────────────────────────────────────────
+
+export interface SiblingLocaleSource<S extends ZodSchema = ZodSchema> {
+  kind: "sibling-locale";
+  sourceRef: EntityRef;
+  sourceData: z.infer<S>;
+  sourceLocale: string;
+  targetLocale: string;
+  fieldHashes: Record<string, string>;
+}
+
 // ── IngestContract ────────────────────────────────────────────────────────────
 
 export interface IngestContract<S extends ZodSchema, Source> {
@@ -33,6 +59,7 @@ export interface IngestContract<S extends ZodSchema, Source> {
   systemPrompt: string;
   buildMessages: (sourceContext: Source) => Promise<MessageSet>;
   fieldPolicies?: Partial<Record<string, FieldWritePolicy>>;
+  fieldConfigs?: Record<string, { translation?: TranslationBehavior }>;
 }
 
 // ── FieldSuggestion ───────────────────────────────────────────────────────────

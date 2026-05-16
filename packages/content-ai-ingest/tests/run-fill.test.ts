@@ -1,6 +1,6 @@
 import { describe, expect, test, vi, beforeEach } from "vite-plus/test";
 import { z } from "zod";
-import type { MessageSet } from "../src/types.ts";
+import type { MessageSet, SiblingLocaleSource } from "../src/types.ts";
 
 vi.mock("ai", () => ({
   generateText: vi.fn(),
@@ -26,7 +26,7 @@ const testSchema = z.object({
 type TextSource = { kind: "text"; content: string };
 type PdfSource = { kind: "pdf"; text: string };
 type ImageSource = { kind: "image"; bytes: Uint8Array; mimeType: string };
-type TestSource = TextSource | PdfSource | ImageSource;
+type TestSource = TextSource | PdfSource | ImageSource | SiblingLocaleSource;
 
 const makeContract = (buildMessages?: (s: TestSource) => Promise<MessageSet>) => ({
   schema: testSchema,
@@ -36,6 +36,7 @@ const makeContract = (buildMessages?: (s: TestSource) => Promise<MessageSet>) =>
     (async (s: TestSource): Promise<MessageSet> => {
       if (s.kind === "text") return { prompt: s.content };
       if (s.kind === "pdf") return { prompt: s.text };
+      if (s.kind === "sibling-locale") return { prompt: "Translate the following content." };
       return {
         messages: [{ role: "user" as const, content: [{ type: "text" as const, text: "image" }] }],
       };
@@ -469,5 +470,210 @@ describe("runFill — errors", () => {
         config: MOCK_CONFIG,
       }),
     ).rejects.toBe(original);
+  });
+});
+
+// ── Sibling-locale source dispatch ────────────────────────────────────────────
+
+const makeSiblingSource = (sourceData: Record<string, unknown> = {}): SiblingLocaleSource => ({
+  kind: "sibling-locale",
+  sourceRef: { id: "en-basil", kind: "ingredient" },
+  sourceData,
+  sourceLocale: "en",
+  targetLocale: "de",
+  fieldHashes: {},
+});
+
+describe("runFill — sibling-locale source", () => {
+  test("copy fields are taken from sourceData without calling generateText", async () => {
+    const contract = {
+      ...makeContract(),
+      fieldConfigs: {
+        name: { translation: { mode: "copy" as const } },
+        description: { translation: { mode: "copy" as const } },
+        tags: { translation: { mode: "copy" as const } },
+      },
+    };
+
+    const result = await runFill({
+      contract,
+      sourceContext: makeSiblingSource({
+        name: "Basil",
+        description: "Aromatic herb",
+        tags: ["herb"],
+      }),
+      config: MOCK_CONFIG,
+    });
+
+    expect(vi.mocked(generateText)).not.toHaveBeenCalled();
+    expect(result.suggestions.get("name")).toMatchObject({ kind: "single", value: "Basil" });
+    expect(result.suggestions.get("description")).toMatchObject({
+      kind: "single",
+      value: "Aromatic herb",
+    });
+    expect(result.suggestions.get("tags")).toMatchObject({ kind: "single", value: ["herb"] });
+  });
+
+  test("skip fields are omitted from suggestions", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { name: "Basilikum" } } as never);
+
+    const contract = {
+      ...makeContract(),
+      fieldConfigs: {
+        name: { translation: { mode: "translate" as const } },
+        description: { translation: { mode: "skip" as const } },
+      },
+    };
+
+    const result = await runFill({
+      contract,
+      sourceContext: makeSiblingSource({ name: "Basil", description: "Aromatic herb" }),
+      config: MOCK_CONFIG,
+    });
+
+    expect(result.suggestions.has("description")).toBe(false);
+    expect(result.suggestions.has("name")).toBe(true);
+  });
+
+  test("translate fields are proposed via LLM", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { name: "Basilikum" } } as never);
+
+    const contract = {
+      ...makeContract(),
+      fieldConfigs: {
+        name: { translation: { mode: "translate" as const } },
+      },
+    };
+
+    const result = await runFill({
+      contract,
+      sourceContext: makeSiblingSource({ name: "Basil" }),
+      config: MOCK_CONFIG,
+    });
+
+    expect(vi.mocked(generateText)).toHaveBeenCalledOnce();
+    expect(result.suggestions.get("name")).toMatchObject({ kind: "single", value: "Basilikum" });
+  });
+
+  test("localize fields are proposed via LLM", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { tags: ["Gewürz"] } } as never);
+
+    const contract = {
+      ...makeContract(),
+      fieldConfigs: {
+        tags: { translation: { mode: "localize" as const } },
+      },
+    };
+
+    const result = await runFill({
+      contract,
+      sourceContext: makeSiblingSource({ tags: ["herb"] }),
+      config: MOCK_CONFIG,
+    });
+
+    expect(vi.mocked(generateText)).toHaveBeenCalledOnce();
+    expect(result.suggestions.get("tags")).toMatchObject({ kind: "single", value: ["Gewürz"] });
+  });
+
+  test("mixed mode: copy + translate + skip in one call", async () => {
+    vi.mocked(generateText).mockResolvedValue({
+      output: { name: "Basilikum", description: "Aromatisches Kraut" },
+    } as never);
+
+    const contract = {
+      ...makeContract(),
+      fieldConfigs: {
+        name: { translation: { mode: "translate" as const } },
+        description: { translation: { mode: "translate" as const } },
+        tags: { translation: { mode: "copy" as const } },
+      },
+    };
+
+    const result = await runFill({
+      contract,
+      sourceContext: makeSiblingSource({
+        name: "Basil",
+        description: "Aromatic herb",
+        tags: ["herb", "fresh"],
+      }),
+      config: MOCK_CONFIG,
+    });
+
+    expect(vi.mocked(generateText)).toHaveBeenCalledOnce();
+    expect(result.suggestions.get("name")).toMatchObject({ value: "Basilikum" });
+    expect(result.suggestions.get("description")).toMatchObject({ value: "Aromatisches Kraut" });
+    expect(result.suggestions.get("tags")).toMatchObject({ value: ["herb", "fresh"] });
+  });
+
+  test("autoApplied is always empty (hard-rule: never)", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: FIXTURE_OUTPUT } as never);
+
+    const result = await runFill({
+      contract: makeContract(),
+      sourceContext: makeSiblingSource({ name: "Basil" }),
+      config: MOCK_CONFIG,
+    });
+
+    expect(result.autoApplied.size).toBe(0);
+  });
+
+  test("fields with no fieldConfig entry default to translate mode (LLM called)", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { name: "Basilikum" } } as never);
+
+    const contract = { ...makeContract(), fieldConfigs: {} };
+
+    const result = await runFill({
+      contract,
+      sourceContext: makeSiblingSource({ name: "Basil" }),
+      config: MOCK_CONFIG,
+    });
+
+    expect(vi.mocked(generateText)).toHaveBeenCalledOnce();
+    expect(result.suggestions.get("name")).toMatchObject({ value: "Basilikum" });
+  });
+
+  test("null/undefined values in sourceData are omitted from copy suggestions", async () => {
+    const contract = {
+      ...makeContract(),
+      fieldConfigs: {
+        name: { translation: { mode: "copy" as const } },
+        description: { translation: { mode: "copy" as const } },
+      },
+    };
+
+    const result = await runFill({
+      contract,
+      sourceContext: makeSiblingSource({ name: "Basil", description: null }),
+      config: MOCK_CONFIG,
+    });
+
+    expect(result.suggestions.has("name")).toBe(true);
+    expect(result.suggestions.has("description")).toBe(false);
+  });
+
+  test("emits a single ingestedEvent for the whole operation", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: FIXTURE_OUTPUT } as never);
+
+    const result = await runFill({
+      contract: makeContract(),
+      sourceContext: makeSiblingSource({ name: "Basil" }),
+      config: MOCK_CONFIG,
+    });
+
+    expect(result.ingestedEvent.type).toBe("ingested");
+    expect(result.ingestedEvent.model).toBe("gpt-test");
+    expect(result.ingestedEvent.suggestion.hash).toMatch(/^[0-9a-f]{12}$/);
+  });
+
+  test("traces map has one entry for sibling-locale call", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: FIXTURE_OUTPUT } as never);
+
+    const result = await runFill({
+      contract: makeContract(),
+      sourceContext: makeSiblingSource({ name: "Basil" }),
+      config: MOCK_CONFIG,
+    });
+
+    expect(result.traces.size).toBe(1);
   });
 });
