@@ -3,10 +3,12 @@ import type { ZodSchema } from "zod";
 import { hashSuggestion } from "./hash.ts";
 import { createProvider, PROVIDER_OPTIONS } from "./provider.ts";
 import type {
+  AiConfig,
   AppliedSuggestion,
   FieldSuggestion,
   FieldWritePolicy,
   IngestAiEvent,
+  MessageSet,
   RunFillParams,
   RunFillResult,
   SiblingLocaleSource,
@@ -70,6 +72,29 @@ function resolveTranslationMode(
   return fieldConfig?.translation ?? DEFAULT_TRANSLATION;
 }
 
+async function callLlm(
+  schema: ZodSchema,
+  systemPrompt: string,
+  config: AiConfig,
+  messageSet: MessageSet,
+  userPrompt?: string,
+): Promise<Record<string, unknown>> {
+  const model = createProvider(config);
+  const effectivePrompt = userPrompt
+    ? `${messageSet.prompt ?? ""}\n\nAdditional instructions: ${userPrompt}`.trim()
+    : messageSet.prompt;
+  const sharedArgs = {
+    model,
+    output: Output.object({ schema }),
+    providerOptions: PROVIDER_OPTIONS,
+    system: systemPrompt,
+  } as const;
+  const result = await (messageSet.messages
+    ? generateText({ ...sharedArgs, messages: messageSet.messages })
+    : generateText({ ...sharedArgs, prompt: effectivePrompt ?? "" }));
+  return result.output as Record<string, unknown>;
+}
+
 export async function runFill<S extends ZodSchema, Source>(
   params: RunFillParams<S, Source>,
 ): Promise<RunFillResult> {
@@ -121,22 +146,13 @@ export async function runFill<S extends ZodSchema, Source>(
       } = await contract.buildMessages(sourceContext);
       warnings.push(...msgWarnings);
 
-      const model = createProvider(config);
-      const effectivePrompt = userPrompt
-        ? `${prompt ?? ""}\n\nAdditional instructions: ${userPrompt}`.trim()
-        : prompt;
-
-      const sharedArgs = {
-        model,
-        output: Output.object({ schema: contract.schema }),
-        providerOptions: PROVIDER_OPTIONS,
-        system: contract.systemPrompt,
-      } as const;
-
-      const result = await (messages
-        ? generateText({ ...sharedArgs, messages })
-        : generateText({ ...sharedArgs, prompt: effectivePrompt ?? "" }));
-      const rawOutput = result.output as Record<string, unknown>;
+      const rawOutput = await callLlm(
+        contract.schema,
+        contract.systemPrompt,
+        config,
+        { messages, prompt },
+        userPrompt,
+      );
 
       for (const field of llmFields) {
         const value = rawOutput[field];
@@ -167,9 +183,7 @@ export async function runFill<S extends ZodSchema, Source>(
       at: new Date().toISOString(),
       model: config.model,
       suggestion: {
-        hash: hashSuggestion(
-          Object.fromEntries([...suggestions.entries()].map(([k, v]) => [k, v])),
-        ),
+        hash: hashSuggestion(Object.fromEntries(suggestions)),
         summary: `Fill: ${suggestions.size} field${suggestions.size !== 1 ? "s" : ""} proposed`,
       },
       traceId,
@@ -198,25 +212,16 @@ export async function runFill<S extends ZodSchema, Source>(
     }
   }
 
-  const model = createProvider(config);
   const traceId = crypto.randomUUID();
   const start = Date.now();
 
-  const effectivePrompt = userPrompt
-    ? `${prompt ?? ""}\n\nAdditional instructions: ${userPrompt}`.trim()
-    : prompt;
-
-  const sharedArgs = {
-    model,
-    output: Output.object({ schema: contract.schema }),
-    providerOptions: PROVIDER_OPTIONS,
-    system: contract.systemPrompt,
-  } as const;
-
-  const result = await (messages
-    ? generateText({ ...sharedArgs, messages })
-    : generateText({ ...sharedArgs, prompt: effectivePrompt ?? "" }));
-  const rawOutput = result.output as Record<string, unknown>;
+  const rawOutput = await callLlm(
+    contract.schema,
+    contract.systemPrompt,
+    config,
+    { messages, prompt },
+    userPrompt,
+  );
 
   const runtimeMs = Date.now() - start;
 

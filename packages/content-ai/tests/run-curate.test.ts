@@ -53,7 +53,6 @@ describe("runCurate error guards", () => {
     await expect(runCurate("pairing", "links" as any)).rejects.toThrow(/Unknown.*operation/);
   });
 
-  // Translation is prohibited from runCurate — use runFill with sibling-locale source (PRD 10.2).
   test("throws for translate on ingredient kind", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect(runCurate("ingredient", "translate" as any)).rejects.toThrow(/Unknown.*operation/);
