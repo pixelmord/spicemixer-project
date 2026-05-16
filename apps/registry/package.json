@@ -7,7 +7,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "test": "NODE_OPTIONS=\"--loader $(pwd)/jsdom-resolve.mjs\" vp test"
+    "test": "NODE_OPTIONS=\"--import $(pwd)/jsdom-register.mjs\" vp test"
   },
   "dependencies": {
     "@tailwindcss/vite": "catalog:",
