@@ -2,7 +2,6 @@ import type { ZodSchema } from "zod";
 import type { ModelMessage } from "ai";
 
 // ── AiConfig ─────────────────────────────────────────────────────────────────
-// Minimal config shape shared with content-ai (will consolidate in content-ai-core).
 
 export interface AiConfig {
   baseUrl: string;
@@ -28,7 +27,6 @@ export type FieldWritePolicy<T = unknown> =
   | { mode: "merge-instructions"; instruction: string };
 
 // ── IngestContract ────────────────────────────────────────────────────────────
-// Typed per-consumer contract. Source is the per-contract source-context type.
 
 export interface IngestContract<S extends ZodSchema, Source> {
   schema: S;
@@ -81,7 +79,6 @@ export interface TraceSummary {
 }
 
 // ── Minimal AiEvent shape for ingestedEvent ──────────────────────────────────
-// Compatible with content-ai's AiEvent; will be imported from content-ai-core.
 
 export interface IngestAiEvent {
   type: "ingested";

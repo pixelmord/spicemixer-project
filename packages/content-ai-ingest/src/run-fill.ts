@@ -26,12 +26,12 @@ function resolvePolicy(
     contractFieldPolicy?: FieldWritePolicy;
   },
 ): FieldWritePolicy {
-  const resolved =
+  return (
     fieldPolicies?.[field] ??
     writePolicy ??
     contractFieldPolicy ??
-    (currentData !== undefined ? "fill-if-empty" : "replace");
-  return resolved;
+    (currentData !== undefined ? "fill-if-empty" : "replace")
+  );
 }
 
 function shouldSkipField(
@@ -40,11 +40,8 @@ function shouldSkipField(
   policy: FieldWritePolicy,
 ): boolean {
   if (currentData === undefined) return false;
-  const hasValue = currentData[field] !== undefined && currentData[field] !== null;
-  if (!hasValue) return false;
-  if (policy === "preserve") return true;
-  if (policy === "fill-if-empty") return true;
-  return false;
+  if (currentData[field] == null) return false;
+  return policy === "preserve" || policy === "fill-if-empty";
 }
 
 function summarizeFieldValue(value: unknown): string {
@@ -61,10 +58,8 @@ export async function runFill<S extends ZodSchema, Source>(
   const { contract, sourceContext, config, currentData, userPrompt, writePolicy, fieldPolicies } =
     params;
 
-  // 1. Build messages from source context
   const { messages, prompt, warnings = [] } = await contract.buildMessages(sourceContext);
 
-  // 2. Determine which fields to skip before making the LLM call
   const skipSet = new Set<string>();
   if (currentData !== undefined) {
     const schemaObj = contract.schema as { shape?: Record<string, unknown> };
@@ -82,7 +77,6 @@ export async function runFill<S extends ZodSchema, Source>(
     }
   }
 
-  // 3. Call the LLM with structured output
   const model = createProvider(config);
   const traceId = crypto.randomUUID();
   const start = Date.now();
@@ -105,7 +99,6 @@ export async function runFill<S extends ZodSchema, Source>(
 
   const runtimeMs = Date.now() - start;
 
-  // 4. Convert to Map<FieldPath, FieldSuggestion>, respecting write policies
   const suggestions = new Map<string, FieldSuggestion>();
   for (const [field, value] of Object.entries(rawOutput)) {
     if (skipSet.has(field)) continue;
@@ -122,10 +115,8 @@ export async function runFill<S extends ZodSchema, Source>(
     });
   }
 
-  // 5. Auto-apply: none at this stage (requires AiEventLog integration)
   const autoApplied = new Map<string, AppliedSuggestion>();
 
-  // 6. Trace summary
   const traces = new Map<string, TraceSummary>();
   traces.set(traceId, {
     traceId,
@@ -135,7 +126,6 @@ export async function runFill<S extends ZodSchema, Source>(
     ...(userPrompt ? { userPrompt } : {}),
   });
 
-  // 7. Ingested event
   const ingestedEvent: IngestAiEvent = {
     type: "ingested",
     at: new Date().toISOString(),
