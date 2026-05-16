@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { recipeSchema } from "recipe-ingestion";
-import type { AiContract, FieldConfig } from "content-ai-refine";
+import type { AiContract, FieldConfig } from "@pixelmord/content-ai-refine";
 
 type RecipeSchema = typeof recipeSchema;
 

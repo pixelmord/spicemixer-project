@@ -1,17 +1,31 @@
 {
   "name": "@pixelmord/content-ai-core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "AI contract types, event log interface, trace sink, Origin/ALS, fingerprinting, suppression rules, and presentation helpers.",
   "license": "MIT",
   "files": [
     "dist"
   ],
   "type": "module",
+  "types": "./dist/index.d.mts",
   "exports": {
-    ".": "./dist/index.mjs",
-    "./presentation": "./dist/presentation/index.mjs",
-    "./testing": "./dist/testing/index.mjs",
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./presentation": {
+      "types": "./dist/presentation/index.d.mts",
+      "default": "./dist/presentation/index.mjs"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.mts",
+      "default": "./dist/testing/index.mjs"
+    },
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "build": "vp pack",

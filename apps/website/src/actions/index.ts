@@ -920,7 +920,7 @@ export const server = {
             name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
           };
         });
-      const { runRefine } = await import("content-ai-refine");
+      const { runRefine } = await import("@pixelmord/content-ai-refine");
       const { recipeContract } = await import("@/contracts/index.ts");
       const { suggestions } = await runRefine({
         contract: recipeContract,
@@ -957,7 +957,7 @@ export const server = {
         const tags = (meta.data as Record<string, unknown>)["tags"];
         if (Array.isArray(tags)) tags.forEach((t) => typeof t === "string" && tagSet.add(t));
       }
-      const { runRefine } = await import("content-ai-refine");
+      const { runRefine } = await import("@pixelmord/content-ai-refine");
       const { recipeContract } = await import("@/contracts/index.ts");
       const { suggestions } = await runRefine({
         contract: recipeContract,
@@ -986,7 +986,7 @@ export const server = {
       userInitiated: true,
     })(async ({ recipe, missingFields }) => {
       const config = resolveAiConfig();
-      const { runRefine } = await import("content-ai-refine");
+      const { runRefine } = await import("@pixelmord/content-ai-refine");
       const { recipeContract } = await import("@/contracts/index.ts");
       const { suggestions } = await runRefine({
         contract: recipeContract,
@@ -1055,7 +1055,7 @@ export const server = {
             name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
           };
         });
-      const { runRefine } = await import("content-ai-refine");
+      const { runRefine } = await import("@pixelmord/content-ai-refine");
       const { ingredientContract } = await import("@/contracts/index.ts");
       const { suggestions } = await runRefine({
         contract: ingredientContract,
@@ -1086,7 +1086,7 @@ export const server = {
       userInitiated: true,
     })(async ({ ingredient, missingFields }) => {
       const config = resolveAiConfig();
-      const { runRefine } = await import("content-ai-refine");
+      const { runRefine } = await import("@pixelmord/content-ai-refine");
       const { ingredientContract } = await import("@/contracts/index.ts");
       const { suggestions } = await runRefine({
         contract: ingredientContract,
@@ -1516,7 +1516,7 @@ export const server = {
       userInitiated: true,
     })(async ({ name, locale, collection }) => {
       const config = resolveAiConfig();
-      const { runRefine } = await import("content-ai-refine");
+      const { runRefine } = await import("@pixelmord/content-ai-refine");
       const { recipeContract } = await import("@/contracts/index.ts");
       const store = await createStore();
 

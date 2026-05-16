@@ -1,0 +1,104 @@
+name: CI – content-ai packages
+
+on:
+  pull_request:
+    paths:
+      - "packages/content-ai-core/**"
+      - "packages/content-ai-refine/**"
+      - "packages/content-ai-ingest/**"
+      - ".github/workflows/ci-packages.yml"
+
+jobs:
+  verify:
+    name: Verify packages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm --filter "@pixelmord/content-ai-*" run build
+
+      - name: Install verification tools
+        run: pnpm add -g publint @arethetypeswrong/cli
+
+      - name: publint – content-ai-core
+        run: publint packages/content-ai-core
+
+      - name: publint – content-ai-refine
+        run: publint packages/content-ai-refine
+
+      - name: publint – content-ai-ingest
+        run: publint packages/content-ai-ingest
+
+      - name: attw – content-ai-core
+        run: attw --pack packages/content-ai-core
+
+      - name: attw – content-ai-refine
+        run: attw --pack packages/content-ai-refine
+
+      - name: attw – content-ai-ingest
+        run: attw --pack packages/content-ai-ingest
+
+      - name: Pack smoke – content-ai-core
+        run: |
+          set -e
+          TARBALL=$(cd packages/content-ai-core && pnpm pack --pack-destination /tmp/smoke-core 2>/dev/null | tail -1)
+          mkdir -p /tmp/smoke-core-test
+          cd /tmp/smoke-core-test
+          cat > package.json <<'EOF'
+          { "name": "smoke", "version": "0.0.0", "type": "module" }
+          EOF
+          pnpm add "$TARBALL"
+          cat > check.ts <<'EOF'
+          import type { AiContract } from "@pixelmord/content-ai-core";
+          const _: AiContract<never, never> | undefined = undefined;
+          EOF
+          pnpm exec tsc --noEmit --strict --moduleResolution bundler --module esnext check.ts
+
+      - name: Pack smoke – content-ai-refine
+        run: |
+          set -e
+          TARBALL=$(cd packages/content-ai-refine && pnpm pack --pack-destination /tmp/smoke-refine 2>/dev/null | tail -1)
+          mkdir -p /tmp/smoke-refine-test
+          cd /tmp/smoke-refine-test
+          cat > package.json <<'EOF'
+          { "name": "smoke", "version": "0.0.0", "type": "module" }
+          EOF
+          pnpm add "$TARBALL"
+          cat > check.ts <<'EOF'
+          import type { RunRefineParams } from "@pixelmord/content-ai-refine";
+          const _: RunRefineParams<never, never> | undefined = undefined;
+          EOF
+          pnpm exec tsc --noEmit --strict --moduleResolution bundler --module esnext check.ts
+
+      - name: Pack smoke – content-ai-ingest
+        run: |
+          set -e
+          TARBALL=$(cd packages/content-ai-ingest && pnpm pack --pack-destination /tmp/smoke-ingest 2>/dev/null | tail -1)
+          mkdir -p /tmp/smoke-ingest-test
+          cd /tmp/smoke-ingest-test
+          cat > package.json <<'EOF'
+          { "name": "smoke", "version": "0.0.0", "type": "module" }
+          EOF
+          pnpm add "$TARBALL"
+          cat > check.ts <<'EOF'
+          import type { RunFillParams } from "@pixelmord/content-ai-ingest";
+          const _: RunFillParams<never, never> | undefined = undefined;
+          EOF
+          pnpm exec tsc --noEmit --strict --moduleResolution bundler --module esnext check.ts

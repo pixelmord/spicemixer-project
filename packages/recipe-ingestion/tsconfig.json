@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "paths": {
-      "content-ai-ingest": ["../content-ai-ingest/src/index.ts"]
+      "@pixelmord/content-ai-ingest": ["../content-ai-ingest/src/index.ts"]
     },
     "target": "esnext",
     "lib": ["es2023"],

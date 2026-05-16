@@ -7,8 +7,8 @@
       "@/*": ["./src/*"],
       "recipe-ingestion": ["../../packages/recipe-ingestion/src/index.ts"],
       "content-ai": ["../../packages/content-ai/src/index.ts"],
-      "content-ai-ingest": ["../../packages/content-ai-ingest/src/index.ts"],
-      "content-ai-refine": ["../../packages/content-ai-refine/src/index.ts"],
+      "@pixelmord/content-ai-ingest": ["../../packages/content-ai-ingest/src/index.ts"],
+      "@pixelmord/content-ai-refine": ["../../packages/content-ai-refine/src/index.ts"],
       "@pixelmord/content-ai-core": ["../../packages/content-ai-core/src/index.ts"],
       "entity-kind": ["../../packages/entity-kind/src/index.ts"]
     },

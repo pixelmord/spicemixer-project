@@ -4,11 +4,11 @@ import { createMetaSidecar } from "../../../src/lib/meta-sidecar.ts";
 import { runAiRefresh } from "../../../src/lib/ai/runner.ts";
 import type { AiConfig, PubSubEvent } from "content-ai";
 import { createAiEventLog, hashContent, runWithOrigin, subscribe } from "content-ai";
-import type { FieldSuggestion } from "content-ai-refine";
+import type { FieldSuggestion } from "@pixelmord/content-ai-refine";
 
 // Stub runRefine to avoid network calls; keep real event/hash utilities.
-vi.mock("content-ai-refine", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("content-ai-refine")>();
+vi.mock("@pixelmord/content-ai-refine", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@pixelmord/content-ai-refine")>();
   return {
     ...actual,
     runRefine: vi.fn().mockResolvedValue({
@@ -65,7 +65,7 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
   });
 
   test("cache hit: returns cached suggestion without re-running LLM", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     const { store, sidecar, eventLog } = env;
     const metaRef = { collection: "recipes" as const, locale: "en", slug: "miso-ramen" };
     const payload = { name: "Miso Ramen" };
@@ -106,7 +106,7 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
   });
 
   test("force=true bypasses cache and re-runs LLM", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     const { store, sidecar, eventLog } = env;
     const metaRef = { collection: "recipes" as const, locale: "en", slug: "miso-ramen" };
     const payload = { name: "Miso Ramen" };
@@ -148,7 +148,7 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
   });
 
   test("cache is invalidated when payload changes", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     const { store, sidecar, eventLog } = env;
     const metaRef = { collection: "recipes" as const, locale: "en", slug: "miso-ramen" };
 
@@ -186,7 +186,7 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
   });
 
   test("language-mismatch: detectedLanguage returned when content language differs from locale", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     vi.mocked(refine.runRefine).mockResolvedValueOnce({
       suggestions: new Map(),
       autoApplied: new Map([
@@ -267,7 +267,7 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
 
 describe("runAiRefresh recipe: auto-apply ingredient links", () => {
   test("auto-applies high-confidence ingredient links and records aiEvent", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     vi.mocked(refine.runRefine).mockResolvedValueOnce({
       suggestions: new Map([
         [
@@ -316,7 +316,7 @@ describe("runAiRefresh recipe: auto-apply ingredient links", () => {
   });
 
   test("low-confidence ingredient links are not auto-applied", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     vi.mocked(refine.runRefine).mockResolvedValueOnce({
       suggestions: new Map([
         [
@@ -360,7 +360,7 @@ describe("runAiRefresh recipe: auto-apply ingredient links", () => {
 
 describe("runAiRefresh ingredient: auto-apply pairings", () => {
   test("auto-applies high-confidence pairings and records aiEvent", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     vi.mocked(refine.runRefine).mockResolvedValueOnce({
       suggestions: new Map([
         [
@@ -409,7 +409,7 @@ describe("runAiRefresh ingredient: auto-apply pairings", () => {
   });
 
   test("low-confidence pairings are not auto-applied", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     vi.mocked(refine.runRefine).mockResolvedValueOnce({
       suggestions: new Map([
         [
@@ -452,7 +452,7 @@ describe("runAiRefresh ingredient: auto-apply pairings", () => {
   });
 
   test("language mismatch: languageMismatch flag set when detected language differs from locale", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     vi.mocked(refine.runRefine).mockResolvedValueOnce({
       suggestions: new Map(),
       autoApplied: new Map([
@@ -489,7 +489,7 @@ describe("runAiRefresh ingredient: auto-apply pairings", () => {
 
 describe("runAiRefresh pairing", () => {
   test("returns aiSuggestions keyed by locale without auto-applying anything", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     vi.mocked(refine.runRefine).mockResolvedValueOnce({
       suggestions: new Map([
         [
@@ -539,7 +539,7 @@ describe("runAiRefresh pairing", () => {
   });
 
   test("returns empty improvements when runRefine returns no description suggestion", async () => {
-    const refine = await import("content-ai-refine");
+    const refine = await import("@pixelmord/content-ai-refine");
     vi.mocked(refine.runRefine).mockResolvedValueOnce({
       suggestions: new Map(),
       autoApplied: new Map(),

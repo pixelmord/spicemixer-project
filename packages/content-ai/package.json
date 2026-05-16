@@ -25,9 +25,9 @@
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@noble/hashes": "^1.7.0",
+    "@pixelmord/content-ai-ingest": "workspace:*",
     "@sentry/node": "catalog:",
     "ai": "catalog:",
-    "content-ai-ingest": "workspace:*",
     "pdfjs-dist": "catalog:",
     "zod": "catalog:"
   },
