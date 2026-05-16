@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "diff-preview",
+  "type": "registry:ui",
+  "title": "DiffPreview",
+  "description": "Before/after diff for a single field's text value.",
+  "files": [
+    {
+      "path": "components/ui/diff-preview.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\n\ninterface DiffPreviewProps {\n  before: string;\n  after: string;\n  label?: string;\n  className?: string;\n}\n\nexport function DiffPreview({ before, after, label, className }: DiffPreviewProps) {\n  return (\n    <div className={cn(\"rounded-md border text-sm\", className)}>\n      {label && (\n        <div className=\"border-b px-3 py-1.5 text-xs font-medium text-stone-500\">{label}</div>\n      )}\n      <div className=\"grid grid-cols-2 divide-x\">\n        <div className=\"p-3\">\n          <p className=\"mb-1 text-xs font-medium text-stone-400\">Before</p>\n          <p className=\"whitespace-pre-wrap text-stone-600 line-through\">{before}</p>\n        </div>\n        <div className=\"p-3\">\n          <p className=\"mb-1 text-xs font-medium text-stone-400\">After</p>\n          <p className=\"whitespace-pre-wrap text-stone-900\">{after}</p>\n        </div>\n      </div>\n    </div>\n  );\n}\n"
+    }
+  ]
+}

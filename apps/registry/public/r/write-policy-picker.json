@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "write-policy-picker",
+  "type": "registry:ui",
+  "title": "WritePolicyPicker",
+  "description": "Radio picker for preserve/replace/fill-if-empty/merge write policies.",
+  "files": [
+    {
+      "path": "components/ui/write-policy-picker.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\nimport { Label } from \"@/components/ui/label\";\nimport { RadioGroup, RadioGroupItem } from \"@/components/ui/radio-group\";\n\ntype SimpleWritePolicy = \"preserve\" | \"replace\" | \"fill-if-empty\" | \"merge-instructions\";\n\ninterface WritePolicyPickerProps {\n  value: SimpleWritePolicy;\n  onChange: (policy: SimpleWritePolicy) => void;\n  className?: string;\n}\n\nconst policies: Array<{ value: SimpleWritePolicy; label: string; description: string }> = [\n  { value: \"preserve\", label: \"Preserve existing\", description: \"Keep current value, ignore suggestion\" },\n  { value: \"replace\", label: \"Replace everything\", description: \"Overwrite with AI suggestion\" },\n  { value: \"fill-if-empty\", label: \"Fill gaps only\", description: \"Apply only when field is empty\" },\n  { value: \"merge-instructions\", label: \"Custom\u2026\", description: \"Per-field merge instructions\" },\n];\n\nexport function WritePolicyPicker({ value, onChange, className }: WritePolicyPickerProps) {\n  return (\n    <div className={cn(\"space-y-2\", className)}>\n      <p className=\"text-sm font-medium\">Write policy</p>\n      <RadioGroup value={value} onValueChange={(v) => onChange(v as SimpleWritePolicy)}>\n        {policies.map((policy) => (\n          <div key={policy.value} className=\"flex items-start gap-2\">\n            <RadioGroupItem\n              value={policy.value}\n              id={`write-policy-${policy.value}`}\n            />\n            <div className=\"grid gap-0.5\">\n              <Label htmlFor={`write-policy-${policy.value}`} className=\"cursor-pointer\">\n                {policy.label}\n              </Label>\n              <p className=\"text-xs text-stone-500\">{policy.description}</p>\n            </div>\n          </div>\n        ))}\n      </RadioGroup>\n    </div>\n  );\n}\n"
+    }
+  ]
+}

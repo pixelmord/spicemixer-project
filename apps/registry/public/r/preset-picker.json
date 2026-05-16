@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "preset-picker",
+  "type": "registry:ui",
+  "title": "PresetPicker",
+  "description": "Preset selector that reads contract.presets and emits selected id.",
+  "files": [
+    {
+      "path": "components/ui/preset-picker.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\nimport { Label } from \"@/components/ui/label\";\nimport {\n  Select,\n  SelectContent,\n  SelectItem,\n  SelectTrigger,\n  SelectValue,\n} from \"@/components/ui/select\";\n\ninterface PresetPickerProps {\n  presets: Array<{ id: string; label: string; description?: string }>;\n  value?: string;\n  onSelect: (id: string) => void;\n  className?: string;\n}\n\nexport function PresetPicker({ presets, value, onSelect, className }: PresetPickerProps) {\n  return (\n    <div className={cn(\"flex flex-col gap-1.5\", className)}>\n      <Label htmlFor=\"preset-picker\">Preset</Label>\n      <Select value={value} onValueChange={onSelect}>\n        <SelectTrigger id=\"preset-picker\">\n          <SelectValue placeholder=\"Select a preset\u2026\" />\n        </SelectTrigger>\n        <SelectContent>\n          {presets.map((preset) => (\n            <SelectItem key={preset.id} value={preset.id}>\n              {preset.label}\n            </SelectItem>\n          ))}\n        </SelectContent>\n      </Select>\n    </div>\n  );\n}\n"
+    }
+  ]
+}

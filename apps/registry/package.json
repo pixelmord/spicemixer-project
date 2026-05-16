@@ -6,12 +6,24 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "NODE_OPTIONS=\"--import $(pwd)/jsdom-register.mjs\" vp test"
   },
   "dependencies": {
     "@tailwindcss/vite": "catalog:",
     "astro": "catalog:",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "tailwindcss": "catalog:"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^5.2.0",
+    "jsdom": "^26.0.0"
   },
   "engines": {
     "node": ">=22.12.0"

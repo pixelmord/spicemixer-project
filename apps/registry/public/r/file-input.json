@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "file-input",
+  "type": "registry:ui",
+  "title": "FileInput",
+  "description": "File upload input with drag-area trigger.",
+  "dependencies": ["lucide-react"],
+  "files": [
+    {
+      "path": "components/ui/file-input.tsx",
+      "type": "registry:ui",
+      "content": "import { Upload } from \"lucide-react\";\nimport { cn } from \"@/lib/utils\";\nimport { Label } from \"@/components/ui/label\";\n\ninterface FileInputProps {\n  accept?: string;\n  onChange: (file: File | null) => void;\n  label?: string;\n  hint?: string;\n  className?: string;\n}\n\nexport function FileInput({\n  accept,\n  onChange,\n  label = \"Upload file\",\n  hint,\n  className,\n}: FileInputProps) {\n  return (\n    <div className={cn(\"flex flex-col gap-1.5\", className)}>\n      <Label htmlFor=\"file-input\">{label}</Label>\n      <label\n        htmlFor=\"file-input\"\n        className=\"flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-sm text-stone-500 hover:border-stone-400 hover:text-stone-600\"\n      >\n        <Upload size={20} className=\"mb-2 text-stone-400\" />\n        <span>Click to select a file</span>\n        {hint && <span className=\"mt-0.5 text-xs text-stone-400\">{hint}</span>}\n      </label>\n      <input\n        id=\"file-input\"\n        type=\"file\"\n        accept={accept}\n        className=\"sr-only\"\n        onChange={(e) => onChange(e.target.files?.[0] ?? null)}\n      />\n    </div>\n  );\n}\n"
+    }
+  ]
+}

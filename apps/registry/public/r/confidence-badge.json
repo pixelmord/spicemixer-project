@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "confidence-badge",
+  "type": "registry:ui",
+  "title": "ConfidenceBadge",
+  "description": "Colored confidence badge: high/medium/low variants.",
+  "files": [
+    {
+      "path": "components/ui/confidence-badge.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\n\ninterface ConfidenceBadgeProps {\n  confidence: \"high\" | \"medium\" | \"low\";\n  className?: string;\n}\n\nconst variantClasses = {\n  high: \"bg-green-100 text-green-800\",\n  medium: \"bg-yellow-100 text-yellow-800\",\n  low: \"bg-red-100 text-red-800\",\n} as const;\n\nexport function ConfidenceBadge({ confidence, className }: ConfidenceBadgeProps) {\n  return (\n    <span\n      className={cn(\n        \"inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium\",\n        variantClasses[confidence],\n        className,\n      )}\n      aria-label={`${confidence} confidence`}\n    >\n      {confidence}\n    </span>\n  );\n}\n"
+    }
+  ]
+}

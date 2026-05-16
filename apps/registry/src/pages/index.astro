@@ -12,12 +12,30 @@ const stackAssumptions = [
   { label: "cn() from @/lib/utils", detail: "Tailwind class merging" },
 ];
 
-const items = [
-  {
-    name: "__hello-world__",
-    title: "Hello World",
-    description: "Trivial smoke-test component for CLI verification.",
-  },
+const primitives = [
+  { name: "confidence-badge", title: "ConfidenceBadge", description: "Colored badge for high / medium / low confidence variants." },
+  { name: "accept-reject-buttons", title: "AcceptRejectButtons", description: "Check/reject button pair for accepting or dismissing AI suggestions." },
+  { name: "text-suggestion-row", title: "TextSuggestionRow", description: "Text field row renderer with read-only and interactive (accept/reject) modes." },
+  { name: "tags-suggestion-row", title: "TagsSuggestionRow", description: "Tag chips renderer for tag-list suggestions." },
+  { name: "enum-suggestion-row", title: "EnumSuggestionRow", description: "Enum picker renderer for single-value suggestions." },
+  { name: "multi-enum-suggestion-row", title: "MultiEnumSuggestionRow", description: "Multi-enum renderer for multi-select suggestions." },
+  { name: "date-suggestion-row", title: "DateSuggestionRow", description: "Date renderer for ISO date string suggestions." },
+  { name: "preset-picker", title: "PresetPicker", description: "Reads contract.presets and emits the selected preset id." },
+  { name: "user-prompt-field", title: "UserPromptField", description: "Labeled textarea for free-text instruction amendments." },
+  { name: "diff-preview", title: "DiffPreview", description: "Side-by-side before/after diff for a single field's text." },
+  { name: "write-policy-picker", title: "WritePolicyPicker", description: "Radio picker for preserve / replace / fill-if-empty / merge policies." },
+  { name: "capability-label", title: "CapabilityLabel", description: "In-flight action label (\"Proposing tags…\") with animated spinner." },
+  { name: "auto-apply-badge", title: "AutoApplyBadge", description: "Inline badge for auto-applied fields; carries hash, summary, and revert affordance." },
+  { name: "suggestion-trace-info", title: "SuggestionTraceInfo", description: "Info popover showing TraceSummary scalars only — no token counts, cost, system prompt, or response body (ADR 0011)." },
+  { name: "file-input", title: "FileInput", description: "File upload source with drag-area trigger." },
+  { name: "text-area-source", title: "TextAreaSource", description: "Textarea source for pasting raw text content." },
+  { name: "prompt-input-source", title: "PromptInputSource", description: "Textarea for entering a free-form AI generation prompt." },
+  { name: "url-input", title: "UrlInput", description: "URL source input field." },
+  { name: "tag-chips-input", title: "TagChipsInput", description: "Inline tag chip editor with Enter/comma confirmation." },
+];
+
+const legacySmoke = [
+  { name: "__hello-world__", title: "Hello World", description: "Trivial smoke-test component for CLI verification." },
 ];
 ---
 
@@ -44,9 +62,9 @@ const items = [
         <p class="text-stone-600">
           Add a registry item to your project with the shadcn CLI:
         </p>
-        <pre class="bg-stone-900 text-stone-100 rounded-lg p-4 overflow-x-auto text-sm"><code>pnpm dlx shadcn@latest add {REGISTRY_BASE}/r/__hello-world__</code></pre>
+        <pre class="bg-stone-900 text-stone-100 rounded-lg p-4 overflow-x-auto text-sm"><code>pnpm dlx shadcn@latest add {REGISTRY_BASE}/r/confidence-badge</code></pre>
         <p class="text-stone-500 text-sm">
-          Replace <code class="bg-stone-100 px-1 rounded">__hello-world__</code> with the item name.
+          Replace <code class="bg-stone-100 px-1 rounded">confidence-badge</code> with the item name.
           The CLI fetches the item JSON and pastes the source files into your project.
         </p>
       </section>
@@ -75,9 +93,9 @@ const items = [
       </section>
 
       <section class="space-y-4">
-        <h2 class="text-xl font-semibold">Available items</h2>
+        <h2 class="text-xl font-semibold">Primitives (PRD 9.3)</h2>
         <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
-          {items.map(({ name, title, description }) => (
+          {primitives.map(({ name, title, description }) => (
             <li class="px-4 py-3 space-y-1">
               <div class="flex items-center gap-3">
                 <code class="font-mono text-sm font-medium">{name}</code>
@@ -88,10 +106,21 @@ const items = [
             </li>
           ))}
         </ul>
-        <p class="text-stone-500 text-sm">
-          Real UI primitives and blocks land in <strong>PRD 9.3+</strong>. This skeleton
-          establishes the hosting infrastructure.
-        </p>
+      </section>
+
+      <section class="space-y-4">
+        <h2 class="text-xl font-semibold">Utilities</h2>
+        <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
+          {legacySmoke.map(({ name, title, description }) => (
+            <li class="px-4 py-3 space-y-1">
+              <div class="flex items-center gap-3">
+                <code class="font-mono text-sm font-medium">{name}</code>
+                <span class="text-stone-400 text-xs">{title}</span>
+              </div>
+              <p class="text-stone-500 text-sm">{description}</p>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section class="space-y-4">

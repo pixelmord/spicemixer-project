@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "capability-label",
+  "type": "registry:ui",
+  "title": "CapabilityLabel",
+  "description": "In-flight action label e.g. \"Proposing tags\u2026\" with spinner.",
+  "dependencies": ["lucide-react"],
+  "files": [
+    {
+      "path": "components/ui/capability-label.tsx",
+      "type": "registry:ui",
+      "content": "import { Loader2 } from \"lucide-react\";\nimport { cn } from \"@/lib/utils\";\n\ninterface CapabilityLabelProps {\n  label: string;\n  running?: boolean;\n  className?: string;\n}\n\nexport function CapabilityLabel({ label, running = false, className }: CapabilityLabelProps) {\n  return (\n    <span\n      className={cn(\n        \"inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium text-stone-600\",\n        running && \"text-amber-700\",\n        className,\n      )}\n      aria-live=\"polite\"\n    >\n      {running && <Loader2 size={12} className=\"animate-spin\" />}\n      {label}\n    </span>\n  );\n}\n"
+    }
+  ]
+}

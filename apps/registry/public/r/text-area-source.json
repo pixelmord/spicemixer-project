@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "text-area-source",
+  "type": "registry:ui",
+  "title": "TextAreaSource",
+  "description": "Textarea source for pasting text content.",
+  "files": [
+    {
+      "path": "components/ui/text-area-source.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\nimport { Label } from \"@/components/ui/label\";\nimport { Textarea } from \"@/components/ui/textarea\";\n\ninterface TextAreaSourceProps {\n  value: string;\n  onChange: (value: string) => void;\n  label?: string;\n  placeholder?: string;\n  className?: string;\n}\n\nexport function TextAreaSource({\n  value,\n  onChange,\n  label = \"Paste text\",\n  placeholder = \"Paste source text here\u2026\",\n  className,\n}: TextAreaSourceProps) {\n  return (\n    <div className={cn(\"flex flex-col gap-1.5\", className)}>\n      <Label htmlFor=\"text-area-source\">{label}</Label>\n      <Textarea\n        id=\"text-area-source\"\n        value={value}\n        onChange={(e) => onChange(e.target.value)}\n        placeholder={placeholder}\n        rows={6}\n      />\n    </div>\n  );\n}\n"
+    }
+  ]
+}

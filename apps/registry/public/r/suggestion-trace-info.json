@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "suggestion-trace-info",
+  "type": "registry:ui",
+  "title": "SuggestionTraceInfo",
+  "description": "Popover showing TraceSummary scalars only \u2014 no payloads (ADR 0011).",
+  "dependencies": ["lucide-react"],
+  "files": [
+    {
+      "path": "components/ui/suggestion-trace-info.tsx",
+      "type": "registry:ui",
+      "content": "import { Info } from \"lucide-react\";\nimport { cn } from \"@/lib/utils\";\nimport { Popover, PopoverContent, PopoverTrigger } from \"@/components/ui/popover\";\n\ninterface TraceSummary {\n  traceId: string;\n  model: string;\n  runtimeMs: number;\n  preset?: string;\n  userPrompt?: string;\n  confidence?: \"high\" | \"medium\" | \"low\";\n}\n\ninterface SuggestionTraceInfoProps {\n  trace: TraceSummary;\n  className?: string;\n}\n\nexport function SuggestionTraceInfo({ trace, className }: SuggestionTraceInfoProps) {\n  return (\n    <Popover>\n      <PopoverTrigger asChild>\n        <button\n          type=\"button\"\n          aria-label=\"Show trace info\"\n          className={cn(\"rounded p-0.5 text-stone-400 hover:text-stone-600\", className)}\n        >\n          <Info size={14} />\n        </button>\n      </PopoverTrigger>\n      <PopoverContent className=\"w-72 p-3 text-xs\">\n        <p className=\"mb-2 font-medium text-stone-700\">Trace info</p>\n        <dl className=\"space-y-1\">\n          <TraceRow label=\"Model\" value={trace.model} />\n          <TraceRow label=\"Runtime\" value={`${trace.runtimeMs}ms`} />\n          {trace.preset && <TraceRow label=\"Preset\" value={trace.preset} />}\n          {trace.userPrompt && <TraceRow label=\"Prompt\" value={trace.userPrompt} />}\n          {trace.confidence && <TraceRow label=\"Confidence\" value={trace.confidence} />}\n          <TraceRow label=\"Trace ID\" value={trace.traceId} mono />\n        </dl>\n      </PopoverContent>\n    </Popover>\n  );\n}\n\nfunction TraceRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {\n  return (\n    <div className=\"flex gap-2\">\n      <dt className=\"w-20 shrink-0 text-stone-400\">{label}</dt>\n      <dd className={cn(\"flex-1 break-all text-stone-700\", mono && \"font-mono text-[10px]\")}>\n        {value}\n      </dd>\n    </div>\n  );\n}\n"
+    }
+  ]
+}

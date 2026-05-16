@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "prompt-input-source",
+  "type": "registry:ui",
+  "title": "PromptInputSource",
+  "description": "Textarea for entering a free-form AI source prompt.",
+  "files": [
+    {
+      "path": "components/ui/prompt-input-source.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\nimport { Label } from \"@/components/ui/label\";\nimport { Textarea } from \"@/components/ui/textarea\";\n\ninterface PromptInputSourceProps {\n  value: string;\n  onChange: (value: string) => void;\n  label?: string;\n  placeholder?: string;\n  className?: string;\n}\n\nexport function PromptInputSource({\n  value,\n  onChange,\n  label = \"Prompt\",\n  placeholder = \"Describe what you want the AI to generate\u2026\",\n  className,\n}: PromptInputSourceProps) {\n  return (\n    <div className={cn(\"flex flex-col gap-1.5\", className)}>\n      <Label htmlFor=\"prompt-input-source\">{label}</Label>\n      <Textarea\n        id=\"prompt-input-source\"\n        value={value}\n        onChange={(e) => onChange(e.target.value)}\n        placeholder={placeholder}\n        rows={4}\n      />\n      <p className=\"text-xs text-stone-400\">\n        The AI will use this prompt as the primary source context.\n      </p>\n    </div>\n  );\n}\n"
+    }
+  ]
+}
