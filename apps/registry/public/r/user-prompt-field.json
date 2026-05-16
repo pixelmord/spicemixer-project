@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "user-prompt-field",
+  "type": "registry:ui",
+  "title": "UserPromptField",
+  "description": "Labeled textarea for free-text AI instruction amendments.",
+  "files": [
+    {
+      "path": "components/ui/user-prompt-field.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\nimport { Label } from \"@/components/ui/label\";\nimport { Textarea } from \"@/components/ui/textarea\";\n\ninterface UserPromptFieldProps {\n  value: string;\n  onChange: (value: string) => void;\n  placeholder?: string;\n  label?: string;\n  className?: string;\n}\n\nexport function UserPromptField({\n  value,\n  onChange,\n  placeholder = \"Add instructions for the AI\u2026\",\n  label = \"Custom instructions\",\n  className,\n}: UserPromptFieldProps) {\n  return (\n    <div className={cn(\"flex flex-col gap-1.5\", className)}>\n      <Label htmlFor=\"user-prompt\">{label}</Label>\n      <Textarea\n        id=\"user-prompt\"\n        value={value}\n        onChange={(e) => onChange(e.target.value)}\n        placeholder={placeholder}\n        rows={3}\n      />\n    </div>\n  );\n}\n"
+    }
+  ]
+}

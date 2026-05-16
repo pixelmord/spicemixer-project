@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "url-input",
+  "type": "registry:ui",
+  "title": "UrlInput",
+  "description": "URL source input field.",
+  "files": [
+    {
+      "path": "components/ui/url-input.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\nimport { Label } from \"@/components/ui/label\";\nimport { Input } from \"@/components/ui/input\";\n\ninterface UrlInputProps {\n  value: string;\n  onChange: (value: string) => void;\n  label?: string;\n  placeholder?: string;\n  className?: string;\n}\n\nexport function UrlInput({\n  value,\n  onChange,\n  label = \"URL\",\n  placeholder = \"https://\u2026\",\n  className,\n}: UrlInputProps) {\n  return (\n    <div className={cn(\"flex flex-col gap-1.5\", className)}>\n      <Label htmlFor=\"url-input\">{label}</Label>\n      <Input\n        id=\"url-input\"\n        type=\"url\"\n        value={value}\n        onChange={(e) => onChange(e.target.value)}\n        placeholder={placeholder}\n      />\n    </div>\n  );\n}\n"
+    }
+  ]
+}

@@ -14,6 +14,245 @@
           "type": "registry:ui"
         }
       ]
+    },
+    {
+      "name": "confidence-badge",
+      "type": "registry:ui",
+      "title": "ConfidenceBadge",
+      "description": "Colored confidence badge: high/medium/low variants.",
+      "files": [
+        {
+          "path": "components/ui/confidence-badge.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "accept-reject-buttons",
+      "type": "registry:ui",
+      "title": "AcceptRejectButtons",
+      "description": "Check/reject button pair for AI suggestions.",
+      "dependencies": ["lucide-react"],
+      "files": [
+        {
+          "path": "components/ui/accept-reject-buttons.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "text-suggestion-row",
+      "type": "registry:ui",
+      "title": "TextSuggestionRow",
+      "description": "Text field AI suggestion row with read-only and interactive modes.",
+      "registryDependencies": ["confidence-badge", "accept-reject-buttons"],
+      "files": [
+        {
+          "path": "components/ui/text-suggestion-row.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "tags-suggestion-row",
+      "type": "registry:ui",
+      "title": "TagsSuggestionRow",
+      "description": "Tag chips AI suggestion row with read-only and interactive modes.",
+      "registryDependencies": ["confidence-badge", "accept-reject-buttons"],
+      "files": [
+        {
+          "path": "components/ui/tags-suggestion-row.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "enum-suggestion-row",
+      "type": "registry:ui",
+      "title": "EnumSuggestionRow",
+      "description": "Enum picker AI suggestion row with read-only and interactive modes.",
+      "registryDependencies": ["confidence-badge", "accept-reject-buttons"],
+      "files": [
+        {
+          "path": "components/ui/enum-suggestion-row.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "multi-enum-suggestion-row",
+      "type": "registry:ui",
+      "title": "MultiEnumSuggestionRow",
+      "description": "Multi-enum AI suggestion row with read-only and interactive modes.",
+      "registryDependencies": ["confidence-badge", "accept-reject-buttons"],
+      "files": [
+        {
+          "path": "components/ui/multi-enum-suggestion-row.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "date-suggestion-row",
+      "type": "registry:ui",
+      "title": "DateSuggestionRow",
+      "description": "Date AI suggestion row with read-only and interactive modes.",
+      "registryDependencies": ["confidence-badge", "accept-reject-buttons"],
+      "files": [
+        {
+          "path": "components/ui/date-suggestion-row.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "preset-picker",
+      "type": "registry:ui",
+      "title": "PresetPicker",
+      "description": "Preset selector that reads contract.presets and emits selected id.",
+      "files": [
+        {
+          "path": "components/ui/preset-picker.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "user-prompt-field",
+      "type": "registry:ui",
+      "title": "UserPromptField",
+      "description": "Labeled textarea for free-text AI instruction amendments.",
+      "files": [
+        {
+          "path": "components/ui/user-prompt-field.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "diff-preview",
+      "type": "registry:ui",
+      "title": "DiffPreview",
+      "description": "Before/after diff for a single field's text value.",
+      "files": [
+        {
+          "path": "components/ui/diff-preview.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "write-policy-picker",
+      "type": "registry:ui",
+      "title": "WritePolicyPicker",
+      "description": "Radio picker for preserve/replace/fill-if-empty/merge write policies.",
+      "files": [
+        {
+          "path": "components/ui/write-policy-picker.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "capability-label",
+      "type": "registry:ui",
+      "title": "CapabilityLabel",
+      "description": "In-flight action label e.g. \"Proposing tags…\" with spinner.",
+      "dependencies": ["lucide-react"],
+      "files": [
+        {
+          "path": "components/ui/capability-label.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "auto-apply-badge",
+      "type": "registry:ui",
+      "title": "AutoApplyBadge",
+      "description": "Inline badge for auto-applied fields with hash, summary, and revert.",
+      "dependencies": ["lucide-react"],
+      "files": [
+        {
+          "path": "components/ui/auto-apply-badge.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "suggestion-trace-info",
+      "type": "registry:ui",
+      "title": "SuggestionTraceInfo",
+      "description": "Popover showing TraceSummary scalars only — no payloads (ADR 0011).",
+      "dependencies": ["lucide-react"],
+      "files": [
+        {
+          "path": "components/ui/suggestion-trace-info.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "file-input",
+      "type": "registry:ui",
+      "title": "FileInput",
+      "description": "File upload input with drag-area trigger.",
+      "dependencies": ["lucide-react"],
+      "files": [
+        {
+          "path": "components/ui/file-input.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "text-area-source",
+      "type": "registry:ui",
+      "title": "TextAreaSource",
+      "description": "Textarea source for pasting text content.",
+      "files": [
+        {
+          "path": "components/ui/text-area-source.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "prompt-input-source",
+      "type": "registry:ui",
+      "title": "PromptInputSource",
+      "description": "Textarea for entering a free-form AI source prompt.",
+      "files": [
+        {
+          "path": "components/ui/prompt-input-source.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "url-input",
+      "type": "registry:ui",
+      "title": "UrlInput",
+      "description": "URL source input field.",
+      "files": [
+        {
+          "path": "components/ui/url-input.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "tag-chips-input",
+      "type": "registry:ui",
+      "title": "TagChipsInput",
+      "description": "Tag chips input with inline chip editor.",
+      "dependencies": ["lucide-react"],
+      "files": [
+        {
+          "path": "components/ui/tag-chips-input.tsx",
+          "type": "registry:ui"
+        }
+      ]
     }
   ]
 }

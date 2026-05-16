@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "date-suggestion-row",
+  "type": "registry:ui",
+  "title": "DateSuggestionRow",
+  "description": "Date AI suggestion row with read-only and interactive modes.",
+  "registryDependencies": ["confidence-badge", "accept-reject-buttons"],
+  "files": [
+    {
+      "path": "components/ui/date-suggestion-row.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\nimport { ConfidenceBadge } from \"@/components/ui/confidence-badge\";\nimport { AcceptRejectButtons } from \"@/components/ui/accept-reject-buttons\";\n\ninterface DateSuggestionRowProps {\n  value: string;\n  confidence?: \"high\" | \"medium\" | \"low\";\n  summary?: string;\n  readOnly?: boolean;\n  onApply?: (value: string) => void;\n  onReject?: () => void;\n  className?: string;\n}\n\nfunction formatDate(isoString: string): string {\n  try {\n    return new Date(isoString).toLocaleDateString(undefined, {\n      year: \"numeric\",\n      month: \"short\",\n      day: \"numeric\",\n    });\n  } catch {\n    return isoString;\n  }\n}\n\nexport function DateSuggestionRow({\n  value,\n  confidence,\n  summary,\n  readOnly = false,\n  onApply,\n  onReject,\n  className,\n}: DateSuggestionRowProps) {\n  return (\n    <div\n      className={cn(\"flex items-start gap-2 rounded-md border p-2 text-sm\", className)}\n      data-readonly={readOnly}\n    >\n      <div className=\"min-w-0 flex-1\">\n        <p className=\"font-medium\">{formatDate(value)}</p>\n        {summary && <p className=\"mt-0.5 text-xs text-stone-500\">{summary}</p>}\n      </div>\n      {confidence && <ConfidenceBadge confidence={confidence} />}\n      {!readOnly && onApply && onReject && (\n        <AcceptRejectButtons onAccept={() => onApply(value)} onReject={onReject} />\n      )}\n    </div>\n  );\n}\n"
+    }
+  ]
+}

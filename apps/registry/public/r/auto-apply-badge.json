@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "auto-apply-badge",
+  "type": "registry:ui",
+  "title": "AutoApplyBadge",
+  "description": "Inline badge for auto-applied fields with hash, summary, and revert.",
+  "dependencies": ["lucide-react"],
+  "files": [
+    {
+      "path": "components/ui/auto-apply-badge.tsx",
+      "type": "registry:ui",
+      "content": "import { RotateCcw } from \"lucide-react\";\nimport { cn } from \"@/lib/utils\";\n\ninterface AutoApplyBadgeProps {\n  summary: string;\n  hash: string;\n  onRevert: () => void;\n  reverted?: boolean;\n  className?: string;\n}\n\nexport function AutoApplyBadge({\n  summary,\n  hash,\n  onRevert,\n  reverted = false,\n  className,\n}: AutoApplyBadgeProps) {\n  return (\n    <span\n      className={cn(\n        \"inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs text-blue-700\",\n        reverted && \"opacity-50 line-through\",\n        className,\n      )}\n      title={`Hash: ${hash}`}\n    >\n      <span className=\"truncate max-w-[180px]\">{summary}</span>\n      {!reverted && (\n        <button\n          type=\"button\"\n          onClick={onRevert}\n          aria-label=\"Revert auto-applied change\"\n          className=\"ml-0.5 rounded p-0.5 hover:bg-blue-100\"\n        >\n          <RotateCcw size={10} />\n        </button>\n      )}\n    </span>\n  );\n}\n"
+    }
+  ]
+}

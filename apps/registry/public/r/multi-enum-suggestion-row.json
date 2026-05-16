@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "multi-enum-suggestion-row",
+  "type": "registry:ui",
+  "title": "MultiEnumSuggestionRow",
+  "description": "Multi-enum AI suggestion row with read-only and interactive modes.",
+  "registryDependencies": ["confidence-badge", "accept-reject-buttons"],
+  "files": [
+    {
+      "path": "components/ui/multi-enum-suggestion-row.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\nimport { ConfidenceBadge } from \"@/components/ui/confidence-badge\";\nimport { AcceptRejectButtons } from \"@/components/ui/accept-reject-buttons\";\n\ninterface MultiEnumSuggestionRowProps {\n  values: string[];\n  options: string[];\n  confidence?: \"high\" | \"medium\" | \"low\";\n  summary?: string;\n  readOnly?: boolean;\n  onApply?: (values: string[]) => void;\n  onReject?: () => void;\n  className?: string;\n}\n\nexport function MultiEnumSuggestionRow({\n  values,\n  options: _options,\n  confidence,\n  summary,\n  readOnly = false,\n  onApply,\n  onReject,\n  className,\n}: MultiEnumSuggestionRowProps) {\n  return (\n    <div\n      className={cn(\"flex items-start gap-2 rounded-md border p-2 text-sm\", className)}\n      data-readonly={readOnly}\n    >\n      <div className=\"min-w-0 flex-1\">\n        <div className=\"flex flex-wrap gap-1\">\n          {values.map((v) => (\n            <span\n              key={v}\n              className=\"inline-flex items-center rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700\"\n            >\n              {v}\n            </span>\n          ))}\n        </div>\n        {summary && <p className=\"mt-1 text-xs text-stone-500\">{summary}</p>}\n      </div>\n      {confidence && <ConfidenceBadge confidence={confidence} />}\n      {!readOnly && onApply && onReject && (\n        <AcceptRejectButtons onAccept={() => onApply(values)} onReject={onReject} />\n      )}\n    </div>\n  );\n}\n"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "accept-reject-buttons",
+  "type": "registry:ui",
+  "title": "AcceptRejectButtons",
+  "description": "Check/reject button pair for AI suggestions.",
+  "dependencies": ["lucide-react"],
+  "files": [
+    {
+      "path": "components/ui/accept-reject-buttons.tsx",
+      "type": "registry:ui",
+      "content": "import { Check, X } from \"lucide-react\";\nimport { cn } from \"@/lib/utils\";\n\ninterface AcceptRejectButtonsProps {\n  onAccept: () => void;\n  onReject: () => void;\n  disabled?: boolean;\n  className?: string;\n}\n\nexport function AcceptRejectButtons({\n  onAccept,\n  onReject,\n  disabled,\n  className,\n}: AcceptRejectButtonsProps) {\n  return (\n    <div className={cn(\"flex gap-1\", className)}>\n      <button\n        type=\"button\"\n        onClick={onAccept}\n        disabled={disabled}\n        aria-label=\"Accept\"\n        className=\"inline-flex items-center justify-center rounded p-1 text-green-600 hover:bg-green-50 disabled:opacity-50\"\n      >\n        <Check size={16} />\n      </button>\n      <button\n        type=\"button\"\n        onClick={onReject}\n        disabled={disabled}\n        aria-label=\"Reject\"\n        className=\"inline-flex items-center justify-center rounded p-1 text-red-600 hover:bg-red-50 disabled:opacity-50\"\n      >\n        <X size={16} />\n      </button>\n    </div>\n  );\n}\n"
+    }
+  ]
+}

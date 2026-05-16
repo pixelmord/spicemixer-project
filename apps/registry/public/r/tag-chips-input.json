@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "tag-chips-input",
+  "type": "registry:ui",
+  "title": "TagChipsInput",
+  "description": "Tag chips input with inline chip editor.",
+  "dependencies": ["lucide-react"],
+  "files": [
+    {
+      "path": "components/ui/tag-chips-input.tsx",
+      "type": "registry:ui",
+      "content": "import { useState, type KeyboardEvent } from \"react\";\nimport { X } from \"lucide-react\";\nimport { cn } from \"@/lib/utils\";\nimport { Input } from \"@/components/ui/input\";\nimport { Label } from \"@/components/ui/label\";\n\ninterface TagChipsInputProps {\n  tags: string[];\n  onChange: (tags: string[]) => void;\n  label?: string;\n  placeholder?: string;\n  className?: string;\n}\n\nexport function TagChipsInput({\n  tags,\n  onChange,\n  label = \"Tags\",\n  placeholder = \"Type and press Enter\u2026\",\n  className,\n}: TagChipsInputProps) {\n  const [input, setInput] = useState(\"\");\n\n  function addTag(value: string) {\n    const trimmed = value.trim();\n    if (trimmed && !tags.includes(trimmed)) {\n      onChange([...tags, trimmed]);\n    }\n    setInput(\"\");\n  }\n\n  function removeTag(tag: string) {\n    onChange(tags.filter((t) => t !== tag));\n  }\n\n  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {\n    if (e.key === \"Enter\" || e.key === \",\") {\n      e.preventDefault();\n      addTag(input);\n    } else if (e.key === \"Backspace\" && input === \"\" && tags.length > 0) {\n      onChange(tags.slice(0, -1));\n    }\n  }\n\n  return (\n    <div className={cn(\"flex flex-col gap-1.5\", className)}>\n      <Label htmlFor=\"tag-chips-input\">{label}</Label>\n      <div className=\"flex min-h-9 flex-wrap gap-1.5 rounded-md border px-3 py-1.5\">\n        {tags.map((tag) => (\n          <span\n            key={tag}\n            className=\"inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700\"\n          >\n            {tag}\n            <button\n              type=\"button\"\n              onClick={() => removeTag(tag)}\n              aria-label={`Remove ${tag}`}\n              className=\"rounded-full hover:bg-stone-200\"\n            >\n              <X size={10} />\n            </button>\n          </span>\n        ))}\n        <Input\n          id=\"tag-chips-input\"\n          value={input}\n          onChange={(e) => setInput(e.target.value)}\n          onKeyDown={handleKeyDown}\n          onBlur={() => { if (input) addTag(input); }}\n          placeholder={tags.length === 0 ? placeholder : \"\"}\n          className=\"h-auto min-w-[120px] flex-1 border-0 p-0 text-xs shadow-none focus-visible:ring-0\"\n        />\n      </div>\n      <p className=\"text-xs text-stone-400\">Press Enter or comma to add a tag.</p>\n    </div>\n  );\n}\n"
+    }
+  ]
+}

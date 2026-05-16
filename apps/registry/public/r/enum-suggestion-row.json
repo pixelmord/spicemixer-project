@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "enum-suggestion-row",
+  "type": "registry:ui",
+  "title": "EnumSuggestionRow",
+  "description": "Enum picker AI suggestion row with read-only and interactive modes.",
+  "registryDependencies": ["confidence-badge", "accept-reject-buttons"],
+  "files": [
+    {
+      "path": "components/ui/enum-suggestion-row.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\nimport { ConfidenceBadge } from \"@/components/ui/confidence-badge\";\nimport { AcceptRejectButtons } from \"@/components/ui/accept-reject-buttons\";\n\ninterface EnumSuggestionRowProps {\n  value: string;\n  options: string[];\n  confidence?: \"high\" | \"medium\" | \"low\";\n  summary?: string;\n  readOnly?: boolean;\n  onApply?: (value: string) => void;\n  onReject?: () => void;\n  className?: string;\n}\n\nexport function EnumSuggestionRow({\n  value,\n  options: _options,\n  confidence,\n  summary,\n  readOnly = false,\n  onApply,\n  onReject,\n  className,\n}: EnumSuggestionRowProps) {\n  return (\n    <div\n      className={cn(\"flex items-start gap-2 rounded-md border p-2 text-sm\", className)}\n      data-readonly={readOnly}\n    >\n      <div className=\"min-w-0 flex-1\">\n        <p className=\"font-medium\">{value}</p>\n        {summary && <p className=\"mt-0.5 text-xs text-stone-500\">{summary}</p>}\n      </div>\n      {confidence && <ConfidenceBadge confidence={confidence} />}\n      {!readOnly && onApply && onReject && (\n        <AcceptRejectButtons onAccept={() => onApply(value)} onReject={onReject} />\n      )}\n    </div>\n  );\n}\n"
+    }
+  ]
+}
