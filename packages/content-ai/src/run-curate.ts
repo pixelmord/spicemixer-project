@@ -1,28 +1,22 @@
-import {
-  proposeIngredientImprovements,
-  proposeIngredientTranslation,
-  proposeIngredientPairings,
-} from "./curate-ingredient.ts";
+import { proposeIngredientImprovements, proposeIngredientPairings } from "./curate-ingredient.ts";
 import {
   proposeRecipeImprovements,
-  proposeRecipeTranslation,
   proposeIngredientLinks,
   proposeTags,
   detectLanguage,
   proposeRelations,
   proposeSlug,
 } from "./curate-recipe.ts";
-import { proposePairingImprovements, proposePairingTranslation } from "./curate-pairing.ts";
+import { proposePairingImprovements } from "./curate-pairing.ts";
 
+// Translation is not a curate operation. Use runFill with sibling-locale source instead (PRD 10.2).
 export const CURATE_REGISTRY = {
   ingredient: {
     improve: proposeIngredientImprovements,
-    translate: proposeIngredientTranslation,
     pairings: proposeIngredientPairings,
   },
   recipe: {
     improve: proposeRecipeImprovements,
-    translate: proposeRecipeTranslation,
     links: proposeIngredientLinks,
     tags: proposeTags,
     language: detectLanguage,
@@ -31,7 +25,6 @@ export const CURATE_REGISTRY = {
   },
   pairing: {
     improve: proposePairingImprovements,
-    translate: proposePairingTranslation,
   },
 };
 

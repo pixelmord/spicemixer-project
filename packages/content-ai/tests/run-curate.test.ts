@@ -8,28 +8,25 @@ describe("CURATE_REGISTRY structure", () => {
     expect(CURATE_REGISTRY.pairing).toBeDefined();
   });
 
-  test("ingredient registers improve, translate, pairings", () => {
+  test("ingredient registers improve, pairings", () => {
     expect(typeof CURATE_REGISTRY.ingredient.improve).toBe("function");
-    expect(typeof CURATE_REGISTRY.ingredient.translate).toBe("function");
     expect(typeof CURATE_REGISTRY.ingredient.pairings).toBe("function");
   });
 
-  test("recipe registers improve, translate, links, tags, language, relations, slug", () => {
-    const ops = ["improve", "translate", "links", "tags", "language", "relations", "slug"] as const;
+  test("recipe registers improve, links, tags, language, relations, slug", () => {
+    const ops = ["improve", "links", "tags", "language", "relations", "slug"] as const;
     for (const op of ops) {
       expect(typeof CURATE_REGISTRY.recipe[op]).toBe("function");
     }
   });
 
-  test("pairing registers improve, translate", () => {
+  test("pairing registers improve only", () => {
     expect(typeof CURATE_REGISTRY.pairing.improve).toBe("function");
-    expect(typeof CURATE_REGISTRY.pairing.translate).toBe("function");
   });
 
   test("each registered entry is a distinct function reference", () => {
     expect(CURATE_REGISTRY.ingredient.improve).not.toBe(CURATE_REGISTRY.recipe.improve);
-    expect(CURATE_REGISTRY.ingredient.translate).not.toBe(CURATE_REGISTRY.recipe.translate);
-    expect(CURATE_REGISTRY.ingredient.translate).not.toBe(CURATE_REGISTRY.pairing.translate);
+    expect(CURATE_REGISTRY.ingredient.improve).not.toBe(CURATE_REGISTRY.pairing.improve);
   });
 });
 
@@ -54,6 +51,21 @@ describe("runCurate error guards", () => {
   test("throws for unknown operation on pairing kind", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await expect(runCurate("pairing", "links" as any)).rejects.toThrow(/Unknown.*operation/);
+  });
+
+  test("throws for translate on ingredient kind", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(runCurate("ingredient", "translate" as any)).rejects.toThrow(/Unknown.*operation/);
+  });
+
+  test("throws for translate on recipe kind", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(runCurate("recipe", "translate" as any)).rejects.toThrow(/Unknown.*operation/);
+  });
+
+  test("throws for translate on pairing kind", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await expect(runCurate("pairing", "translate" as any)).rejects.toThrow(/Unknown.*operation/);
   });
 });
 
@@ -91,23 +103,6 @@ describe("runCurate delegation", () => {
       expect(called[0]).toBe(snapshot);
     } finally {
       (CURATE_REGISTRY.recipe as Record<string, unknown>).tags = originalFn;
-    }
-  });
-
-  test("pairing translate delegates to CURATE_REGISTRY.pairing.translate", async () => {
-    const called: unknown[] = [];
-    const originalFn = CURATE_REGISTRY.pairing.translate;
-    (CURATE_REGISTRY.pairing as Record<string, unknown>).translate = async (...args: unknown[]) => {
-      called.push(...args);
-      return { targetLocale: "de", fields: {} };
-    };
-
-    try {
-      const snapshot = { ingredient1: "cumin", ingredient2: "coriander", description: "test" };
-      await runCurate("pairing", "translate", snapshot, "en", "de", {} as never);
-      expect(called[0]).toBe(snapshot);
-    } finally {
-      (CURATE_REGISTRY.pairing as Record<string, unknown>).translate = originalFn;
     }
   });
 });
