@@ -6,7 +6,7 @@ import { slugFromLocaleId } from "@/lib/recipe-augment.ts";
 import { entityRefSchema } from "@/lib/entity-ref.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
 import { fetchRecipe } from "recipe-ingestion";
-import { computeCompleteness } from "@/lib/completeness.ts";
+import { computeCompletenessFromBlob } from "@/lib/completeness.ts";
 import {
   saveRecipe as libSaveRecipe,
   deleteRecipe as libDeleteRecipe,
@@ -229,16 +229,16 @@ async function buildListing() {
   const recipeItems = await Promise.all(
     [...recipes, ...mixtures].map(async (item) => {
       const collection = item.collection as "recipes" | "mixtures";
-      // item.id is "locale/slug" per ADR 0009
+      const slug = slugFromLocaleId(item.id);
       const slash = item.id.indexOf("/");
       const locale = slash === -1 ? "en" : item.id.slice(0, slash);
-      const slug = slugFromLocaleId(item.id);
-      const ref = { collection, locale, slug };
-      const [completeness, metaItem] = await Promise.all([
-        computeCompleteness("recipe", ref, store),
-        sidecar.read(ref),
-      ]);
+      const metaItem = await sidecar.read({ collection, locale, slug });
       const meta = (metaItem?.data ?? {}) as Record<string, unknown>;
+      const completeness = computeCompletenessFromBlob(
+        "recipe",
+        item.data as Record<string, unknown>,
+        meta,
+      );
       return {
         type: "recipe" as const,
         collection,
@@ -255,13 +255,14 @@ async function buildListing() {
     ingredients.map(async (item) => {
       const slash = item.id.indexOf("/");
       const locale = slash === -1 ? "en" : item.id.slice(0, slash);
-      const slug = slash === -1 ? item.id : item.id.slice(slash + 1);
-      const ref = { collection: "ingredients" as const, locale, slug };
-      const [completeness, metaItem] = await Promise.all([
-        computeCompleteness("ingredient", ref, store),
-        sidecar.read(ref),
-      ]);
+      const slug = slugFromLocaleId(item.id);
+      const metaItem = await sidecar.read({ collection: "ingredients", locale, slug });
       const meta = (metaItem?.data ?? {}) as Record<string, unknown>;
+      const completeness = computeCompletenessFromBlob(
+        "ingredient",
+        item.data as Record<string, unknown>,
+        meta,
+      );
       return {
         type: "ingredient" as const,
         collection: "ingredients" as const,
@@ -279,12 +280,9 @@ async function buildListing() {
       const d = item.data as Record<string, unknown>;
       const ings = (d["ingredients"] as Array<EntityRef | string>) ?? [];
       const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
-      const ref = { collection: "pairings" as const, slug: item.id };
-      const [completeness, metaItem] = await Promise.all([
-        computeCompleteness("pairing", ref, store),
-        sidecar.read(ref),
-      ]);
+      const metaItem = await sidecar.read({ collection: "pairings", slug: item.id });
       const pairingMeta = (metaItem?.data ?? {}) as Record<string, unknown>;
+      const completeness = computeCompletenessFromBlob("pairing", d, pairingMeta);
       const translations = ["en", "de"].filter((l) => !!descriptions[l]);
       const description =
         descriptions["en"] ?? (typeof d["description"] === "string" ? d["description"] : "");
