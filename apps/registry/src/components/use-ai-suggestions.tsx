@@ -236,7 +236,6 @@ export function useAiSuggestions({
         autoApplied: appliedSuggestion,
         trace,
         recordAccept(hash: string, value: unknown) {
-          const sug = suggestions.get(field);
           setSuggestions((prev) => {
             const next = new Map(prev);
             next.delete(field);
@@ -247,17 +246,16 @@ export function useAiSuggestions({
             field,
             suggestion: {
               hash,
-              summary: sug?.kind === "single" ? sug.summary : String(value),
+              summary: suggestion?.kind === "single" ? suggestion.summary : String(value),
             },
             at: new Date().toISOString(),
             model: trace?.model ?? "unknown",
-            confidence: sug?.kind === "single" ? sug.confidence : undefined,
-            traceId: sug?.traceId,
+            confidence: suggestion?.kind === "single" ? suggestion.confidence : undefined,
+            traceId: suggestion?.traceId,
           });
         },
         recordReject(hash?: string) {
-          const sug = suggestions.get(field);
-          const resolvedHash = hash ?? (sug?.kind === "single" ? sug.hash : "");
+          const resolvedHash = hash ?? (suggestion?.kind === "single" ? suggestion.hash : "");
           setSuggestions((prev) => {
             const next = new Map(prev);
             next.delete(field);
@@ -269,11 +267,11 @@ export function useAiSuggestions({
             field,
             suggestion: {
               hash: resolvedHash,
-              summary: sug?.kind === "single" ? sug.summary : "",
+              summary: suggestion?.kind === "single" ? suggestion.summary : "",
             },
             at: new Date().toISOString(),
             model: trace?.model ?? "unknown",
-            traceId: sug?.traceId,
+            traceId: suggestion?.traceId,
           });
         },
         revertAutoApply() {
