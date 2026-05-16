@@ -14,7 +14,8 @@ import {
   getCurrentOrigin,
   publish,
 } from "content-ai";
-import type { AiConfig, AiEventLog, AiEventSidecar, MetaRef } from "content-ai";
+import type { AiConfig, AiEventSidecar, MetaRef } from "content-ai";
+import type { SidecarEventLog } from "content-ai";
 import type { EntityKind } from "entity-kind";
 import type { ContentStore } from "@/lib/content-store.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
@@ -47,7 +48,7 @@ export interface AiRefreshInput {
   locale: string;
   store: ContentStore;
   sidecar: AiEventSidecar;
-  eventLog: AiEventLog;
+  eventLog: SidecarEventLog;
   config: AiConfig;
   force?: boolean;
   existingMeta?: Record<string, unknown>;
@@ -86,7 +87,7 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
   } = input;
 
   const existingEvents = await eventLog.read(metaRef);
-  const rejectedContext = eventLog.buildRejectedContext(existingEvents);
+  const rejectedContext = eventLog.buildRejectedContextString(existingEvents);
 
   const ingredientItems = await store.list("ingredients");
   const inventory = ingredientItems
@@ -194,7 +195,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     existingMeta: meta = {},
   } = input;
 
-  const skipResult = await eventLog.shouldSkip(
+  const skipResult = await eventLog.checkFingerprint(
     metaRef,
     { recipe: payload, missingFields, locale, model: config.model },
     force,
@@ -211,7 +212,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
   }
 
   const { fingerprint, existingEvents } = skipResult;
-  const rejectedContext = eventLog.buildRejectedContext(existingEvents);
+  const rejectedContext = eventLog.buildRejectedContextString(existingEvents);
 
   const ingredientItems = await store.list("ingredients");
   const inventory = ingredientItems
@@ -380,7 +381,7 @@ async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult
   const { metaRef, payload, locale, eventLog, config } = input;
 
   const existingEvents = await eventLog.read(metaRef);
-  const rejectedContext = eventLog.buildRejectedContext(existingEvents);
+  const rejectedContext = eventLog.buildRejectedContextString(existingEvents);
 
   type IngRef = EntityRef | string | undefined;
   const ings = payload["ingredients"] as [IngRef, IngRef] | undefined;

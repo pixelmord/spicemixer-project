@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import RecipeForm from "./RecipeForm.tsx";
 import type { RecipeCollection } from "@/lib/content-store.ts";
-import { hashSuggestion, recordAiEvent, type AiEvent } from "content-ai";
+import { hashSuggestion, type AiEvent } from "content-ai";
 import type { SourceMeta } from "./AiComposeForm.tsx";
 
 interface Props {
@@ -38,26 +38,33 @@ export default function NewRecipePage({ collection }: Props) {
         const recipeName =
           typeof parsed.recipe.name === "string" ? parsed.recipe.name : "Imported recipe";
 
+        const at = new Date().toISOString();
         let aiEvents: AiEvent[];
         if (parsed.sourceMeta) {
-          aiEvents = recordAiEvent([], {
-            type: "ingested",
-            source: parsed.sourceMeta,
-            suggestion: {
-              hash: hashSuggestion({ hash: parsed.sourceMeta.hash }),
-              summary: recipeName,
-            },
-            model: "ai-extraction",
-            traceId: parsed.sourceMeta.traceId,
-          });
+          aiEvents = [
+            {
+              type: "ingested",
+              source: parsed.sourceMeta,
+              suggestion: {
+                hash: hashSuggestion({ hash: parsed.sourceMeta.hash }),
+                summary: recipeName,
+              },
+              model: "ai-extraction",
+              traceId: parsed.sourceMeta.traceId,
+              at,
+            } as AiEvent,
+          ];
         } else if (sourceUrl.trim()) {
           // Legacy string-source format; new code should use structured sourceMeta
-          aiEvents = recordAiEvent([], {
-            type: "ingested",
-            source: sourceUrl,
-            suggestion: { hash: hashSuggestion({ url: sourceUrl }), summary: recipeName },
-            model: "recipe-ingestion",
-          });
+          aiEvents = [
+            {
+              type: "ingested",
+              source: sourceUrl,
+              suggestion: { hash: hashSuggestion({ url: sourceUrl }), summary: recipeName },
+              model: "recipe-ingestion",
+              at,
+            } as AiEvent,
+          ];
         } else {
           aiEvents = [];
         }

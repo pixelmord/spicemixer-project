@@ -21,7 +21,6 @@ import CapabilityLabel from "./CapabilityLabel.tsx";
 import {
   hashSuggestion,
   filterSuggestions,
-  recordAiEvent,
   isAllowedAutoApply,
   assertAutoApplyAllowed,
 } from "content-ai";
@@ -122,6 +121,12 @@ type ResultState =
 
 // ── Panel props ───────────────────────────────────────────────────────────────
 
+interface EntityRef {
+  collection: string;
+  locale?: string;
+  slug: string;
+}
+
 interface RecipePanelProps {
   mode: "recipe";
   snapshot: Record<string, unknown>;
@@ -130,6 +135,8 @@ interface RecipePanelProps {
   locale: "en" | "de";
   targetLocale: "en" | "de";
   aiEvents?: AiEvent[];
+  /** When provided, each accepted/rejected event is persisted immediately via aiRecordEvent. */
+  entityRef?: EntityRef;
   onRecordEvent?: (updatedEvents: AiEvent[]) => void;
   model?: string;
   onApplyIngredientLinks: (links: IngredientLinkProposal[]) => void;
@@ -145,6 +152,8 @@ interface IngredientPanelProps {
   locale: "en" | "de";
   targetLocale: "en" | "de";
   aiEvents?: AiEvent[];
+  /** When provided, each accepted/rejected event is persisted immediately via aiRecordEvent. */
+  entityRef?: EntityRef;
   onRecordEvent?: (updatedEvents: AiEvent[]) => void;
   model?: string;
   onApplyPairings: (pairings: PairingProposal[]) => void;
@@ -682,9 +691,17 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
   const aiEvents = props.aiEvents ?? [];
   const model = props.model ?? "ai-assist";
   const targetLocale = props.targetLocale;
+  const entityRef = props.entityRef;
 
   function emitEvent(params: Omit<AiEvent, "at">) {
-    const updated = recordAiEvent(aiEvents, params);
+    const at = new Date().toISOString();
+    const event: AiEvent = { ...params, at } as AiEvent;
+    // Persist via server action when entityRef is known (existing entities).
+    if (entityRef) {
+      void actions.aiRecordEvent({ ...entityRef, event: event as Record<string, unknown> });
+    }
+    // Also update local state so the UI reflects the change immediately.
+    const updated = [...aiEvents, event];
     props.onRecordEvent?.(updated);
   }
 

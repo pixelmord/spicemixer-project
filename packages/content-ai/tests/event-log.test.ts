@@ -1,8 +1,9 @@
 import { describe, expect, test } from "vite-plus/test";
-import { createAiEventLog } from "../src/event-log.ts";
+import { createAiEventLog, SidecarEventLog } from "../src/event-log.ts";
 import type { AiEventSidecar, MetaRef } from "../src/event-log.ts";
 import type { AiEvent } from "../src/schemas/ai-events.ts";
 import { hashContent, hashSuggestion } from "../src/hash.ts";
+import { isPrunable, planPrune } from "../src/events.ts";
 
 // ── fake sidecar ──────────────────────────────────────────────────────────────
 
@@ -43,6 +44,84 @@ function makeEvent(type: AiEvent["type"], field: string, hash: string): AiEvent 
     model: "test-model",
   };
 }
+
+// ── isPrunable ────────────────────────────────────────────────────────────────
+
+describe("isPrunable", () => {
+  test("returns true for auto-applied events", () => {
+    expect(isPrunable(makeEvent("auto-applied", "pairings", "abc"))).toBe(true);
+  });
+
+  test("returns true for accepted events", () => {
+    expect(isPrunable(makeEvent("accepted", "name", "abc"))).toBe(true);
+  });
+
+  test("returns false for rejected events", () => {
+    expect(isPrunable(makeEvent("rejected", "name", "abc"))).toBe(false);
+  });
+
+  test("returns false for ingested events", () => {
+    const ev: AiEvent = {
+      type: "ingested",
+      source: "https://example.com",
+      suggestion: { hash: "abc", summary: "imported" },
+      model: "recipe-ingestion",
+      at: "2026-01-01T00:00:00.000Z",
+    };
+    expect(isPrunable(ev)).toBe(false);
+  });
+});
+
+// ── planPrune ─────────────────────────────────────────────────────────────────
+
+describe("planPrune", () => {
+  test("returns events unchanged when at or below cap", () => {
+    const events = [makeEvent("accepted", "name", "abc"), makeEvent("rejected", "tags", "xyz")];
+    expect(planPrune(events, 10)).toHaveLength(2);
+  });
+
+  test("prunes oldest auto-applied first", () => {
+    const old = { ...makeEvent("auto-applied", "pairings", "old"), at: "2020-01-01T00:00:00.000Z" };
+    const recent = {
+      ...makeEvent("auto-applied", "pairings", "new"),
+      at: "2024-01-01T00:00:00.000Z",
+    };
+    const result = planPrune([old, recent], 1);
+    expect(result).toHaveLength(1);
+    expect(result[0].suggestion.hash).toBe("new");
+  });
+
+  test("rejected events survive planPrune regardless of cap", () => {
+    const rejected = Array.from({ length: 5 }, (_, i) => makeEvent("rejected", "name", `hash${i}`));
+    const autoApplied = Array.from({ length: 5 }, (_, i) =>
+      makeEvent("auto-applied", "pairings", `auto${i}`),
+    );
+    const result = planPrune([...rejected, ...autoApplied], 5);
+    // All 5 rejected survive; auto-applied are pruned to reach cap of 5
+    expect(result.filter((e) => e.type === "rejected")).toHaveLength(5);
+    expect(result).toHaveLength(5);
+  });
+
+  test("ingested events survive planPrune", () => {
+    const ingested: AiEvent = {
+      type: "ingested",
+      source: "https://example.com",
+      suggestion: { hash: "src", summary: "imported" },
+      model: "recipe-ingestion",
+      at: "2020-01-01T00:00:00.000Z",
+    };
+    const autoApplied = Array.from({ length: 5 }, (_, i) =>
+      makeEvent("auto-applied", "pairings", `auto${i}`),
+    );
+    const result = planPrune([ingested, ...autoApplied], 3);
+    expect(result.find((e) => e.type === "ingested")).toBeDefined();
+  });
+
+  test("uses default cap of 100 when capHint omitted", () => {
+    const events = Array.from({ length: 95 }, (_, i) => makeEvent("accepted", "name", `h${i}`));
+    expect(planPrune(events)).toHaveLength(95);
+  });
+});
 
 // ── read ──────────────────────────────────────────────────────────────────────
 
@@ -130,63 +209,166 @@ describe("AiEventLog.append", () => {
     const events = meta["aiEvents"] as AiEvent[];
     expect(events).toHaveLength(1);
   });
+
+  test("read after append returns the appended event", async () => {
+    const sidecar = makeSidecar();
+    const log = createAiEventLog(sidecar);
+    await log.append(REF, {
+      type: "accepted",
+      field: "description",
+      suggestion: { hash: "h1", summary: "desc" },
+      model: "m",
+    });
+    const events = await log.read(REF);
+    expect(events).toHaveLength(1);
+    expect(events[0].type).toBe("accepted");
+  });
 });
 
-// ── isSuppressed ──────────────────────────────────────────────────────────────
+// ── per-entity lock ───────────────────────────────────────────────────────────
 
-describe("AiEventLog.isSuppressed", () => {
-  test("returns false when no rejected events", () => {
-    const log = createAiEventLog(makeSidecar());
-    const events = [makeEvent("accepted", "name", "abc")];
-    expect(log.isSuppressed(events, "name", "abc")).toBe(false);
+describe("AiEventLog per-entity locking", () => {
+  test("concurrent appends for the same ref serialise — all events persisted", async () => {
+    const sidecar = makeSidecar();
+    const log = createAiEventLog(sidecar);
+
+    // Fire 5 concurrent appends for the same ref
+    await Promise.all(
+      Array.from({ length: 5 }, (_, i) =>
+        log.append(REF, {
+          type: "accepted",
+          field: "name",
+          suggestion: { hash: `h${i}`, summary: `event ${i}` },
+          model: "m",
+        }),
+      ),
+    );
+
+    const events = await log.read(REF);
+    expect(events).toHaveLength(5);
   });
 
-  test("returns true when a rejected event matches (field, hash)", () => {
-    const log = createAiEventLog(makeSidecar());
-    const events = [makeEvent("rejected", "summary", "xyz")];
-    expect(log.isSuppressed(events, "summary", "xyz")).toBe(true);
+  test("concurrent appends for different refs do not block each other", async () => {
+    const sidecar = makeSidecar();
+    const log = createAiEventLog(sidecar);
+    const ref2: MetaRef = { collection: "recipes", locale: "en", slug: "soup" };
+
+    await Promise.all([
+      log.append(REF, {
+        type: "accepted",
+        field: "name",
+        suggestion: { hash: "h1", summary: "x" },
+        model: "m",
+      }),
+      log.append(ref2, {
+        type: "accepted",
+        field: "name",
+        suggestion: { hash: "h2", summary: "y" },
+        model: "m",
+      }),
+    ]);
+
+    expect(await log.read(REF)).toHaveLength(1);
+    expect(await log.read(ref2)).toHaveLength(1);
+  });
+});
+
+// ── shouldSkip (suppression) ──────────────────────────────────────────────────
+
+describe("AiEventLog.shouldSkip (suppression)", () => {
+  test("returns false when no rejected events", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(REF, { aiEvents: [makeEvent("accepted", "name", "abc")] });
+    const log = createAiEventLog(sidecar);
+    expect(await log.shouldSkip(REF, { fieldPath: "name", hash: "abc" })).toBe(false);
   });
 
-  test("returns false when field matches but hash differs", () => {
-    const log = createAiEventLog(makeSidecar());
-    const events = [makeEvent("rejected", "summary", "xyz")];
-    expect(log.isSuppressed(events, "summary", "aaa")).toBe(false);
+  test("returns true when a rejected event matches (fieldPath, hash)", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(REF, { aiEvents: [makeEvent("rejected", "summary", "xyz")] });
+    const log = createAiEventLog(sidecar);
+    expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "xyz" })).toBe(true);
   });
 
-  test("returns false when hash matches but field differs", () => {
-    const log = createAiEventLog(makeSidecar());
-    const events = [makeEvent("rejected", "name", "xyz")];
-    expect(log.isSuppressed(events, "summary", "xyz")).toBe(false);
+  test("returns false when field matches but hash differs", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(REF, { aiEvents: [makeEvent("rejected", "summary", "xyz")] });
+    const log = createAiEventLog(sidecar);
+    expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "aaa" })).toBe(false);
   });
 
-  test("suppression blocks re-suggestion of same hash on same field", () => {
-    const log = createAiEventLog(makeSidecar());
+  test("returns false when hash matches but fieldPath differs", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(REF, { aiEvents: [makeEvent("rejected", "name", "xyz")] });
+    const log = createAiEventLog(sidecar);
+    expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "xyz" })).toBe(false);
+  });
+
+  test("suppression filter blocks fingerprint-matched inputs", async () => {
+    const sidecar = makeSidecar();
     const hash = hashSuggestion({ slug: "cumin", pairingSlug: "caraway" });
-    const events = [makeEvent("rejected", "pairings", hash)];
-    expect(log.isSuppressed(events, "pairings", hash)).toBe(true);
+    await sidecar.write(REF, { aiEvents: [makeEvent("rejected", "pairings", hash)] });
+    const log = createAiEventLog(sidecar);
+    expect(await log.shouldSkip(REF, { fieldPath: "pairings", hash })).toBe(true);
   });
 });
 
-// ── buildRejectedContext ──────────────────────────────────────────────────────
+// ── buildRejectedContext (ref-based) ──────────────────────────────────────────
 
-describe("AiEventLog.buildRejectedContext", () => {
+describe("AiEventLog.buildRejectedContext (ref-based)", () => {
+  test("returns empty array when no rejected events", async () => {
+    const log = createAiEventLog(makeSidecar());
+    const result = await log.buildRejectedContext(REF);
+    expect(result).toEqual([]);
+  });
+
+  test("returns structured items for rejected events", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(REF, { aiEvents: [makeEvent("rejected", "description", "h1")] });
+    const log = createAiEventLog(sidecar);
+    const result = await log.buildRejectedContext(REF);
+    expect(result).toHaveLength(1);
+    expect(result[0].fieldPath).toBe("description");
+    expect(result[0].summary).toMatch("description h1");
+    expect(result[0].at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  test("excludes non-rejected events", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(REF, {
+      aiEvents: [
+        makeEvent("accepted", "name", "h1"),
+        makeEvent("rejected", "tags", "h2"),
+        makeEvent("auto-applied", "pairings", "h3"),
+      ],
+    });
+    const log = createAiEventLog(sidecar);
+    const result = await log.buildRejectedContext(REF);
+    expect(result).toHaveLength(1);
+    expect(result[0].fieldPath).toBe("tags");
+  });
+});
+
+// ── buildRejectedContextString (convenience) ──────────────────────────────────
+
+describe("AiEventLog.buildRejectedContextString (sync convenience)", () => {
   test("returns empty string when no rejected events", () => {
     const log = createAiEventLog(makeSidecar());
-    expect(log.buildRejectedContext([])).toBe("");
+    expect(log.buildRejectedContextString([])).toBe("");
   });
 
   test("formats rejected events into a context string", () => {
     const log = createAiEventLog(makeSidecar());
     const events = [makeEvent("rejected", "name", "abc")];
-    const ctx = log.buildRejectedContext(events);
+    const ctx = log.buildRejectedContextString(events);
     expect(ctx).toContain("Previously rejected");
     expect(ctx).toContain("name");
   });
 });
 
-// ── shouldSkip ────────────────────────────────────────────────────────────────
+// ── checkFingerprint ──────────────────────────────────────────────────────────
 
-describe("AiEventLog.shouldSkip", () => {
+describe("SidecarEventLog.checkFingerprint", () => {
   const INPUTS = {
     recipe: { name: "Miso Butter Ramen" },
     missingFields: ["description"],
@@ -211,14 +393,14 @@ describe("AiEventLog.shouldSkip", () => {
   test("returns skip:false when no cached suggestions", async () => {
     const sidecar = makeSidecar();
     const log = createAiEventLog(sidecar);
-    const result = await log.shouldSkip(REF, INPUTS);
+    const result = await log.checkFingerprint(REF, INPUTS);
     expect(result.skip).toBe(false);
   });
 
   test("returns the computed fingerprint when skip:false", async () => {
     const sidecar = makeSidecar();
     const log = createAiEventLog(sidecar);
-    const result = await log.shouldSkip(REF, INPUTS);
+    const result = await log.checkFingerprint(REF, INPUTS);
     if (result.skip) throw new Error("unexpected skip");
     expect(result.fingerprint).toBe(expectedFingerprint());
   });
@@ -228,7 +410,7 @@ describe("AiEventLog.shouldSkip", () => {
     const sidecar = makeSidecar();
     await sidecar.write(REF, { aiEvents: [event] });
     const log = createAiEventLog(sidecar);
-    const result = await log.shouldSkip(REF, INPUTS);
+    const result = await log.checkFingerprint(REF, INPUTS);
     if (result.skip) throw new Error("unexpected skip");
     expect(result.existingEvents).toEqual([event]);
   });
@@ -241,7 +423,7 @@ describe("AiEventLog.shouldSkip", () => {
       aiSuggestions: { fingerprint, data: cachedData },
     });
     const log = createAiEventLog(sidecar);
-    const result = await log.shouldSkip(REF, INPUTS);
+    const result = await log.checkFingerprint(REF, INPUTS);
     expect(result.skip).toBe(true);
     if (!result.skip) throw new Error("expected skip");
     expect(result.cachedSuggestion).toEqual(cachedData);
@@ -255,7 +437,7 @@ describe("AiEventLog.shouldSkip", () => {
       aiSuggestions: { fingerprint, data: { improvements: [] } },
     });
     const log = createAiEventLog(sidecar);
-    const result = await log.shouldSkip(REF, INPUTS, true);
+    const result = await log.checkFingerprint(REF, INPUTS, true);
     expect(result.skip).toBe(false);
   });
 
@@ -263,23 +445,21 @@ describe("AiEventLog.shouldSkip", () => {
     const sidecar = makeSidecar();
     const fingerprintBefore = expectedFingerprint();
 
-    // Cached with the old fingerprint (no rejected events)
     await sidecar.write(REF, {
       aiSuggestions: { fingerprint: fingerprintBefore, data: { improvements: [] } },
     });
 
     const log = createAiEventLog(sidecar);
-    const resultBefore = await log.shouldSkip(REF, INPUTS);
+    const resultBefore = await log.checkFingerprint(REF, INPUTS);
     expect(resultBefore.skip).toBe(true);
 
-    // Now add a rejected event — fingerprint must change
     const rejectedEvent = makeEvent("rejected", "summary", "def789");
     await sidecar.write(REF, {
       aiEvents: [rejectedEvent],
       aiSuggestions: { fingerprint: fingerprintBefore, data: { improvements: [] } },
     });
 
-    const resultAfter = await log.shouldSkip(REF, INPUTS);
+    const resultAfter = await log.checkFingerprint(REF, INPUTS);
     expect(resultAfter.skip).toBe(false);
     if (resultAfter.skip) throw new Error("expected no skip");
     expect(resultAfter.fingerprint).not.toBe(fingerprintBefore);
@@ -289,17 +469,17 @@ describe("AiEventLog.shouldSkip", () => {
   test("missingFields order does not affect fingerprint", async () => {
     const sidecar = makeSidecar();
     const log = createAiEventLog(sidecar);
-    const r1 = await log.shouldSkip(REF, { ...INPUTS, missingFields: ["a", "b"] });
-    const r2 = await log.shouldSkip(REF, { ...INPUTS, missingFields: ["b", "a"] });
+    const r1 = await log.checkFingerprint(REF, { ...INPUTS, missingFields: ["a", "b"] });
+    const r2 = await log.checkFingerprint(REF, { ...INPUTS, missingFields: ["b", "a"] });
     if (r1.skip || r2.skip) throw new Error("unexpected skip");
     expect(r1.fingerprint).toBe(r2.fingerprint);
   });
 });
 
-// ── integration: append + shouldSkip ─────────────────────────────────────────
+// ── integration: append + checkFingerprint ────────────────────────────────────
 
-describe("AiEventLog integration: append then shouldSkip", () => {
-  test("append preserves aiSuggestions cache so shouldSkip can still find it", async () => {
+describe("SidecarEventLog integration: append then checkFingerprint", () => {
+  test("append preserves aiSuggestions cache so checkFingerprint can still find it", async () => {
     const sidecar = makeSidecar();
     const log = createAiEventLog(sidecar);
     const INPUTS = {
@@ -309,18 +489,15 @@ describe("AiEventLog integration: append then shouldSkip", () => {
       model: "m",
     };
 
-    // Seed a valid cache
-    const rejectedHashes: string[] = [];
     const fingerprint = hashContent({
       recipe: INPUTS.recipe,
       missingFields: [],
       locale: "en",
       model: "m",
-      rejectedHashes,
+      rejectedHashes: [],
     });
     await sidecar.write(REF, { aiSuggestions: { fingerprint, data: { tags: [] } } });
 
-    // append an auto-applied event (should preserve aiSuggestions)
     await log.append(REF, {
       type: "auto-applied",
       field: "pairings",
@@ -328,8 +505,16 @@ describe("AiEventLog integration: append then shouldSkip", () => {
       model: "m",
     });
 
-    // shouldSkip should still find the cached fingerprint
-    const result = await log.shouldSkip(REF, INPUTS);
+    const result = await log.checkFingerprint(REF, INPUTS);
     expect(result.skip).toBe(true);
+  });
+});
+
+// ── type-check: SidecarEventLog implements AiEventLog ────────────────────────
+
+describe("SidecarEventLog satisfies AiEventLog interface", () => {
+  test("createAiEventLog returns a SidecarEventLog", () => {
+    const log = createAiEventLog(makeSidecar());
+    expect(log).toBeInstanceOf(SidecarEventLog);
   });
 });

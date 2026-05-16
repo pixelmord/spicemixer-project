@@ -29,10 +29,38 @@ export type SkipResult =
   | { skip: false; fingerprint: string; existingEvents: AiEvent[] };
 
 /**
- * Owns the read-modify-write cycle for the per-entity AI event log (ADR 0004).
- * Accepts an AiEventSidecar for storage — wire up via createAiEventLog(sidecar).
+ * Public interface for the per-entity AI event log (ADR 0004).
+ * All AI event interactions should flow through an AiEventLog instance.
+ *
+ * Concurrency contract: append is serialisable per entityRef — concurrent
+ * appends for the same ref are queued so read-prune-write cycles cannot race.
+ * Appends for different refs are independent and may run in parallel.
  */
-export class AiEventLog {
+export interface AiEventLog {
+  read(ref: MetaRef): Promise<AiEvent[]>;
+  /** Stamps `at` with the current ISO timestamp. */
+  append(ref: MetaRef, event: Omit<AiEvent, "at">): Promise<void>;
+  /** Returns true if a rejected event exists for this exact (fieldPath, hash) pair. */
+  shouldSkip(ref: MetaRef, input: { fieldPath: string; hash: string }): Promise<boolean>;
+  /** Returns structured rejected-event context for building prompt injections. */
+  buildRejectedContext(
+    ref: MetaRef,
+  ): Promise<Array<{ fieldPath: string; summary: string; at: string; reason?: string }>>;
+}
+
+function refKey(ref: MetaRef): string {
+  return `${ref.collection}/${ref.locale ?? "_"}/${ref.slug}`;
+}
+
+// Per-entity serialization map: value is the tail of the promise chain for that key.
+// Allows concurrent appends across different entities while serialising within one.
+const pendingAppends = new Map<string, Promise<void>>();
+
+/**
+ * SidecarEventLog implements AiEventLog over an AiEventSidecar + fingerprint cache.
+ * Use createAiEventLog(sidecar) to construct.
+ */
+export class SidecarEventLog implements AiEventLog {
   #sidecar: AiEventSidecar;
 
   constructor(sidecar: AiEventSidecar) {
@@ -52,23 +80,51 @@ export class AiEventLog {
     return (await this.#readMeta(ref)).events;
   }
 
-  /** Stamps `at` with the current ISO timestamp. */
-  async append(ref: MetaRef, event: Omit<AiEvent, "at">): Promise<void> {
+  /**
+   * Serialise appends per entity: chains onto the pending promise for this ref
+   * so concurrent callers don't race on the same read-prune-write cycle.
+   */
+  append(ref: MetaRef, event: Omit<AiEvent, "at">): Promise<void> {
+    const key = refKey(ref);
+    const prev = pendingAppends.get(key) ?? Promise.resolve();
+    const next = prev.then(() => this.#doAppend(ref, event));
+    const tracked = next.finally(() => {
+      if (pendingAppends.get(key) === tracked) pendingAppends.delete(key);
+    });
+    pendingAppends.set(key, tracked);
+    return next;
+  }
+
+  async #doAppend(ref: MetaRef, event: Omit<AiEvent, "at">): Promise<void> {
     const { meta, events } = await this.#readMeta(ref);
     const updatedEvents = recordAiEvent(events, event);
     await this.#sidecar.write(ref, { ...meta, aiEvents: updatedEvents });
   }
 
-  isSuppressed(events: AiEvent[], field: string, hash: string): boolean {
-    return isSuppressed(events, field, hash);
+  async shouldSkip(ref: MetaRef, input: { fieldPath: string; hash: string }): Promise<boolean> {
+    const events = await this.read(ref);
+    return isSuppressed(events, input.fieldPath, input.hash);
   }
 
-  buildRejectedContext(events: AiEvent[]): string {
-    return buildRejectedContext(events);
+  async buildRejectedContext(
+    ref: MetaRef,
+  ): Promise<Array<{ fieldPath: string; summary: string; at: string; reason?: string }>> {
+    const events = await this.read(ref);
+    return events
+      .filter((e) => e.type === "rejected")
+      .map((e) => ({ fieldPath: e.field ?? "entity", summary: e.suggestion.summary, at: e.at }));
   }
 
-  // Rejected-event hashes feed the fingerprint so new rejections bust the cache.
-  async shouldSkip(ref: MetaRef, inputs: FingerprintInputs, force = false): Promise<SkipResult> {
+  /**
+   * Fingerprint cache check — not on the AiEventLog interface; used by the recipe
+   * runner to short-circuit repeated suggestion fetches when inputs haven't changed.
+   * Rejected-event hashes are folded into the fingerprint so new rejections bust the cache.
+   */
+  async checkFingerprint(
+    ref: MetaRef,
+    inputs: FingerprintInputs,
+    force = false,
+  ): Promise<SkipResult> {
     const { meta, events: existingEvents } = await this.#readMeta(ref);
 
     const rejectedHashes = existingEvents
@@ -95,8 +151,13 @@ export class AiEventLog {
 
     return { skip: false, fingerprint, existingEvents };
   }
+
+  /** Convenience: build the string rejected-context used by proposer prompts. */
+  buildRejectedContextString(events: AiEvent[]): string {
+    return buildRejectedContext(events);
+  }
 }
 
-export function createAiEventLog(sidecar: AiEventSidecar): AiEventLog {
-  return new AiEventLog(sidecar);
+export function createAiEventLog(sidecar: AiEventSidecar): SidecarEventLog {
+  return new SidecarEventLog(sidecar);
 }

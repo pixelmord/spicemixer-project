@@ -27,7 +27,7 @@ import {
 } from "@/lib/pairings.ts";
 import { saveEntity as libSaveEntity } from "@/lib/save-entity.ts";
 import { NotFoundError } from "@/lib/errors.ts";
-import { AiError, withOrigin, entityMeta, type AiEvent } from "content-ai";
+import { AiError, withOrigin, entityMeta, SidecarEventLog, hashSuggestion } from "content-ai";
 import { createSourceStore } from "@/lib/stores/source-store.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -350,30 +350,23 @@ export const server = {
     handler: async ({ collection, slug, locale, recipe, meta, aiMergeModel, traceId }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      let finalMeta = meta;
-      if (aiMergeModel) {
-        const { recordAiEvent, hashSuggestion } = await import("content-ai");
-        const storedMeta = await entityMeta.read(sidecar, { collection, locale, slug });
-        const base: Record<string, unknown> = meta ?? { ...storedMeta };
-        const existingEvents: AiEvent[] = Array.isArray(base["aiEvents"])
-          ? (base["aiEvents"] as AiEvent[])
-          : storedMeta.aiEvents;
-        const updatedEvents = recordAiEvent(existingEvents, {
-          type: "accepted",
-          suggestion: {
-            hash: hashSuggestion(recipe),
-            summary: "AI-merged recipe accepted",
-          },
-          model: aiMergeModel,
-          traceId,
-        });
-        finalMeta = { ...base, aiEvents: updatedEvents };
-      }
       await libSaveEntity(store, sidecar, {
         ref: { collection, locale, slug },
         content: recipe,
-        meta: finalMeta,
+        meta,
       });
+      if (aiMergeModel) {
+        const eventLog = new SidecarEventLog(sidecar);
+        await eventLog.append(
+          { collection, locale, slug },
+          {
+            type: "accepted",
+            suggestion: { hash: hashSuggestion(recipe), summary: "AI-merged recipe accepted" },
+            model: aiMergeModel,
+            traceId,
+          },
+        );
+      }
       return { ok: true, slug };
     },
   }),
@@ -392,34 +385,26 @@ export const server = {
     handler: async ({ locale, slug, ingredient, meta, aiMergeModel, traceId }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      let finalMeta = meta;
-      if (aiMergeModel) {
-        const { recordAiEvent, hashSuggestion } = await import("content-ai");
-        const storedMeta = await entityMeta.read(sidecar, {
-          collection: "ingredients",
-          locale,
-          slug,
-        });
-        const base: Record<string, unknown> = meta ?? { ...storedMeta };
-        const existingEvents: AiEvent[] = Array.isArray(base["aiEvents"])
-          ? (base["aiEvents"] as AiEvent[])
-          : storedMeta.aiEvents;
-        const updatedEvents = recordAiEvent(existingEvents, {
-          type: "accepted",
-          suggestion: {
-            hash: hashSuggestion(ingredient),
-            summary: "AI-merged ingredient accepted",
-          },
-          model: aiMergeModel,
-          traceId,
-        });
-        finalMeta = { ...base, aiEvents: updatedEvents };
-      }
       await libSaveEntity(store, sidecar, {
         ref: { collection: "ingredients", locale, slug },
         content: ingredient,
-        meta: finalMeta,
+        meta,
       });
+      if (aiMergeModel) {
+        const eventLog = new SidecarEventLog(sidecar);
+        await eventLog.append(
+          { collection: "ingredients", locale, slug },
+          {
+            type: "accepted",
+            suggestion: {
+              hash: hashSuggestion(ingredient),
+              summary: "AI-merged ingredient accepted",
+            },
+            model: aiMergeModel,
+            traceId,
+          },
+        );
+      }
       return { ok: true, slug };
     },
   }),
@@ -465,20 +450,20 @@ export const server = {
         meta: draft !== undefined ? { draft } : undefined,
       });
       if (aiMergeModel) {
-        const { recordAiEvent, hashSuggestion } = await import("content-ai");
-        const pairingRef = { collection: "pairings" as const, slug: id };
-        const storedMeta = await entityMeta.read(sidecar, pairingRef);
-        const updatedEvents = recordAiEvent(storedMeta.aiEvents, {
-          type: "accepted",
-          field: "description",
-          suggestion: {
-            hash: hashSuggestion({ description, locale }),
-            summary: `AI-enhanced pairing description (${locale}) accepted`,
+        const eventLog = new SidecarEventLog(sidecar);
+        await eventLog.append(
+          { collection: "pairings", slug: id },
+          {
+            type: "accepted",
+            field: "description",
+            suggestion: {
+              hash: hashSuggestion({ description, locale }),
+              summary: `AI-enhanced pairing description (${locale}) accepted`,
+            },
+            model: aiMergeModel,
+            traceId,
           },
-          model: aiMergeModel,
-          traceId,
-        });
-        await entityMeta.merge(sidecar, pairingRef, { aiEvents: updatedEvents });
+        );
       }
       return { ok: true, id };
     },
@@ -1416,6 +1401,30 @@ export const server = {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
       await libSaveIngredientMeta(sidecar, { locale, slug, patch });
+      return { ok: true };
+    },
+  }),
+
+  /**
+   * Append a single AI event to an entity's meta sidecar via SidecarEventLog.
+   * Used by client components that cannot access the sidecar directly.
+   */
+  aiRecordEvent: defineAction({
+    accept: "json",
+    input: z.object({
+      collection: z.string().min(1),
+      locale: z.string().length(2).optional(),
+      slug: z.string().min(1),
+      event: z.record(z.string(), z.unknown()),
+    }),
+    handler: async ({ collection, locale, slug, event }) => {
+      const store = await createStore();
+      const sidecar = createMetaSidecar(store);
+      const eventLog = new SidecarEventLog(sidecar);
+      await eventLog.append(
+        { collection, locale, slug },
+        event as Parameters<typeof eventLog.append>[1],
+      );
       return { ok: true };
     },
   }),

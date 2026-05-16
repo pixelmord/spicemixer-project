@@ -2,11 +2,16 @@ import type { AiEvent } from "./schemas/ai-events.ts";
 
 const MAX_EVENTS = 100;
 
-// Priority: oldest auto-applied pruned first, then oldest accepted. Rejected/ingested are never pruned.
-export function prune(events: AiEvent[]): AiEvent[] {
-  if (events.length <= MAX_EVENTS) return events;
+// rejected and ingested are never prunable — ADR 0004 "never re-surface rejected" invariant.
+export function isPrunable(event: AiEvent): boolean {
+  return event.type !== "rejected" && event.type !== "ingested";
+}
 
-  const excess = events.length - MAX_EVENTS;
+// Priority: oldest auto-applied pruned first, then oldest accepted. Rejected/ingested are never pruned.
+export function planPrune(events: AiEvent[], capHint = MAX_EVENTS): AiEvent[] {
+  if (events.length <= capHint) return events;
+
+  const excess = events.length - capHint;
 
   const autoApplied = events
     .filter((e) => e.type === "auto-applied")
@@ -17,6 +22,11 @@ export function prune(events: AiEvent[]): AiEvent[] {
 
   const removeSet = new Set([...autoApplied, ...accepted].slice(0, excess));
   return events.filter((e) => !removeSet.has(e));
+}
+
+// Priority: oldest auto-applied pruned first, then oldest accepted. Rejected/ingested are never pruned.
+export function prune(events: AiEvent[]): AiEvent[] {
+  return planPrune(events, MAX_EVENTS);
 }
 
 export function isSuppressed(events: AiEvent[], field: string, hash: string): boolean {

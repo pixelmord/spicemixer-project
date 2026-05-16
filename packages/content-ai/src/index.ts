@@ -64,8 +64,14 @@ export type { MergeSource, MergeRecipeInput, MergeRecipeResult } from "./merge-r
 export { AiError } from "./errors.ts";
 export type { AiErrorCode, AiErrorDetails } from "./errors.ts";
 
-export { AiEventLog, createAiEventLog } from "./event-log.ts";
-export type { AiEventSidecar, MetaRef, FingerprintInputs, SkipResult } from "./event-log.ts";
+export { SidecarEventLog, createAiEventLog } from "./event-log.ts";
+export type {
+  AiEventLog,
+  AiEventSidecar,
+  MetaRef,
+  FingerprintInputs,
+  SkipResult,
+} from "./event-log.ts";
 
 export { searchImages } from "./search-images.ts";
 export type { ImageResult, SearchImagesOptions } from "./search-images.ts";
@@ -79,6 +85,8 @@ export { ALLOWLIST, isAllowedAutoApply, assertAutoApplyAllowed } from "./auto-ap
 export type { AutoApplyKind, Confidence } from "./auto-apply.ts";
 
 export {
+  isPrunable,
+  planPrune,
   prune,
   isSuppressed,
   filterSuggestions,
