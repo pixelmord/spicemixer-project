@@ -1,4 +1,7 @@
-const JSDOM_PATH = "file:///home/agent/workspace/apps/registry/node_modules/jsdom/lib/api.js";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+
+const JSDOM_PATH = pathToFileURL(createRequire(import.meta.url).resolve("jsdom")).href;
 const VIRTUAL_URL = "file:///jsdom-virtual-shim.mjs";
 
 export async function resolve(specifier, context, nextResolve) {
