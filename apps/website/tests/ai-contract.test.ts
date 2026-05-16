@@ -107,31 +107,10 @@ vi.mock("recipe-ingestion", () => ({
 vi.mock("content-ai", async (importOriginal) => {
   const actual = await importOriginal<typeof import("content-ai")>();
   return {
-    aiEventSchema: actual.aiEventSchema,
-    entityMeta: actual.entityMeta,
-    recordAiEvent: actual.recordAiEvent,
-    hashSuggestion: actual.hashSuggestion,
-    hashContent: actual.hashContent,
-    buildRejectedContext: actual.buildRejectedContext,
-    isAllowedAutoApply: actual.isAllowedAutoApply,
-    assertAutoApplyAllowed: actual.assertAutoApplyAllowed,
-    createAiEventLog: actual.createAiEventLog,
-    withOrigin: actual.withOrigin,
-    runWithOrigin: actual.runWithOrigin,
-    getCurrentOrigin: actual.getCurrentOrigin,
-    subscribe: actual.subscribe,
-    publish: actual.publish,
-    proposeRecipeImprovements: vi.fn().mockResolvedValue({ fields: [] }),
-    proposeTags: vi.fn().mockResolvedValue({ tags: [] }),
-    proposeIngredientLinks: vi.fn().mockResolvedValue([]),
-    proposeRelations: vi.fn().mockResolvedValue([]),
-    detectLanguage: vi.fn().mockResolvedValue(null),
-    proposeIngredientImprovements: vi.fn().mockResolvedValue({ fields: [] }),
-    proposeIngredientPairings: vi.fn().mockResolvedValue([]),
-    proposeIngredientTranslation: vi.fn().mockResolvedValue({ fields: {} }),
-    proposeRecipeTranslation: vi.fn().mockResolvedValue({ fields: {} }),
-    proposePairingImprovements: vi.fn().mockResolvedValue({ fields: [] }),
-    proposePairingTranslation: vi.fn().mockResolvedValue({ fields: {} }),
+    ...actual,
+    translateIngredientFields: vi.fn().mockResolvedValue({ targetLocale: "de", fields: {} }),
+    translateRecipeFields: vi.fn().mockResolvedValue({ targetLocale: "de", fields: {} }),
+    translatePairingDescription: vi.fn().mockResolvedValue({ targetLocale: "de", fields: {} }),
     extractRecipeFromFile: vi.fn().mockResolvedValue({}),
     extractIngredientFromFile: vi.fn().mockResolvedValue({}),
     extractPairingFromFile: vi.fn().mockResolvedValue({}),
@@ -140,7 +119,19 @@ vi.mock("content-ai", async (importOriginal) => {
     mergeIngredient: vi.fn().mockResolvedValue({}),
     mergePairing: vi.fn().mockResolvedValue({}),
     searchImages: vi.fn().mockResolvedValue([]),
-    proposeSlug: vi.fn().mockResolvedValue({ slug: "test-slug" }),
+  };
+});
+
+// Stub runRefine (content-ai-refine) to avoid network calls in integration tests.
+vi.mock("content-ai-refine", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("content-ai-refine")>();
+  return {
+    ...actual,
+    runRefine: vi.fn().mockResolvedValue({
+      suggestions: new Map(),
+      autoApplied: new Map(),
+      traces: new Map(),
+    }),
   };
 });
 
@@ -301,8 +292,17 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
   });
 
   test("aiRefreshSuggestions records an aiEvent when auto-apply fires", async () => {
-    const contentAi = await import("content-ai");
-    vi.mocked(contentAi.detectLanguage).mockResolvedValue({ language: "en" } as never);
+    const refine = await import("content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map(),
+      autoApplied: new Map([
+        [
+          "language",
+          { value: "en", hash: "h1", summary: "language: en", confidence: "high" as const },
+        ],
+      ]),
+      traces: new Map(),
+    });
 
     const handler = await getHandler("aiRefreshSuggestions");
     await handler({
@@ -331,10 +331,24 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
   });
 
   test("aiRefreshIngredientSuggestions writes a pairing to the store and records an aiEvent when auto-apply fires", async () => {
-    const contentAi = await import("content-ai");
-    vi.mocked(contentAi.proposeIngredientPairings).mockResolvedValue([
-      { slug: "cumin", description: "Fragrant pair", confidence: "high" } as never,
-    ]);
+    const refine = await import("content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "pairings",
+          {
+            kind: "single" as const,
+            value: [{ slug: "cumin", description: "Fragrant pair", confidence: "high" as const }],
+            confidence: "high" as const,
+            summary: "pairings: [1 items]",
+            hash: "abc123",
+            traceId: "trace-1",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
 
     await mockStore.put("ingredients", "en/cumin", { name: "Cumin" });
 

@@ -1,12 +1,4 @@
 import {
-  proposeIngredientImprovements,
-  proposeIngredientPairings,
-  proposeRecipeImprovements,
-  proposeTags,
-  proposeIngredientLinks,
-  proposeRelations,
-  proposePairingImprovements,
-  detectLanguage,
   isAllowedAutoApply,
   assertAutoApplyAllowed,
   hashSuggestion,
@@ -14,7 +6,12 @@ import {
   getCurrentOrigin,
   publish,
 } from "content-ai";
-import type { AiConfig, AiEventSidecar, MetaRef, SidecarEventLog } from "content-ai";
+import type { AiConfig, AiEventSidecar, MetaRef, SidecarEventLog, Confidence } from "content-ai";
+import { runRefine } from "content-ai-refine";
+import type { AiEvent as RefineAiEvent } from "content-ai-refine";
+import { ingredientContract } from "@/contracts/ingredientContract.ts";
+import { recipeContract } from "@/contracts/recipeContract.ts";
+import { pairingContract } from "@/contracts/pairingContract.ts";
 import type { EntityKind } from "entity-kind";
 import type { ContentStore } from "@/lib/content-store.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
@@ -86,7 +83,6 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
   } = input;
 
   const existingEvents = await eventLog.read(metaRef);
-  const rejectedContext = eventLog.buildRejectedContextString(existingEvents);
 
   const ingredientItems = await store.list("ingredients");
   const inventory = ingredientItems
@@ -100,31 +96,41 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
     });
 
   const fieldsForAi = missingFields.filter((f) => f !== "image");
+  const targetFields = [
+    ...fieldsForAi,
+    ...(inventory.length ? ["pairings"] : []),
+    ...(!existingMeta["locale"] ? ["language"] : []),
+  ];
 
-  const [improvementsResult, pairingsResult, langResult] = await Promise.allSettled([
-    fieldsForAi.length
-      ? proposeIngredientImprovements(payload as never, fieldsForAi, config, rejectedContext)
-      : Promise.resolve({ fields: [] }),
-    inventory.length
-      ? proposeIngredientPairings(payload as never, inventory, config, rejectedContext)
-      : Promise.resolve([]),
-    !existingMeta["locale"]
-      ? detectLanguage(
-          [payload["name"], payload["summary"], payload["description"]]
-            .filter(Boolean)
-            .map(String)
-            .join(" — "),
-          config,
-        )
-      : Promise.resolve(null),
-  ]);
+  const { suggestions, autoApplied } = await runRefine({
+    contract: ingredientContract,
+    currentData: payload as never,
+    sourceContext: { inventory, locale },
+    target: targetFields,
+    events: existingEvents as unknown as RefineAiEvent[],
+    config,
+  });
 
-  const rawImprovements =
-    improvementsResult.status === "fulfilled" ? improvementsResult.value.fields : [];
-  const filteredImprovements = filterImprovements(rawImprovements);
-  const proposedPairings = pairingsResult.status === "fulfilled" ? pairingsResult.value : [];
-  const detectedLanguage =
-    langResult.status === "fulfilled" && langResult.value ? langResult.value.language : undefined;
+  const rawImprovements = fieldsForAi
+    .filter((f) => suggestions.has(f))
+    .map((f) => {
+      const sugg = suggestions.get(f)!;
+      return { field: f, suggestion: sugg.kind === "single" ? sugg.value : undefined };
+    });
+  const filteredImprovements = filterImprovements(
+    rawImprovements as Array<{ field: string; suggestion: unknown }>,
+  );
+
+  const pairingsSugg = suggestions.get("pairings");
+  const proposedPairings =
+    pairingsSugg?.kind === "single"
+      ? (pairingsSugg.value as Array<{ slug: string; description: string; confidence: Confidence }>)
+      : [];
+
+  const langApplied = autoApplied.get("language");
+  const langSugg = suggestions.get("language");
+  const detectedLanguage = (langApplied?.value ??
+    (langSugg?.kind === "single" ? langSugg.value : undefined)) as string | undefined;
   const languageMismatch = !!(detectedLanguage && detectedLanguage !== locale);
 
   const aiSuggestions = {
@@ -211,7 +217,6 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
   }
 
   const { fingerprint, existingEvents } = skipResult;
-  const rejectedContext = eventLog.buildRejectedContextString(existingEvents);
 
   const ingredientItems = await store.list("ingredients");
   const inventory = ingredientItems
@@ -250,44 +255,67 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     : [];
   const fieldsForAi = missingFields.filter((f) => f !== "image");
 
-  const [improvementsResult, tagsResult, linksResult, relationsResult, langResult] =
-    await Promise.allSettled([
-      fieldsForAi.length
-        ? withProgress("improvements", () =>
-            proposeRecipeImprovements(payload as never, fieldsForAi, config, rejectedContext),
-          )
-        : Promise.resolve({ fields: [] }),
-      withProgress("tags", () => proposeTags(payload as never, [], config, rejectedContext)),
-      recipeIngredients.length
-        ? withProgress("links", () =>
-            proposeIngredientLinks(recipeIngredients, inventory, config, rejectedContext),
-          )
-        : Promise.resolve([]),
-      withProgress("relations", () =>
-        proposeRelations(payload as never, existingRecipes, config, rejectedContext),
-      ),
-      !meta["language"]
-        ? withProgress("language", () =>
-            detectLanguage(
-              [payload["name"], payload["description"]].filter(Boolean).map(String).join(" — "),
-              config,
-            ),
-          )
-        : Promise.resolve(null),
-    ]);
+  const targetFields = [
+    ...fieldsForAi,
+    "keywords",
+    ...(recipeIngredients.length ? ["ingredientLinks"] : []),
+    ...(existingRecipes.length ? ["relations"] : []),
+    ...(!meta["language"] ? ["language"] : []),
+  ];
 
-  const rawImprovements =
-    improvementsResult.status === "fulfilled" ? improvementsResult.value.fields : [];
-  const filteredImprovements = filterImprovements(rawImprovements);
-  const detectedLanguage =
-    langResult.status === "fulfilled" && langResult.value ? langResult.value.language : undefined;
-  const ingredientLinks = linksResult.status === "fulfilled" ? linksResult.value : [];
+  const { suggestions, autoApplied } = await withProgress("refine", () =>
+    runRefine({
+      contract: recipeContract,
+      currentData: payload as never,
+      sourceContext: { inventory, existingTags: [], existingRecipes, locale },
+      target: targetFields,
+      events: existingEvents as unknown as RefineAiEvent[],
+      config,
+    }),
+  );
+
+  const rawImprovements = fieldsForAi
+    .filter((f) => suggestions.has(f))
+    .map((f) => {
+      const sugg = suggestions.get(f)!;
+      return { field: f, suggestion: sugg.kind === "single" ? sugg.value : undefined };
+    });
+  const filteredImprovements = filterImprovements(
+    rawImprovements as Array<{ field: string; suggestion: unknown }>,
+  );
+
+  const keywordsSugg = suggestions.get("keywords");
+  const tags =
+    keywordsSugg?.kind === "single" ? (keywordsSugg.value as string[]) : ([] as string[]);
+
+  const linksSugg = suggestions.get("ingredientLinks");
+  const ingredientLinks =
+    linksSugg?.kind === "single"
+      ? (linksSugg.value as Array<{ pattern: string; slug: string; confidence: Confidence }>)
+      : [];
+
+  const relationsSugg = suggestions.get("relations");
+  const relations =
+    relationsSugg?.kind === "single"
+      ? (relationsSugg.value as Array<{
+          kind: string;
+          collection: string;
+          slug: string;
+          name: string;
+          rationale: string;
+        }>)
+      : [];
+
+  const langApplied = autoApplied.get("language");
+  const langSugg = suggestions.get("language");
+  const detectedLanguage = (langApplied?.value ??
+    (langSugg?.kind === "single" ? langSugg.value : undefined)) as string | undefined;
 
   const aiSuggestions = {
     improvements: filteredImprovements,
-    tags: tagsResult.status === "fulfilled" ? tagsResult.value.tags : [],
+    tags,
     ingredientLinks,
-    relations: relationsResult.status === "fulfilled" ? relationsResult.value : [],
+    relations,
     detectedLanguage,
   };
 
@@ -344,7 +372,6 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     });
   }
 
-  // Re-read after appends so aiEvents in newMeta are current.
   const freshItem = await sidecar.read(metaRef);
   const freshMeta = (freshItem?.data as Record<string, unknown> | undefined) ?? meta;
   const newMeta: Record<string, unknown> = {
@@ -380,7 +407,6 @@ async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult
   const { metaRef, payload, locale, eventLog, config } = input;
 
   const existingEvents = await eventLog.read(metaRef);
-  const rejectedContext = eventLog.buildRejectedContextString(existingEvents);
 
   type IngRef = EntityRef | string | undefined;
   const ings = payload["ingredients"] as [IngRef, IngRef] | undefined;
@@ -396,15 +422,29 @@ async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult
     descriptions["en"] ??
     (typeof payload["description"] === "string" ? payload["description"] : "");
 
-  const improvements = await proposePairingImprovements(
-    { ingredient1: refSlug(ings?.[0]), ingredient2: refSlug(ings?.[1]), description },
-    locale,
+  const { suggestions } = await runRefine({
+    contract: pairingContract,
+    currentData: {
+      description,
+      ingredients: [refSlug(ings?.[0]), refSlug(ings?.[1])],
+    } as never,
+    sourceContext: { locale },
+    events: existingEvents as unknown as RefineAiEvent[],
     config,
-    rejectedContext,
-  );
+  });
+
+  const descSugg = suggestions.get("description");
+  const improvements = descSugg
+    ? [
+        {
+          field: "description",
+          suggestion: descSugg.kind === "single" ? descSugg.value : undefined,
+        },
+      ]
+    : [];
 
   return {
-    aiSuggestions: { [locale]: { improvements: improvements.fields } },
+    aiSuggestions: { [locale]: { improvements } },
     autoLinked: 0,
     skipped: false,
   };
