@@ -40,9 +40,18 @@ describe("registry.json", () => {
 });
 
 describe("r/ item files", () => {
-  test("r/__hello-world__.json exists and is valid JSON", async () => {
+  let item: {
+    name: string;
+    type: string;
+    files: Array<{ path: string; type: string; content: string }>;
+  };
+
+  beforeAll(async () => {
     const raw = await readFile(join(PUBLIC, "r", "__hello-world__.json"), "utf-8");
-    const item = JSON.parse(raw);
+    item = JSON.parse(raw);
+  });
+
+  test("__hello-world__ has valid structure", () => {
     expect(item).toMatchObject({
       name: "__hello-world__",
       type: expect.stringMatching(/^registry:/),
@@ -50,11 +59,7 @@ describe("r/ item files", () => {
     });
   });
 
-  test("r/__hello-world__.json files[0] has path, type, and non-empty content", async () => {
-    const raw = await readFile(join(PUBLIC, "r", "__hello-world__.json"), "utf-8");
-    const item = JSON.parse(raw) as {
-      files: Array<{ path: string; type: string; content: string }>;
-    };
+  test("__hello-world__ files[0] has path, type, and non-empty content", () => {
     const file = item.files[0];
     expect(file).toBeDefined();
     expect(typeof file.path).toBe("string");
@@ -63,20 +68,18 @@ describe("r/ item files", () => {
     expect(file.content.length).toBeGreaterThan(0);
   });
 
-  test("r/__hello-world__.json content exports a React component", async () => {
-    const raw = await readFile(join(PUBLIC, "r", "__hello-world__.json"), "utf-8");
-    const item = JSON.parse(raw) as { files: Array<{ content: string }> };
+  test("__hello-world__ content exports a React component", () => {
     const content = item.files[0]?.content ?? "";
     expect(content).toContain("export function");
     expect(content).toMatch(/className|class/);
   });
 
-  test("all registry.json items have a corresponding r/<name>.json file", async () => {
+  test("every manifest item has a corresponding r/<name>.json file", async () => {
     const registryRaw = await readFile(join(PUBLIC, "registry.json"), "utf-8");
     const { items } = JSON.parse(registryRaw) as { items: Array<{ name: string }> };
     const rFiles = await readdir(join(PUBLIC, "r"));
-    for (const item of items) {
-      expect(rFiles).toContain(`${item.name}.json`);
+    for (const entry of items) {
+      expect(rFiles).toContain(`${entry.name}.json`);
     }
   });
 });
