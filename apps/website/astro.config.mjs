@@ -88,7 +88,14 @@ export default defineConfig({
     resolve: {
       alias: {
         "@": "/src",
-        "content-ai-ingest": join(__dirname, "../../packages/content-ai-ingest/src/index.ts"),
+        "@pixelmord/content-ai-ingest": join(
+          __dirname,
+          "../../packages/content-ai-ingest/src/index.ts",
+        ),
+        "@pixelmord/content-ai-refine": join(
+          __dirname,
+          "../../packages/content-ai-refine/src/index.ts",
+        ),
       },
     },
   },

@@ -122,7 +122,7 @@ vi.mock("content-ai", async (importOriginal) => {
   };
 });
 
-// Stub runRefine (content-ai-refine) to avoid network calls in integration tests.
+// Stub runRefine (@pixelmord/content-ai-refine) to avoid network calls in integration tests.
 vi.mock("@pixelmord/content-ai-refine", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@pixelmord/content-ai-refine")>();
   return {
