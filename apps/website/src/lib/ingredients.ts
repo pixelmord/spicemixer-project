@@ -1,51 +1,7 @@
 import type { ContentStore } from "./content-store.ts";
 import type { MetaSidecar } from "./meta-sidecar.ts";
-import { contentHash, flagTranslationsStale } from "./translation-sync.ts";
 
 export type Locale = "en" | "de";
-
-export interface SaveIngredientInput {
-  locale: Locale;
-  slug: string;
-  ingredient: Record<string, unknown>;
-  meta?: Record<string, unknown>;
-}
-
-export async function saveIngredient(
-  store: ContentStore,
-  sidecar: MetaSidecar,
-  input: SaveIngredientInput,
-): Promise<{ slug: string }> {
-  const ref = { collection: "ingredients" as const, locale: input.locale, slug: input.slug };
-  await store.put("ingredients", `${input.locale}/${input.slug}`, input.ingredient);
-  if (input.meta !== undefined) {
-    const existing = await sidecar.read(ref);
-    const existingData = (existing?.data as Record<string, unknown>) ?? {};
-    const canonicalLocale =
-      (existingData["canonicalLocale"] as string | undefined) ??
-      (input.meta["canonicalLocale"] as string | undefined) ??
-      input.locale;
-
-    const mergedMeta: Record<string, unknown> = {
-      ...existingData,
-      ...input.meta,
-      canonicalLocale,
-    };
-
-    const isCanonical = !mergedMeta["translationOf"];
-    if (isCanonical) {
-      const newHash = contentHash(input.ingredient);
-      const storedHash = existingData["canonicalContentHash"] as string | undefined;
-      mergedMeta["canonicalContentHash"] = newHash;
-      if (newHash !== storedHash) {
-        await flagTranslationsStale(sidecar, "ingredients", `${input.locale}/${input.slug}`);
-      }
-    }
-
-    await sidecar.write(ref, mergedMeta);
-  }
-  return { slug: input.slug };
-}
 
 export interface QuickCreateIngredientInput {
   locale: Locale;

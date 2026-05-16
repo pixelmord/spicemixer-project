@@ -26,6 +26,11 @@ export interface EntityKindConfig {
   ) => FieldDiff[];
   completeness: CompletenessModel;
   routePrefix: string;
+  /**
+   * Returns the canonical key used in `translationOf` for child translations.
+   * null = this kind does not participate in translation staleness tracking.
+   */
+  translationCanonicalKey: ((locale: string, slug: string) => string) | null;
 }
 
 const registry: Record<EntityKind, EntityKindConfig> = {
@@ -39,6 +44,7 @@ const registry: Record<EntityKind, EntityKindConfig> = {
       score: scoreIngredient,
     },
     routePrefix: "/ingredients/",
+    translationCanonicalKey: (locale, slug) => `${locale}/${slug}`,
   },
 
   recipe: {
@@ -51,6 +57,7 @@ const registry: Record<EntityKind, EntityKindConfig> = {
       score: scoreRecipe,
     },
     routePrefix: "/recipes/",
+    translationCanonicalKey: (_locale, slug) => slug,
   },
 
   pairing: {
@@ -64,6 +71,7 @@ const registry: Record<EntityKind, EntityKindConfig> = {
       score: (entity, ctx) => scorePairing(entity, (ctx?.["locale"] as string) ?? "en"),
     },
     routePrefix: "/pairings/",
+    translationCanonicalKey: null,
   },
 };
 

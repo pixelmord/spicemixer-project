@@ -2,11 +2,12 @@ import { describe, expect, test } from "vite-plus/test";
 import { InMemoryStore } from "../../src/lib/stores/in-memory.ts";
 import { createMetaSidecar, PAIRING_META } from "../../src/lib/meta-sidecar.ts";
 import {
-  savePairing,
+  buildPairingData,
   togglePairingDraft,
   deletePairing,
   savePairingMeta,
 } from "../../src/lib/pairings.ts";
+import { saveEntity } from "../../src/lib/save-entity.ts";
 import type { EntityRef } from "../../src/lib/entity-ref.ts";
 import { NotFoundError } from "../../src/lib/errors.ts";
 
@@ -14,7 +15,29 @@ const cardamom: EntityRef = { collection: "ingredients", slug: "cardamom" };
 const anise: EntityRef = { collection: "ingredients", slug: "anise" };
 const harissa: EntityRef = { collection: "mixtures", slug: "harissa" };
 
-describe("savePairing", () => {
+async function savePairing(
+  store: InMemoryStore,
+  sidecar: ReturnType<typeof createMetaSidecar>,
+  input: {
+    id: string;
+    ingredients: [EntityRef, EntityRef];
+    description: string;
+    locale: string;
+    draft?: boolean;
+    image?: string;
+    imageAttribution?: Record<string, unknown>;
+  },
+): Promise<{ id: string }> {
+  const content = await buildPairingData(store, input);
+  await saveEntity(store, sidecar, {
+    ref: { collection: "pairings", slug: input.id },
+    content,
+    meta: input.draft !== undefined ? { draft: input.draft } : undefined,
+  });
+  return { id: input.id };
+}
+
+describe("buildPairingData + saveEntity", () => {
   test("canonicalizes ingredient order alphabetically by slug", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
@@ -173,7 +196,7 @@ describe("savePairing", () => {
     });
   });
 
-  test("savePairing stores imageAttribution in pairing content", async () => {
+  test("saves imageAttribution in pairing content", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     const attribution = {
@@ -195,7 +218,7 @@ describe("savePairing", () => {
     expect((stored!.data as Record<string, unknown>)["imageAttribution"]).toEqual(attribution);
   });
 
-  test("savePairing preserves imageAttribution across locale saves", async () => {
+  test("preserves imageAttribution across locale saves", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     const attribution = {
@@ -224,7 +247,7 @@ describe("savePairing", () => {
     expect((stored!.data as Record<string, unknown>)["imageAttribution"]).toEqual(attribution);
   });
 
-  test("savePairing routes draft=true to pairingMeta sidecar, not content", async () => {
+  test("routes draft=true to pairingMeta sidecar, not content", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     await savePairing(store, sidecar, {

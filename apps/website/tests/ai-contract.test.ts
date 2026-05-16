@@ -107,6 +107,7 @@ vi.mock("recipe-ingestion", () => ({
 vi.mock("content-ai", async (importOriginal) => {
   const actual = await importOriginal<typeof import("content-ai")>();
   return {
+    aiEventSchema: actual.aiEventSchema,
     recordAiEvent: actual.recordAiEvent,
     hashSuggestion: actual.hashSuggestion,
     hashContent: actual.hashContent,

@@ -3,21 +3,20 @@ import type { MetaSidecar } from "./meta-sidecar.ts";
 import type { EntityRef } from "./entity-ref.ts";
 import { NotFoundError } from "./errors.ts";
 
-export interface SavePairingInput {
+export interface BuildPairingDataInput {
   id: string;
   ingredients: [EntityRef, EntityRef];
   description: string;
   locale: string;
-  draft?: boolean;
   image?: string;
   imageAttribution?: Record<string, unknown>;
 }
 
-export async function savePairing(
+/** Reads the existing pairing and merges in the new locale description, image, and ingredients. */
+export async function buildPairingData(
   store: ContentStore,
-  sidecar: MetaSidecar,
-  input: SavePairingInput,
-): Promise<{ id: string }> {
+  input: BuildPairingDataInput,
+): Promise<Record<string, unknown>> {
   const canonical = [...input.ingredients].sort((a, b) => a.slug.localeCompare(b.slug)) as [
     EntityRef,
     EntityRef,
@@ -40,11 +39,7 @@ export async function savePairing(
   };
   if (imageValue) data["image"] = imageValue;
   if (imageAttributionValue) data["imageAttribution"] = imageAttributionValue;
-  await store.put("pairings", input.id, data);
-  if (input.draft !== undefined) {
-    await savePairingMeta(sidecar, { id: input.id, patch: { draft: input.draft } });
-  }
-  return { id: input.id };
+  return data;
 }
 
 export async function togglePairingDraft(

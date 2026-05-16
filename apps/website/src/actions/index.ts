@@ -8,13 +8,11 @@ import type { EntityRef } from "@/lib/entity-ref.ts";
 import { fetchRecipe } from "recipe-ingestion";
 import { scoreRecipe, scoreIngredient, scorePairing } from "@/lib/completeness.ts";
 import {
-  saveRecipe as libSaveRecipe,
   deleteRecipe as libDeleteRecipe,
   publishRecipe as libPublishRecipe,
   unpublishRecipe as libUnpublishRecipe,
 } from "@/lib/recipes.ts";
 import {
-  saveIngredient as libSaveIngredient,
   quickCreateIngredient as libQuickCreateIngredient,
   saveIngredientMeta as libSaveIngredientMeta,
   deleteIngredient as libDeleteIngredient,
@@ -22,11 +20,12 @@ import {
   unpublishIngredient as libUnpublishIngredient,
 } from "@/lib/ingredients.ts";
 import {
-  savePairing as libSavePairing,
+  buildPairingData as libBuildPairingData,
   togglePairingDraft as libTogglePairingDraft,
   deletePairing as libDeletePairing,
   savePairingMeta as libSavePairingMeta,
 } from "@/lib/pairings.ts";
+import { saveEntity as libSaveEntity } from "@/lib/save-entity.ts";
 import { NotFoundError } from "@/lib/errors.ts";
 import { AiError, withOrigin, type AiEvent } from "content-ai";
 import { createSourceStore } from "@/lib/stores/source-store.ts";
@@ -364,14 +363,12 @@ export const server = {
         });
         finalMeta = { ...base, aiEvents: updatedEvents };
       }
-      const result = await libSaveRecipe(store, sidecar, {
-        collection,
-        locale,
-        slug,
-        recipe,
+      await libSaveEntity(store, sidecar, {
+        ref: { collection, locale, slug },
+        content: recipe,
         meta: finalMeta,
       });
-      return { ok: true, slug: result.slug };
+      return { ok: true, slug };
     },
   }),
 
@@ -409,13 +406,12 @@ export const server = {
         });
         finalMeta = { ...base, aiEvents: updatedEvents };
       }
-      const result = await libSaveIngredient(store, sidecar, {
-        locale,
-        slug,
-        ingredient,
+      await libSaveEntity(store, sidecar, {
+        ref: { collection: "ingredients", locale, slug },
+        content: ingredient,
         meta: finalMeta,
       });
-      return { ok: true, slug: result.slug };
+      return { ok: true, slug };
     },
   }),
 
@@ -446,14 +442,18 @@ export const server = {
     }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      const result = await libSavePairing(store, sidecar, {
+      const pairingData = await libBuildPairingData(store, {
         id,
         ingredients,
         description,
         locale,
-        draft,
         image,
         imageAttribution,
+      });
+      await libSaveEntity(store, sidecar, {
+        ref: { collection: "pairings", slug: id },
+        content: pairingData,
+        meta: draft !== undefined ? { draft } : undefined,
       });
       if (aiMergeModel) {
         const { recordAiEvent, hashSuggestion } = await import("content-ai");
@@ -475,7 +475,7 @@ export const server = {
         });
         await sidecar.write(pairingRef, { ...existingMeta, aiEvents: updatedEvents });
       }
-      return { ok: true, id: result.id };
+      return { ok: true, id };
     },
   }),
 
