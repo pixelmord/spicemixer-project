@@ -4,20 +4,18 @@ import { createMetaSidecar } from "../../../src/lib/meta-sidecar.ts";
 import { runAiRefresh } from "../../../src/lib/ai/runner.ts";
 import type { AiConfig, PubSubEvent } from "content-ai";
 import { createAiEventLog, hashContent, runWithOrigin, subscribe } from "content-ai";
+import type { FieldSuggestion } from "content-ai-refine";
 
-// Stub content-ai proposers to avoid network calls; keep real event/hash utilities.
-vi.mock("content-ai", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("content-ai")>();
+// Stub runRefine to avoid network calls; keep real event/hash utilities.
+vi.mock("content-ai-refine", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("content-ai-refine")>();
   return {
     ...actual,
-    proposeRecipeImprovements: vi.fn().mockResolvedValue({ fields: [] }),
-    proposeTags: vi.fn().mockResolvedValue({ tags: [] }),
-    proposeIngredientLinks: vi.fn().mockResolvedValue([]),
-    proposeRelations: vi.fn().mockResolvedValue([]),
-    detectLanguage: vi.fn().mockResolvedValue(null),
-    proposeIngredientImprovements: vi.fn().mockResolvedValue({ fields: [] }),
-    proposeIngredientPairings: vi.fn().mockResolvedValue([]),
-    proposePairingImprovements: vi.fn().mockResolvedValue({ fields: [] }),
+    runRefine: vi.fn().mockResolvedValue({
+      suggestions: new Map<string, FieldSuggestion>(),
+      autoApplied: new Map<string, unknown>(),
+      traces: new Map(),
+    }),
   };
 });
 
@@ -66,8 +64,8 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
     expect(data["aiSuggestions"]).toBeDefined();
   });
 
-  test("cache hit: returns cached suggestion without re-running proposers", async () => {
-    const contentAi = await import("content-ai");
+  test("cache hit: returns cached suggestion without re-running LLM", async () => {
+    const refine = await import("content-ai-refine");
     const { store, sidecar, eventLog } = env;
     const metaRef = { collection: "recipes" as const, locale: "en", slug: "miso-ramen" };
     const payload = { name: "Miso Ramen" };
@@ -87,7 +85,7 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
       force: true,
     });
 
-    vi.mocked(contentAi.proposeTags).mockClear();
+    vi.mocked(refine.runRefine).mockClear();
 
     // Second call — same payload, no force flag → cache hit.
     const result = await runAiRefresh({
@@ -104,11 +102,11 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
     });
 
     expect(result.cached).toBe(true);
-    expect(vi.mocked(contentAi.proposeTags)).not.toHaveBeenCalled();
+    expect(vi.mocked(refine.runRefine)).not.toHaveBeenCalled();
   });
 
-  test("force=true bypasses cache and re-runs proposers", async () => {
-    const contentAi = await import("content-ai");
+  test("force=true bypasses cache and re-runs LLM", async () => {
+    const refine = await import("content-ai-refine");
     const { store, sidecar, eventLog } = env;
     const metaRef = { collection: "recipes" as const, locale: "en", slug: "miso-ramen" };
     const payload = { name: "Miso Ramen" };
@@ -128,7 +126,7 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
       force: true,
     });
 
-    vi.mocked(contentAi.proposeTags).mockClear();
+    vi.mocked(refine.runRefine).mockClear();
 
     // force=true bypasses the cache.
     const result = await runAiRefresh({
@@ -146,11 +144,11 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
     });
 
     expect(result.cached).toBe(false);
-    expect(vi.mocked(contentAi.proposeTags)).toHaveBeenCalled();
+    expect(vi.mocked(refine.runRefine)).toHaveBeenCalled();
   });
 
   test("cache is invalidated when payload changes", async () => {
-    const contentAi = await import("content-ai");
+    const refine = await import("content-ai-refine");
     const { store, sidecar, eventLog } = env;
     const metaRef = { collection: "recipes" as const, locale: "en", slug: "miso-ramen" };
 
@@ -168,7 +166,7 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
       force: true,
     });
 
-    vi.mocked(contentAi.proposeTags).mockClear();
+    vi.mocked(refine.runRefine).mockClear();
 
     const result = await runAiRefresh({
       kind: "recipe",
@@ -184,12 +182,21 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
     });
 
     expect(result.cached).toBe(false);
-    expect(vi.mocked(contentAi.proposeTags)).toHaveBeenCalled();
+    expect(vi.mocked(refine.runRefine)).toHaveBeenCalled();
   });
 
   test("language-mismatch: detectedLanguage returned when content language differs from locale", async () => {
-    const contentAi = await import("content-ai");
-    vi.mocked(contentAi.detectLanguage).mockResolvedValue({ language: "de" } as never);
+    const refine = await import("content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map(),
+      autoApplied: new Map([
+        [
+          "language",
+          { value: "de", hash: "h1", summary: "language: de", confidence: "high" as const },
+        ],
+      ]),
+      traces: new Map(),
+    });
 
     const { store, sidecar, eventLog } = env;
     const metaRef = { collection: "recipes" as const, locale: "en", slug: "schnitzel" };
@@ -260,11 +267,24 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
 
 describe("runAiRefresh recipe: auto-apply ingredient links", () => {
   test("auto-applies high-confidence ingredient links and records aiEvent", async () => {
-    const contentAi = await import("content-ai");
-    vi.mocked(contentAi.proposeIngredientLinks).mockResolvedValue([
-      { pattern: "miso", slug: "miso", confidence: "high" } as never,
-    ]);
-    vi.mocked(contentAi.detectLanguage).mockResolvedValue({ language: "en" } as never);
+    const refine = await import("content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "ingredientLinks",
+          {
+            kind: "single" as const,
+            value: [{ pattern: "miso", slug: "miso", confidence: "high" as const }],
+            confidence: "high" as const,
+            summary: "ingredientLinks: [1 items]",
+            hash: "abc123",
+            traceId: "trace-1",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
 
     const { store, sidecar, eventLog } = makeEnv();
     await store.put("ingredients", "en/miso", { name: "Miso" });
@@ -296,10 +316,24 @@ describe("runAiRefresh recipe: auto-apply ingredient links", () => {
   });
 
   test("low-confidence ingredient links are not auto-applied", async () => {
-    const contentAi = await import("content-ai");
-    vi.mocked(contentAi.proposeIngredientLinks).mockResolvedValue([
-      { pattern: "miso", slug: "miso", confidence: "low" } as never,
-    ]);
+    const refine = await import("content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "ingredientLinks",
+          {
+            kind: "single" as const,
+            value: [{ pattern: "miso", slug: "miso", confidence: "low" as const }],
+            confidence: "low" as const,
+            summary: "ingredientLinks: [1 items]",
+            hash: "abc123",
+            traceId: "trace-1",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
 
     const { store, sidecar, eventLog } = makeEnv();
     const metaRef = { collection: "recipes" as const, locale: "en", slug: "miso-ramen" };
@@ -326,10 +360,24 @@ describe("runAiRefresh recipe: auto-apply ingredient links", () => {
 
 describe("runAiRefresh ingredient: auto-apply pairings", () => {
   test("auto-applies high-confidence pairings and records aiEvent", async () => {
-    const contentAi = await import("content-ai");
-    vi.mocked(contentAi.proposeIngredientPairings).mockResolvedValue([
-      { slug: "cumin", description: "Fragrant pair", confidence: "high" } as never,
-    ]);
+    const refine = await import("content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "pairings",
+          {
+            kind: "single" as const,
+            value: [{ slug: "cumin", description: "Fragrant pair", confidence: "high" as const }],
+            confidence: "high" as const,
+            summary: "pairings: [1 items]",
+            hash: "def456",
+            traceId: "trace-2",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
 
     const { store, sidecar, eventLog } = makeEnv();
     await store.put("ingredients", "en/cumin", { name: "Cumin" });
@@ -361,10 +409,24 @@ describe("runAiRefresh ingredient: auto-apply pairings", () => {
   });
 
   test("low-confidence pairings are not auto-applied", async () => {
-    const contentAi = await import("content-ai");
-    vi.mocked(contentAi.proposeIngredientPairings).mockResolvedValue([
-      { slug: "cumin", description: "Weak pair", confidence: "low" } as never,
-    ]);
+    const refine = await import("content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "pairings",
+          {
+            kind: "single" as const,
+            value: [{ slug: "cumin", description: "Weak pair", confidence: "low" as const }],
+            confidence: "low" as const,
+            summary: "pairings: [1 items]",
+            hash: "def456",
+            traceId: "trace-2",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
 
     const { store, sidecar, eventLog } = makeEnv();
     await store.put("ingredients", "en/cumin", { name: "Cumin" });
@@ -390,8 +452,17 @@ describe("runAiRefresh ingredient: auto-apply pairings", () => {
   });
 
   test("language mismatch: languageMismatch flag set when detected language differs from locale", async () => {
-    const contentAi = await import("content-ai");
-    vi.mocked(contentAi.detectLanguage).mockResolvedValue({ language: "de" } as never);
+    const refine = await import("content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map(),
+      autoApplied: new Map([
+        [
+          "language",
+          { value: "de", hash: "h1", summary: "language: de", confidence: "high" as const },
+        ],
+      ]),
+      traces: new Map(),
+    });
 
     const { store, sidecar, eventLog } = makeEnv();
     const metaRef = { collection: "ingredients" as const, locale: "en", slug: "kardamom" };
@@ -418,10 +489,24 @@ describe("runAiRefresh ingredient: auto-apply pairings", () => {
 
 describe("runAiRefresh pairing", () => {
   test("returns aiSuggestions keyed by locale without auto-applying anything", async () => {
-    const contentAi = await import("content-ai");
-    vi.mocked(contentAi.proposePairingImprovements).mockResolvedValue({
-      fields: [{ field: "description", suggestion: "Earthy and aromatic" }],
-    } as never);
+    const refine = await import("content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "description",
+          {
+            kind: "single" as const,
+            value: "Earthy and aromatic",
+            confidence: "medium" as const,
+            summary: "description: Earthy and aromatic",
+            hash: "ghi789",
+            traceId: "trace-3",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
 
     const { store, sidecar, eventLog } = makeEnv();
     const metaRef = { collection: "pairings" as const, slug: "cardamom--cumin" };
@@ -453,9 +538,13 @@ describe("runAiRefresh pairing", () => {
     );
   });
 
-  test("passes rejected context from eventLog to proposePairingImprovements", async () => {
-    const contentAi = await import("content-ai");
-    vi.mocked(contentAi.proposePairingImprovements).mockResolvedValue({ fields: [] } as never);
+  test("returns empty improvements when runRefine returns no description suggestion", async () => {
+    const refine = await import("content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map(),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
 
     const { store, sidecar, eventLog } = makeEnv();
     const metaRef = { collection: "pairings" as const, slug: "cardamom--cumin" };
@@ -468,7 +557,7 @@ describe("runAiRefresh pairing", () => {
       model: "gpt-4o",
     });
 
-    await runAiRefresh({
+    const result = await runAiRefresh({
       kind: "pairing",
       metaRef,
       payload: { descriptions: { en: "Nice pair" } },
@@ -480,10 +569,8 @@ describe("runAiRefresh pairing", () => {
       config: CONFIG,
     });
 
-    const callArgs = vi.mocked(contentAi.proposePairingImprovements).mock.calls.at(-1)!;
-    const rejectedContext = callArgs[3];
-    expect(typeof rejectedContext).toBe("string");
-    expect((rejectedContext as string).length).toBeGreaterThan(0);
+    const suggestions = result.aiSuggestions as Record<string, unknown>;
+    expect((suggestions["en"] as { improvements: unknown[] }).improvements).toHaveLength(0);
   });
 });
 

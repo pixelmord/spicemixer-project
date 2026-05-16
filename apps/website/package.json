@@ -27,6 +27,7 @@
     "clsx": "^2.1.1",
     "content-ai": "workspace:*",
     "content-ai-ingest": "workspace:*",
+    "content-ai-refine": "workspace:*",
     "entity-kind": "workspace:*",
     "lucide-react": "catalog:",
     "next-themes": "catalog:",

@@ -9,31 +9,6 @@ export type { AiDebugInfo } from "./debug.ts";
 export { extractIngredientFromFile } from "./extract-ingredient.ts";
 export type { IngredientFileInput, IngredientExtractionResult } from "./extract-ingredient.ts";
 
-export {
-  proposeIngredientLinks,
-  proposeTags,
-  proposeRecipeImprovements,
-  proposeRecipeTranslation,
-  detectLanguage,
-  proposeRelations,
-  proposeSlug,
-} from "./curate-recipe.ts";
-export type {
-  RecipeSnapshot,
-  IngredientLinkProposal,
-  TagProposal,
-  ImprovementProposal,
-  TranslationDraft,
-  RelationProposal,
-} from "./curate-recipe.ts";
-
-export {
-  proposeIngredientPairings,
-  proposeIngredientImprovements,
-  proposeIngredientTranslation,
-} from "./curate-ingredient.ts";
-export type { IngredientSnapshot, PairingProposal } from "./curate-ingredient.ts";
-
 export { mergeIngredient } from "./merge-ingredient.ts";
 export type {
   MergeIngredientSource,
@@ -41,8 +16,12 @@ export type {
   MergeIngredientResult,
 } from "./merge-ingredient.ts";
 
-export { proposePairingImprovements, proposePairingTranslation } from "./curate-pairing.ts";
-export type { PairingSnapshot } from "./curate-pairing.ts";
+export {
+  translateIngredientFields,
+  translateRecipeFields,
+  translatePairingDescription,
+} from "./curate-translate.ts";
+export type { TranslationDraft } from "./curate-translate.ts";
 
 export { extractPairingFromFile } from "./extract-pairing.ts";
 export type { PairingFileInput, PairingExtractionResult } from "./extract-pairing.ts";
@@ -87,9 +66,6 @@ export {
   hasAutoApplied,
   buildRejectedContext,
 } from "./events.ts";
-
-export { runCurate, CURATE_REGISTRY } from "./run-curate.ts";
-export type { EntityKind, CurateOp } from "./run-curate.ts";
 
 export {
   runWithOrigin,

@@ -935,8 +935,19 @@ export const server = {
             name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
           };
         });
-      const { proposeIngredientLinks } = await import("content-ai");
-      return proposeIngredientLinks(recipeIngredients, inventory, config);
+      const { runRefine } = await import("content-ai-refine");
+      const { recipeContract } = await import("@/contracts/index.ts");
+      const { suggestions } = await runRefine({
+        contract: recipeContract,
+        currentData: { recipeIngredient: recipeIngredients } as never,
+        sourceContext: { inventory },
+        target: "ingredientLinks",
+        config,
+      });
+      const sugg = suggestions.get("ingredientLinks");
+      return sugg?.kind === "single"
+        ? (sugg.value as Array<{ pattern: string; slug: string; confidence: string }>)
+        : [];
     }),
   }),
 
@@ -961,8 +972,17 @@ export const server = {
         const tags = (meta.data as Record<string, unknown>)["tags"];
         if (Array.isArray(tags)) tags.forEach((t) => typeof t === "string" && tagSet.add(t));
       }
-      const { proposeTags } = await import("content-ai");
-      return proposeTags(recipe as never, Array.from(tagSet), config);
+      const { runRefine } = await import("content-ai-refine");
+      const { recipeContract } = await import("@/contracts/index.ts");
+      const { suggestions } = await runRefine({
+        contract: recipeContract,
+        currentData: recipe as never,
+        sourceContext: { existingTags: Array.from(tagSet) },
+        target: "keywords",
+        config,
+      });
+      const sugg = suggestions.get("keywords");
+      return { tags: sugg?.kind === "single" ? (sugg.value as string[]) : [] };
     }),
   }),
 
@@ -981,8 +1001,21 @@ export const server = {
       userInitiated: true,
     })(async ({ recipe, missingFields }) => {
       const config = resolveAiConfig();
-      const { proposeRecipeImprovements } = await import("content-ai");
-      return proposeRecipeImprovements(recipe as never, missingFields, config);
+      const { runRefine } = await import("content-ai-refine");
+      const { recipeContract } = await import("@/contracts/index.ts");
+      const { suggestions } = await runRefine({
+        contract: recipeContract,
+        currentData: recipe as never,
+        target: missingFields,
+        config,
+      });
+      const fields = missingFields
+        .filter((f) => suggestions.has(f))
+        .map((f) => {
+          const s = suggestions.get(f)!;
+          return { field: f, suggestion: s.kind === "single" ? s.value : undefined, rationale: "" };
+        });
+      return { fields };
     }),
   }),
 
@@ -1002,8 +1035,8 @@ export const server = {
       userInitiated: true,
     })(async ({ recipe, sourceLocale, targetLocale }) => {
       const config = resolveAiConfig();
-      const { proposeRecipeTranslation } = await import("content-ai");
-      return proposeRecipeTranslation(recipe as never, sourceLocale, targetLocale, config);
+      const { translateRecipeFields } = await import("content-ai");
+      return translateRecipeFields(recipe as never, sourceLocale, targetLocale, config);
     }),
   }),
 
@@ -1037,8 +1070,19 @@ export const server = {
             name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
           };
         });
-      const { proposeIngredientPairings } = await import("content-ai");
-      return proposeIngredientPairings(ingredient as never, inventory, config);
+      const { runRefine } = await import("content-ai-refine");
+      const { ingredientContract } = await import("@/contracts/index.ts");
+      const { suggestions } = await runRefine({
+        contract: ingredientContract,
+        currentData: ingredient as never,
+        sourceContext: { inventory },
+        target: "pairings",
+        config,
+      });
+      const sugg = suggestions.get("pairings");
+      return sugg?.kind === "single"
+        ? (sugg.value as Array<{ slug: string; description: string; confidence: string }>)
+        : [];
     }),
   }),
 
@@ -1057,8 +1101,21 @@ export const server = {
       userInitiated: true,
     })(async ({ ingredient, missingFields }) => {
       const config = resolveAiConfig();
-      const { proposeIngredientImprovements } = await import("content-ai");
-      return proposeIngredientImprovements(ingredient as never, missingFields, config);
+      const { runRefine } = await import("content-ai-refine");
+      const { ingredientContract } = await import("@/contracts/index.ts");
+      const { suggestions } = await runRefine({
+        contract: ingredientContract,
+        currentData: ingredient as never,
+        target: missingFields,
+        config,
+      });
+      const fields = missingFields
+        .filter((f) => suggestions.has(f))
+        .map((f) => {
+          const s = suggestions.get(f)!;
+          return { field: f, suggestion: s.kind === "single" ? s.value : undefined, rationale: "" };
+        });
+      return { fields };
     }),
   }),
 
@@ -1078,8 +1135,8 @@ export const server = {
       userInitiated: true,
     })(async ({ ingredient, sourceLocale, targetLocale }) => {
       const config = resolveAiConfig();
-      const { proposeIngredientTranslation } = await import("content-ai");
-      return proposeIngredientTranslation(ingredient as never, sourceLocale, targetLocale, config);
+      const { translateIngredientFields } = await import("content-ai");
+      return translateIngredientFields(ingredient as never, sourceLocale, targetLocale, config);
     }),
   }),
 
@@ -1173,7 +1230,7 @@ export const server = {
       userInitiated: true,
     })(async ({ slug, ingredient, sourceLocale, targetLocale }) => {
       const config = resolveAiConfig();
-      const { proposeIngredientTranslation } = await import("content-ai");
+      const { translateIngredientFields } = await import("content-ai");
       const store = await createStore();
 
       const existing = await store.get("ingredients", `${targetLocale}/${slug}`);
@@ -1184,7 +1241,7 @@ export const server = {
         });
       }
 
-      const translation = await proposeIngredientTranslation(
+      const translation = await translateIngredientFields(
         ingredient as never,
         sourceLocale,
         targetLocale,
@@ -1299,7 +1356,7 @@ export const server = {
       userInitiated: true,
     })(async ({ id, sourceLocale, targetLocale }) => {
       const config = resolveAiConfig();
-      const { proposePairingTranslation } = await import("content-ai");
+      const { translatePairingDescription } = await import("content-ai");
       const store = await createStore();
 
       const existing = await store.get("pairings", id);
@@ -1324,7 +1381,7 @@ export const server = {
       const slug1 = typeof ings[0] === "string" ? ings[0] : (ings[0]?.slug ?? "");
       const slug2 = typeof ings[1] === "string" ? ings[1] : (ings[1]?.slug ?? "");
 
-      const result = await proposePairingTranslation(
+      const result = await translatePairingDescription(
         { ingredient1: slug1, ingredient2: slug2, description: sourceDescription },
         sourceLocale,
         targetLocale,
@@ -1450,11 +1507,21 @@ export const server = {
       userInitiated: true,
     })(async ({ name, locale, collection }) => {
       const config = resolveAiConfig();
-      const { proposeSlug } = await import("content-ai");
+      const { runRefine } = await import("content-ai-refine");
+      const { recipeContract } = await import("@/contracts/index.ts");
       const store = await createStore();
 
-      const proposal = await proposeSlug(name, locale, config);
-      let slug = proposal.slug
+      const { suggestions } = await runRefine({
+        contract: recipeContract,
+        currentData: { name } as never,
+        sourceContext: { locale },
+        target: "slug",
+        config,
+      });
+      const slugSugg = suggestions.get("slug");
+      const rawSlug =
+        (slugSugg?.kind === "single" ? (slugSugg.value as string) : undefined) ?? name;
+      let slug = rawSlug
         .toLowerCase()
         .replace(/[^a-z0-9-]/g, "-")
         .replace(/-+/g, "-")
@@ -1537,7 +1604,7 @@ export const server = {
       userInitiated: true,
     })(async ({ collection, slug, recipe, meta, sourceLocale, targetLocale, translationSlug }) => {
       const config = resolveAiConfig();
-      const { proposeRecipeTranslation } = await import("content-ai");
+      const { translateRecipeFields } = await import("content-ai");
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
 
@@ -1549,7 +1616,7 @@ export const server = {
         });
       }
 
-      const translation = await proposeRecipeTranslation(
+      const translation = await translateRecipeFields(
         recipe as never,
         sourceLocale,
         targetLocale,

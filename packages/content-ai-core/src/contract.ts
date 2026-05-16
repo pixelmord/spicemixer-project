@@ -31,6 +31,10 @@ export interface Preset<S extends ZodSchema = ZodSchema, Source = never> {
 // continue to typecheck during the migration to full field configs.
 export interface FieldConfig<S extends ZodSchema = ZodSchema, Source = never> {
   systemPrompt?: (ctx: PromptContext<S, Source>) => string;
+  // Custom schema for LLM structured output. When omitted, the runner extracts
+  // the field's schema from the entity schema. Use when the LLM output shape
+  // differs from the stored entity shape (e.g. includes a confidence score).
+  outputSchema?: ZodSchema;
   autoApply?: AutoApplyPolicy | ((ctx: PromptContext<S, Source>) => AutoApplyPolicy);
   presetIds?: string[];
   writePolicy?: FieldWritePolicy<unknown>;
