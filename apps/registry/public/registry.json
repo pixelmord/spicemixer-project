@@ -255,6 +255,29 @@
       ]
     },
     {
+      "name": "inline-field-suggestion",
+      "type": "registry:block",
+      "title": "InlineFieldSuggestion",
+      "description": "Per-field AI suggestion block that mounts adjacent to a form input. Dispatches by field kind via renderers prop. Ships defaultRenderers for text, array, enum, multi-enum, date. Supports single and choice (single/multi-pick) suggestion variants.",
+      "registryDependencies": [
+        "use-ai-suggestions",
+        "suggestion-flow-provider",
+        "confidence-badge",
+        "accept-reject-buttons",
+        "text-suggestion-row",
+        "tags-suggestion-row",
+        "enum-suggestion-row",
+        "multi-enum-suggestion-row",
+        "date-suggestion-row"
+      ],
+      "files": [
+        {
+          "path": "components/ui/inline-field-suggestion.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
       "name": "use-ai-suggestions",
       "type": "registry:hook",
       "title": "useAiSuggestions",
