@@ -31,8 +31,9 @@ export class InMemoryAiEventLog implements AiEventLog {
   }
 
   async #doAppend(ref: MetaRef, event: Omit<AiEvent, "at">): Promise<void> {
-    const current = this.#store.get(refKey(ref)) ?? [];
-    this.#store.set(refKey(ref), recordAiEvent(current, event));
+    const key = refKey(ref);
+    const current = this.#store.get(key) ?? [];
+    this.#store.set(key, recordAiEvent(current, event));
   }
 
   async shouldSkip(ref: MetaRef, input: { fieldPath: string; hash: string }): Promise<boolean> {
