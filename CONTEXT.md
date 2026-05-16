@@ -102,15 +102,29 @@ owned content.
 
 ### Pairing
 
-A symmetric flavor-affinity relation between two ingredient-or-mixture
-endpoints. Has its own description explaining the affinity ("warm and
+A symmetric affinity relation between two endpoints, each a
+`(collection, slug)` reference over `ingredients`, `mixtures`, or
+`recipes`. Has its own description explaining the affinity ("warm and
 licorice-y, both lift custard desserts"). Authored once on a canonical id
-(`slug-a--slug-b`, alphabetically sorted). Surfaced on both endpoints'
-pages.
+(`slug-a--slug-b`, alphabetically sorted by slug). Surfaced on both
+endpoints' pages.
 
-Pairings span ingredient ↔ ingredient, ingredient ↔ mixture, and mixture
-↔ mixture freely — endpoints share a `(collection, slug)` reference
-type.
+Pairings are the **universal editorial relation** (see ADR 0016): any
+relation between two content entities that warrants prose lives as a
+Pairing entity, regardless of endpoint kinds. The previous separate
+`goesWellWith` field on recipe meta is collapsed into Pairing.
+
+**Featured vs unfeatured.** A `featured: boolean` field on pairing meta
+controls index inclusion. `/pairings/` shows pairings where
+`featured === true` only. Defaults: ingredient/mixture-only pairings
+default to `featured: true` (the editorial flagship — "the spice graph");
+recipe-bearing pairings default to `featured: false` (they surface only
+on the endpoint detail pages, not in the global index). Editors flip
+the flag explicitly.
+
+Cross-collection slug uniqueness is invariant (`vp check` validator) so
+the flat `<slug-a>--<slug-b>` id remains unambiguous across endpoint
+kinds.
 
 ### Region
 
@@ -141,14 +155,30 @@ require a content migration.
 ### Variant
 
 An alternative recipe for the same conceptual thing. Mango chutney comes
-in spicy / sweet / British-pickle styles. Curry comes in yellow / red /
-brown / Thai / Japanese. Ketchup has Heinz-style / banana / fermented.
-Each is a legitimate recipe; none is "the canonical one."
+in spicy / sweet / British-pickle styles. Harissa comes in Moroccan,
+Tunisian, Lebanese. Chocolate cake comes in French, American,
+grandma's. Each is a legitimate recipe; none is "the canonical one."
 
-Modeled as a directional **fork** relation, GitHub-style. The child
-(the fork) carries `variantOf: <slug>` pointing to its parent. The
-parent's variant list is computed at read time. Variants can chain: a
-variant can itself have variants.
+Modeled as a **symmetric equivalence group**, not a parent-child fork.
+Each member carries `variants: string[]` listing every other member of
+the group. The relation is co-equal: no canonical parent exists, because
+in culinary reality none does. See ADR 0016.
+
+**Closure on save.** Adding a member to the group writes the union of
+the closure (every entity reachable via existing `variants` edges) to
+every member's meta. Two clusters linking via any pair merge into one
+big group. Unlinking is all-or-nothing — you can't half-belong.
+
+**Authoring locale.** `variants` lives only on the **canonical-locale**
+meta sidecar of each member. Translations carry no `variants` field —
+they derive their member list by following `translationOf` back to the
+canonical entity at read time. Per-locale duplication is eliminated and
+drift becomes structurally impossible.
+
+**Mixed-canonical case.** When members have different canonical locales
+(e.g., harissa-moroccan canonical=EN, harissa-lebanese canonical=DE), the
+closure fans out across canonical-locale folders. Each member's
+`variants` list lives wherever its own canonical-locale meta lives.
 
 Constraints:
 
@@ -157,8 +187,6 @@ Constraints:
   separate records, not variants).
 - Same-kind only — sauce↔sauce, spicemix↔spicemix, recipe↔recipe. No
   cross-kind variant pointers.
-- Within-locale only. Cross-locale linking is `translationOf`, a
-  separate axis.
 
 ### The graph
 
@@ -206,6 +234,50 @@ runner, auto-apply policy (global, per ADR 0004).
 
 Forms stay visually distinct — the JSX is genuinely different per kind
 — but become thin bindings over a headless contract.
+
+### AI contract
+
+The per-entity-kind bundle the AI package consumes to fill or refine a
+content type. Two parts: a Zod schema (validates the entity shape) and a
+**field config** map indexed by field path. Each field config carries the
+system prompt for that field, the auto-apply policy (per ADR 0004), the set
+of presets it opts into (`presetIds`), and an optional `writePolicy`
+declaring how proposed values reconcile with existing data.
+
+The schema stays a pure validator — non-AI callers (forms, ingest, public
+site) don't carry prompt strings in their bundle. The field config is the
+companion that turns a schema into something the AI runner can drive. New
+entity kinds register one contract; the runner, event log, and trace are
+kind-agnostic.
+
+### FieldWritePolicy
+
+How a field's proposed value reconciles with existing data, when fill is
+called with `currentData` or refine targets a populated field. Five modes:
+`preserve` (skip the LLM call entirely), `replace` (always overwrite),
+`fill-if-empty` (skip if a value exists), `merge-function` (the runner
+calls the LLM and post-processes via a typed merge function — for arrays,
+ids, structural unions), and `merge-instructions` (the runner injects a
+free-text prompt instruction so the LLM produces a merged value directly —
+for prose where merging is itself a language task).
+
+Resolution at runtime is layered: per-call per-field override
+(`runFill.fieldPolicies[field]`) → per-call default (`runFill.writePolicy`)
+→ contract default (`contract.fields[field].writePolicy`) → mode default
+(`fill-if-empty` for fill+currentData, `replace` for refine, no-op for
+cold-fill). Editors can override at fill time via the UI's policy picker.
+
+### Preset
+
+A user-facing AI intent within refine — expand, change tone, do research,
+add items, translate-to-de, etc. Declared at the AI contract level
+(shared across fields), opted into per field via `presetIds`. Each preset
+carries a label (UI button text), an instruction (prompt fragment), an
+`appliesTo` field-type filter, and an optional `autoApplyOverride` (e.g.
+`translate-*` overrides to `"never"` per ADR 0004's translation-is-
+suggestion-only rule). Replaces the originally-proposed `mode` enum on
+the refine runner — there is no top-level mode, only preset id + optional
+free-text amendment.
 
 ### AiEventLog
 
@@ -283,13 +355,16 @@ its producer (strategy/version/model/parentHash). No central index.
 
 ### Locale storage
 
-All locale-bearing collections (ingredients, recipes, mixtures) store
-content **and** meta as folder-per-locale:
+All locale-bearing collections (ingredients, recipes, mixtures,
+pairings) store content **and** meta as folder-per-locale:
 `<collection>/<locale>/<slug>.json` and
 `<collection>/<locale>/<slug>.meta.json`. The folder is the locale
 carrier; no `language` field on the file, no filename-suffix variant.
-Pairings remain the documented ADR 0003 exception with a single file
-carrying inline `descriptions: { en, de }`.
+Pairings previously held inline `descriptions: { en, de }` per ADR
+0003; that exception is superseded — each locale is now a separate
+record so pairings get per-locale editorial history, per-locale
+aiEvents, and per-locale taxonomy divergence (tags, regions) on the
+same terms as every other entity.
 
 A second, equally load-bearing invariant: **no entry is ever written
 to disk without a determined locale.** Locale comes from an explicit
@@ -319,18 +394,28 @@ recipe, mixture.
 
 ## Relation taxonomy
 
-Three relations exist. Everything else is computed.
+Two relation shapes exist (plus one structural pointer in the recipe
+body). Everything else is computed. See ADR 0016.
 
-| Relation                     | Type                                                                                 | Authored on                                         | Inverse computed at                                    |
-| ---------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------ |
-| **pairing**                  | symmetric, endpoints are `(collection, slug)` over `ingredients`+`mixtures`          | `pairings` collection (own entity, has description) | both endpoints' detail pages                           |
-| **uses** (`ingredientLinks`) | directional (mixture OR recipe) → `(collection, slug)` over `ingredients`+`mixtures` | meta sidecar of the user side                       | the linked entity's "used in" / "featured in" sections |
-| **variantOf**                | directional (recipe-bearing entity → recipe-bearing entity, same kind, same locale)  | meta sidecar of the child (the fork)                | parent's "variants of this" list                       |
+| Relation                     | Shape                              | Endpoints                                              | Authored on                                                                    | Carries prose?         |
+| ---------------------------- | ---------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------ | ---------------------- |
+| **pairing**                  | symmetric, entity in `pairings`    | `(collection, slug)` over ingredients+mixtures+recipes | the `pairings` collection (own entity, per-locale `description`)               | yes                    |
+| **variants**                 | symmetric equivalence group        | recipe-bearing → recipe-bearing, same kind             | `variants: string[]` on canonical-locale meta; closure-on-save                 | no                     |
+| **uses** (`ingredientLinks`) | directional, structural recipe ref | recipe-bearing → ingredients+mixtures                  | meta sidecar of the user side; inverse "used in" computed at the linked entity | no (pattern→slug only) |
 
 The previous schema had `goesWellWith`, `usesBase`, `featuredIn`,
-`variants[]`. They were prototyping cruft and have been collapsed away
-(`variants[]` is now derived from `variantOf` at read time). Do not
-reintroduce without an ADR.
+`variantOf` (single-parent fork), and an inline `ingredient.pairings`
+field. All collapsed:
+
+- `goesWellWith` → became Pairing entities (rationale becomes the
+  Pairing's `description`).
+- `usesBase` → inverse of `ingredientLinks`, computed at read time.
+- `featuredIn` → inverse of `ingredientLinks`, same.
+- `variantOf` (single parent) → replaced by symmetric `variants: string[]`
+  equivalence group.
+- `ingredient.pairings` (inline) → covered by the Pairing collection.
+
+Do not reintroduce any of these without an ADR.
 
 ## Phases
 

@@ -23,23 +23,48 @@ Failing any criterion → the output is suggestion-only.
 
 ## Allowlist (Phase 1)
 
-| Output                                                               | Auto-apply?                               |
-| -------------------------------------------------------------------- | ----------------------------------------- |
-| Ingredient link detection (text → known ingredient/mixture slug)     | ✅                                        |
-| Pairing slug detection (text mentions a pairing)                     | ✅                                        |
-| Language detection (`locale` / `language` field)                     | ✅                                        |
-| Tag suggestions (high-confidence)                                    | ✅                                        |
-| Image attribution extraction (Wikimedia/Flickr metadata)             | ✅                                        |
-| Completeness gauge                                                   | ✅ display-only — does not mutate content |
-| Translation candidates                                               | ❌ suggestion-only                        |
-| Encyclopedia text generation (description, history, culinary use, …) | ❌                                        |
-| Medicinal / health / safety content                                  | ❌                                        |
-| Slug renames                                                         | ❌                                        |
-| Variant fork suggestions                                             | ❌                                        |
-| Pairing creation (new pairing entity)                                | ❌                                        |
+| Output                                                               | Auto-apply?                                                                                                                |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Ingredient link detection (text → known ingredient/mixture slug)     | ✅                                                                                                                         |
+| Pairing slug detection (text mentions a pairing)                     | ✅                                                                                                                         |
+| Language detection (`locale` / `language` field)                     | ✅                                                                                                                         |
+| Tag suggestions (high-confidence)                                    | ✅                                                                                                                         |
+| Image attribution extraction (Wikimedia/Flickr metadata)             | ✅                                                                                                                         |
+| Completeness gauge                                                   | ✅ display-only — does not mutate content                                                                                  |
+| Translation (whole-entity fill via sibling-locale source)            | ❌ suggestion-only on the operation; never auto-apply. Per-field translate-on-existing prohibited entirely (see ADR 0015). |
+| Encyclopedia text generation (description, history, culinary use, …) | ❌                                                                                                                         |
+| Medicinal / health / safety content                                  | ❌                                                                                                                         |
+| Slug renames                                                         | ❌                                                                                                                         |
+| Variant fork suggestions                                             | ❌                                                                                                                         |
+| Pairing creation (new pairing entity)                                | ❌                                                                                                                         |
 
 Translation is suggestion-only forever — too liability-adjacent for
 auto-apply, especially for medicinal/health content.
+
+**Important amendment (2026-05-16):** The original wording of this row
+read "Translation candidates → ❌ suggestion-only" and was paired in
+early implementation with `translate-*` field-level presets that the
+editor accepted or rejected per field. That framing was wrong: it
+invited mixed-language entities (a DE-translated paragraph written into
+an EN-locale record). The correct framing is that **translation is a
+whole-entity fill operation** invoked from the source-locale entity,
+which produces (or refreshes) a separate target-locale record from a
+sibling-locale source context. Per-field translate-on-existing is
+prohibited entirely — not just suppressed.
+
+The auto-apply rule still applies: the whole-entity translation
+operation is reviewed pre-save in `TranslateEntityDialog` and never
+auto-applies. But "suggestion-only" no longer means "per-field
+suggestion the editor accepts/rejects in place"; it means "the whole
+operation requires explicit editorial save." Per-field acceptance
+events for translation are emitted only during Phase 2 (editing an
+existing translation draft via refine or per-field retranslate), not
+during Phase 1 (whole-entity creation).
+
+See ADR 0015 (Translation flow architecture) for the full
+runner-and-UI shape this amendment refers to. The structural
+prohibition on per-field translate-on-existing lives there; this ADR
+retains the auto-apply boundary it has owned since the beginning.
 
 ## Phase 2 rule change
 
