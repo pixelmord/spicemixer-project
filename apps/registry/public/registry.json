@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "@pixelmord/ui-registry",
+  "homepage": "https://spicemixer.app/registry",
+  "items": [
+    {
+      "name": "__hello-world__",
+      "type": "registry:ui",
+      "title": "Hello World",
+      "description": "Trivial smoke-test component for @pixelmord/ui-registry CLI verification.",
+      "files": [
+        {
+          "path": "components/ui/__hello-world__.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    }
+  ]
+}
