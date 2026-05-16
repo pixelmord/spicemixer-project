@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import {
-  scoreIngredient,
+  computeCompletenessFromBlob,
   INGREDIENT_REQUIRED,
   INGREDIENT_RECOMMENDED,
 } from "@/lib/completeness.ts";
@@ -218,7 +218,7 @@ export default function IngredientForm({
     initialSlug: initialSlug ?? "",
     initialLocale: locale,
     initialDraft: isNew ? true : !!(initialMeta?.["draft"] as boolean | undefined),
-    initialCompleteness: scoreIngredient(data as never),
+    initialCompleteness: computeCompletenessFromBlob("ingredient", data as never, {}),
   });
   const [origins, setOrigins] = useState<string[]>(data.origin.length > 0 ? data.origin : []);
   const [flavorNotes, setFlavorNotes] = useState<string[]>(
@@ -416,7 +416,7 @@ export default function IngredientForm({
 
       setSaving(false);
 
-      setCompleteness(scoreIngredient(payload as never));
+      setCompleteness(computeCompletenessFromBlob("ingredient", payload as never, {}));
       toast.success("Saved");
 
       if (isNew) {
@@ -458,18 +458,22 @@ export default function IngredientForm({
   const formValues = useStore(form.store, (s) => s.values);
   useEffect(() => {
     setCompleteness(
-      scoreIngredient({
-        name: formValues.name,
-        summary: formValues.summary,
-        category: formValues.category,
-        description: formValues.description,
-        images: formValues.image ? [formValues.image] : [],
-        origin: origins.filter(Boolean),
-        botanicalName: formValues.botanicalName || undefined,
-        family: formValues.family || undefined,
-        parts: parts.length > 0 ? parts : undefined,
-        flavorProfile: flavorProfile.length > 0 ? flavorProfile : undefined,
-      } as never),
+      computeCompletenessFromBlob(
+        "ingredient",
+        {
+          name: formValues.name,
+          summary: formValues.summary,
+          category: formValues.category,
+          description: formValues.description,
+          images: formValues.image ? [formValues.image] : [],
+          origin: origins.filter(Boolean),
+          botanicalName: formValues.botanicalName || undefined,
+          family: formValues.family || undefined,
+          parts: parts.length > 0 ? parts : undefined,
+          flavorProfile: flavorProfile.length > 0 ? flavorProfile : undefined,
+        } as never,
+        {},
+      ),
     );
   }, [formValues, origins, parts, flavorProfile]);
 
