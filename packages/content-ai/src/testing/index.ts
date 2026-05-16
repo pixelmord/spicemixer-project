@@ -6,10 +6,6 @@ function refKey(ref: MetaRef): string {
   return `${ref.collection}/${ref.locale ?? "_"}/${ref.slug}`;
 }
 
-/**
- * In-memory AiEventLog for use in tests. Implements the same per-entity
- * serialisation contract as SidecarEventLog without any disk I/O.
- */
 export class InMemoryAiEventLog implements AiEventLog {
   #store = new Map<string, AiEvent[]>();
   #pending = new Map<string, Promise<void>>();
@@ -30,8 +26,9 @@ export class InMemoryAiEventLog implements AiEventLog {
   }
 
   async #doAppend(ref: MetaRef, event: Omit<AiEvent, "at">): Promise<void> {
-    const current = this.#store.get(refKey(ref)) ?? [];
-    this.#store.set(refKey(ref), recordAiEvent(current, event));
+    const key = refKey(ref);
+    const current = this.#store.get(key) ?? [];
+    this.#store.set(key, recordAiEvent(current, event));
   }
 
   async shouldSkip(ref: MetaRef, input: { fieldPath: string; hash: string }): Promise<boolean> {

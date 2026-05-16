@@ -2,27 +2,15 @@ import { describe, expect, test } from "vite-plus/test";
 import { InMemoryAiEventLog } from "../src/testing/index.ts";
 import { createAiEventLog } from "../src/event-log.ts";
 import type { AiEventLog, AiEventSidecar, MetaRef } from "../src/event-log.ts";
-import type { AiEvent } from "../src/schemas/ai-events.ts";
 
 // ── shared fixtures ───────────────────────────────────────────────────────────
 
 const REF: MetaRef = { collection: "ingredients", locale: "en", slug: "cardamom" };
 
-function makeEvent(type: AiEvent["type"], field: string, hash: string): AiEvent {
-  return {
-    type,
-    field,
-    suggestion: { hash, summary: `${field} ${hash}` },
-    at: "2026-01-01T00:00:00.000Z",
-    model: "test-model",
-  };
-}
-
 // ── parity suite: runs against both implementations ───────────────────────────
 
 function parityTests(label: string, makeLog: () => AiEventLog) {
   describe(`${label} — parity`, () => {
-    // read
     describe("read", () => {
       test("returns [] when entity has no events", async () => {
         const log = makeLog();
@@ -56,7 +44,6 @@ function parityTests(label: string, makeLog: () => AiEventLog) {
       });
     });
 
-    // append
     describe("append", () => {
       test("stamps an ISO timestamp automatically", async () => {
         const log = makeLog();
@@ -91,7 +78,6 @@ function parityTests(label: string, makeLog: () => AiEventLog) {
       });
     });
 
-    // shouldSkip
     describe("shouldSkip", () => {
       test("returns false when no rejected events", async () => {
         const log = makeLog();
@@ -143,7 +129,6 @@ function parityTests(label: string, makeLog: () => AiEventLog) {
       });
     });
 
-    // buildRejectedContext
     describe("buildRejectedContext", () => {
       test("returns empty array when no events", async () => {
         const log = makeLog();
@@ -202,7 +187,6 @@ function parityTests(label: string, makeLog: () => AiEventLog) {
       });
     });
 
-    // per-entity locking
     describe("per-entity locking", () => {
       test("concurrent appends for the same ref serialise — all events persisted", async () => {
         const log = makeLog();
@@ -291,13 +275,11 @@ describe("InMemoryAiEventLog", () => {
 
   test("pre-seeded events visible on read", async () => {
     const log = new InMemoryAiEventLog();
-    const event = makeEvent("rejected", "name", "abc");
-    // Seed via append
     await log.append(REF, {
       type: "rejected",
       field: "name",
-      suggestion: event.suggestion,
-      model: event.model,
+      suggestion: { hash: "abc", summary: "name abc" },
+      model: "test-model",
     });
     const events = await log.read(REF);
     expect(events).toHaveLength(1);
