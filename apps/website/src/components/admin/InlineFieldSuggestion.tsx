@@ -219,7 +219,6 @@ export interface InlineFieldSuggestionProps {
 
 export function InlineFieldSuggestion({
   fieldPath,
-  currentValue: _currentValue,
   onApply,
   renderers = defaultRenderers,
   kind,
@@ -229,12 +228,9 @@ export function InlineFieldSuggestion({
   const accessor = flow.forField(fieldPath);
   const suggestion = accessor.suggestion;
 
-  const suggestionKey =
-    suggestion === undefined
-      ? null
-      : suggestion.kind === "single"
-        ? suggestion.hash
-        : suggestion.traceId;
+  let suggestionKey: string | null = null;
+  if (suggestion?.kind === "single") suggestionKey = suggestion.hash;
+  else if (suggestion) suggestionKey = suggestion.traceId;
 
   useEffect(() => {
     if (suggestionKey !== null) {
