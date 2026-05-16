@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "__hello-world__",
+  "type": "registry:ui",
+  "title": "Hello World",
+  "description": "Trivial smoke-test component for @pixelmord/ui-registry CLI verification.",
+  "files": [
+    {
+      "path": "components/ui/__hello-world__.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\n\nexport function HelloWorld({ className }: { className?: string }) {\n  return (\n    <div className={cn(\"rounded-md border p-4 text-sm font-mono\", className)}>\n      Hello from @pixelmord/ui-registry\n    </div>\n  );\n}\n"
+    }
+  ]
+}

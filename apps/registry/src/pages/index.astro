@@ -1,0 +1,107 @@
+---
+import "../styles/global.css";
+
+const REGISTRY_BASE = "https://spicemixer.app/registry";
+
+const stackAssumptions = [
+  { label: "React 19", detail: "hooks, JSX, concurrent features" },
+  { label: "Tailwind v4", detail: "utility classes, no config file" },
+  { label: "shadcn-ui (base-ui flavour)", detail: "headless primitives at @/components/ui/*" },
+  { label: "lucide-react", detail: "icon library" },
+  { label: "sonner", detail: "toasts — used sparingly" },
+  { label: "cn() from @/lib/utils", detail: "Tailwind class merging" },
+];
+
+const items = [
+  {
+    name: "__hello-world__",
+    title: "Hello World",
+    description: "Trivial smoke-test component for CLI verification.",
+  },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@pixelmord/ui-registry</title>
+  </head>
+  <body class="min-h-screen bg-stone-50 text-stone-900 font-sans">
+    <div class="mx-auto max-w-3xl px-6 py-16 space-y-12">
+
+      <header class="space-y-3">
+        <h1 class="text-3xl font-bold tracking-tight">@pixelmord/ui-registry</h1>
+        <p class="text-stone-600 text-lg">
+          A shadcn-style code registry for AI-suggestion UI primitives and blocks.
+          Components paste into your repo via the shadcn CLI — you own and modify them freely.
+        </p>
+      </header>
+
+      <section class="space-y-4">
+        <h2 class="text-xl font-semibold">Usage</h2>
+        <p class="text-stone-600">
+          Add a registry item to your project with the shadcn CLI:
+        </p>
+        <pre class="bg-stone-900 text-stone-100 rounded-lg p-4 overflow-x-auto text-sm"><code>pnpm dlx shadcn@latest add {REGISTRY_BASE}/r/__hello-world__</code></pre>
+        <p class="text-stone-500 text-sm">
+          Replace <code class="bg-stone-100 px-1 rounded">__hello-world__</code> with the item name.
+          The CLI fetches the item JSON and pastes the source files into your project.
+        </p>
+      </section>
+
+      <section class="space-y-4">
+        <h2 class="text-xl font-semibold">Stack assumptions</h2>
+        <p class="text-stone-600">
+          Every registry item assumes the following stack in the consuming project.
+          Items import <strong>types only</strong> from <code class="bg-stone-100 px-1 rounded">@pixelmord/content-ai-core</code> —
+          zero runtime imports from lifted packages.
+        </p>
+        <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
+          {stackAssumptions.map(({ label, detail }) => (
+            <li class="flex items-start gap-4 px-4 py-3">
+              <span class="font-mono text-sm font-medium text-amber-700 min-w-[200px]">{label}</span>
+              <span class="text-stone-500 text-sm">{detail}</span>
+            </li>
+          ))}
+        </ul>
+        <p class="text-stone-500 text-sm">
+          Registry items do <strong>not</strong> assume a specific RPC layer, form library, or
+          persistence backend. Runner functions are injected via props; form integration is via
+          controlled <code class="bg-stone-100 px-1 rounded">currentValue</code> /
+          <code class="bg-stone-100 px-1 rounded">onApply</code> props.
+        </p>
+      </section>
+
+      <section class="space-y-4">
+        <h2 class="text-xl font-semibold">Available items</h2>
+        <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
+          {items.map(({ name, title, description }) => (
+            <li class="px-4 py-3 space-y-1">
+              <div class="flex items-center gap-3">
+                <code class="font-mono text-sm font-medium">{name}</code>
+                <span class="text-stone-400 text-xs">{title}</span>
+              </div>
+              <p class="text-stone-500 text-sm">{description}</p>
+              <pre class="mt-2 bg-stone-50 text-stone-700 rounded p-2 text-xs overflow-x-auto"><code>pnpm dlx shadcn@latest add {REGISTRY_BASE}/r/{name}</code></pre>
+            </li>
+          ))}
+        </ul>
+        <p class="text-stone-500 text-sm">
+          Real UI primitives and blocks land in <strong>PRD 9.3+</strong>. This skeleton
+          establishes the hosting infrastructure.
+        </p>
+      </section>
+
+      <section class="space-y-4">
+        <h2 class="text-xl font-semibold">Registry manifest</h2>
+        <p class="text-stone-600">
+          The full registry manifest is available at:
+        </p>
+        <pre class="bg-stone-900 text-stone-100 rounded-lg p-4 overflow-x-auto text-sm"><code>{REGISTRY_BASE}/registry.json</code></pre>
+      </section>
+
+    </div>
+  </body>
+</html>
