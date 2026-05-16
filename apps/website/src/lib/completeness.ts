@@ -1,3 +1,8 @@
+import type { EntityKind } from "entity-kind";
+import type { ContentStore } from "./content-store.ts";
+import type { MetaRef } from "./meta-sidecar.ts";
+import { createMetaSidecar } from "./meta-sidecar.ts";
+
 /**
  * Completeness scoring for content items.
  * Returns a 0–100 integer score and a list of missing recommended fields.
@@ -54,7 +59,7 @@ export const INGREDIENT_RECOMMENDED = [
   "images[0]",
 ] as const;
 
-export function scoreRecipe(recipe: AnyRecord, meta: AnyRecord): CompletenessResult {
+function scoreRecipe(recipe: AnyRecord, meta: AnyRecord): CompletenessResult {
   // Required — missing any → score 0
   for (const field of RECIPE_REQUIRED) {
     const v = recipe[field];
@@ -106,7 +111,7 @@ export function resolvePairingDescription(
   return { description: legacy, locale: "en", isFallback: !!legacy };
 }
 
-export function scorePairing(pairing: AnyRecord, locale: string): CompletenessResult {
+function scorePairing(pairing: AnyRecord, locale: string): CompletenessResult {
   const descriptions = (pairing["descriptions"] as Record<string, string> | undefined) ?? {};
   const legacy = pairing["description"] ? "en" : null;
   const hasAny = Object.keys(descriptions).length > 0 || legacy;
@@ -134,7 +139,7 @@ export function scorePairing(pairing: AnyRecord, locale: string): CompletenessRe
   return { score: pct, missing, color: color(pct) };
 }
 
-export function scoreIngredient(ingredient: AnyRecord): CompletenessResult {
+function scoreIngredient(ingredient: AnyRecord): CompletenessResult {
   for (const field of INGREDIENT_REQUIRED) {
     if (!has(ingredient, field)) {
       return { score: 0, missing: [field], color: "red" };
@@ -155,4 +160,43 @@ export function scoreIngredient(ingredient: AnyRecord): CompletenessResult {
 
   const pct = score(filled, INGREDIENT_RECOMMENDED.length);
   return { score: pct, missing, color: color(pct) };
+}
+
+/**
+ * Pure completeness scorer. Dispatches on kind; accepts pre-fetched content and meta blobs.
+ * For pairings, pass locale in meta (defaults to "en").
+ */
+export function computeCompletenessFromBlob(
+  kind: EntityKind,
+  content: AnyRecord,
+  meta: AnyRecord,
+): CompletenessResult {
+  switch (kind) {
+    case "recipe":
+      return scoreRecipe(content, meta);
+    case "ingredient":
+      return scoreIngredient(content);
+    case "pairing":
+      return scorePairing(content, (meta["locale"] as string | undefined) ?? "en");
+  }
+}
+
+/**
+ * Caller-facing completeness scorer. Fetches content and meta from the store via MetaSidecar,
+ * then delegates to computeCompletenessFromBlob.
+ */
+export async function computeCompleteness(
+  kind: EntityKind,
+  ref: MetaRef,
+  store: ContentStore,
+): Promise<CompletenessResult> {
+  const contentId = ref.locale ? `${ref.locale}/${ref.slug}` : ref.slug;
+  const sidecar = createMetaSidecar(store);
+  const [contentItem, metaItem] = await Promise.all([
+    store.get(ref.collection, contentId),
+    sidecar.read(ref),
+  ]);
+  const content = (contentItem?.data ?? {}) as AnyRecord;
+  const meta = (metaItem?.data ?? {}) as AnyRecord;
+  return computeCompletenessFromBlob(kind, content, meta);
 }

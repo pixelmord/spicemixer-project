@@ -1,12 +1,12 @@
 import { defineAction, ActionError } from "astro:actions";
 import { z } from "astro/zod";
 import { createStore } from "@/lib/content-store.ts";
-import { createMetaSidecar, INGREDIENT_META, PAIRING_META } from "@/lib/meta-sidecar.ts";
+import { createMetaSidecar } from "@/lib/meta-sidecar.ts";
 import { slugFromLocaleId } from "@/lib/recipe-augment.ts";
 import { entityRefSchema } from "@/lib/entity-ref.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
 import { fetchRecipe } from "recipe-ingestion";
-import { scoreRecipe, scoreIngredient, scorePairing } from "@/lib/completeness.ts";
+import { computeCompletenessFromBlob } from "@/lib/completeness.ts";
 import {
   deleteRecipe as libDeleteRecipe,
   publishRecipe as libPublishRecipe,
@@ -216,85 +216,95 @@ const recipeCollectionEnum = z.enum(["recipes", "mixtures"]);
 
 async function buildListing() {
   const store = await createStore();
-  const [recipes, mixtures, metas, ingredients, ingredientMetas, pairings, pairingMetas] =
-    await Promise.all([
-      store.list("recipes"),
-      store.list("mixtures"),
-      store.list("meta"),
-      store.list("ingredients"),
-      store.list(INGREDIENT_META),
-      store.list("pairings"),
-      store.list(PAIRING_META),
-    ]);
+  const sidecar = createMetaSidecar(store);
 
-  const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown>]));
-  const ingredientMetaMap = new Map(
-    ingredientMetas.map((m) => [m.id, m.data as Record<string, unknown>]),
+  const [recipes, mixtures, ingredients, pairings] = await Promise.all([
+    store.list("recipes"),
+    store.list("mixtures"),
+    store.list("ingredients"),
+    store.list("pairings"),
+  ]);
+
+  const recipeItems = await Promise.all(
+    [...recipes, ...mixtures].map(async (item) => {
+      const collection = item.collection as "recipes" | "mixtures";
+      const slug = slugFromLocaleId(item.id);
+      const slash = item.id.indexOf("/");
+      const locale = slash === -1 ? "en" : item.id.slice(0, slash);
+      const metaItem = await sidecar.read({ collection, locale, slug });
+      const meta = (metaItem?.data ?? {}) as Record<string, unknown>;
+      const completeness = computeCompletenessFromBlob(
+        "recipe",
+        item.data as Record<string, unknown>,
+        meta,
+      );
+      return {
+        type: "recipe" as const,
+        collection,
+        id: slug,
+        name: (item.data as Record<string, unknown>).name ?? slug,
+        draft: !!meta.draft,
+        completeness,
+        updatedAt: item.updatedAt,
+      };
+    }),
   );
-  const pairingMetaMap = new Map(
-    pairingMetas.map((m) => [m.id, m.data as Record<string, unknown>]),
+
+  const ingredientItems = await Promise.all(
+    ingredients.map(async (item) => {
+      const slash = item.id.indexOf("/");
+      const locale = slash === -1 ? "en" : item.id.slice(0, slash);
+      const slug = slugFromLocaleId(item.id);
+      const metaItem = await sidecar.read({ collection: "ingredients", locale, slug });
+      const meta = (metaItem?.data ?? {}) as Record<string, unknown>;
+      const completeness = computeCompletenessFromBlob(
+        "ingredient",
+        item.data as Record<string, unknown>,
+        meta,
+      );
+      return {
+        type: "ingredient" as const,
+        collection: "ingredients" as const,
+        id: item.id,
+        name: (item.data as Record<string, unknown>).name ?? item.id,
+        draft: !!meta.draft,
+        completeness,
+        updatedAt: item.updatedAt,
+      };
+    }),
   );
 
-  const recipeItems = [...recipes, ...mixtures].map((item) => {
-    const collection = item.collection as "recipes" | "mixtures";
-    // item.id is "locale/slug" per ADR 0009; meta key is "kind/locale/slug"
-    const metaId = `${collection}/${item.id}`;
-    const meta = metaMap.get(metaId) ?? {};
-    const completeness = scoreRecipe(item.data as Record<string, unknown>, meta);
-    const slug = slugFromLocaleId(item.id);
-    return {
-      type: "recipe" as const,
-      collection,
-      id: slug,
-      name: (item.data as Record<string, unknown>).name ?? slug,
-      draft: !!(meta as Record<string, unknown>).draft,
-      completeness,
-      updatedAt: item.updatedAt,
-    };
-  });
-
-  const ingredientItems = ingredients.map((item) => {
-    const completeness = scoreIngredient(item.data as Record<string, unknown>);
-    const meta = ingredientMetaMap.get(item.id) ?? {};
-    return {
-      type: "ingredient" as const,
-      collection: "ingredients" as const,
-      id: item.id,
-      name: (item.data as Record<string, unknown>).name ?? item.id,
-      draft: !!(meta as Record<string, unknown>).draft,
-      completeness,
-      updatedAt: item.updatedAt,
-    };
-  });
-
-  const pairingItems = pairings.map((item) => {
-    const d = item.data as Record<string, unknown>;
-    const ings = (d["ingredients"] as Array<EntityRef | string>) ?? [];
-    const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
-    const completeness = scorePairing(d, "en");
-    const translations = ["en", "de"].filter((l) => !!descriptions[l]);
-    const description =
-      descriptions["en"] ?? (typeof d["description"] === "string" ? d["description"] : "");
-    const refSlug = (v: EntityRef | string | undefined): string => {
-      if (v == null) return "?";
-      if (typeof v === "string") return v;
-      return v.slug;
-    };
-    const pairingMeta = pairingMetaMap.get(item.id) ?? {};
-    return {
-      type: "pairing" as const,
-      collection: "pairings" as const,
-      id: item.id,
-      name: `${refSlug(ings[0])} ↔ ${refSlug(ings[1])}`,
-      draft: !!(pairingMeta["draft"] as boolean),
-      completeness,
-      updatedAt: item.updatedAt,
-      translations,
-      subtitle: description
-        ? description.slice(0, 100) + (description.length > 100 ? "…" : "")
-        : undefined,
-    };
-  });
+  const pairingItems = await Promise.all(
+    pairings.map(async (item) => {
+      const d = item.data as Record<string, unknown>;
+      const ings = (d["ingredients"] as Array<EntityRef | string>) ?? [];
+      const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
+      const metaItem = await sidecar.read({ collection: "pairings", slug: item.id });
+      const pairingMeta = (metaItem?.data ?? {}) as Record<string, unknown>;
+      const completeness = computeCompletenessFromBlob("pairing", d, pairingMeta);
+      const translations = ["en", "de"].filter((l) => !!descriptions[l]);
+      const description =
+        descriptions["en"] ?? (typeof d["description"] === "string" ? d["description"] : "");
+      const refSlug = (v: EntityRef | string | undefined): string => {
+        if (v == null) return "?";
+        if (typeof v === "string") return v;
+        return v.slug;
+      };
+      return {
+        type: "pairing" as const,
+        collection: "pairings" as const,
+        id: item.id,
+        name: `${refSlug(ings[0])} ↔ ${refSlug(ings[1])}`,
+        draft: !!(pairingMeta["draft"] as boolean),
+        completeness,
+        updatedAt: item.updatedAt,
+        translations,
+        subtitle: description
+          ? description.slice(0, 100) + (description.length > 100 ? "…" : "")
+          : undefined,
+      };
+    }),
+  );
 
   return [...recipeItems, ...ingredientItems, ...pairingItems];
 }

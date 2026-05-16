@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { cn } from "@/lib/utils.ts";
-import { scorePairing, resolvePairingDescription } from "@/lib/completeness.ts";
+import { computeCompletenessFromBlob, resolvePairingDescription } from "@/lib/completeness.ts";
 import { useEntityFormState } from "@/hooks/useEntityFormState.ts";
 import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
@@ -208,12 +208,13 @@ export default function PairingForm({
     window.location.href = "/admin/pairings";
   }
 
-  const completeness = scorePairing(
+  const completeness = computeCompletenessFromBlob(
+    "pairing",
     {
       ingredients: [formValues.ingredient1, formValues.ingredient2],
       descriptions: formValues.descriptions,
     },
-    activeLocale,
+    { locale: activeLocale },
   );
 
   const completenessFields = [

@@ -16,7 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
-import { scoreRecipe, RECIPE_REQUIRED, RECIPE_RECOMMENDED } from "@/lib/completeness.ts";
+import {
+  computeCompletenessFromBlob,
+  RECIPE_REQUIRED,
+  RECIPE_RECOMMENDED,
+} from "@/lib/completeness.ts";
 import { slugify } from "@/lib/slugify.ts";
 import type { RecipeCollection } from "@/lib/content-store.ts";
 import { MIXTURE_KINDS, type MixtureKind } from "@/lib/mixture-schema.ts";
@@ -275,7 +279,7 @@ export default function RecipeForm({
     initialSlug: initialSlug ?? "",
     initialLocale: meta.language ?? "",
     initialDraft: initialMeta?.draft ?? (isNew ? true : false),
-    initialCompleteness: scoreRecipe(recipe as never, meta as never),
+    initialCompleteness: computeCompletenessFromBlob("recipe", recipe as never, meta as never),
   });
 
   const [ingredients, setIngredients] = useState<string[]>(
@@ -580,7 +584,9 @@ export default function RecipeForm({
         return;
       }
 
-      setCompleteness(scoreRecipe(recipePayload as never, metaPayload as never));
+      setCompleteness(
+        computeCompletenessFromBlob("recipe", recipePayload as never, metaPayload as never),
+      );
       toast.success("Saved");
 
       if (isNew) {
@@ -637,7 +643,9 @@ export default function RecipeForm({
       recipeIngredient: ingredients.filter(Boolean),
       recipeInstructions: instructions.filter((s) => s.text.trim()),
     };
-    setCompleteness(scoreRecipe(recipeSnap as never, { ingredientLinks } as never));
+    setCompleteness(
+      computeCompletenessFromBlob("recipe", recipeSnap as never, { ingredientLinks } as never),
+    );
   }, [formValues, ingredients, instructions, keywords, ingredientLinks]);
 
   function openQuickCreate(
