@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
 import { ArrowLeft, Sparkles, Languages, Loader2, Trash2, Eye, EyeOff } from "lucide-react";
@@ -51,11 +52,6 @@ export default function PairingForm({
   initialImageAttribution,
   isNew,
 }: Props) {
-  const [ingredient1, setIngredient1] = useState(initialIngredients?.[0] ?? "");
-  const [ingredient2, setIngredient2] = useState(initialIngredients?.[1] ?? "");
-  const [descriptions, setDescriptions] = useState<Record<string, string>>(initialDescriptions);
-  const [activeLocale, setActiveLocale] = useState<string>("en");
-
   const { draft, setDraft, saving, setSaving } = useEntityFormState({
     kind: "pairing",
     collection: "pairings",
@@ -63,11 +59,9 @@ export default function PairingForm({
     initialDraft,
     initialCompleteness: { score: 0, missing: [], color: "red" },
   });
+
+  const [activeLocale, setActiveLocale] = useState<string>("en");
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
-  const [image, setImage] = useState(initialImage);
-  const [imageAttribution, setImageAttribution] = useState<ImageAttribution | undefined>(
-    initialImageAttribution,
-  );
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
 
   // AI state (transient — not persisted in meta)
@@ -78,6 +72,60 @@ export default function PairingForm({
   // Modals
   const [enhanceOpen, setEnhanceOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
+
+  const form = useForm({
+    defaultValues: {
+      ingredient1: initialIngredients?.[0] ?? "",
+      ingredient2: initialIngredients?.[1] ?? "",
+      descriptions: initialDescriptions as Record<string, string>,
+      image: initialImage,
+      imageAttribution: initialImageAttribution as ImageAttribution | undefined,
+    },
+    onSubmit: async ({ value }) => {
+      if (!value.ingredient1 || !value.ingredient2) {
+        toast.error("Both ingredients are required");
+        return;
+      }
+      const currentDesc = value.descriptions[activeLocale];
+      if (!currentDesc?.trim()) {
+        toast.error(`Description for ${activeLocale.toUpperCase()} is required`);
+        return;
+      }
+      setSaving(true);
+      try {
+        const id = [value.ingredient1, value.ingredient2].sort().join("--");
+        // Save all locales that have descriptions; include draft on first save
+        let first = true;
+        for (const [locale, desc] of Object.entries(value.descriptions)) {
+          if (!desc) continue;
+          const { error } = await actions.savePairing({
+            id,
+            ingredients: [
+              { collection: "ingredients" as const, slug: value.ingredient1 },
+              { collection: "ingredients" as const, slug: value.ingredient2 },
+            ],
+            description: desc,
+            locale,
+            draft: first ? draft : undefined,
+            image: value.image || "",
+            imageAttribution: value.imageAttribution ?? undefined,
+          });
+          if (error) throw new Error(error.message);
+          first = false;
+        }
+        toast.success("Saved");
+        if (isNew) {
+          window.location.href = `/admin/pairings/${encodeURIComponent(id)}/edit`;
+        }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
+      } finally {
+        setSaving(false);
+      }
+    },
+  });
+
+  const formValues = useStore(form.store, (s) => s.values);
 
   useEffect(() => {
     void actions
@@ -95,14 +143,18 @@ export default function PairingForm({
     if (isNew || !initialId) return;
     const localeAiSuggestions = aiSuggestions[activeLocale];
     if (localeAiSuggestions && localeAiSuggestions.length > 0) return;
-    const currentDesc = descriptions[activeLocale] ?? descriptions["en"] ?? "";
+    const currentDesc =
+      formValues.descriptions[activeLocale] ?? formValues.descriptions["en"] ?? "";
     if (!currentDesc) return;
     setAiRefreshing(true);
     void actions
       .aiRefreshPairingSuggestions({
         id: initialId,
         locale: activeLocale,
-        pairing: { ingredients: [ingredient1, ingredient2], descriptions },
+        pairing: {
+          ingredients: [formValues.ingredient1, formValues.ingredient2],
+          descriptions: formValues.descriptions,
+        },
       })
       .then(({ data }: { data?: { aiSuggestions?: Record<string, unknown> } }) => {
         if (data?.aiSuggestions) {
@@ -120,49 +172,6 @@ export default function PairingForm({
       .finally(() => setAiRefreshing(false));
   }, [activeLocale]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleSave() {
-    if (!ingredient1 || !ingredient2) {
-      toast.error("Both ingredients are required");
-      return;
-    }
-    const currentDesc = descriptions[activeLocale];
-    if (!currentDesc?.trim()) {
-      toast.error(`Description for ${activeLocale.toUpperCase()} is required`);
-      return;
-    }
-    setSaving(true);
-    try {
-      const id = [ingredient1, ingredient2].sort().join("--");
-      // Save all locales that have descriptions; include draft on first save
-      let first = true;
-      for (const [locale, desc] of Object.entries(descriptions)) {
-        if (!desc) continue;
-        const { error } = await actions.savePairing({
-          id,
-          ingredients: [
-            { collection: "ingredients" as const, slug: ingredient1 },
-            { collection: "ingredients" as const, slug: ingredient2 },
-          ],
-          description: desc,
-          locale,
-          draft: first ? draft : undefined,
-          image: image || "",
-          imageAttribution: imageAttribution ?? undefined,
-        });
-        if (error) throw new Error(error.message);
-        first = false;
-      }
-      toast.success("Saved");
-      if (isNew) {
-        window.location.href = `/admin/pairings/${encodeURIComponent(id)}/edit`;
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleToggleDraft() {
     if (!initialId) return;
     const newDraft = !draft;
@@ -177,7 +186,11 @@ export default function PairingForm({
 
   async function handleDelete() {
     if (!initialId) return;
-    if (!confirm(`Delete pairing "${ingredient1} ↔ ${ingredient2}"? This cannot be undone.`))
+    if (
+      !confirm(
+        `Delete pairing "${formValues.ingredient1} ↔ ${formValues.ingredient2}"? This cannot be undone.`,
+      )
+    )
       return;
     const { error } = await actions.deletePairing({ id: initialId });
     if (error) {
@@ -189,7 +202,10 @@ export default function PairingForm({
   }
 
   const completeness = scorePairing(
-    { ingredients: [ingredient1, ingredient2], descriptions },
+    {
+      ingredients: [formValues.ingredient1, formValues.ingredient2],
+      descriptions: formValues.descriptions,
+    },
     activeLocale,
   );
 
@@ -197,19 +213,19 @@ export default function PairingForm({
     {
       key: "ingredient1",
       label: "Ingredient 1",
-      filled: !!ingredient1,
+      filled: !!formValues.ingredient1,
       anchorId: "section-ingredients",
     },
     {
       key: "ingredient2",
       label: "Ingredient 2",
-      filled: !!ingredient2,
+      filled: !!formValues.ingredient2,
       anchorId: "section-ingredients",
     },
     ...SUPPORTED_LOCALES.map((l) => ({
       key: `description.${l.value}`,
       label: `Description (${l.label})`,
-      filled: !!descriptions[l.value],
+      filled: !!formValues.descriptions[l.value],
       anchorId: "section-description",
     })),
   ];
@@ -217,9 +233,12 @@ export default function PairingForm({
   const requiredFields = completenessFields.slice(0, 2);
   const recommendedFields = completenessFields.slice(2);
 
-  const currentDesc = descriptions[activeLocale] ?? "";
+  const currentDesc = formValues.descriptions[activeLocale] ?? "";
   const { isFallback, locale: fallbackLocale } = resolvePairingDescription(
-    { descriptions, ingredients: [ingredient1, ingredient2] },
+    {
+      descriptions: formValues.descriptions,
+      ingredients: [formValues.ingredient1, formValues.ingredient2],
+    },
     activeLocale,
   );
 
@@ -229,7 +248,13 @@ export default function PairingForm({
 
   function handleApplySuggestion(field: string, value: string) {
     // Pairings only have a description field — always apply to it
-    setDescriptions((prev) => ({ ...prev, [activeLocale]: value }));
+    form.setFieldValue(
+      "descriptions" as never,
+      {
+        ...formValues.descriptions,
+        [activeLocale]: value,
+      } as never,
+    );
     setDismissedSuggestions((prev) => new Set([...prev, `${activeLocale}:${field}`]));
   }
 
@@ -246,7 +271,7 @@ export default function PairingForm({
         </LinkButton>
         <div className="flex-1">
           <h1 className="text-xl font-bold">
-            {isNew ? "New pairing" : `${ingredient1} ↔ ${ingredient2}`}
+            {isNew ? "New pairing" : `${formValues.ingredient1} ↔ ${formValues.ingredient2}`}
           </h1>
           {!isNew && initialId && (
             <p className="text-sm text-muted-foreground font-mono">{initialId}</p>
@@ -309,9 +334,9 @@ export default function PairingForm({
                 <div className="space-y-1.5">
                   <Label>Ingredient 1 *</Label>
                   <EntityCombobox
-                    value={ingredient1}
-                    onChange={setIngredient1}
-                    options={ingredientOptions.filter((o) => o.value !== ingredient2)}
+                    value={formValues.ingredient1}
+                    onChange={(v) => form.setFieldValue("ingredient1" as never, v as never)}
+                    options={ingredientOptions.filter((o) => o.value !== formValues.ingredient2)}
                     placeholder="Select ingredient…"
                     disabled={!isNew}
                   />
@@ -319,9 +344,9 @@ export default function PairingForm({
                 <div className="space-y-1.5">
                   <Label>Ingredient 2 *</Label>
                   <EntityCombobox
-                    value={ingredient2}
-                    onChange={setIngredient2}
-                    options={ingredientOptions.filter((o) => o.value !== ingredient1)}
+                    value={formValues.ingredient2}
+                    onChange={(v) => form.setFieldValue("ingredient2" as never, v as never)}
+                    options={ingredientOptions.filter((o) => o.value !== formValues.ingredient1)}
                     placeholder="Select ingredient…"
                     disabled={!isNew}
                   />
@@ -342,38 +367,45 @@ export default function PairingForm({
                 <CardTitle>Image</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="pairing-image">Image URL</Label>
-                  <button
-                    type="button"
-                    onClick={() => setImageSearchOpen(true)}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Search image…
-                  </button>
-                </div>
-                <Input
-                  id="pairing-image"
-                  type="url"
-                  value={image}
-                  onChange={(e) => {
-                    setImage(e.target.value);
-                    if (!e.target.value) setImageAttribution(undefined);
-                  }}
-                  placeholder="https://example.com/image.jpg"
-                />
-                {image && (
-                  <img
-                    src={image}
-                    alt=""
-                    className="mt-2 h-24 rounded border border-border object-cover"
-                  />
-                )}
-                {imageAttribution && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {imageAttribution.attribution}
-                  </p>
-                )}
+                <form.Field name="image">
+                  {(field) => (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={field.name}>Image URL</Label>
+                        <button
+                          type="button"
+                          onClick={() => setImageSearchOpen(true)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Search image…
+                        </button>
+                      </div>
+                      <Input
+                        id={field.name}
+                        type="url"
+                        value={field.state.value}
+                        onChange={(e) => {
+                          field.handleChange(e.target.value);
+                          if (!e.target.value)
+                            form.setFieldValue("imageAttribution" as never, undefined as never);
+                        }}
+                        placeholder="https://example.com/image.jpg"
+                      />
+                      {field.state.value && (
+                        <img
+                          src={field.state.value}
+                          alt=""
+                          className="mt-2 h-24 rounded border border-border object-cover"
+                        />
+                      )}
+                      {formValues.imageAttribution && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {formValues.imageAttribution.attribution}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </form.Field>
               </CardContent>
             </Card>
           </section>
@@ -399,7 +431,7 @@ export default function PairingForm({
                         )}
                       >
                         {l.label}
-                        {descriptions[l.value] ? (
+                        {formValues.descriptions[l.value] ? (
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                         ) : (
                           <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
@@ -411,7 +443,7 @@ export default function PairingForm({
               </CardHeader>
               <CardContent className="space-y-3">
                 {/* Language mismatch / fallback warning */}
-                {!isNew && isFallback && !descriptions[activeLocale] && (
+                {!isNew && isFallback && !formValues.descriptions[activeLocale] && (
                   <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
                     ⚠ No {activeLocale.toUpperCase()} translation yet — showing{" "}
                     {fallbackLocale.toUpperCase()} fallback
@@ -429,10 +461,16 @@ export default function PairingForm({
                   <Textarea
                     value={currentDesc}
                     onChange={(e) =>
-                      setDescriptions((prev) => ({ ...prev, [activeLocale]: e.target.value }))
+                      form.setFieldValue(
+                        "descriptions" as never,
+                        {
+                          ...formValues.descriptions,
+                          [activeLocale]: e.target.value,
+                        } as never,
+                      )
                     }
                     rows={4}
-                    placeholder={`Why do ${ingredient1 || "these"} and ${ingredient2 || "these"} pair well? (${activeLocale.toUpperCase()})`}
+                    placeholder={`Why do ${formValues.ingredient1 || "these"} and ${formValues.ingredient2 || "these"} pair well? (${activeLocale.toUpperCase()})`}
                   />
                 </div>
 
@@ -474,7 +512,10 @@ export default function PairingForm({
                       const { data } = await actions.aiRefreshPairingSuggestions({
                         id: initialId,
                         locale: activeLocale,
-                        pairing: { ingredients: [ingredient1, ingredient2], descriptions },
+                        pairing: {
+                          ingredients: [formValues.ingredient1, formValues.ingredient2],
+                          descriptions: formValues.descriptions,
+                        },
                       });
                       if (data?.aiSuggestions) {
                         const s = data.aiSuggestions;
@@ -503,7 +544,7 @@ export default function PairingForm({
       {/* Save bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur px-6 py-3">
         <div className="mx-auto max-w-4xl flex items-center justify-end gap-3">
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={() => void form.handleSubmit()} disabled={saving}>
             {saving ? (
               <>
                 <Loader2 size={14} className="animate-spin mr-1" />
@@ -520,10 +561,10 @@ export default function PairingForm({
       <ImageSearchModal
         open={imageSearchOpen}
         onClose={() => setImageSearchOpen(false)}
-        defaultQuery={`${ingredient1} ${ingredient2}`.trim()}
+        defaultQuery={`${formValues.ingredient1} ${formValues.ingredient2}`.trim()}
         onSelect={(selected: SelectedImage) => {
-          setImage(selected.url);
-          setImageAttribution(selected.attribution);
+          form.setFieldValue("image" as never, selected.url as never);
+          form.setFieldValue("imageAttribution" as never, selected.attribution as never);
         }}
       />
 
@@ -537,17 +578,34 @@ export default function PairingForm({
             pairingId={initialId}
             locale={activeLocale}
             slug={initialId}
-            existing={{ ingredients: [ingredient1, ingredient2], descriptions }}
-            onApplied={(desc) => setDescriptions((prev) => ({ ...prev, [activeLocale]: desc }))}
+            existing={{
+              ingredients: [formValues.ingredient1, formValues.ingredient2],
+              descriptions: formValues.descriptions,
+            }}
+            onApplied={(desc) =>
+              form.setFieldValue(
+                "descriptions" as never,
+                {
+                  ...formValues.descriptions,
+                  [activeLocale]: desc,
+                } as never,
+              )
+            }
           />
           <PairingTranslateModal
             open={translateOpen}
             onClose={() => setTranslateOpen(false)}
             pairingId={initialId}
             currentLocale={activeLocale}
-            hasDescriptionForLocale={(l) => !!descriptions[l]}
+            hasDescriptionForLocale={(l) => !!formValues.descriptions[l]}
             onTranslated={(locale, desc) => {
-              setDescriptions((prev) => ({ ...prev, [locale]: desc }));
+              form.setFieldValue(
+                "descriptions" as never,
+                {
+                  ...formValues.descriptions,
+                  [locale]: desc,
+                } as never,
+              );
               setTranslateOpen(false);
               toast.success(`${locale.toUpperCase()} translation added`);
             }}

@@ -99,3 +99,31 @@ describe("PairingForm — binds useEntityFormState", () => {
     expect(src).toMatch(/useEntityFormState/);
   });
 });
+
+describe("PairingForm — uses @tanstack/react-form", () => {
+  let src: string;
+
+  beforeAll(async () => {
+    src = await readFile(join(COMPONENTS, "PairingForm.tsx"), "utf-8");
+  });
+
+  test("imports useForm from @tanstack/react-form", () => {
+    expect(src).toMatch(/@tanstack\/react-form/);
+  });
+
+  test("does not declare ingredient1 as useState", () => {
+    expect(src).not.toMatch(/useState\(initialIngredients/);
+  });
+
+  test("does not declare descriptions as useState", () => {
+    expect(src).not.toMatch(/useState<Record<string, string>>\(initialDescriptions/);
+  });
+
+  test("does not declare image as useState(initialImage)", () => {
+    expect(src).not.toMatch(/useState\(initialImage\)/);
+  });
+
+  test("calls form.handleSubmit on save", () => {
+    expect(src).toMatch(/form\.handleSubmit/);
+  });
+});
