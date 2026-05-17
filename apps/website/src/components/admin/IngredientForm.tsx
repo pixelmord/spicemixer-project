@@ -306,7 +306,6 @@ export default function IngredientForm({
     img.src = imageUrl;
   }, []);
 
-  // Auto-run AI suggestions on first open if none cached
   const form = useForm({
     defaultValues: {
       name: data.name,
@@ -403,7 +402,6 @@ export default function IngredientForm({
 
   const formValues = useStore(form.store, (s) => s.values);
 
-  // useAiSuggestions orchestration (~10 LOC — replaces ~100 LOC of per-form ad-hoc state)
   const aiEventLog = useMemo(
     () => ({
       read: async () => [],
