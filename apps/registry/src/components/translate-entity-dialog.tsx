@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback } from "react";
-import { cn } from "@/lib/utils";
 import { SuggestionFlowProvider } from "./suggestion-flow-provider";
 import { InlineFieldSuggestion } from "./inline-field-suggestion";
 import {
@@ -54,6 +53,13 @@ export interface TranslateEntityDialogProps {
 
 type DialogStep = "setup" | "slug-filling" | "slug-review" | "bulk-filling" | "review" | "saving";
 
+function slugStatusLabel(isChecking: boolean, available: boolean | null): string | null {
+  if (isChecking) return "Checking availability…";
+  if (available === true) return "✓ Available";
+  if (available === false) return "✗ Not available";
+  return null;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function TranslateEntityDialog({
@@ -81,6 +87,18 @@ export function TranslateEntityDialog({
   const [error, setError] = useState<string | null>(null);
 
   const twoCallMode = onCheckSlugAvailable !== undefined;
+
+  const sourceContext = useMemo(
+    () => ({
+      kind: "sibling-locale" as const,
+      sourceRef,
+      sourceData,
+      sourceLocale,
+      targetLocale,
+      fieldHashes: {} as Record<string, string>,
+    }),
+    [sourceRef, sourceData, sourceLocale, targetLocale],
+  );
 
   // ── Slug check ───────────────────────────────────────────────────────────────
 
@@ -112,14 +130,7 @@ export function TranslateEntityDialog({
           entityRef: sourceRef,
           origin,
           target: ["slug"],
-          sourceContext: {
-            kind: "sibling-locale",
-            sourceRef,
-            sourceData,
-            sourceLocale,
-            targetLocale,
-            fieldHashes: {},
-          },
+          sourceContext,
         });
         const slugSug = result.suggestions["slug"];
         const initialSlug = slugSug?.kind === "single" ? String(slugSug.value) : "";
@@ -137,16 +148,9 @@ export function TranslateEntityDialog({
         const result = await onFill({
           entityRef: sourceRef,
           origin,
-          sourceContext: {
-            kind: "sibling-locale",
-            sourceRef,
-            sourceData,
-            sourceLocale,
-            targetLocale,
-            fieldHashes: {},
-          },
+          sourceContext,
         });
-        setSuggestions(new Map(Object.entries(result.suggestions ?? {})));
+        setSuggestions(new Map(Object.entries(result.suggestions)));
         setAppliedValues({});
         setViewedFields(new Set());
         setStep("review");
@@ -155,7 +159,7 @@ export function TranslateEntityDialog({
         setStep("setup");
       }
     }
-  }, [twoCallMode, onFill, sourceRef, origin, sourceData, sourceLocale, targetLocale, checkSlug]);
+  }, [twoCallMode, onFill, sourceRef, origin, sourceContext, checkSlug]);
 
   const handleContinueAfterSlug = useCallback(async () => {
     setError(null);
@@ -166,16 +170,9 @@ export function TranslateEntityDialog({
         entityRef: sourceRef,
         origin,
         target: nonSlugFields,
-        sourceContext: {
-          kind: "sibling-locale",
-          sourceRef,
-          sourceData,
-          sourceLocale,
-          targetLocale,
-          fieldHashes: {},
-        },
+        sourceContext,
       });
-      setSuggestions(new Map(Object.entries(result.suggestions ?? {})));
+      setSuggestions(new Map(Object.entries(result.suggestions)));
       setAppliedValues({});
       setViewedFields(new Set());
       setStep("review");
@@ -183,7 +180,7 @@ export function TranslateEntityDialog({
       setError(e instanceof Error ? e.message : "Fill failed");
       setStep("slug-review");
     }
-  }, [contract.fields, onFill, sourceRef, origin, sourceData, sourceLocale, targetLocale]);
+  }, [contract.fields, onFill, sourceRef, origin, sourceContext]);
 
   const handleAcceptAll = useCallback(async () => {
     setStep("saving");
@@ -383,13 +380,7 @@ export function TranslateEntityDialog({
               />
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {isCheckingSlug
-                ? "Checking availability…"
-                : slugAvailable === true
-                  ? "✓ Available"
-                  : slugAvailable === false
-                    ? "✗ Not available"
-                    : null}
+              {slugStatusLabel(isCheckingSlug, slugAvailable)}
             </p>
           </div>
           <button
@@ -450,7 +441,7 @@ export function TranslateEntityDialog({
                           }}
                           sourceSlot={
                             sourceVal !== undefined ? (
-                              <span className={cn("break-words")}>
+                              <span className="break-words">
                                 {Array.isArray(sourceVal)
                                   ? sourceVal.join(", ")
                                   : String(sourceVal)}
