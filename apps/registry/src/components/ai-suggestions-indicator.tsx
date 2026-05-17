@@ -70,7 +70,6 @@ function StatusText({
   pendingCount: number;
   autoAppliedCount: number;
 }) {
-  // Mixed: both auto-applied and pending to review
   if (pendingCount > 0 && autoAppliedCount > 0) {
     return (
       <span className="text-sm text-foreground">
@@ -79,7 +78,6 @@ function StatusText({
     );
   }
 
-  // Only pending (no auto-applied): "N suggestions to review across N fields — review in place"
   if (pendingCount > 0) {
     return (
       <span className="text-sm text-muted-foreground">
@@ -89,6 +87,5 @@ function StatusText({
     );
   }
 
-  // Only auto-applied (no pending)
   return <span className="text-sm text-muted-foreground">{autoAppliedCount} auto-applied</span>;
 }
