@@ -27,7 +27,7 @@ export interface MigrationStats {
 
 function isNonEmpty(value: unknown): boolean {
   if (Array.isArray(value)) return value.length > 0;
-  if (value !== null && typeof value === "object") return Object.keys(value as object).length > 0;
+  if (value !== null && typeof value === "object") return Object.keys(value).length > 0;
   return value !== undefined && value !== null && value !== "";
 }
 
@@ -77,7 +77,12 @@ async function processIngredientFile(filePath: string, stats: MigrationStats): P
   stats.updated++;
 }
 
-async function walkLocaleMetaFiles(collectionDir: string, stats: MigrationStats): Promise<void> {
+async function walkLocaleFiles(
+  collectionDir: string,
+  fileFilter: (name: string) => boolean,
+  processor: (filePath: string, stats: MigrationStats) => Promise<void>,
+  stats: MigrationStats,
+): Promise<void> {
   let locales;
   try {
     locales = await readdir(collectionDir, { withFileTypes: true });
@@ -98,41 +103,9 @@ async function walkLocaleMetaFiles(collectionDir: string, stats: MigrationStats)
 
     for (const file of files) {
       if (!file.isFile()) continue;
-      if (!file.name.endsWith(".meta.json")) continue;
+      if (!fileFilter(file.name)) continue;
 
-      await processMetaFile(join(localeDir, file.name), stats);
-    }
-  }
-}
-
-async function walkIngredientContentFiles(
-  ingredientsDir: string,
-  stats: MigrationStats,
-): Promise<void> {
-  let locales;
-  try {
-    locales = await readdir(ingredientsDir, { withFileTypes: true });
-  } catch {
-    return;
-  }
-
-  for (const entry of locales) {
-    if (!entry.isDirectory()) continue;
-
-    const localeDir = join(ingredientsDir, entry.name);
-    let files;
-    try {
-      files = await readdir(localeDir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-
-    for (const file of files) {
-      if (!file.isFile()) continue;
-      if (file.name.endsWith(".meta.json")) continue;
-      if (!file.name.endsWith(".json")) continue;
-
-      await processIngredientFile(join(localeDir, file.name), stats);
+      await processor(join(localeDir, file.name), stats);
     }
   }
 }
@@ -140,9 +113,17 @@ async function walkIngredientContentFiles(
 export async function removeRelationTaxonomyFields(contentRoot: string): Promise<MigrationStats> {
   const stats: MigrationStats = { updated: 0, skipped: 0, nonEmptyRemoved: 0 };
 
-  await walkLocaleMetaFiles(join(contentRoot, "recipes"), stats);
-  await walkLocaleMetaFiles(join(contentRoot, "mixtures"), stats);
-  await walkIngredientContentFiles(join(contentRoot, "ingredients"), stats);
+  const isMetaJson = (name: string) => name.endsWith(".meta.json");
+  const isContentJson = (name: string) => name.endsWith(".json") && !name.endsWith(".meta.json");
+
+  await walkLocaleFiles(join(contentRoot, "recipes"), isMetaJson, processMetaFile, stats);
+  await walkLocaleFiles(join(contentRoot, "mixtures"), isMetaJson, processMetaFile, stats);
+  await walkLocaleFiles(
+    join(contentRoot, "ingredients"),
+    isContentJson,
+    processIngredientFile,
+    stats,
+  );
 
   return stats;
 }
