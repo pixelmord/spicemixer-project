@@ -1427,7 +1427,13 @@ export const server = {
     },
   }),
 
-  /** Suggest a URL-safe slug derived from a recipe name via AI, with duplicate avoidance. */
+  /**
+   * Suggest a URL-safe slug derived from a recipe name via runRefine, with duplicate avoidance.
+   *
+   * Retained for non-translation slug generation (recipe creation/editing UI).
+   * Translation slug generation goes through aiFillTranslation with target: ["slug"] via
+   * TranslateEntityDialog — no sibling-locale source is needed here, so runRefine is correct.
+   */
   aiSuggestSlug: defineAction({
     accept: "json",
     input: z.object({

@@ -288,9 +288,13 @@ same review primitives.
 
 ## What survives in reduced form
 
-- `aiSuggestSlug` becomes a thin wrapper over `runFill({ target: ["slug"], sourceContext: { kind: "sibling-locale", … } })`, or
-  deletes entirely and `TranslateEntityDialog` calls `runFill`
-  directly.
+- `aiSuggestSlug` is **retained unchanged** for non-translation slug
+  generation (recipe creation/editing UI — derives slug from `name`
+  via `runRefine`). Translation slug generation goes through
+  `aiFillTranslation` with `target: ["slug"]` inside
+  `TranslateEntityDialog`. No sibling-locale source exists for
+  fresh-recipe slug suggestion, so `runRefine` is the right runner
+  here.
 - `aiCreateTranslation`, `aiCreateIngredientTranslation`,
   `aiTranslatePairing` become thin Astro action shells around
   `runFill` with sibling-locale source. `TranslateEntityDialog`'s
