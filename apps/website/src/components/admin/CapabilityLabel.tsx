@@ -14,12 +14,11 @@ export const CAPABILITY_COPY: Record<string, string> = {
   aiProposeRecipeImprovements: "Suggesting improvements…",
   aiProposeIngredientImprovements: "Suggesting improvements…",
   aiProposeIngredientPairings: "Proposing pairings…",
-  aiTranslateRecipe: "Translating recipe…",
-  aiTranslateIngredient: "Translating ingredient…",
-  aiTranslatePairing: "Translating pairing…",
+  aiTranslatePairing: "Saving translation…",
   aiSuggestSlug: "Suggesting slug…",
-  aiCreateTranslation: "Creating translation…",
-  aiCreateIngredientTranslation: "Creating translation…",
+  aiCreateTranslation: "Saving translation…",
+  aiCreateIngredientTranslation: "Saving translation…",
+  aiFillTranslation: "Translating fields…",
 };
 
 export default function CapabilityLabel({ action }: { action: string }) {

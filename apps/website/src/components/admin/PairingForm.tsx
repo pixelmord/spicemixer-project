@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
@@ -16,7 +16,8 @@ import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
 import InlineSuggestion from "./InlineSuggestion.tsx";
 import EnhanceModal from "./EnhanceModal.tsx";
-import PairingTranslateModal from "./PairingTranslateModal.tsx";
+import { TranslateEntityDialog } from "./TranslateEntityDialog.tsx";
+import { Dialog, DialogContent } from "@/components/ui/dialog.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
@@ -72,6 +73,8 @@ export default function PairingForm({
   // Modals
   const [enhanceOpen, setEnhanceOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
+  const [translateRunId] = useState(() => crypto.randomUUID());
+  const pendingPairingTranslationRef = useRef<{ locale: string; desc: string } | null>(null);
 
   const form = useForm({
     defaultValues: {
@@ -572,18 +575,72 @@ export default function PairingForm({
             }}
             onApplied={(desc) => setDescription(activeLocale, desc)}
           />
-          <PairingTranslateModal
-            open={translateOpen}
-            onClose={() => setTranslateOpen(false)}
-            pairingId={initialId}
-            currentLocale={activeLocale}
-            hasDescriptionForLocale={(l) => !!formValues.descriptions[l]}
-            onTranslated={(locale, desc) => {
-              setDescription(locale, desc);
-              setTranslateOpen(false);
-              toast.success(`${locale.toUpperCase()} translation added`);
-            }}
-          />
+          <Dialog open={translateOpen} onOpenChange={(o) => !o && setTranslateOpen(false)}>
+            <DialogContent className="sm:max-w-lg">
+              <TranslateEntityDialog
+                contract={{
+                  presets: [],
+                  fields: { description: { translation: { mode: "translate" } } },
+                }}
+                sourceRef={{ kind: "pairing", id: initialId }}
+                sourceLocale={activeLocale}
+                sourceData={{ description: formValues.descriptions[activeLocale] ?? "" }}
+                availableLocales={["en", "de"].filter(
+                  (l) => l !== activeLocale && !formValues.descriptions[l],
+                )}
+                onCreate={async (targetLocale, _slug, fields) => {
+                  const description = String(fields["description"] ?? "");
+                  pendingPairingTranslationRef.current = {
+                    locale: targetLocale,
+                    desc: description,
+                  };
+                  const { error } = await actions.aiTranslatePairing({
+                    id: initialId,
+                    targetLocale: targetLocale as "en" | "de",
+                    description,
+                  });
+                  if (error) throw new Error(error.message);
+                  return { kind: "pairing", id: initialId };
+                }}
+                onComplete={() => {
+                  const pending = pendingPairingTranslationRef.current;
+                  if (pending) {
+                    setDescription(pending.locale, pending.desc);
+                    pendingPairingTranslationRef.current = null;
+                  }
+                  setTranslateOpen(false);
+                  toast.success("Translation added");
+                }}
+                aiEventLog={{ read: async () => [], append: async () => {} }}
+                onFill={async (params) => {
+                  const ctx = params.sourceContext as {
+                    sourceLocale: string;
+                    targetLocale: string;
+                    sourceData: Record<string, unknown>;
+                  };
+                  const { data, error } = await actions.aiFillTranslation({
+                    kind: "pairing",
+                    sourceRef: { id: initialId, kind: "pairing" },
+                    sourceLocale: ctx.sourceLocale as "en" | "de",
+                    targetLocale: ctx.targetLocale as "en" | "de",
+                    sourceData: ctx.sourceData,
+                    target: params.target,
+                  });
+                  if (error) throw new Error(error.message);
+                  return data!;
+                }}
+                origin={{
+                  surface: "admin",
+                  action: "aiFillTranslation",
+                  entityKind: "pairing",
+                  entityRef: initialId,
+                  userInitiated: true,
+                  runId: translateRunId,
+                  triggeredBy: "editor" as const,
+                }}
+              />
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
@@ -38,8 +38,9 @@ import RecommendedHint from "./RecommendedHint.tsx";
 import QuickCreateDialog from "./QuickCreateDialog.tsx";
 import TranslationCompanion, { FieldWithTranslation } from "./TranslationCompanion.tsx";
 import EnhanceModal from "./EnhanceModal.tsx";
-import IngredientTranslateModal from "./IngredientTranslateModal.tsx";
+import { TranslateEntityDialog } from "./TranslateEntityDialog.tsx";
 import AiAssistPanel from "./AiAssistPanel.tsx";
+import { Dialog, DialogContent } from "@/components/ui/dialog.tsx";
 import PairingEditor, { type Pairing } from "./PairingEditor.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
@@ -282,6 +283,8 @@ export default function IngredientForm({
   // Modals
   const [enhanceOpen, setEnhanceOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
+  const [translateRunId] = useState(() => crypto.randomUUID());
+  const translationTargetLocaleRef = useRef<string>("");
 
   useEffect(() => {
     void actions.listIngredientOptions({ locale }).then((r: { data?: unknown }) => {
@@ -1343,7 +1346,6 @@ export default function IngredientForm({
                       snapshot={buildIngredientSnapshot()}
                       missingFields={completeness.missing}
                       locale={locale}
-                      targetLocale={locale === "de" ? "en" : "de"}
                       onApplyPairings={(proposals) => {
                         setPendingPairingProposals((prev) => [
                           ...prev,
@@ -1363,11 +1365,6 @@ export default function IngredientForm({
                           else if (field === "origin")
                             setOrigins((prev) => [...new Set([...prev, String(value)])]);
                           else form.setFieldValue(field as never, String(value) as never);
-                        }
-                      }}
-                      onApplyTranslation={(fields) => {
-                        for (const [f, v] of Object.entries(fields)) {
-                          form.setFieldValue(f as never, v as never);
                         }
                       }}
                     />
@@ -1397,13 +1394,77 @@ export default function IngredientForm({
           onApplied={() => window.location.reload()}
         />
 
-        <IngredientTranslateModal
-          open={translateOpen}
-          onClose={() => setTranslateOpen(false)}
-          slug={slug}
-          ingredient={buildIngredientSnapshot()}
-          currentLocale={locale}
-        />
+        <Dialog open={translateOpen} onOpenChange={(o) => !o && setTranslateOpen(false)}>
+          <DialogContent className="sm:max-w-lg">
+            <TranslateEntityDialog
+              contract={{
+                presets: [],
+                fields: {
+                  name: { translation: { mode: "translate" } },
+                  summary: { translation: { mode: "translate" } },
+                  description: { translation: { mode: "translate" } },
+                  culinaryUse: { translation: { mode: "translate" } },
+                  medicinalUses: { translation: { mode: "translate" } },
+                  healthBenefits: { translation: { mode: "translate" } },
+                  safetyNotes: { translation: { mode: "translate" } },
+                  history: { translation: { mode: "translate" } },
+                  storage: { translation: { mode: "translate" } },
+                  sourcing: { translation: { mode: "translate" } },
+                  seasonality: { translation: { mode: "translate" } },
+                },
+              }}
+              sourceRef={{ kind: "ingredient", id: slug }}
+              sourceLocale={locale}
+              sourceData={buildIngredientSnapshot()}
+              availableLocales={locale === "en" ? ["de"] : ["en"]}
+              onCreate={async (targetLocale, _slug, fields, meta) => {
+                translationTargetLocaleRef.current = targetLocale;
+                const { error } = await actions.aiCreateIngredientTranslation({
+                  slug,
+                  sourceLocale: locale,
+                  targetLocale: targetLocale as "en" | "de",
+                  fields,
+                  meta: meta as unknown as Record<string, unknown>,
+                });
+                if (error) throw new Error(error.message);
+                return { kind: "ingredient", id: slug };
+              }}
+              onComplete={() => {
+                const tl = translationTargetLocaleRef.current;
+                setTranslateOpen(false);
+                toast.success("Translation created");
+                if (tl) window.open(`/admin/ingredients/${slug}/edit?locale=${tl}`, "_blank");
+              }}
+              aiEventLog={{ read: async () => [], append: async () => {} }}
+              onFill={async (params) => {
+                const ctx = params.sourceContext as {
+                  sourceLocale: string;
+                  targetLocale: string;
+                  sourceData: Record<string, unknown>;
+                };
+                const { data, error } = await actions.aiFillTranslation({
+                  kind: "ingredient",
+                  sourceRef: { id: slug, kind: "ingredient" },
+                  sourceLocale: ctx.sourceLocale as "en" | "de",
+                  targetLocale: ctx.targetLocale as "en" | "de",
+                  sourceData: ctx.sourceData,
+                  target: params.target,
+                });
+                if (error) throw new Error(error.message);
+                return data!;
+              }}
+              origin={{
+                surface: "admin",
+                action: "aiFillTranslation",
+                entityKind: "ingredient",
+                entityRef: slug,
+                userInitiated: true,
+                runId: translateRunId,
+                triggeredBy: "editor" as const,
+              }}
+            />
+          </DialogContent>
+        </Dialog>
 
         {/* Quick create dialog */}
         {quickCreateCallback && (
