@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "caraway"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "cumin"
+    }
+  ],
+  "description": "Die Kombination aus Kümmel und Anis ist in der Harissa essentiell, wobei die warmen, erdigen Noten des Kümmels die einzigartigen, leicht süßlichen Anis-Aromen des Kümmels harmonisch ergänzen. Diese Verbindung schafft ein komplexes Geschmacksprofil, das die kulinarische Tradition bereichert und der Vielfalt der Gerichte eine tiefe, einladende Note verleiht."
+}

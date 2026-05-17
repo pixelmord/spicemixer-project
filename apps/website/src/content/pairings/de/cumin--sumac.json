@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "cumin"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "sumac"
+    }
+  ],
+  "description": "Eine klassische nordafrikanische und levantinische Kombination — Kreuzkümmel erdet Sumachs helle Säure."
+}

@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "caraway"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "cumin"
+    }
+  ],
+  "description": "Caraway and cumin are essential companions in Harissa, where the warm, earthy notes of cumin meld beautifully with the distinct, slightly sweet anise flavor of caraway, creating a complex and inviting spice blend that enhances the depth of various dishes."
+}

@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "cumin"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "saffron"
+    }
+  ],
+  "description": "Die Erdigkeit des Kreuzkümmels gleicht die Süße des Safrans in Schmorgerichten und Pilaw aus."
+}
