@@ -2,7 +2,11 @@
 import { renderHook, act } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { useAiSuggestions, type UseAiSuggestionsInput } from "../src/components/use-ai-suggestions";
+import {
+  useAiSuggestions,
+  hashFieldValue,
+  type UseAiSuggestionsInput,
+} from "../src/components/use-ai-suggestions";
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -420,5 +424,200 @@ describe("controlled-with-default options", () => {
     );
     act(() => result.current.setWritePolicy("replace"));
     expect(onWritePolicyChange).toHaveBeenCalledWith("replace");
+  });
+});
+
+// ── siblingLocale — source + sourceLocale + isStale ──────────────────────────
+
+describe("siblingLocale", () => {
+  const siblingData = {
+    description: "Aromatic herb from the mint family",
+    name: "Basil",
+    tags: ["herb", "fresh"],
+  };
+
+  const siblingLocale = {
+    ref: { kind: "ingredient", id: "basil-en" },
+    data: siblingData,
+    locale: "en",
+    fieldHashes: {
+      description: hashFieldValue(siblingData.description), // matches → not stale
+      name: hashFieldValue(siblingData.name), // matches → not stale
+      tags: "old-hash-that-differs", // different → stale
+    },
+  };
+
+  test("forField returns source value from siblingLocale.data", () => {
+    const { result } = renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
+    expect(result.current.forField("description").source).toBe(siblingData.description);
+  });
+
+  test("forField returns sourceLocale from siblingLocale.locale", () => {
+    const { result } = renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
+    expect(result.current.forField("description").sourceLocale).toBe("en");
+  });
+
+  test("forField source is undefined when no siblingLocale provided", () => {
+    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    expect(result.current.forField("description").source).toBeUndefined();
+  });
+
+  test("forField sourceLocale is undefined when no siblingLocale provided", () => {
+    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    expect(result.current.forField("description").sourceLocale).toBeUndefined();
+  });
+
+  test("isStale is false when fieldHash matches current source value", () => {
+    const { result } = renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
+    expect(result.current.forField("description").isStale).toBe(false);
+  });
+
+  test("isStale is true when fieldHash differs from current source value", () => {
+    const { result } = renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
+    expect(result.current.forField("tags").isStale).toBe(true);
+  });
+
+  test("isStale is false when no siblingLocale provided", () => {
+    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    expect(result.current.forField("description").isStale).toBe(false);
+  });
+
+  test("isStale is false when field not in fieldHashes", () => {
+    const { result } = renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
+    expect(result.current.forField("unknownField").isStale).toBe(false);
+  });
+});
+
+// ── translationMode ───────────────────────────────────────────────────────────
+
+describe("translationMode", () => {
+  const contractWithTranslation = {
+    presets: [],
+    fields: {
+      description: { translation: { mode: "translate" as const } },
+      name: { translation: { mode: "copy" as const } },
+      tags: { translation: { mode: "localize" as const } },
+      slug: { translation: { mode: "skip" as const } },
+    },
+  };
+
+  test("translationMode is undefined when field has no translation config", () => {
+    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    expect(result.current.forField("description").translationMode).toBeUndefined();
+  });
+
+  test("translationMode returns mode from contract field config", () => {
+    const { result } = renderHook(() =>
+      useAiSuggestions(makeInput({ contract: contractWithTranslation })),
+    );
+    expect(result.current.forField("description").translationMode).toBe("translate");
+    expect(result.current.forField("name").translationMode).toBe("copy");
+    expect(result.current.forField("tags").translationMode).toBe("localize");
+    expect(result.current.forField("slug").translationMode).toBe("skip");
+  });
+
+  test("translationMode is undefined when field not in contract", () => {
+    const { result } = renderHook(() =>
+      useAiSuggestions(makeInput({ contract: contractWithTranslation })),
+    );
+    expect(result.current.forField("unknown").translationMode).toBeUndefined();
+  });
+});
+
+// ── retranslate ───────────────────────────────────────────────────────────────
+
+describe("retranslate", () => {
+  const siblingLocale = {
+    ref: { kind: "ingredient", id: "basil-en" },
+    data: { description: "Aromatic herb", name: "Basil" },
+    locale: "en",
+    fieldHashes: {},
+  };
+
+  const contractWithTranslation = {
+    presets: [],
+    fields: {
+      description: { translation: { mode: "translate" as const } },
+      name: { translation: { mode: "copy" as const } },
+      tags: { translation: { mode: "localize" as const } },
+    },
+  };
+
+  test("retranslate calls onFill with target=[field] and sourceContext", async () => {
+    const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
+    const { result } = renderHook(() =>
+      useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
+    );
+    await act(async () => {
+      await result.current.forField("description").retranslate();
+    });
+    expect(onFill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: ["description"],
+        sourceContext: expect.objectContaining({ kind: "sibling-locale" }),
+      }),
+    );
+  });
+
+  test("retranslate does not call onFill for copy-mode fields", async () => {
+    const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
+    const { result } = renderHook(() =>
+      useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
+    );
+    await act(async () => {
+      await result.current.forField("name").retranslate();
+    });
+    expect(onFill).not.toHaveBeenCalled();
+  });
+
+  test("retranslate does nothing when no siblingLocale provided", async () => {
+    const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
+    const { result } = renderHook(() => useAiSuggestions(makeInput({ onFill })));
+    await act(async () => {
+      await result.current.forField("description").retranslate();
+    });
+    expect(onFill).not.toHaveBeenCalled();
+  });
+
+  test("retranslate populates suggestions after successful call", async () => {
+    const onFill = vi.fn().mockResolvedValue({
+      suggestions: { description: descriptionSuggestion },
+      autoApplied: {},
+      traces: { description: traceDescription },
+    });
+    const { result } = renderHook(() =>
+      useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
+    );
+    await act(async () => {
+      await result.current.forField("description").retranslate();
+    });
+    expect(result.current.suggestions.has("description")).toBe(true);
+  });
+
+  test("retranslate merges suggestions without clearing other fields", async () => {
+    const onFill = vi.fn().mockResolvedValue({
+      suggestions: { description: descriptionSuggestion },
+      autoApplied: {},
+      traces: {},
+    });
+    // First run() to populate tags suggestion
+    const { result } = renderHook(() =>
+      useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
+    );
+    await act(async () => {
+      await result.current.run();
+    });
+    // Now retranslate description only
+    onFill.mockResolvedValue({
+      suggestions: { description: descriptionSuggestion },
+      autoApplied: {},
+      traces: {},
+    });
+    await act(async () => {
+      await result.current.forField("description").retranslate();
+    });
+    // tags suggestion from run() still present
+    expect(result.current.suggestions.has("tags")).toBe(true);
+    expect(result.current.suggestions.has("description")).toBe(true);
   });
 });
