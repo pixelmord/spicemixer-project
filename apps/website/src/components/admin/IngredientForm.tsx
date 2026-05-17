@@ -83,7 +83,7 @@ interface IngredientData {
 }
 
 type PairingProposal = {
-  otherCollection: string;
+  otherCollection: "ingredients" | "mixtures" | "recipes";
   otherSlug: string;
   rationale: string;
   traceId?: string;

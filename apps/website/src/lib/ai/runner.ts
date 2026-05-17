@@ -144,7 +144,7 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
   const proposedPairings =
     pairingsSugg?.kind === "single"
       ? (pairingsSugg.value as Array<{
-          otherCollection: string;
+          otherCollection: EndpointRef["collection"];
           otherSlug: string;
           rationale: string;
           confidence: Confidence;
@@ -183,10 +183,7 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
       if (!existingIds.has(id)) {
         assertAutoApplyAllowed("pairing-slug", pairing.confidence, "editor");
         const ref1: EndpointRef = { collection: "ingredients", slug: metaRef.slug };
-        const ref2: EndpointRef = {
-          collection: pairing.otherCollection as EndpointRef["collection"],
-          slug: pairing.otherSlug,
-        };
+        const ref2: EndpointRef = { collection: pairing.otherCollection, slug: pairing.otherSlug };
         const sortedRefs = [ref1, ref2].sort((a, b) => a.slug.localeCompare(b.slug)) as [
           EndpointRef,
           EndpointRef,
@@ -342,7 +339,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     pairingsSugg?.kind === "single"
       ? (
           pairingsSugg.value as Array<{
-            otherCollection: string;
+            otherCollection: EndpointRef["collection"];
             otherSlug: string;
             rationale: string;
           }>

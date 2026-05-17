@@ -242,7 +242,6 @@ Recipe name: "${currentData?.name ?? ""}"`;
       translation: { mode: "translate" },
     },
 
-    // Pairing proposals — proposes editorial relations to other entities.
     // rationale becomes the new Pairing's description on accept.
     // autoApply "never" — caller presents proposals for editor approval.
     pairings: {
@@ -255,7 +254,6 @@ Recipe name: "${currentData?.name ?? ""}"`;
           ...inventory.map((i) => `[ingredients] ${i.slug}: ${i.name}`),
           ...existingRecipes.map((r) => `[${r.collection}] ${r.slug}: ${r.name}`),
         ];
-        if (!allEntities.length) return "";
         return `Suggest pairings for this recipe or mixture. A pairing is a strong culinary affinity that warrants editorial commentary — complementary flavor profiles, shared regional heritage, or one enhancing the other.
 
 Current entity:

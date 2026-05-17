@@ -44,7 +44,6 @@ export const pairingContract: AiContract<PairingSchema, PairingRefineContext> = 
   schema: pairingSchema,
   presets,
   fields: {
-    // Prose — translate to target locale
     description: {
       systemPrompt: ({ currentData, sourceContext }) => {
         const locale = sourceContext?.locale ?? "en";
@@ -73,7 +72,6 @@ Rules:
       writePolicy: "replace",
     },
 
-    // Structural refs — copy verbatim during translation
     endpoints: copyField,
     image: copyField,
 

@@ -6,7 +6,11 @@ type IngredientSchema = typeof ingredientSchema;
 
 // Context passed from the action handler so prompts can reference the inventory.
 export interface IngredientRefineContext {
-  inventory?: Array<{ slug: string; name: string; collection?: string }>;
+  inventory?: Array<{
+    slug: string;
+    name: string;
+    collection?: "ingredients" | "mixtures" | "recipes";
+  }>;
   locale?: string;
 }
 
@@ -120,7 +124,6 @@ Text: "${text}"`;
       writePolicy: "fill-if-empty" as const,
     },
 
-    // Pairing proposals — replaces proposeIngredientPairings
     // outputSchema differs from entity schema; rationale becomes the new Pairing's description.
     // autoApply is "never" here; high-confidence auto-creation of pairing entities
     // is handled by the caller (runAiRefresh / action handlers).

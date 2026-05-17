@@ -27,7 +27,7 @@ function resolveDescription(
 }
 
 export interface PairingProposal {
-  otherCollection: string;
+  otherCollection: "ingredients" | "mixtures" | "recipes";
   otherSlug: string;
   rationale: string;
   traceId?: string;
@@ -166,13 +166,7 @@ export default function PairingEditor({
         id,
         endpoints: [
           { collection: "ingredients" as const, slug: currentSlug },
-          {
-            collection: (p.otherCollection ?? "ingredients") as
-              | "ingredients"
-              | "mixtures"
-              | "recipes",
-            slug: p.otherSlug,
-          },
+          { collection: p.otherCollection, slug: p.otherSlug },
         ],
         description: p.rationale,
         locale,
