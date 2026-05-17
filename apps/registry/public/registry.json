@@ -373,37 +373,18 @@
       ]
     },
     {
-      "name": "file-text-prompt-source-picker",
+      "name": "translate-entity-dialog",
       "type": "registry:block",
-      "title": "FileTextPromptSourcePicker",
-      "description": "Tabbed three-way source input (File / Text / Prompt) emitting a controlled { kind, …payload }. Used as the source-selection panel inside IngestDialog.",
-      "registryDependencies": ["file-input", "text-area-source", "prompt-input-source"],
-      "files": [
-        {
-          "path": "components/ui/file-text-prompt-source-picker.tsx",
-          "type": "registry:block"
-        }
-      ]
-    },
-    {
-      "name": "ingest-dialog",
-      "type": "registry:block",
-      "title": "IngestDialog",
-      "description": "Modal for cold-fill operations: bundles FileTextPromptSourcePicker + options (preset, user-prompt, write-policy) + post-run inline-suggestion review. Consumer wires onRun to their fill action.",
-      "dependencies": ["lucide-react"],
+      "title": "TranslateEntityDialog",
+      "description": "Phase 1 atomic-create translation dialog. Two-call runFill (slug first for recipes/mixtures, then bulk) or one-call for ingredients/pairings. Composes InlineFieldSuggestion with sourceSlot. Primary CTA: Accept all & save draft.",
       "registryDependencies": [
         "use-ai-suggestions",
         "suggestion-flow-provider",
-        "file-text-prompt-source-picker",
-        "preset-picker",
-        "user-prompt-field",
-        "write-policy-picker",
-        "accept-reject-buttons",
-        "confidence-badge"
+        "inline-field-suggestion"
       ],
       "files": [
         {
-          "path": "components/ui/ingest-dialog.tsx",
+          "path": "components/ui/translate-entity-dialog.tsx",
           "type": "registry:block"
         }
       ]
