@@ -218,11 +218,6 @@ export async function getPublishedPairings(locale: string): Promise<PublishedPai
     });
 }
 
-/** Canonical pairing id: sort both slugs alphabetically, join with --. */
-function pairingId(slugA: string, slugB: string): string {
-  return [slugA, slugB].sort().join("--");
-}
-
 export interface PairingEntity {
   id: string;
   endpoints: [EndpointRef, EndpointRef];

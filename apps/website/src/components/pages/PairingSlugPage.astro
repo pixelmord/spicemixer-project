@@ -15,12 +15,13 @@ const locale = Astro.currentLocale as Lang;
 const prefix = locale === "de" ? "/de" : "";
 const t = useTranslations(locale);
 
+const [a, b] = pairing.endpoints;
 const [aEntry, bEntry] = await Promise.all([
-  getIngredient(pairing.endpoints[0].slug, locale),
-  getIngredient(pairing.endpoints[1].slug, locale),
+  getIngredient(a.slug, locale),
+  getIngredient(b.slug, locale),
 ]);
-const aName = aEntry?.data.name ?? pairing.endpoints[0].slug;
-const bName = bEntry?.data.name ?? pairing.endpoints[1].slug;
+const aName = aEntry?.data.name ?? a.slug;
+const bName = bEntry?.data.name ?? b.slug;
 
 const pagefindFilters = withPagefindFilters({ region: pairing.regions });
 ---
@@ -54,13 +55,13 @@ const pagefindFilters = withPagefindFilters({ region: pairing.regions });
 
     <section class="mb-10 flex flex-wrap gap-4">
       <a
-        href={`${prefix}/ingredients/${pairing.endpoints[0].slug}/`}
+        href={`${prefix}/ingredients/${a.slug}/`}
         class="rounded-full bg-amber-100 px-5 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-200"
       >
         {aName}
       </a>
       <a
-        href={`${prefix}/ingredients/${pairing.endpoints[1].slug}/`}
+        href={`${prefix}/ingredients/${b.slug}/`}
         class="rounded-full bg-amber-100 px-5 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-200"
       >
         {bName}
