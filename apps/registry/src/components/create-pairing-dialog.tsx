@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
   type AiContract,
   type AiEventLog,
@@ -84,7 +84,7 @@ export function CreatePairingDialog({
     slug: aiSuggestion.otherSlug,
   };
 
-  const handleSave = useCallback(async () => {
+  async function handleSave() {
     setStep("saving");
     setError(null);
     try {
@@ -114,17 +114,7 @@ export function CreatePairingDialog({
       setError(e instanceof Error ? e.message : "Save failed");
       setStep("review");
     }
-  }, [
-    description,
-    featured,
-    sourceEndpoint,
-    otherEndpoint,
-    locale,
-    origin.runId,
-    onCreate,
-    aiEventLog,
-    onComplete,
-  ]);
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
