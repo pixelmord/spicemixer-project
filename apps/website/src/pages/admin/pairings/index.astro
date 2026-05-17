@@ -26,6 +26,7 @@ const rows = Array.from(slugMap.entries()).map(([slug, localeItems]) => {
   const endpoints = (d["endpoints"] as Array<{ collection: string; slug: string }>) ?? [];
   const ep0 = endpoints[0]?.slug ?? "?";
   const ep1 = endpoints[1]?.slug ?? "?";
+  const description = typeof d["description"] === "string" ? d["description"] : "";
   const completeness = scorePairing(d);
   const translations = localeItems
     .map((i) => i.id.slice(0, i.id.indexOf("/")))
@@ -34,14 +35,14 @@ const rows = Array.from(slugMap.entries()).map(([slug, localeItems]) => {
   return {
     type: "pairing" as const,
     collection: "pairings",
-    id: primary.id, // e.g. "en/caraway--cumin" — editHref strips locale correctly
+    id: primary.id,
     name: `${ep0} ↔ ${ep1}`,
     draft: false,
     completeness,
     updatedAt: primary.updatedAt,
     translations,
-    subtitle: typeof d["description"] === "string"
-      ? d["description"].slice(0, 100) + (d["description"].length > 100 ? "…" : "")
+    subtitle: description
+      ? description.slice(0, 100) + (description.length > 100 ? "…" : "")
       : undefined,
   };
 });

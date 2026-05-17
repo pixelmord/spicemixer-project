@@ -259,7 +259,14 @@ export default function PairingForm({
           {!isNew && initialId && (
             <p className="text-sm text-muted-foreground font-mono">
               {initialId}{" "}
-              <span className="ml-1 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide border bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-950 dark:text-sky-300">
+              <span
+                className={cn(
+                  "ml-1 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide border",
+                  locale === "de"
+                    ? "bg-violet-100 text-violet-700 border-violet-300 dark:bg-violet-950 dark:text-violet-300"
+                    : "bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-950 dark:text-sky-300",
+                )}
+              >
                 {locale}
               </span>
             </p>
