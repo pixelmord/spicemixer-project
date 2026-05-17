@@ -6,7 +6,7 @@ vi.mock("astro:content", () => ({
 }));
 
 const { getEntry, getCollection } = await import("astro:content");
-const { resolveRefs, getPublishedPairings, getPairings } =
+const { resolveRefs, getPublishedPairings, getPairings, getEffectiveVariants } =
   await import("../../src/lib/recipe-augment.ts");
 
 const EP_CARAWAY = { collection: "ingredients", slug: "caraway" };
@@ -364,5 +364,205 @@ describe("getPairings — folder-per-locale shape", () => {
     const result = await getPairings("caraway");
     expect(result[0].endpoints[0]).toEqual(EP_CARAWAY);
     expect(result[0].endpoints[1]).toEqual(EP_CUMIN);
+  });
+
+  test("returns featured: true when pairingMeta has featured=true", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "x" },
+          },
+        ] as never;
+      }
+      if (name === "pairingMeta") {
+        return [{ id: "en/caraway--cumin", data: { featured: true, aiEvents: [] } }] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPairings("caraway");
+    expect(result[0].featured).toBe(true);
+  });
+
+  test("returns featured: false when pairingMeta has featured=false", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "x" },
+          },
+        ] as never;
+      }
+      if (name === "pairingMeta") {
+        return [{ id: "en/caraway--cumin", data: { featured: false, aiEvents: [] } }] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPairings("caraway");
+    expect(result[0].featured).toBe(false);
+  });
+
+  test("returns featured: false when no pairingMeta entry exists", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "x" },
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPairings("caraway");
+    expect(result[0].featured).toBe(false);
+  });
+});
+
+describe("getPublishedPairings — featured field", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("returns featured: true when pairingMeta has featured=true", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "x" },
+          },
+        ] as never;
+      }
+      if (name === "pairingMeta") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { featured: true, canonicalLocale: "en", aiEvents: [] },
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPublishedPairings("en");
+    expect(result[0].featured).toBe(true);
+  });
+
+  test("returns featured: false when pairingMeta has featured=false", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "x" },
+          },
+        ] as never;
+      }
+      if (name === "pairingMeta") {
+        return [{ id: "en/caraway--cumin", data: { featured: false, aiEvents: [] } }] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPublishedPairings("en");
+    expect(result[0].featured).toBe(false);
+  });
+
+  test("returns featured: false when no pairingMeta entry exists", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "x" },
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPublishedPairings("en");
+    expect(result[0].featured).toBe(false);
+  });
+});
+
+describe("getEffectiveVariants — canonical-locale meta resolution", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("returns own meta variants when not a translation", async () => {
+    vi.mocked(getCollection).mockResolvedValue([] as never);
+    vi.mocked(getEntry).mockResolvedValue(null as never);
+
+    const meta = {
+      variants: ["harissa-moroccan", "harissa-lebanese"],
+      translationOf: undefined,
+      goesWellWith: [],
+      usesBase: [],
+      ingredientLinks: [],
+      externalSources: [],
+      tags: [],
+    } as Parameters<typeof getEffectiveVariants>[2];
+
+    const result = await getEffectiveVariants("mixtures", "harissa", meta, "en");
+    expect(result).toEqual(["harissa-moroccan", "harissa-lebanese"]);
+  });
+
+  test("returns canonical meta variants when translationOf is set", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "meta") {
+        return [
+          {
+            id: "mixtures/en/harissa",
+            data: { variants: ["harissa-moroccan", "harissa-lebanese"], draft: false },
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+    vi.mocked(getEntry).mockImplementation(async (collection, id) => {
+      if (collection === "meta" && id === "mixtures/en/harissa") {
+        return { data: { variants: ["harissa-moroccan", "harissa-lebanese"] } } as never;
+      }
+      return null as never;
+    });
+
+    const meta = {
+      variants: [],
+      translationOf: "harissa",
+      goesWellWith: [],
+      usesBase: [],
+      ingredientLinks: [],
+      externalSources: [],
+      tags: [],
+    } as Parameters<typeof getEffectiveVariants>[2];
+
+    const result = await getEffectiveVariants("mixtures", "harissa", meta, "en");
+    expect(result).toEqual(["harissa-moroccan", "harissa-lebanese"]);
+  });
+
+  test("returns empty array when canonical meta has no variants", async () => {
+    vi.mocked(getEntry).mockResolvedValue(null as never);
+    vi.mocked(getCollection).mockResolvedValue([] as never);
+
+    const meta = {
+      variants: [],
+      translationOf: "harissa",
+      goesWellWith: [],
+      usesBase: [],
+      ingredientLinks: [],
+      externalSources: [],
+      tags: [],
+    } as Parameters<typeof getEffectiveVariants>[2];
+
+    const result = await getEffectiveVariants("mixtures", "harissa", meta, "en");
+    expect(result).toEqual([]);
   });
 });

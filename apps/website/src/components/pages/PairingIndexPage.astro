@@ -9,7 +9,8 @@ const locale = Astro.currentLocale as Lang;
 const t = useTranslations(locale);
 const prefix = locale === "de" ? "/de" : "";
 
-const pairings = await getPublishedPairings(locale);
+const allPairings = await getPublishedPairings(locale);
+const pairings = allPairings.filter((p) => p.featured);
 
 const recentlyAdded = pairings.slice(0, 6);
 

@@ -15,6 +15,8 @@ import {
   linkIngredients,
   annotateTextHtml,
   resolveRefs,
+  getPairings,
+  resolveEndpointName,
 } from "../../lib/recipe-augment.ts";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 import CookModeToggle from "../CookModeToggle.tsx";
@@ -70,6 +72,17 @@ const demonstratesItems = await Promise.all(
       href: `${ingredientBase}/${ingSlug}/`,
     };
   }),
+);
+
+const pairingEntities = await getPairings(slug, locale);
+const featuredPairings = await Promise.all(
+  pairingEntities
+    .filter((p) => p.featured)
+    .map(async (pairing) => {
+      const otherEndpoint = pairing.endpoints.find((ep) => ep.slug !== slug) ?? pairing.endpoints[1];
+      const name = (await resolveEndpointName(otherEndpoint, locale)) ?? otherEndpoint.slug;
+      return { href: `${prefix}/${otherEndpoint.collection}/${otherEndpoint.slug}/`, name, description: pairing.description };
+    }),
 );
 
 const hreflang = await hreflangTags(slug, "recipes", Astro.site?.toString().replace(/\/$/, "") ?? "");
@@ -247,6 +260,26 @@ const hreflang = await hreflangTags(slug, "recipes", Astro.site?.toString().repl
       </section>
 
       <section slot="relations" data-cook="hide">
+        {featuredPairings.length > 0 && (
+          <section class="mb-10">
+            <h2 class="mb-4 font-serif text-2xl text-stone-900">{t("section.pairings")}</h2>
+            <ul class="space-y-3">
+              {featuredPairings.map(({ href, name, description }) => (
+                <li class="rounded-xl bg-white p-4 ring-1 ring-stone-200">
+                  <a
+                    href={href}
+                    class="font-medium text-amber-700 underline decoration-dotted underline-offset-2 hover:text-amber-900"
+                  >
+                    {name}
+                  </a>
+                  {description && (
+                    <p class="mt-1 text-sm text-stone-600">{description}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <RelatedList heading={t("section.goesWellWith")} items={goesWellWithItems} />
         <ExternalSourceList heading={t("section.externalRecipes")} sources={meta.externalSources} />
 

@@ -178,6 +178,7 @@ export interface PublishedPairing {
   endpoints: [EndpointRef, EndpointRef];
   description: string;
   canonicalLocale: string;
+  featured: boolean;
   image?: string;
   regions: string[];
 }
@@ -191,7 +192,10 @@ export async function getPublishedPairings(locale?: string): Promise<PublishedPa
     getCollection(PAIRING_META),
   ]);
 
-  type PairingMetaEntry = { id: string; data: { draft?: boolean; canonicalLocale?: string } };
+  type PairingMetaEntry = {
+    id: string;
+    data: { draft?: boolean; canonicalLocale?: string; featured?: boolean };
+  };
   const metaById = new Map<string, PairingMetaEntry["data"]>();
   const draftIds = new Set<string>();
   for (const m of rawPairingMeta as PairingMetaEntry[]) {
@@ -226,6 +230,7 @@ export async function getPublishedPairings(locale?: string): Promise<PublishedPa
         endpoints: p.data.endpoints,
         description: p.data.description,
         canonicalLocale,
+        featured: meta?.featured ?? false,
         image: p.data.image,
         regions,
       };
@@ -239,11 +244,20 @@ export interface PairingEntity {
   locale: string;
   endpoints: [EndpointRef, EndpointRef];
   description: string;
+  featured: boolean;
 }
 
 /** Get pairings containing a given endpoint slug, preferring `locale` with EN fallback. */
 export async function getPairings(slug: string, locale = "en"): Promise<PairingEntity[]> {
-  const all = (await getCollection("pairings")) as { id: string; data: PairingData }[];
+  const [all, rawPairingMeta] = await Promise.all([
+    getCollection("pairings") as Promise<{ id: string; data: PairingData }[]>,
+    getCollection(PAIRING_META) as Promise<{ id: string; data: { featured?: boolean } }[]>,
+  ]);
+
+  const featuredById = new Map<string, boolean>();
+  for (const m of rawPairingMeta) {
+    featuredById.set(m.id, m.data.featured ?? false);
+  }
 
   const matching = all.filter((e) => e.data.endpoints.some((ep) => ep.slug === slug));
 
@@ -268,6 +282,7 @@ export async function getPairings(slug: string, locale = "en"): Promise<PairingE
       locale: chosenLocale,
       endpoints: chosen.data.endpoints,
       description: chosen.data.description,
+      featured: featuredById.get(chosen.id) ?? false,
     });
   }
 
@@ -365,4 +380,31 @@ export async function getUsedIn(
   localePrefix: string,
 ): Promise<Array<{ name: string; href: string; kind: RecipeKind }>> {
   return findByIngredientLinks(localePrefix, (l) => l.slug === ingredientSlug);
+}
+
+/** Resolve the display name of an endpoint, with locale fallback to EN. */
+export async function resolveEndpointName(
+  endpoint: EndpointRef,
+  locale: string,
+): Promise<string | null> {
+  const e =
+    (await getEntry(endpoint.collection, `${locale}/${endpoint.slug}`)) ??
+    (await getEntry(endpoint.collection, `en/${endpoint.slug}`));
+  return e ? (e.data as { name: string }).name : null;
+}
+
+/**
+ * Returns the variants array from the canonical-locale meta when this entity is a
+ * translation (meta.translationOf is set), otherwise from the entity's own meta.
+ * This follows ADR 0003: variants are authored on canonical-locale meta only.
+ */
+export async function getEffectiveVariants(
+  kind: RecipeKind,
+  slug: string,
+  meta: Pick<Meta, "variants" | "translationOf">,
+  canonicalLocale: string,
+): Promise<string[]> {
+  if (!meta.translationOf) return meta.variants;
+  const canonicalMeta = await getMeta(kind, canonicalLocale, slug);
+  return canonicalMeta.variants;
 }

@@ -17,6 +17,10 @@ import {
   resolveRefs,
   resolveVariants,
   slugFromLocaleId,
+  getPairings,
+  resolveEndpointName,
+  getUsedIn,
+  getEffectiveVariants,
   type Meta,
 } from "../../lib/recipe-augment.ts";
 import { type MixtureKind } from "../../lib/mixture-schema.ts";
@@ -48,8 +52,10 @@ let meta: Meta | null = null;
 let linkedIngredients: ReturnType<typeof linkIngredients> = [];
 let goesWellWithItems: { name: string; href: string }[] = [];
 let usesBaseItems: { name: string; href: string }[] = [];
+let usedInItems: { name: string; href: string; kind: string }[] = [];
 let variantItems: { name: string; href: string }[] = [];
 let variantOfItem: { name: string; href: string } | null = null;
+let featuredPairings: { href: string; name: string; description: string }[] = [];
 let lightboxSteps: { name?: string; text: string; image?: string; html: string }[] = [];
 let kindBadgeLabel = "";
 
@@ -70,16 +76,30 @@ if (mix) {
     kindBadgeLabel = t(`kind.${meta.kind as MixtureKind}`);
   }
 
-  [goesWellWithItems, usesBaseItems, variantItems] = await Promise.all([
+  const effectiveVariantSlugs = await getEffectiveVariants("mixtures", slug, meta, canonicalLocale);
+
+  [goesWellWithItems, usesBaseItems, variantItems, usedInItems] = await Promise.all([
     resolveRefs(meta.goesWellWith, prefix),
     resolveRefs(meta.usesBase, prefix),
-    resolveVariants("mixtures", meta.variants, prefix),
+    resolveVariants("mixtures", effectiveVariantSlugs, prefix, locale),
+    getUsedIn(slug, prefix),
   ]);
 
   if (meta.variantOf) {
-    const [item] = await resolveVariants("mixtures", [meta.variantOf], prefix);
+    const [item] = await resolveVariants("mixtures", [meta.variantOf], prefix, locale);
     variantOfItem = item ?? null;
   }
+
+  const pairingEntities = await getPairings(slug, locale);
+  featuredPairings = await Promise.all(
+    pairingEntities
+      .filter((p) => p.featured)
+      .map(async (pairing) => {
+        const otherEndpoint = pairing.endpoints.find((ep) => ep.slug !== slug) ?? pairing.endpoints[1];
+        const name = (await resolveEndpointName(otherEndpoint, locale)) ?? otherEndpoint.slug;
+        return { href: `${prefix}/${otherEndpoint.collection}/${otherEndpoint.slug}/`, name, description: pairing.description };
+      }),
+  );
 
   lightboxSteps = detailSteps.map((step) => ({
     ...step,
@@ -402,6 +422,27 @@ const hreflang = mix ? await hreflangTags(mixSlug, "mixtures", Astro.site?.toStr
         </section>
 
         <section slot="relations" data-cook="hide">
+          {featuredPairings.length > 0 && (
+            <section class="mb-10">
+              <h2 class="mb-4 font-serif text-2xl text-stone-900">{t("section.pairings")}</h2>
+              <ul class="space-y-3">
+                {featuredPairings.map(({ href, name, description }) => (
+                  <li class="rounded-xl bg-white p-4 ring-1 ring-stone-200">
+                    <a
+                      href={href}
+                      class="font-medium text-amber-700 underline decoration-dotted underline-offset-2 hover:text-amber-900"
+                    >
+                      {name}
+                    </a>
+                    {description && (
+                      <p class="mt-1 text-sm text-stone-600">{description}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          <RelatedList heading={t("section.usedIn")} items={usedInItems} />
           <RelatedList heading={t("section.goesWellWith")} items={goesWellWithItems} />
           <RelatedList heading={t("section.usesBase")} items={usesBaseItems} />
           <RelatedList heading={t("section.variants")} items={variantItems} />
