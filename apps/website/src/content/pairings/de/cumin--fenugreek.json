@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "cumin"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "fenugreek"
+    }
+  ],
+  "description": "Beide profitieren vom Rösten; eine grundlegende Paarung in der äthiopischen und indischen Küche."
+}
