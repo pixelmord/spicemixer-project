@@ -96,9 +96,10 @@ vi.mock("../src/lib/content-store.ts", () => ({
   createStore: async () => mockStore,
 }));
 
-vi.mock("recipe-ingestion", () => ({
-  fetchRecipe: vi.fn(),
-}));
+vi.mock("recipe-ingestion", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("recipe-ingestion")>();
+  return { ...actual, fetchRecipe: vi.fn() };
+});
 
 // content-ai is a workspace package whose dist/ is not built during tests.
 // vite.config.ts aliases "content-ai" → src/index.ts so imports resolve.
@@ -394,8 +395,8 @@ describe("ai-contract: aiRefreshSuggestions cache-hit must not write meta sideca
     expect(region, "runRecipeRefresh region not found").not.toBe("");
     // The early-return path — if removed, the second call always runs AI again
     expect(region).toContain("cached: true");
-    // Fingerprint + force logic is delegated to eventLog.shouldSkip
-    expect(region).toContain("eventLog.shouldSkip(");
+    // Fingerprint + force logic is delegated to eventLog.checkFingerprint
+    expect(region).toContain("eventLog.checkFingerprint(");
     // The skip guard must be present
     expect(region).toContain("skipResult.skip");
   });

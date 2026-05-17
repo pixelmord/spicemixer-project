@@ -174,14 +174,14 @@ Valid slugs: ${[...inventorySet].join(", ")}`;
         const ctx = buildRecipeCtx(currentData);
         const candidatesList = existingRecipes
           .slice(0, 50)
-          .map((r) => `${r.collection}/${r.slug}: ${r.name}`)
+          .map((r) => `[${r.collection}] ${r.slug}: ${r.name}`)
           .join("\n");
         return `Based on this recipe, suggest related recipes from the catalog below.
 
 Current recipe:
 ${ctx}
 
-Available recipes (collection/slug: name):
+Available recipes ([collection] slug: name):
 ${candidatesList}
 
 Return up to 4 relations:
