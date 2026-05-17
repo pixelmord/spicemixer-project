@@ -6,7 +6,13 @@ vi.mock("astro:content", () => ({
 }));
 
 const { getEntry, getCollection } = await import("astro:content");
-const { resolveRefs, getPublishedPairings } = await import("../../src/lib/recipe-augment.ts");
+const { resolveRefs, getPublishedPairings, getPairings } =
+  await import("../../src/lib/recipe-augment.ts");
+
+const EP_CARAWAY = { collection: "ingredients", slug: "caraway" };
+const EP_CUMIN = { collection: "ingredients", slug: "cumin" };
+const EP_SUMAC = { collection: "ingredients", slug: "sumac" };
+const EP_CARDAMOM = { collection: "ingredients", slug: "cardamom" };
 
 describe("resolveRefs", () => {
   beforeEach(() => {
@@ -69,18 +75,67 @@ describe("resolveRefs", () => {
   });
 });
 
-describe("getPublishedPairings — region from ingredient content", () => {
+describe("getPublishedPairings — folder-per-locale shape", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  test("aggregates region from ingredients collection (not ingredientMeta)", async () => {
+  test("returns locale and slug from folder-per-locale IDs", async () => {
     vi.mocked(getCollection).mockImplementation(async (name) => {
       if (name === "pairings") {
         return [
           {
-            id: "cardamom--cumin",
-            data: { ingredients: ["cardamom", "cumin"], descriptions: {} },
+            id: "en/cardamom--cumin",
+            data: { endpoints: [EP_CARDAMOM, EP_CUMIN], description: "Warm spice." },
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPublishedPairings();
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("cardamom--cumin");
+    expect(result[0].locale).toBe("en");
+    expect(result[0].description).toBe("Warm spice.");
+    expect(result[0].endpoints).toEqual([EP_CARDAMOM, EP_CUMIN]);
+  });
+
+  test("scopes to locale when locale arg is provided", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "EN desc." },
+          },
+          {
+            id: "de/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "DE desc." },
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const enResult = await getPublishedPairings("en");
+    expect(enResult).toHaveLength(1);
+    expect(enResult[0].locale).toBe("en");
+    expect(enResult[0].description).toBe("EN desc.");
+
+    const deResult = await getPublishedPairings("de");
+    expect(deResult).toHaveLength(1);
+    expect(deResult[0].locale).toBe("de");
+    expect(deResult[0].description).toBe("DE desc.");
+  });
+
+  test("aggregates region from ingredients collection via endpoint slugs", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/cardamom--cumin",
+            data: { endpoints: [EP_CARDAMOM, EP_CUMIN], description: "x" },
           },
         ] as never;
       }
@@ -105,10 +160,7 @@ describe("getPublishedPairings — region from ingredient content", () => {
     vi.mocked(getCollection).mockImplementation(async (name) => {
       if (name === "pairings") {
         return [
-          {
-            id: "cumin--sumac",
-            data: { ingredients: ["cumin", "sumac"], descriptions: {} },
-          },
+          { id: "en/cumin--sumac", data: { endpoints: [EP_CUMIN, EP_SUMAC], description: "x" } },
         ] as never;
       }
       if (name === "ingredients") {
@@ -130,12 +182,15 @@ describe("getPublishedPairings — region from ingredient content", () => {
     vi.mocked(getCollection).mockImplementation(async (name) => {
       if (name === "pairings") {
         return [
-          { id: "caraway--cumin", data: { ingredients: ["caraway", "cumin"], descriptions: {} } },
-          { id: "cumin--sumac", data: { ingredients: ["cumin", "sumac"], descriptions: {} } },
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "a" },
+          },
+          { id: "en/cumin--sumac", data: { endpoints: [EP_CUMIN, EP_SUMAC], description: "b" } },
         ] as never;
       }
       if (name === "pairingMeta") {
-        return [{ id: "caraway--cumin", data: { draft: true, aiEvents: [] } }] as never;
+        return [{ id: "en/caraway--cumin", data: { draft: true, aiEvents: [] } }] as never;
       }
       return [] as never;
     });
@@ -149,7 +204,10 @@ describe("getPublishedPairings — region from ingredient content", () => {
     vi.mocked(getCollection).mockImplementation(async (name) => {
       if (name === "pairings") {
         return [
-          { id: "cardamom--cumin", data: { ingredients: ["cardamom", "cumin"], descriptions: {} } },
+          {
+            id: "en/cardamom--cumin",
+            data: { endpoints: [EP_CARDAMOM, EP_CUMIN], description: "x" },
+          },
         ] as never;
       }
       return [] as never;
@@ -157,5 +215,111 @@ describe("getPublishedPairings — region from ingredient content", () => {
 
     const result = await getPublishedPairings();
     expect(result).toHaveLength(1);
+  });
+
+  test("reads canonicalLocale from pairingMeta", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "de/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "DE." },
+          },
+        ] as never;
+      }
+      if (name === "pairingMeta") {
+        return [
+          { id: "de/caraway--cumin", data: { canonicalLocale: "en", featured: true } },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPublishedPairings();
+    expect(result[0].canonicalLocale).toBe("en");
+  });
+
+  test("falls back to own locale when no pairingMeta canonicalLocale", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "EN." },
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPublishedPairings();
+    expect(result[0].canonicalLocale).toBe("en");
+  });
+});
+
+describe("getPairings — folder-per-locale shape", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("finds pairings by endpoint slug", async () => {
+    vi.mocked(getCollection).mockResolvedValue([
+      { id: "en/caraway--cumin", data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "EN." } },
+    ] as never);
+
+    const result = await getPairings("caraway");
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("caraway--cumin");
+  });
+
+  test("prefers requested locale over english", async () => {
+    vi.mocked(getCollection).mockResolvedValue([
+      {
+        id: "en/caraway--cumin",
+        data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "EN desc." },
+      },
+      {
+        id: "de/caraway--cumin",
+        data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "DE desc." },
+      },
+    ] as never);
+
+    const result = await getPairings("caraway", "de");
+    expect(result).toHaveLength(1);
+    expect(result[0].locale).toBe("de");
+    expect(result[0].description).toBe("DE desc.");
+  });
+
+  test("falls back to EN when requested locale is missing", async () => {
+    vi.mocked(getCollection).mockResolvedValue([
+      {
+        id: "en/caraway--cumin",
+        data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "EN only." },
+      },
+    ] as never);
+
+    const result = await getPairings("caraway", "de");
+    expect(result).toHaveLength(1);
+    expect(result[0].locale).toBe("en");
+    expect(result[0].description).toBe("EN only.");
+  });
+
+  test("returns empty array when no pairings contain the slug", async () => {
+    vi.mocked(getCollection).mockResolvedValue([
+      { id: "en/caraway--cumin", data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "x" } },
+    ] as never);
+
+    const result = await getPairings("cardamom");
+    expect(result).toHaveLength(0);
+  });
+
+  test("returns endpoints with full EndpointRef objects", async () => {
+    vi.mocked(getCollection).mockResolvedValue([
+      { id: "en/caraway--cumin", data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "x" } },
+    ] as never);
+
+    const result = await getPairings("caraway");
+    expect(result[0].endpoints[0]).toEqual(EP_CARAWAY);
+    expect(result[0].endpoints[1]).toEqual(EP_CUMIN);
   });
 });

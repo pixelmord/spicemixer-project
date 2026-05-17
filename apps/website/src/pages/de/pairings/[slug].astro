@@ -2,6 +2,6 @@
 import PairingSlugPage from "../../../components/pages/PairingSlugPage.astro";
 import { pairingSlugPaths } from "../../../lib/static-paths/pairing-slug-paths.ts";
 
-export const getStaticPaths = () => pairingSlugPaths();
+export const getStaticPaths = () => pairingSlugPaths("de");
 ---
 <PairingSlugPage {...Astro.props} />

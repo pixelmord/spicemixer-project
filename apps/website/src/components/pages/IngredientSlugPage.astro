@@ -45,15 +45,13 @@ const pagefindFilters = withPagefindFilters({
 
 const usedIn = await getUsedIn(slug, prefix);
 
-const pairingEntities = await getPairings(slug);
+const pairingEntities = await getPairings(slug, locale);
 const pairingsResolved = await Promise.all(
   pairingEntities.map(async (pairing) => {
-    const otherSlug = pairing.ingredients[0] === slug ? pairing.ingredients[1] : pairing.ingredients[0];
-    const entry = await getIngredient(otherSlug, locale);
-    const descriptions = pairing.descriptions ?? {};
-    const description = descriptions[locale] ?? descriptions["en"] ?? pairing.description ?? "";
-    const pairingFallback = !descriptions[locale] && (!!descriptions["en"] || !!pairing.description);
-    return { slug: otherSlug, name: entry?.data.name ?? otherSlug, description, isFallback: pairingFallback };
+    const otherEndpoint = pairing.endpoints.find((ep) => ep.slug !== slug) ?? pairing.endpoints[1];
+    const entry = await getIngredient(otherEndpoint.slug, locale);
+    const pairingFallback = pairing.locale !== locale;
+    return { slug: otherEndpoint.slug, name: entry?.data.name ?? otherEndpoint.slug, description: pairing.description, isFallback: pairingFallback };
   })
 );
 
