@@ -2,17 +2,6 @@
   "kind": "recipe",
   "region": ["north-africa"],
   "variants": [],
-  "goesWellWith": [
-    {
-      "collection": "mixtures",
-      "slug": "harissa"
-    },
-    {
-      "collection": "mixtures",
-      "slug": "ras-el-hanout"
-    }
-  ],
-  "usesBase": [],
   "ingredientLinks": [],
   "externalSources": [],
   "tags": [],
