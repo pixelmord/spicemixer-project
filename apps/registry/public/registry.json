@@ -338,6 +338,23 @@
           "type": "registry:hook"
         }
       ]
+    },
+    {
+      "name": "translate-entity-dialog",
+      "type": "registry:block",
+      "title": "TranslateEntityDialog",
+      "description": "Phase 1 atomic-create translation dialog. Two-call runFill (slug first for recipes/mixtures, then bulk) or one-call for ingredients/pairings. Composes InlineFieldSuggestion with sourceSlot. Primary CTA: Accept all & save draft.",
+      "registryDependencies": [
+        "use-ai-suggestions",
+        "suggestion-flow-provider",
+        "inline-field-suggestion"
+      ],
+      "files": [
+        {
+          "path": "components/ui/translate-entity-dialog.tsx",
+          "type": "registry:block"
+        }
+      ]
     }
   ]
 }
