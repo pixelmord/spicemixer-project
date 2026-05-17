@@ -60,12 +60,11 @@ const registry: Record<EntityKind, EntityKindConfig> = {
   pairing: {
     schema: pairingSchema,
     proposers: {},
-    diff: (existing, proposed, ctx) =>
-      diffPairings(existing, proposed, (ctx?.["locale"] as string | undefined) ?? "en"),
+    diff: diffPairings,
     completeness: {
       required: PAIRING_REQUIRED,
       recommended: PAIRING_RECOMMENDED,
-      score: (entity, ctx) => scorePairing(entity, (ctx?.["locale"] as string) ?? "en"),
+      score: scorePairing,
     },
     routePrefix: "/pairings/",
     translationCanonicalKey: null,
