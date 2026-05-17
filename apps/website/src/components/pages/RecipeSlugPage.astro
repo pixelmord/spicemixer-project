@@ -15,8 +15,7 @@ import {
   linkIngredients,
   annotateTextHtml,
   resolveRefs,
-  getPairings,
-  resolveEndpointName,
+  resolveFeaturedPairings,
 } from "../../lib/recipe-augment.ts";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 import CookModeToggle from "../CookModeToggle.tsx";
@@ -74,16 +73,7 @@ const demonstratesItems = await Promise.all(
   }),
 );
 
-const pairingEntities = await getPairings(slug, locale);
-const featuredPairings = await Promise.all(
-  pairingEntities
-    .filter((p) => p.featured)
-    .map(async (pairing) => {
-      const otherEndpoint = pairing.endpoints.find((ep) => ep.slug !== slug) ?? pairing.endpoints[1];
-      const name = (await resolveEndpointName(otherEndpoint, locale)) ?? otherEndpoint.slug;
-      return { href: `${prefix}/${otherEndpoint.collection}/${otherEndpoint.slug}/`, name, description: pairing.description };
-    }),
-);
+const featuredPairings = await resolveFeaturedPairings(slug, locale, prefix);
 
 const hreflang = await hreflangTags(slug, "recipes", Astro.site?.toString().replace(/\/$/, "") ?? "");
 ---

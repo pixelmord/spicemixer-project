@@ -393,11 +393,27 @@ export async function resolveEndpointName(
   return e ? (e.data as { name: string }).name : null;
 }
 
-/**
- * Returns the variants array from the canonical-locale meta when this entity is a
- * translation (meta.translationOf is set), otherwise from the entity's own meta.
- * This follows ADR 0003: variants are authored on canonical-locale meta only.
- */
+/** Resolve featured pairings for an entity, with display names and hrefs. */
+export async function resolveFeaturedPairings(
+  slug: string,
+  locale: string,
+  localePrefix: string,
+): Promise<Array<{ href: string; name: string; description: string }>> {
+  const pairingEntities = await getPairings(slug, locale);
+  return Promise.all(
+    pairingEntities
+      .filter((p) => p.featured)
+      .map(async (pairing) => {
+        const otherEndpoint =
+          pairing.endpoints.find((ep) => ep.slug !== slug) ?? pairing.endpoints[1];
+        const name = (await resolveEndpointName(otherEndpoint, locale)) ?? otherEndpoint.slug;
+        const href = `${localePrefix}/${otherEndpoint.collection}/${otherEndpoint.slug}/`;
+        return { href, name, description: pairing.description };
+      }),
+  );
+}
+
+// ADR 0003: variants are authored on canonical-locale meta only.
 export async function getEffectiveVariants(
   kind: RecipeKind,
   slug: string,

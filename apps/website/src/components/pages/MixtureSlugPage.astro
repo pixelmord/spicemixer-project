@@ -17,8 +17,7 @@ import {
   resolveRefs,
   resolveVariants,
   slugFromLocaleId,
-  getPairings,
-  resolveEndpointName,
+  resolveFeaturedPairings,
   getUsedIn,
   getEffectiveVariants,
   type Meta,
@@ -90,16 +89,7 @@ if (mix) {
     variantOfItem = item ?? null;
   }
 
-  const pairingEntities = await getPairings(slug, locale);
-  featuredPairings = await Promise.all(
-    pairingEntities
-      .filter((p) => p.featured)
-      .map(async (pairing) => {
-        const otherEndpoint = pairing.endpoints.find((ep) => ep.slug !== slug) ?? pairing.endpoints[1];
-        const name = (await resolveEndpointName(otherEndpoint, locale)) ?? otherEndpoint.slug;
-        return { href: `${prefix}/${otherEndpoint.collection}/${otherEndpoint.slug}/`, name, description: pairing.description };
-      }),
-  );
+  featuredPairings = await resolveFeaturedPairings(slug, locale, prefix);
 
   lightboxSteps = detailSteps.map((step) => ({
     ...step,

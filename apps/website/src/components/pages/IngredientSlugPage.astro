@@ -6,7 +6,7 @@ import RelatedList from "../RelatedList.astro";
 import TranslationFallbackBanner from "../TranslationFallbackBanner.astro";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 import IngredientTaxonomy from "../IngredientTaxonomy.astro";
-import { getUsedIn, getPairings, resolveEndpointName } from "../../lib/recipe-augment.ts";
+import { getUsedIn, resolveFeaturedPairings } from "../../lib/recipe-augment.ts";
 import { withPagefindFilters } from "../../lib/withPagefindFilters.ts";
 import { renderInlineMarkdown } from "../../lib/inline-markdown.ts";
 import { INGREDIENT_LONGFORM_FIELDS } from "../../lib/ingredient-schema.ts";
@@ -45,16 +45,7 @@ const pagefindFilters = withPagefindFilters({
 
 const usedIn = await getUsedIn(slug, prefix);
 
-const pairingEntities = await getPairings(slug, locale);
-const featuredPairings = pairingEntities.filter((p) => p.featured);
-const pairingsResolved = await Promise.all(
-  featuredPairings.map(async (pairing) => {
-    const otherEndpoint = pairing.endpoints.find((ep) => ep.slug !== slug) ?? pairing.endpoints[1];
-    const name = (await resolveEndpointName(otherEndpoint, locale)) ?? otherEndpoint.slug;
-    const href = `${prefix}/${otherEndpoint.collection}/${otherEndpoint.slug}/`;
-    return { href, name, description: pairing.description };
-  })
-);
+const featuredPairings = await resolveFeaturedPairings(slug, locale, prefix);
 
 const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().replace(/\/$/, "") ?? "");
 ---
@@ -203,13 +194,13 @@ const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().
 
       <section slot="relations">
         {
-          pairingsResolved.length > 0 && (
+          featuredPairings.length > 0 && (
             <section class="mb-10">
               <h2 class="mb-4 font-serif text-2xl text-stone-900">
                 {t("section.pairings")}
               </h2>
               <ul class="space-y-3">
-                {pairingsResolved.map(({ href, name, description }) => (
+                {featuredPairings.map(({ href, name, description }) => (
                   <li class="rounded-xl bg-white p-4 ring-1 ring-stone-200">
                     <a
                       href={href}

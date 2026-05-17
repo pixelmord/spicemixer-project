@@ -6,8 +6,13 @@ vi.mock("astro:content", () => ({
 }));
 
 const { getEntry, getCollection } = await import("astro:content");
-const { resolveRefs, getPublishedPairings, getPairings, getEffectiveVariants } =
-  await import("../../src/lib/recipe-augment.ts");
+const {
+  resolveRefs,
+  getPublishedPairings,
+  getPairings,
+  resolveFeaturedPairings,
+  getEffectiveVariants,
+} = await import("../../src/lib/recipe-augment.ts");
 
 const EP_CARAWAY = { collection: "ingredients", slug: "caraway" };
 const EP_CUMIN = { collection: "ingredients", slug: "cumin" };
@@ -489,6 +494,90 @@ describe("getPublishedPairings — featured field", () => {
 
     const result = await getPublishedPairings("en");
     expect(result[0].featured).toBe(false);
+  });
+});
+
+describe("resolveFeaturedPairings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("returns only featured pairings with resolved names and hrefs", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "Good pair" },
+          },
+          {
+            id: "en/cumin--sumac",
+            data: { endpoints: [EP_CUMIN, EP_SUMAC], description: "Also good" },
+          },
+        ] as never;
+      }
+      if (name === "pairingMeta") {
+        return [
+          { id: "en/caraway--cumin", data: { featured: true } },
+          { id: "en/cumin--sumac", data: { featured: false } },
+        ] as never;
+      }
+      return [] as never;
+    });
+    vi.mocked(getEntry).mockImplementation(async (collection, id) => {
+      if (collection === "ingredients" && id === "en/cumin") {
+        return { data: { name: "Cumin" } } as never;
+      }
+      return null as never;
+    });
+
+    const result = await resolveFeaturedPairings("caraway", "en", "");
+    expect(result).toEqual([
+      { href: "/ingredients/cumin/", name: "Cumin", description: "Good pair" },
+    ]);
+  });
+
+  test("falls back to slug when name resolution returns null", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "desc" },
+          },
+        ] as never;
+      }
+      if (name === "pairingMeta") {
+        return [{ id: "en/caraway--cumin", data: { featured: true } }] as never;
+      }
+      return [] as never;
+    });
+    vi.mocked(getEntry).mockResolvedValue(null as never);
+
+    const result = await resolveFeaturedPairings("caraway", "en", "/de");
+    expect(result).toEqual([
+      { href: "/de/ingredients/cumin/", name: "cumin", description: "desc" },
+    ]);
+  });
+
+  test("returns empty array when no pairings are featured", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/caraway--cumin",
+            data: { endpoints: [EP_CARAWAY, EP_CUMIN], description: "x" },
+          },
+        ] as never;
+      }
+      if (name === "pairingMeta") {
+        return [{ id: "en/caraway--cumin", data: { featured: false } }] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await resolveFeaturedPairings("caraway", "en", "");
+    expect(result).toEqual([]);
   });
 });
 
