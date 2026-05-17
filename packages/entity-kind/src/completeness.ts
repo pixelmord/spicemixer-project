@@ -98,24 +98,11 @@ export function scoreRecipe(recipe: AnyRecord, meta: AnyRecord = {}): Completene
 
 // ── Pairing ───────────────────────────────────────────────────────────────────
 
-export const PAIRING_REQUIRED = ["descriptions"] as const;
-export const PAIRING_RECOMMENDED = ["descriptions.en", "descriptions.de"] as const;
+export const PAIRING_REQUIRED = ["description", "endpoints"] as const;
+export const PAIRING_RECOMMENDED = [] as const;
 
-export function scorePairing(pairing: AnyRecord, locale = "en"): CompletenessResult {
-  const descriptions = (pairing["descriptions"] as Record<string, string> | undefined) ?? {};
-  const legacy = pairing["description"] ? "en" : null;
-  const hasAny = Object.keys(descriptions).length > 0 || legacy;
-  if (!hasAny) return { score: 0, missing: ["descriptions"], color: "red" };
-  const missing: string[] = [];
-  const recommended = ["en", "de"];
-  let filled = 0;
-  for (const lang of recommended) {
-    if (descriptions[lang] || (lang === "en" && legacy)) filled++;
-    else missing.push(`description.${lang}`);
-  }
-  if (!descriptions[locale] && !(locale === "en" && legacy)) {
-    if (!missing.includes(`description.${locale}`)) missing.unshift(`description.${locale}`);
-  }
-  const pct = toPct(filled, recommended.length);
-  return { score: pct, missing, color: toColor(pct) };
+export function scorePairing(pairing: AnyRecord): CompletenessResult {
+  if (!has(pairing, "description")) return { score: 0, missing: ["description"], color: "red" };
+  if (!has(pairing, "endpoints")) return { score: 0, missing: ["endpoints"], color: "red" };
+  return { score: 100, missing: [], color: "green" };
 }

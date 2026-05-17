@@ -27,15 +27,21 @@ export const pairingContract: AiContract<PairingSchema, PairingRefineContext> = 
     description: {
       systemPrompt: ({ currentData, sourceContext }) => {
         const locale = sourceContext?.locale ?? "en";
-        const ings = Array.isArray(currentData?.ingredients) ? currentData.ingredients : [];
-        const ing1 = ings[0] ?? "";
-        const ing2 = ings[1] ?? "";
+        const endpoints = Array.isArray(currentData?.endpoints) ? currentData.endpoints : [];
+        const ep1 =
+          endpoints[0] != null && typeof (endpoints[0] as { slug?: string }).slug === "string"
+            ? (endpoints[0] as { slug: string }).slug
+            : "";
+        const ep2 =
+          endpoints[1] != null && typeof (endpoints[1] as { slug?: string }).slug === "string"
+            ? (endpoints[1] as { slug: string }).slug
+            : "";
         const currentDesc =
           typeof currentData?.description === "string" ? currentData.description : "";
 
-        return `Improve the description for this culinary ingredient pairing.
+        return `Improve the description for this culinary pairing.
 
-Ingredient pair: ${ing1} ↔ ${ing2}
+Pairing: ${ep1} ↔ ${ep2}
 ${currentDesc ? `Current description: ${currentDesc}` : ""}
 
 Locale: ${locale}

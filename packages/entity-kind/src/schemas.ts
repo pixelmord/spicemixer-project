@@ -140,10 +140,18 @@ export type Ingredient = z.infer<typeof ingredientSchema>;
 
 // ── Pairing schema ────────────────────────────────────────────────────────────
 
+export const ENDPOINT_COLLECTIONS = ["ingredients", "mixtures", "recipes"] as const;
+
+export const endpointRefSchema = z.object({
+  collection: z.enum(ENDPOINT_COLLECTIONS),
+  slug: z.string(),
+});
+
+export type EndpointRef = z.infer<typeof endpointRefSchema>;
+
 export const pairingSchema = z.object({
-  ingredients: z.tuple([z.string(), z.string()]),
-  descriptions: z.record(z.string(), z.string()).default({}),
-  description: z.string().optional(),
+  endpoints: z.tuple([endpointRefSchema, endpointRefSchema]),
+  description: z.string(),
   image: z.string().url().optional(),
   imageAttribution: imageAttributionSchema,
 });
@@ -172,8 +180,11 @@ export const pairingMetaSchema = z.object({
   canonicalLocale: z.string().length(2).optional(),
   translationOf: z.string().optional(),
   translationStaleSince: z.string().datetime().optional(),
+  canonicalContentHash: z.string().optional(),
   canonicalFieldHashes: z.record(z.string(), z.string()).optional(),
+  translations: z.record(z.string(), z.string()).default({}),
   aiEvents: z.array(aiEventSchema).default([]),
+  featured: z.boolean().default(false),
 });
 
 export type PairingMeta = z.infer<typeof pairingMetaSchema>;

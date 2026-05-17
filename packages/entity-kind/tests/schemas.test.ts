@@ -5,6 +5,7 @@ import { describe, expect, test } from "vite-plus/test";
 import {
   ingredientSchema,
   ingredientMetaSchema,
+  pairingSchema,
   pairingMetaSchema,
   recipeMetaSchema,
 } from "../src/schemas.ts";
@@ -66,11 +67,71 @@ describe("ingredientMetaSchema", () => {
   });
 });
 
+describe("pairingSchema — new shape", () => {
+  const ep1 = { collection: "ingredients", slug: "cardamom" };
+  const ep2 = { collection: "mixtures", slug: "harissa" };
+
+  test("accepts valid new shape with endpoints and description", () => {
+    const result = pairingSchema.parse({
+      endpoints: [ep1, ep2],
+      description: "Warm and aromatic.",
+    });
+    expect(result.endpoints[0]).toEqual(ep1);
+    expect(result.endpoints[1]).toEqual(ep2);
+    expect(result.description).toBe("Warm and aromatic.");
+  });
+
+  test("accepts recipes as endpoint collection", () => {
+    const result = pairingSchema.parse({
+      endpoints: [{ collection: "recipes", slug: "miso-ramen" }, ep2],
+      description: "A bold combination.",
+    });
+    expect(result.endpoints[0].collection).toBe("recipes");
+  });
+
+  test("rejects old descriptions: { en, de } shape", () => {
+    expect(() =>
+      pairingSchema.parse({
+        endpoints: [ep1, ep2],
+        descriptions: { en: "Old", de: "Alt" },
+      }),
+    ).toThrow();
+  });
+
+  test("rejects old ingredients: tuple<string, string> shape", () => {
+    expect(() =>
+      pairingSchema.parse({
+        ingredients: ["cardamom", "saffron"],
+        description: "Floral.",
+      }),
+    ).toThrow();
+  });
+
+  test("rejects unknown collection in endpoint", () => {
+    expect(() =>
+      pairingSchema.parse({
+        endpoints: [{ collection: "unknown", slug: "foo" }, ep2],
+        description: "x",
+      }),
+    ).toThrow();
+  });
+
+  test("description is required — rejects missing description", () => {
+    expect(() =>
+      pairingSchema.parse({
+        endpoints: [ep1, ep2],
+      }),
+    ).toThrow();
+  });
+});
+
 describe("pairingMetaSchema", () => {
   test("parses minimal valid meta (empty object)", () => {
     const result = pairingMetaSchema.parse({});
     expect(result.draft).toBe(false);
     expect(result.aiEvents).toEqual([]);
+    expect(result.featured).toBe(false);
+    expect(result.translations).toEqual({});
   });
 
   test("parses draft: true", () => {
@@ -78,9 +139,29 @@ describe("pairingMetaSchema", () => {
     expect(result.draft).toBe(true);
   });
 
+  test("parses featured: true", () => {
+    const result = pairingMetaSchema.parse({ featured: true });
+    expect(result.featured).toBe(true);
+  });
+
+  test("defaults featured to false", () => {
+    const result = pairingMetaSchema.parse({});
+    expect(result.featured).toBe(false);
+  });
+
   test("strips unknown fields", () => {
     const result = pairingMetaSchema.parse({ draft: false, unknown: "ignored" });
     expect(result).not.toHaveProperty("unknown");
+  });
+
+  test("preserves canonicalLocale", () => {
+    const result = pairingMetaSchema.parse({ canonicalLocale: "de" });
+    expect(result.canonicalLocale).toBe("de");
+  });
+
+  test("preserves translationOf", () => {
+    const result = pairingMetaSchema.parse({ translationOf: "cardamom--saffron" });
+    expect(result.translationOf).toBe("cardamom--saffron");
   });
 });
 

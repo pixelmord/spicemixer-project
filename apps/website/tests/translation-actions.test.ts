@@ -206,55 +206,50 @@ describe("aiCreateIngredientTranslation: ingredient atomic create", () => {
   });
 });
 
-describe("aiTranslatePairing: pairing description save", () => {
-  test("adds translated description to descriptions map", async () => {
+describe("aiTranslatePairing: pairing description save (per-locale schema)", () => {
+  test("pairing saved with per-locale description field", async () => {
     const { store } = makeEnv();
-    const pairingId = "turmeric-ginger";
+    const pairingId = "turmeric--ginger";
 
-    // Seed a pairing with EN description
+    const ep1 = { collection: "ingredients", slug: "turmeric" };
+    const ep2 = { collection: "ingredients", slug: "ginger" };
+
+    // Seed a pairing with EN description (per-locale shape)
     await store.put("pairings", pairingId, {
-      ingredients: ["turmeric", "ginger"],
-      descriptions: { en: "A warming combination" },
+      endpoints: [ep1, ep2],
+      description: "A warming combination",
     });
 
     const existing = await store.get("pairings", pairingId);
     expect(existing).not.toBeNull();
 
     const d = existing!.data as Record<string, unknown>;
-    const ings = d["ingredients"] as [unknown, unknown];
-    const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
-
-    // Simulate what aiTranslatePairing does
-    const targetLocale = "de";
-    const description = "Eine wärmende Kombination";
-    const updatedDescriptions = { ...descriptions, [targetLocale]: description };
-    await store.put("pairings", pairingId, {
-      ingredients: ings,
-      descriptions: updatedDescriptions,
-    });
-
-    const updated = await store.get("pairings", pairingId);
-    const updatedData = updated!.data as Record<string, unknown>;
-    const updatedDesc = updatedData["descriptions"] as Record<string, string>;
-    expect(updatedDesc["de"]).toBe("Eine wärmende Kombination");
-    expect(updatedDesc["en"]).toBe("A warming combination");
+    expect(d["description"]).toBe("A warming combination");
+    expect(d["descriptions"]).toBeUndefined();
   });
 
-  test("CONFLICT when description for locale already exists", async () => {
+  test("translation creates a new per-locale record (not a descriptions map)", async () => {
     const { store } = makeEnv();
-    const pairingId = "turmeric-ginger";
+    const pairingId = "turmeric--ginger";
 
-    await store.put("pairings", pairingId, {
-      ingredients: ["turmeric", "ginger"],
-      descriptions: { en: "A warming combination", de: "Bereits vorhanden" },
+    const ep1 = { collection: "ingredients", slug: "turmeric" };
+    const ep2 = { collection: "ingredients", slug: "ginger" };
+
+    await store.put("pairings", `en/${pairingId}`, {
+      endpoints: [ep1, ep2],
+      description: "A warming combination",
     });
 
-    const existing = await store.get("pairings", pairingId);
-    const d = existing!.data as Record<string, unknown>;
-    const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
+    // Translation creates a separate locale record
+    await store.put("pairings", `de/${pairingId}`, {
+      endpoints: [ep1, ep2],
+      description: "Eine wärmende Kombination",
+    });
 
-    // The action checks for existing translation
-    expect(descriptions["de"]).toBeDefined();
+    const en = await store.get("pairings", `en/${pairingId}`);
+    const de = await store.get("pairings", `de/${pairingId}`);
+    expect((en!.data as Record<string, unknown>)["description"]).toBe("A warming combination");
+    expect((de!.data as Record<string, unknown>)["description"]).toBe("Eine wärmende Kombination");
   });
 });
 

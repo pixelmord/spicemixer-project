@@ -35,7 +35,8 @@ describe("EntityKind registry", () => {
 
   test("pairing config has expected required fields and route", () => {
     const config = getConfig("pairing");
-    expect(config.completeness.required).toContain("descriptions");
+    expect(config.completeness.required).toContain("description");
+    expect(config.completeness.required).toContain("endpoints");
     expect(config.routePrefix).toBe("/pairings/");
   });
 });
@@ -72,10 +73,7 @@ describe("diff functions via registry", () => {
 
   test("pairing diff detects changed description", () => {
     const { diff } = getConfig("pairing");
-    const diffs = diff(
-      { descriptions: { en: "Old description" } },
-      { descriptions: { en: "New description" } },
-    );
+    const diffs = diff({ description: "Old description" }, { description: "New description" });
     expect(diffs.length).toBeGreaterThan(0);
     expect(diffs[0].kind).toBe("changed");
   });

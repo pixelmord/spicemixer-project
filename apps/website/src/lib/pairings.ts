@@ -1,12 +1,12 @@
 import type { ContentStore } from "./content-store.ts";
 import type { MetaSidecar } from "./meta-sidecar.ts";
-import type { EntityRef } from "./entity-ref.ts";
+import type { EndpointRef } from "entity-kind";
 import { NotFoundError } from "./errors.ts";
 import { entityMeta } from "content-ai";
 
 export interface BuildPairingDataInput {
   id: string;
-  ingredients: [EntityRef, EntityRef];
+  endpoints: [EndpointRef, EndpointRef];
   description: string;
   locale: string;
   image?: string;
@@ -17,15 +17,12 @@ export async function buildPairingData(
   store: ContentStore,
   input: BuildPairingDataInput,
 ): Promise<Record<string, unknown>> {
-  const canonical = [...input.ingredients].sort((a, b) => a.slug.localeCompare(b.slug)) as [
-    EntityRef,
-    EntityRef,
+  const canonical = [...input.endpoints].sort((a, b) => a.slug.localeCompare(b.slug)) as [
+    EndpointRef,
+    EndpointRef,
   ];
   const existing = await store.get("pairings", input.id);
   const existingData = (existing?.data as Record<string, unknown>) ?? {};
-  const existingDescriptions =
-    (existingData["descriptions"] as Record<string, string>) ??
-    (typeof existingData["description"] === "string" ? { en: existingData["description"] } : {});
   // image / imageAttribution: explicit value wins; undefined = preserve existing; "" = clear
   const imageValue =
     input.image !== undefined ? input.image : (existingData["image"] as string | undefined);
@@ -34,8 +31,8 @@ export async function buildPairingData(
       ? input.imageAttribution
       : (existingData["imageAttribution"] as Record<string, unknown> | undefined);
   const data: Record<string, unknown> = {
-    ingredients: canonical,
-    descriptions: { ...existingDescriptions, [input.locale]: input.description },
+    endpoints: canonical,
+    description: input.description,
   };
   if (imageValue) data["image"] = imageValue;
   if (imageAttributionValue) data["imageAttribution"] = imageAttributionValue;

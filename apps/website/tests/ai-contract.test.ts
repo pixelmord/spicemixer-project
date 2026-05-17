@@ -199,7 +199,7 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
     const handler = await getHandler("savePairing");
     await handler({
       id: "cardamom--cumin",
-      ingredients: [
+      endpoints: [
         { collection: "ingredients" as const, slug: "cardamom" },
         { collection: "ingredients" as const, slug: "cumin" },
       ],
@@ -255,7 +255,7 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
     const handler = await getHandler("savePairing");
     await handler({
       id: "cardamom--cumin",
-      ingredients: [
+      endpoints: [
         { collection: "ingredients" as const, slug: "cardamom" },
         { collection: "ingredients" as const, slug: "cumin" },
       ],

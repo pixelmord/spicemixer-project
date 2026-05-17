@@ -93,50 +93,22 @@ function scoreRecipe(recipe: AnyRecord, meta: AnyRecord): CompletenessResult {
 }
 
 /**
- * Helper: resolve a pairing's description for a given locale with fallback.
- * Returns { description, locale, isFallback }.
+ * Helper: resolve a pairing's description. In the folder-per-locale schema each
+ * file carries a single `description` string — no locale key lookup needed.
+ * The caller loads the correct locale file; this function just extracts the field.
  */
 export function resolvePairingDescription(
   pairing: AnyRecord,
   locale: string,
 ): { description: string; locale: string; isFallback: boolean } {
-  const descriptions = (pairing["descriptions"] as Record<string, string> | undefined) ?? {};
-  if (descriptions[locale]) return { description: descriptions[locale], locale, isFallback: false };
-  if (descriptions["en"])
-    return { description: descriptions["en"], locale: "en", isFallback: true };
-  const firstKey = Object.keys(descriptions)[0];
-  if (firstKey) return { description: descriptions[firstKey], locale: firstKey, isFallback: true };
-  // Legacy single-description field
-  const legacy = typeof pairing["description"] === "string" ? pairing["description"] : "";
-  return { description: legacy, locale: "en", isFallback: !!legacy };
+  const description = typeof pairing["description"] === "string" ? pairing["description"] : "";
+  return { description, locale, isFallback: false };
 }
 
-function scorePairing(pairing: AnyRecord, locale: string): CompletenessResult {
-  const descriptions = (pairing["descriptions"] as Record<string, string> | undefined) ?? {};
-  const legacy = pairing["description"] ? "en" : null;
-  const hasAny = Object.keys(descriptions).length > 0 || legacy;
-
-  if (!hasAny) return { score: 0, missing: ["descriptions"], color: "red" };
-
-  const missing: string[] = [];
-  const recommended = ["en", "de"];
-  let filled = 0;
-
-  for (const lang of recommended) {
-    if (descriptions[lang] || (lang === "en" && legacy)) {
-      filled++;
-    } else {
-      missing.push(`description.${lang}`);
-    }
-  }
-
-  if (!descriptions[locale] && !(locale === "en" && legacy)) {
-    // Ensure current locale is in missing
-    if (!missing.includes(`description.${locale}`)) missing.unshift(`description.${locale}`);
-  }
-
-  const pct = score(filled, recommended.length);
-  return { score: pct, missing, color: color(pct) };
+function scorePairing(pairing: AnyRecord): CompletenessResult {
+  if (!has(pairing, "description")) return { score: 0, missing: ["description"], color: "red" };
+  if (!has(pairing, "endpoints")) return { score: 0, missing: ["endpoints"], color: "red" };
+  return { score: 100, missing: [], color: "green" };
 }
 
 function scoreIngredient(ingredient: AnyRecord): CompletenessResult {
@@ -177,7 +149,7 @@ export function computeCompletenessFromBlob(
     case "ingredient":
       return scoreIngredient(content);
     case "pairing":
-      return scorePairing(content, (meta["locale"] as string | undefined) ?? "en");
+      return scorePairing(content);
   }
 }
 

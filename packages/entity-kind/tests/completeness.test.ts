@@ -116,65 +116,45 @@ describe("scoreRecipe — recommended fields and meta", () => {
 });
 
 describe("PAIRING_REQUIRED / PAIRING_RECOMMENDED", () => {
-  test("required is descriptions, recommended is en and de", () => {
-    expect(PAIRING_REQUIRED).toContain("descriptions");
-    expect(PAIRING_RECOMMENDED).toContain("descriptions.en");
-    expect(PAIRING_RECOMMENDED).toContain("descriptions.de");
+  test("required includes description and endpoints", () => {
+    expect(PAIRING_REQUIRED).toContain("description");
+    expect(PAIRING_REQUIRED).toContain("endpoints");
+  });
+
+  test("recommended is empty (per-locale file has no additional recommended fields)", () => {
+    expect(PAIRING_RECOMMENDED).toHaveLength(0);
   });
 });
 
-describe("scorePairing — missing descriptions", () => {
-  test("empty pairing → score 0, red", () => {
+const ep1 = { collection: "ingredients", slug: "cardamom" };
+const ep2 = { collection: "ingredients", slug: "saffron" };
+
+describe("scorePairing — missing required fields", () => {
+  test("empty pairing → score 0, red, missing description", () => {
     const result = scorePairing({});
     expect(result.score).toBe(0);
     expect(result.color).toBe("red");
-    expect(result.missing).toContain("descriptions");
+    expect(result.missing).toContain("description");
   });
 
-  test("null descriptions field → score 0, red", () => {
-    const result = scorePairing({ descriptions: {} });
+  test("description present but endpoints missing → score 0, red", () => {
+    const result = scorePairing({ description: "Nice pair" });
     expect(result.score).toBe(0);
     expect(result.color).toBe("red");
+    expect(result.missing).toContain("endpoints");
+  });
+
+  test("endpoints present but description missing → score 0, red", () => {
+    const result = scorePairing({ endpoints: [ep1, ep2] });
+    expect(result.score).toBe(0);
+    expect(result.color).toBe("red");
+    expect(result.missing).toContain("description");
   });
 });
 
-describe("scorePairing — legacy description field", () => {
-  test("legacy description field treated as en", () => {
-    const result = scorePairing({ description: "Old format" });
-    expect(result.score).toBeGreaterThan(0);
-    expect(result.missing).not.toContain("descriptions");
-  });
-
-  test("legacy description + de → score 100, green", () => {
-    const result = scorePairing({ description: "Old format", descriptions: { de: "Auf Deutsch" } });
-    expect(result.score).toBe(100);
-    expect(result.color).toBe("green");
-  });
-});
-
-describe("scorePairing — locale handling", () => {
-  test.each([
-    [{ descriptions: { en: "Good pair" } }, "en", 50],
-    [{ descriptions: { en: "Good pair", de: "Gut zusammen" } }, "en", 100],
-    [{ descriptions: { en: "Good pair", de: "Gut zusammen" } }, "de", 100],
-  ])("locale '%s' → correct score", (pairing, locale, expectedScore) => {
-    const result = scorePairing(pairing, locale);
-    expect(result.score).toBe(expectedScore);
-  });
-
-  test("requested locale missing is prepended to missing list", () => {
-    const result = scorePairing({ descriptions: { en: "English" } }, "de");
-    expect(result.missing[0]).toBe("description.de");
-  });
-
-  test("en-only → score 50, amber", () => {
-    const result = scorePairing({ descriptions: { en: "English only" } });
-    expect(result.score).toBe(50);
-    expect(result.color).toBe("amber");
-  });
-
-  test("both en and de → score 100, green", () => {
-    const result = scorePairing({ descriptions: { en: "English", de: "Deutsch" } });
+describe("scorePairing — complete pairing", () => {
+  test("description + endpoints → score 100, green, no missing", () => {
+    const result = scorePairing({ description: "Warm and aromatic.", endpoints: [ep1, ep2] });
     expect(result.score).toBe(100);
     expect(result.color).toBe("green");
     expect(result.missing).toHaveLength(0);

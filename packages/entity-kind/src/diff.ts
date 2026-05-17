@@ -193,18 +193,13 @@ export function hasChanges(diffs: FieldDiff[]): boolean {
 export function diffPairings(
   existing: Record<string, unknown>,
   proposed: Record<string, unknown>,
-  locale = "en",
 ): FieldDiff[] {
-  const getDesc = (obj: Record<string, unknown>) => {
-    const descs = obj["descriptions"] as Record<string, string> | undefined;
-    if (descs?.[locale]) return descs[locale];
-    if (descs?.["en"]) return descs["en"];
-    return (obj["description"] as string | undefined) ?? "";
-  };
+  const getDesc = (obj: Record<string, unknown>) =>
+    (obj["description"] as string | undefined) ?? "";
   return [
     {
       field: "description",
-      label: `Description (${locale.toUpperCase()})`,
+      label: "Description",
       kind: changeKind(getDesc(existing), getDesc(proposed)),
       oldValue: getDesc(existing),
       newValue: getDesc(proposed),

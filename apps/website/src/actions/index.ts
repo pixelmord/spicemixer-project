@@ -5,6 +5,7 @@ import { createMetaSidecar } from "@/lib/meta-sidecar.ts";
 import { slugFromLocaleId } from "@/lib/recipe-augment.ts";
 import { entityRefSchema } from "@/lib/entity-ref.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
+import { endpointRefSchema } from "entity-kind";
 import { fetchRecipe } from "recipe-ingestion";
 import { computeCompletenessFromBlob } from "@/lib/completeness.ts";
 import {
@@ -414,7 +415,7 @@ export const server = {
     accept: "json",
     input: z.object({
       id: z.string().min(1),
-      ingredients: z.tuple([entityRefSchema, entityRefSchema]),
+      endpoints: z.tuple([endpointRefSchema, endpointRefSchema]),
       description: z.string().min(1),
       locale: z.string().length(2).default("en"),
       draft: z.boolean().optional(),
@@ -425,7 +426,7 @@ export const server = {
     }),
     handler: async ({
       id,
-      ingredients,
+      endpoints,
       description,
       locale,
       draft,
@@ -438,7 +439,7 @@ export const server = {
       const sidecar = createMetaSidecar(store);
       const pairingData = await libBuildPairingData(store, {
         id,
-        ingredients,
+        endpoints,
         description,
         locale,
         image,
@@ -509,10 +510,8 @@ export const server = {
         const d = item.data as Record<string, unknown>;
         return {
           id: item.id,
-          ingredients: d["ingredients"] as [EntityRef, EntityRef],
-          descriptions:
-            (d["descriptions"] as Record<string, string>) ??
-            (typeof d["description"] === "string" ? { en: d["description"] } : {}),
+          endpoints: d["endpoints"] as [EntityRef, EntityRef],
+          description: (d["description"] as string | undefined) ?? "",
           updatedAt: item.updatedAt,
         };
       });
@@ -524,7 +523,7 @@ export const server = {
     accept: "json",
     input: z.object({
       slug: z.string().min(1),
-      collection: z.enum(["ingredients", "mixtures"]).optional(),
+      collection: z.enum(["ingredients", "mixtures", "recipes"]).optional(),
     }),
     handler: async ({ slug, collection }) => {
       const store = await createStore();
@@ -532,25 +531,22 @@ export const server = {
       return all
         .filter((item) => {
           const d = item.data as Record<string, unknown>;
-          const ings = d["ingredients"];
-          if (!Array.isArray(ings)) return false;
-          return ings.some((ref: unknown) => {
+          const eps = d["endpoints"];
+          if (!Array.isArray(eps)) return false;
+          return eps.some((ref: unknown) => {
             if (typeof ref === "object" && ref !== null && "slug" in ref) {
               const r = ref as EntityRef;
               return r.slug === slug && (!collection || r.collection === collection);
             }
-            return ref === slug;
+            return false;
           });
         })
         .map((item) => {
           const d = item.data as Record<string, unknown>;
-          const descriptions =
-            (d["descriptions"] as Record<string, string>) ??
-            (typeof d["description"] === "string" ? { en: d["description"] } : {});
           return {
             id: item.id,
-            ingredients: d["ingredients"] as [EntityRef, EntityRef],
-            descriptions,
+            endpoints: d["endpoints"] as [EntityRef, EntityRef],
+            description: (d["description"] as string | undefined) ?? "",
           };
         });
     },

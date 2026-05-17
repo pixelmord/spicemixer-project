@@ -264,56 +264,35 @@ describe("computeCompletenessFromBlob — recipe recommended and meta", () => {
 
 // ── computeCompletenessFromBlob: pairing ─────────────────────────────────────
 
-describe("computeCompletenessFromBlob — pairing no descriptions", () => {
-  test("empty object → score 0, red", () => {
+const EP1 = { collection: "ingredients", slug: "cardamom" };
+const EP2 = { collection: "ingredients", slug: "saffron" };
+
+describe("computeCompletenessFromBlob — pairing missing required", () => {
+  test("empty object → score 0, red, missing description", () => {
     const result = computeCompletenessFromBlob("pairing", {}, {});
     expect(result.score).toBe(0);
     expect(result.color).toBe("red");
-    expect(result.missing).toContain("descriptions");
+    expect(result.missing).toContain("description");
   });
 
-  test("descriptions:{} → score 0, red", () => {
-    const result = computeCompletenessFromBlob("pairing", { descriptions: {} }, {});
+  test("description only (no endpoints) → score 0, red", () => {
+    const result = computeCompletenessFromBlob("pairing", { description: "Good pair" }, {});
     expect(result.score).toBe(0);
     expect(result.color).toBe("red");
+    expect(result.missing).toContain("endpoints");
   });
 });
 
-describe("computeCompletenessFromBlob — pairing locale and scoring", () => {
-  test("en only → score 50, amber", () => {
+describe("computeCompletenessFromBlob — pairing complete", () => {
+  test("description + endpoints → score 100, green, no missing", () => {
     const result = computeCompletenessFromBlob(
       "pairing",
-      { descriptions: { en: "Good pair" } },
-      {},
-    );
-    expect(result.score).toBe(50);
-    expect(result.color).toBe("amber");
-  });
-
-  test("en + de → score 100, green, no missing", () => {
-    const result = computeCompletenessFromBlob(
-      "pairing",
-      { descriptions: { en: "Good", de: "Gut" } },
+      { description: "Good pair", endpoints: [EP1, EP2] },
       {},
     );
     expect(result.score).toBe(100);
     expect(result.color).toBe("green");
     expect(result.missing).toHaveLength(0);
-  });
-
-  test("locale from meta.locale surfaced in missing list", () => {
-    const result = computeCompletenessFromBlob(
-      "pairing",
-      { descriptions: { en: "English" } },
-      { locale: "de" },
-    );
-    expect(result.missing[0]).toBe("description.de");
-  });
-
-  test("legacy description field treated as en", () => {
-    const result = computeCompletenessFromBlob("pairing", { description: "Old format" }, {});
-    expect(result.score).toBeGreaterThan(0);
-    expect(result.missing).not.toContain("descriptions");
   });
 });
 
@@ -367,7 +346,7 @@ describe("computeCompleteness — ingredient via InMemoryStore", () => {
 describe("computeCompleteness — pairing via InMemoryStore", () => {
   test("fetches pairing content, returns same result as computeCompletenessFromBlob", async () => {
     const store = new InMemoryStore();
-    const pairing = { descriptions: { en: "Good", de: "Gut" } };
+    const pairing = { description: "Good", endpoints: [EP1, EP2] };
 
     await store.put("pairings", "cardamom--pepper", pairing);
 
@@ -384,37 +363,21 @@ describe("computeCompleteness — pairing via InMemoryStore", () => {
 // ── resolvePairingDescription ─────────────────────────────────────────────────
 
 describe("resolvePairingDescription", () => {
-  test("returns exact locale match, isFallback false", () => {
-    const result = resolvePairingDescription(
-      { descriptions: { en: "English", de: "Deutsch" } },
-      "de",
-    );
+  test("returns description from per-locale content, isFallback false", () => {
+    const result = resolvePairingDescription({ description: "Deutsch" }, "de");
     expect(result.description).toBe("Deutsch");
     expect(result.locale).toBe("de");
     expect(result.isFallback).toBe(false);
   });
 
-  test("falls back to en when requested locale missing", () => {
-    const result = resolvePairingDescription({ descriptions: { en: "English" } }, "fr");
+  test("returns description field directly, no locale resolution needed", () => {
+    const result = resolvePairingDescription({ description: "English" }, "en");
     expect(result.description).toBe("English");
     expect(result.locale).toBe("en");
-    expect(result.isFallback).toBe(true);
+    expect(result.isFallback).toBe(false);
   });
 
-  test("falls back to first available locale when en missing", () => {
-    const result = resolvePairingDescription({ descriptions: { de: "Deutsch" } }, "fr");
-    expect(result.description).toBe("Deutsch");
-    expect(result.locale).toBe("de");
-    expect(result.isFallback).toBe(true);
-  });
-
-  test("legacy description field is returned as fallback", () => {
-    const result = resolvePairingDescription({ description: "Legacy" }, "en");
-    expect(result.description).toBe("Legacy");
-    expect(result.isFallback).toBe(true);
-  });
-
-  test("no description at all returns empty string, isFallback false", () => {
+  test("no description returns empty string, isFallback false", () => {
     const result = resolvePairingDescription({}, "en");
     expect(result.description).toBe("");
     expect(result.isFallback).toBe(false);

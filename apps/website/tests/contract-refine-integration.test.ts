@@ -213,7 +213,10 @@ describe("ingredientContract field configs", () => {
 
 describe("pairingContract field configs", () => {
   const pairing = {
-    ingredients: ["cardamom", "cumin"],
+    endpoints: [
+      { collection: "ingredients", slug: "cardamom" },
+      { collection: "ingredients", slug: "cumin" },
+    ],
     description: "Warm, earthy spice blend.",
   };
   const ctx = {
@@ -223,7 +226,7 @@ describe("pairingContract field configs", () => {
     preset: undefined,
   };
 
-  test("description field generates a system prompt with ingredient names", () => {
+  test("description field generates a system prompt with endpoint slugs", () => {
     const prompt = pairingContract.fields.description.systemPrompt!(ctx as never);
     expect(prompt).toContain("cardamom");
     expect(prompt).toContain("cumin");
@@ -397,8 +400,8 @@ describe("pairingContract: end-to-end runAiRefresh flow", () => {
       kind: "pairing",
       metaRef,
       payload: {
-        descriptions: { en: "Earthy and warm" },
-        ingredients: [
+        description: "Earthy and warm",
+        endpoints: [
           { collection: "ingredients", slug: "cardamom" },
           { collection: "ingredients", slug: "cumin" },
         ],

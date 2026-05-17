@@ -25,6 +25,7 @@ export type {
   IngredientMeta,
   Pairing,
   PairingMeta,
+  EndpointRef,
   Recipe,
   RecipeMeta,
 } from "./schemas.ts";
@@ -33,6 +34,8 @@ export {
   ingredientMetaSchema,
   pairingSchema,
   pairingMetaSchema,
+  endpointRefSchema,
+  ENDPOINT_COLLECTIONS,
   recipeSchema,
   recipeMetaSchema,
   INGREDIENT_PARTS,

@@ -61,21 +61,21 @@ describe("scalar changes — table-driven across all three kinds", () => {
     },
     {
       kind: "pairing",
-      a: { descriptions: { en: "Old pairing note" } },
-      b: { descriptions: { en: "New pairing note" } },
+      a: { description: "Old pairing note" },
+      b: { description: "New pairing note" },
       field: "description",
       expected: "changed",
     },
     {
       kind: "pairing",
       a: {},
-      b: { descriptions: { en: "Fresh note" } },
+      b: { description: "Fresh note" },
       field: "description",
       expected: "added",
     },
     {
       kind: "pairing",
-      a: { descriptions: { en: "Gone" } },
+      a: { description: "Gone" },
       b: {},
       field: "description",
       expected: "removed",
@@ -143,30 +143,37 @@ describe("added / removed array items", () => {
   });
 });
 
-describe("deep nested — pairing descriptions locale handling", () => {
-  test("falls back to 'en' when requested locale is missing", () => {
-    const a = { descriptions: { en: "Warm and earthy" } };
-    const b = { descriptions: { en: "Cool and fresh" } };
-    const diffs = diffPairings(a, b, "fr");
+describe("diffPairings — per-locale description field", () => {
+  test("changed when descriptions differ", () => {
+    const a = { description: "Warm and earthy" };
+    const b = { description: "Cool and fresh" };
+    const diffs = diffPairings(a, b);
     expect(diffs[0].kind).toBe("changed");
     expect(diffs[0].oldValue).toBe("Warm and earthy");
     expect(diffs[0].newValue).toBe("Cool and fresh");
   });
 
-  test("picks correct locale when 'de' provided", () => {
-    const a = { descriptions: { en: "Unchanged EN", de: "Altes DE" } };
-    const b = { descriptions: { en: "Unchanged EN", de: "Neues DE" } };
-    const diffs = diffPairings(a, b, "de");
-    expect(diffs[0].kind).toBe("changed");
-    expect(diffs[0].oldValue).toBe("Altes DE");
-    expect(diffs[0].newValue).toBe("Neues DE");
-  });
-
-  test("unchanged when both descriptions are identical", () => {
-    const a = { descriptions: { en: "Same text" } };
-    const b = { descriptions: { en: "Same text" } };
+  test("unchanged when descriptions are identical", () => {
+    const a = { description: "Same text" };
+    const b = { description: "Same text" };
     const diffs = diffPairings(a, b);
     expect(diffs[0].kind).toBe("unchanged");
+  });
+
+  test("added when existing has no description", () => {
+    const a = {};
+    const b = { description: "New description" };
+    const diffs = diffPairings(a, b);
+    expect(diffs[0].kind).toBe("added");
+    expect(diffs[0].newValue).toBe("New description");
+  });
+
+  test("removed when proposed has no description", () => {
+    const a = { description: "Old description" };
+    const b = {};
+    const diffs = diffPairings(a, b);
+    expect(diffs[0].kind).toBe("removed");
+    expect(diffs[0].oldValue).toBe("Old description");
   });
 });
 
