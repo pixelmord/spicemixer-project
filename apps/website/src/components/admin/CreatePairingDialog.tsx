@@ -1,13 +1,5 @@
 import { useState } from "react";
-import type {
-  AiContract,
-  AiEventLog,
-  AiEvent,
-  EntityRef,
-  RunParams,
-  RunResult,
-  Origin,
-} from "@/hooks/use-ai-suggestions";
+import type { AiEventLog, AiEvent, EntityRef, Origin } from "@/hooks/use-ai-suggestions";
 
 export interface PairingAiSuggestion {
   otherCollection: string;
@@ -21,7 +13,6 @@ export interface PairingCreationMeta {
 }
 
 export interface CreatePairingDialogProps {
-  contract: AiContract;
   sourceRef: EntityRef;
   aiSuggestion: PairingAiSuggestion;
   locale: string;
@@ -32,7 +23,6 @@ export interface CreatePairingDialogProps {
   ) => Promise<EntityRef>;
   onComplete: (newRef: EntityRef) => void;
   aiEventLog: AiEventLog;
-  onFill: (params: RunParams) => Promise<RunResult>;
   origin: Origin;
 }
 

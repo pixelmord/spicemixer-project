@@ -142,7 +142,6 @@ const SECTIONS: SectionDef[] = [
   { id: "section-sources", label: "Sources" },
   { id: "section-pairings", label: "Pairings" },
 ];
-// Note: section-pairings is now read-only (pairing entities, not inline note field)
 
 const LONGFORM_SECTIONS: {
   key: keyof IngredientData;
@@ -1583,22 +1582,15 @@ export default function IngredientForm({
           <DialogContent className="sm:max-w-md">
             {pendingPairingDialog && (
               <CreatePairingDialog
-                contract={{
-                  presets: [],
-                  fields: { description: { translation: { mode: "translate" } } },
-                }}
                 sourceRef={{ kind: "ingredient", id: slug ?? "" }}
                 aiSuggestion={pendingPairingDialog}
                 locale={locale}
-                onCreate={async (pairingLocale, fields, pairingMeta) =>
-                  handleCreatePairing(pairingLocale, fields, pairingMeta)
-                }
+                onCreate={handleCreatePairing}
                 onComplete={() => {
                   setPendingPairingDialog(null);
                   toast.success("Pairing created");
                 }}
                 aiEventLog={{ read: async () => [], append: async () => {} }}
-                onFill={async () => ({ suggestions: {}, autoApplied: {}, traces: {} })}
                 origin={{
                   surface: "admin",
                   action: "createPairing",

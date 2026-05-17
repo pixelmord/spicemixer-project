@@ -1019,7 +1019,6 @@ export default function RecipeForm({
         patch: { featured: fields.featured },
       });
     }
-    // Refresh pairings list
     void actions.listPairingsFor({ slug: slug ?? "" }).then((r: { data?: unknown }) => {
       if (r.data) setFeaturedPairings(r.data as PairingListItem[]);
     });
@@ -1983,7 +1982,6 @@ export default function RecipeForm({
                 </Card>
               </section>
 
-              {/* ── Relations ── */}
               {/* ── Pairings ── */}
               <section id="section-relations" className="scroll-mt-4">
                 <Card>
@@ -2354,25 +2352,18 @@ export default function RecipeForm({
           <DialogContent className="sm:max-w-md">
             {pendingPairingDialog && (
               <CreatePairingDialog
-                contract={{
-                  presets: [],
-                  fields: { description: { translation: { mode: "translate" } } },
-                }}
                 sourceRef={{
                   kind: collection === "mixtures" ? "mixture" : "recipe",
                   id: slug ?? "",
                 }}
                 aiSuggestion={pendingPairingDialog}
                 locale={language || "en"}
-                onCreate={async (locale, fields, pairingMeta) =>
-                  handleCreatePairing(locale, fields, pairingMeta)
-                }
+                onCreate={handleCreatePairing}
                 onComplete={() => {
                   setPendingPairingDialog(null);
                   toast.success("Pairing created");
                 }}
                 aiEventLog={{ read: async () => [], append: async () => {} }}
-                onFill={async () => ({ suggestions: {}, autoApplied: {}, traces: {} })}
                 origin={{
                   surface: "admin",
                   action: "createPairing",
