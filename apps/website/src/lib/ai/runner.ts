@@ -7,6 +7,7 @@ import {
   publish,
 } from "content-ai";
 import type { AiConfig, AiEventSidecar, MetaRef, SidecarEventLog, Confidence } from "content-ai";
+import type { EndpointRef } from "entity-kind";
 import { runRefine } from "@pixelmord/content-ai-refine";
 import type { AiEvent as RefineAiEvent } from "@pixelmord/content-ai-refine";
 import { ingredientContract } from "@/contracts/ingredientContract.ts";
@@ -84,16 +85,33 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
 
   const existingEvents = await eventLog.read(metaRef);
 
-  const ingredientItems = await store.list("ingredients");
-  const inventory = ingredientItems
-    .filter((i) => i.id.startsWith(`${locale}/`) && i.id !== `${locale}/${metaRef.slug}`)
-    .map((i) => {
-      const d = i.data as Record<string, unknown>;
-      return {
-        slug: i.id.slice(3),
-        name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
-      };
-    });
+  const [ingredientItems, mixtureItems] = await Promise.all([
+    store.list("ingredients"),
+    store.list("mixtures"),
+  ]);
+  const inventory = [
+    ...ingredientItems
+      .filter((i) => i.id.startsWith(`${locale}/`) && i.id !== `${locale}/${metaRef.slug}`)
+      .map((i) => {
+        const d = i.data as Record<string, unknown>;
+        return {
+          collection: "ingredients" as const,
+          slug: i.id.slice(3),
+          name: typeof d["name"] === "string" ? d["name"] : i.id.slice(3),
+        };
+      }),
+    ...mixtureItems
+      .filter((i) => i.id.startsWith(`${locale}/`))
+      .map((i) => {
+        const d = i.data as Record<string, unknown>;
+        const raw = i.id.slice(3);
+        return {
+          collection: "mixtures" as const,
+          slug: raw,
+          name: typeof d["name"] === "string" ? d["name"] : raw,
+        };
+      }),
+  ];
 
   const fieldsForAi = missingFields.filter((f) => f !== "image");
   const targetFields = [
@@ -122,9 +140,15 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
   );
 
   const pairingsSugg = suggestions.get("pairings");
+  const pairingsTraceId = pairingsSugg?.traceId;
   const proposedPairings =
     pairingsSugg?.kind === "single"
-      ? (pairingsSugg.value as Array<{ slug: string; description: string; confidence: Confidence }>)
+      ? (pairingsSugg.value as Array<{
+          otherCollection: string;
+          otherSlug: string;
+          rationale: string;
+          confidence: Confidence;
+        }>)
       : [];
 
   const langApplied = autoApplied.get("language");
@@ -136,9 +160,10 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
   const aiSuggestions = {
     improvements: filteredImprovements,
     pairings: proposedPairings.map((p) => ({
-      slug: p.slug,
-      description: p.description,
-      confidence: p.confidence,
+      otherCollection: p.otherCollection,
+      otherSlug: p.otherSlug,
+      rationale: p.rationale,
+      traceId: pairingsTraceId,
     })),
     detectedLanguage,
     languageMismatch,
@@ -154,29 +179,32 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
     const existingIds = new Set(existingPairings.map((p) => p.id));
     const runId = getCurrentOrigin()?.runId;
     for (const pairing of toAutoApply) {
-      const id = [metaRef.slug, pairing.slug].sort().join("--");
+      const id = [metaRef.slug, pairing.otherSlug].sort().join("--");
       if (!existingIds.has(id)) {
         assertAutoApplyAllowed("pairing-slug", pairing.confidence, "editor");
-        const ref1: EntityRef = { collection: "ingredients", slug: metaRef.slug };
-        const ref2: EntityRef = { collection: "ingredients", slug: pairing.slug };
+        const ref1: EndpointRef = { collection: "ingredients", slug: metaRef.slug };
+        const ref2: EndpointRef = {
+          collection: pairing.otherCollection as EndpointRef["collection"],
+          slug: pairing.otherSlug,
+        };
         const sortedRefs = [ref1, ref2].sort((a, b) => a.slug.localeCompare(b.slug)) as [
-          EntityRef,
-          EntityRef,
+          EndpointRef,
+          EndpointRef,
         ];
         await store.put("pairings", id, {
-          ingredients: sortedRefs,
-          description: pairing.description,
+          endpoints: sortedRefs,
+          description: pairing.rationale,
         });
         await eventLog.append(metaRef, {
           type: "auto-applied",
           field: "pairings",
           suggestion: {
-            hash: hashSuggestion({ slug: metaRef.slug, pairingSlug: pairing.slug }),
-            summary: `Pairing auto-applied: ${metaRef.slug} ↔ ${pairing.slug}`,
+            hash: hashSuggestion({ slug: metaRef.slug, pairingSlug: pairing.otherSlug }),
+            summary: `Pairing auto-applied: ${metaRef.slug} ↔ ${pairing.otherSlug}`,
           },
           model: config.model,
           confidence: pairing.confidence,
-          traceId: runId,
+          traceId: runId ?? pairingsTraceId,
         });
         autoLinked++;
       }
@@ -255,11 +283,13 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     : [];
   const fieldsForAi = missingFields.filter((f) => f !== "image");
 
+  const hasPairableEntities = inventory.length > 0 || existingRecipes.length > 0;
   const targetFields = [
     ...fieldsForAi,
     "keywords",
     ...(recipeIngredients.length ? ["ingredientLinks"] : []),
     ...(existingRecipes.length ? ["relations"] : []),
+    ...(hasPairableEntities ? ["pairings"] : []),
     ...(!meta["language"] ? ["language"] : []),
   ];
 
@@ -306,6 +336,19 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
         }>)
       : [];
 
+  const pairingsSugg = suggestions.get("pairings");
+  const pairingsTraceId = pairingsSugg?.traceId;
+  const pairings =
+    pairingsSugg?.kind === "single"
+      ? (
+          pairingsSugg.value as Array<{
+            otherCollection: string;
+            otherSlug: string;
+            rationale: string;
+          }>
+        ).map((p) => ({ ...p, traceId: pairingsTraceId }))
+      : [];
+
   const langApplied = autoApplied.get("language");
   const langSugg = suggestions.get("language");
   const detectedLanguage = (langApplied?.value ??
@@ -316,6 +359,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     tags,
     ingredientLinks,
     relations,
+    pairings,
     detectedLanguage,
   };
 

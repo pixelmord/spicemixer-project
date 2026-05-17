@@ -1,5 +1,5 @@
 import { pairingSchema } from "entity-kind";
-import type { AiContract } from "@pixelmord/content-ai-refine";
+import type { AiContract, FieldConfig } from "@pixelmord/content-ai-refine";
 
 type PairingSchema = typeof pairingSchema;
 
@@ -17,13 +17,34 @@ const presets = [
     appliesTo: "text" as const,
     autoApplyOverride: { policy: "never" as const },
   },
+  {
+    id: "tone",
+    label: "Adjust Tone",
+    description: "Rewrite in a more vivid culinary voice.",
+    instruction: "Rewrite in a vivid, editorial culinary voice with sensory language.",
+    appliesTo: "text" as const,
+    autoApplyOverride: { policy: "never" as const },
+  },
+  {
+    id: "research",
+    label: "Research",
+    description: "Add culinary context and historical depth.",
+    instruction: "Add specific culinary context, flavor chemistry, or historical detail.",
+    appliesTo: "text" as const,
+    autoApplyOverride: { policy: "never" as const },
+  },
 ];
+
+// Fields that are just structural refs — copied verbatim during translation.
+const copyField: FieldConfig<PairingSchema, PairingRefineContext> = {
+  translation: { mode: "copy" },
+};
 
 export const pairingContract: AiContract<PairingSchema, PairingRefineContext> = {
   schema: pairingSchema,
   presets,
   fields: {
-    // Description improvement (replaces proposePairingImprovements)
+    // Prose — translate to target locale
     description: {
       systemPrompt: ({ currentData, sourceContext }) => {
         const locale = sourceContext?.locale ?? "en";
@@ -47,9 +68,22 @@ Rules:
 - Do not suggest image URLs`;
       },
       autoApply: { policy: "never" },
-      presetIds: ["expand"],
+      presetIds: ["expand", "tone", "research"],
       translation: { mode: "translate" },
       writePolicy: "replace",
     },
+
+    // Structural refs — copy verbatim during translation
+    endpoints: copyField,
+    image: copyField,
+
+    // imageAttribution: copy the whole object, but the attribution prose sub-field is translated
+    imageAttribution: copyField,
+    "imageAttribution.attribution": {
+      translation: { mode: "translate" },
+    },
+
+    // Meta field — copy as-is (featured flag is editorial, not locale-specific)
+    featured: copyField,
   },
 };

@@ -99,6 +99,15 @@ const relationsOutputSchema = z.array(
 // Tags output schema (replaces proposeTags)
 const tagsOutputSchema = z.array(z.string());
 
+// Pairings output schema — each item seeds a new Pairing entity on accept.
+const pairingsOutputSchema = z.array(
+  z.object({
+    otherCollection: z.enum(["ingredients", "mixtures", "recipes"]),
+    otherSlug: z.string(),
+    rationale: z.string(),
+  }),
+);
+
 export const recipeContract: AiContract<RecipeSchema, RecipeRefineContext> = {
   schema: recipeSchema,
   presets,
@@ -231,6 +240,40 @@ Recipe name: "${currentData?.name ?? ""}"`;
       outputSchema: z.string(),
       autoApply: { policy: "never" },
       translation: { mode: "translate" },
+    },
+
+    // Pairing proposals — proposes editorial relations to other entities.
+    // rationale becomes the new Pairing's description on accept.
+    // autoApply "never" — caller presents proposals for editor approval.
+    pairings: {
+      systemPrompt: ({ currentData, sourceContext }) => {
+        const inventory = sourceContext?.inventory ?? [];
+        const existingRecipes = sourceContext?.existingRecipes ?? [];
+        if (!inventory.length && !existingRecipes.length) return "";
+        const ctx = buildRecipeCtx(currentData);
+        const allEntities = [
+          ...inventory.map((i) => `[ingredients] ${i.slug}: ${i.name}`),
+          ...existingRecipes.map((r) => `[${r.collection}] ${r.slug}: ${r.name}`),
+        ];
+        if (!allEntities.length) return "";
+        return `Suggest pairings for this recipe or mixture. A pairing is a strong culinary affinity that warrants editorial commentary — complementary flavor profiles, shared regional heritage, or one enhancing the other.
+
+Current entity:
+${ctx}
+
+Available entities ([collection] slug: name):
+${allEntities.slice(0, 80).join("\n")}
+
+Return up to 4 pairings. For each:
+- otherCollection: the collection of the other entity (ingredients / mixtures / recipes)
+- otherSlug: exact slug from the list above
+- rationale: 1-2 sentences explaining the culinary affinity — this becomes the pairing description
+
+Only suggest pairings with clear culinary logic. Return empty array if nothing fits strongly.`;
+      },
+      outputSchema: pairingsOutputSchema,
+      autoApply: { policy: "never" },
+      translation: { mode: "copy" },
     },
   },
 };

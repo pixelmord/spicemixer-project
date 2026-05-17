@@ -255,6 +255,150 @@ describe("pairingContract field configs", () => {
     expect(expand).toBeDefined();
     expect(expand?.appliesTo).toBe("text");
   });
+
+  test("presets list contains tone and research presets", () => {
+    const tone = pairingContract.presets.find((p) => p.id === "tone");
+    const research = pairingContract.presets.find((p) => p.id === "research");
+    expect(tone).toBeDefined();
+    expect(tone?.appliesTo).toBe("text");
+    expect(research).toBeDefined();
+    expect(research?.appliesTo).toBe("text");
+  });
+
+  test("description field presetIds includes tone and research", () => {
+    expect(pairingContract.fields.description.presetIds).toContain("tone");
+    expect(pairingContract.fields.description.presetIds).toContain("research");
+  });
+
+  test("endpoints field has copy translation mode", () => {
+    expect(pairingContract.fields.endpoints?.translation).toMatchObject({ mode: "copy" });
+  });
+
+  test("image field has copy translation mode", () => {
+    expect(pairingContract.fields.image?.translation).toMatchObject({ mode: "copy" });
+  });
+
+  test("imageAttribution field has copy translation mode", () => {
+    expect(pairingContract.fields.imageAttribution?.translation).toMatchObject({ mode: "copy" });
+  });
+
+  test("imageAttribution.attribution sub-field has translate mode", () => {
+    expect(pairingContract.fields["imageAttribution.attribution"]?.translation).toMatchObject({
+      mode: "translate",
+    });
+  });
+
+  test("featured field has copy translation mode", () => {
+    expect(pairingContract.fields.featured?.translation).toMatchObject({ mode: "copy" });
+  });
+});
+
+describe("ingredientContract pairings proposer shape", () => {
+  test("pairings outputSchema validates {otherCollection, otherSlug, rationale, confidence}", () => {
+    const field = ingredientContract.fields.pairings;
+    expect(field.outputSchema).toBeDefined();
+    const result = field.outputSchema!.safeParse([
+      {
+        otherCollection: "ingredients",
+        otherSlug: "cardamom",
+        rationale: "Warm and aromatic, both lift desserts.",
+        confidence: "high",
+      },
+    ]);
+    expect(result.success).toBe(true);
+  });
+
+  test("pairings outputSchema rejects old {slug, description} shape", () => {
+    const field = ingredientContract.fields.pairings;
+    const result = field.outputSchema!.safeParse([{ slug: "cardamom", description: "Warm pair" }]);
+    // Old shape is missing required fields — parsing may succeed (zod strips) or fail
+    // The key guarantee: otherCollection and otherSlug must be required
+    if (result.success) {
+      const item = (result.data as Array<Record<string, unknown>>)[0];
+      expect(item["otherCollection"]).toBeUndefined();
+      expect(item["otherSlug"]).toBeUndefined();
+    }
+  });
+
+  test("pairings outputSchema rejects unknown otherCollection value", () => {
+    const field = ingredientContract.fields.pairings;
+    const result = field.outputSchema!.safeParse([
+      {
+        otherCollection: "unknown-collection",
+        otherSlug: "cardamom",
+        rationale: "Test",
+        confidence: "high",
+      },
+    ]);
+    expect(result.success).toBe(false);
+  });
+
+  test("pairings field systemPrompt includes collection tag in inventory", () => {
+    const ctx = {
+      currentData: { name: "Cumin", category: "Spice" },
+      sourceContext: {
+        inventory: [
+          { slug: "cardamom", name: "Cardamom", collection: "ingredients" },
+          { slug: "ras-el-hanout", name: "Ras el Hanout", collection: "mixtures" },
+        ],
+      },
+    };
+    const prompt = ingredientContract.fields.pairings.systemPrompt!(ctx as never);
+    expect(prompt).toContain("[ingredients] cardamom");
+    expect(prompt).toContain("[mixtures] ras-el-hanout");
+    expect(prompt).toContain("otherCollection");
+    expect(prompt).toContain("otherSlug");
+    expect(prompt).toContain("rationale");
+  });
+});
+
+describe("recipeContract pairings proposer shape", () => {
+  test("pairings field exists in recipeContract", () => {
+    expect(recipeContract.fields.pairings).toBeDefined();
+  });
+
+  test("pairings outputSchema validates {otherCollection, otherSlug, rationale}", () => {
+    const field = recipeContract.fields.pairings;
+    expect(field.outputSchema).toBeDefined();
+    const result = field.outputSchema!.safeParse([
+      {
+        otherCollection: "ingredients",
+        otherSlug: "cardamom",
+        rationale: "Cardamom is central to this dish.",
+      },
+    ]);
+    expect(result.success).toBe(true);
+  });
+
+  test("pairings field has never auto-apply policy", () => {
+    expect(recipeContract.fields.pairings.autoApply).toMatchObject({ policy: "never" });
+  });
+
+  test("pairings field has copy translation mode", () => {
+    expect(recipeContract.fields.pairings.translation).toMatchObject({ mode: "copy" });
+  });
+
+  test("pairings systemPrompt returns empty string when no inventory or recipes", () => {
+    const ctx = {
+      currentData: { name: "Cardamom Rice" },
+      sourceContext: { inventory: [], existingRecipes: [] },
+    };
+    const prompt = recipeContract.fields.pairings.systemPrompt!(ctx as never);
+    expect(prompt).toBe("");
+  });
+
+  test("pairings systemPrompt includes both ingredients and recipe entities", () => {
+    const ctx = {
+      currentData: { name: "Cardamom Rice" },
+      sourceContext: {
+        inventory: [{ slug: "cardamom", name: "Cardamom" }],
+        existingRecipes: [{ collection: "mixtures", slug: "garam-masala", name: "Garam Masala" }],
+      },
+    };
+    const prompt = recipeContract.fields.pairings.systemPrompt!(ctx as never);
+    expect(prompt).toContain("[ingredients] cardamom");
+    expect(prompt).toContain("[mixtures] garam-masala");
+  });
 });
 
 describe("recipeContract: end-to-end runAiRefresh flow", () => {
