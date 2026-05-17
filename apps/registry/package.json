@@ -10,6 +10,7 @@
     "test": "NODE_OPTIONS=\"--import $(pwd)/jsdom-register.mjs\" vp test"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "astro": "catalog:",
     "lucide-react": "catalog:",
