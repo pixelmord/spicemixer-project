@@ -92,11 +92,7 @@ function scoreRecipe(recipe: AnyRecord, meta: AnyRecord): CompletenessResult {
   return { score: pct, missing, color: color(pct) };
 }
 
-/**
- * Helper: resolve a pairing's description. In the folder-per-locale schema each
- * file carries a single `description` string — no locale key lookup needed.
- * The caller loads the correct locale file; this function just extracts the field.
- */
+/** Per-locale schema: each file has a single `description`, no locale-key lookup. */
 export function resolvePairingDescription(
   pairing: AnyRecord,
   locale: string,

@@ -6,6 +6,7 @@ import { slugFromLocaleId } from "@/lib/recipe-augment.ts";
 import { entityRefSchema } from "@/lib/entity-ref.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
 import { endpointRefSchema } from "entity-kind";
+import type { EndpointRef } from "entity-kind";
 import { fetchRecipe } from "recipe-ingestion";
 import { computeCompletenessFromBlob } from "@/lib/completeness.ts";
 import {
@@ -501,7 +502,7 @@ export const server = {
     },
   }),
 
-  /** List all pairing entities (all locales' descriptions). */
+  /** List all pairing entities. */
   listAllPairings: defineAction({
     handler: async () => {
       const store = await createStore();
@@ -510,7 +511,7 @@ export const server = {
         const d = item.data as Record<string, unknown>;
         return {
           id: item.id,
-          endpoints: d["endpoints"] as [EntityRef, EntityRef],
+          endpoints: d["endpoints"] as [EndpointRef, EndpointRef],
           description: (d["description"] as string | undefined) ?? "",
           updatedAt: item.updatedAt,
         };
@@ -535,7 +536,7 @@ export const server = {
           if (!Array.isArray(eps)) return false;
           return eps.some((ref: unknown) => {
             if (typeof ref === "object" && ref !== null && "slug" in ref) {
-              const r = ref as EntityRef;
+              const r = ref as EndpointRef;
               return r.slug === slug && (!collection || r.collection === collection);
             }
             return false;
@@ -545,7 +546,7 @@ export const server = {
           const d = item.data as Record<string, unknown>;
           return {
             id: item.id,
-            endpoints: d["endpoints"] as [EntityRef, EntityRef],
+            endpoints: d["endpoints"] as [EndpointRef, EndpointRef],
             description: (d["description"] as string | undefined) ?? "",
           };
         });

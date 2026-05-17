@@ -28,14 +28,8 @@ export const pairingContract: AiContract<PairingSchema, PairingRefineContext> = 
       systemPrompt: ({ currentData, sourceContext }) => {
         const locale = sourceContext?.locale ?? "en";
         const endpoints = Array.isArray(currentData?.endpoints) ? currentData.endpoints : [];
-        const ep1 =
-          endpoints[0] != null && typeof (endpoints[0] as { slug?: string }).slug === "string"
-            ? (endpoints[0] as { slug: string }).slug
-            : "";
-        const ep2 =
-          endpoints[1] != null && typeof (endpoints[1] as { slug?: string }).slug === "string"
-            ? (endpoints[1] as { slug: string }).slug
-            : "";
+        const ep1 = (endpoints[0] as { slug?: string } | null | undefined)?.slug ?? "";
+        const ep2 = (endpoints[1] as { slug?: string } | null | undefined)?.slug ?? "";
         const currentDesc =
           typeof currentData?.description === "string" ? currentData.description : "";
 
