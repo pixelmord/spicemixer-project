@@ -203,6 +203,15 @@ const translationSyncCases: KindCase[] = [
     childId: "recipes/de/miso-ramen-de",
     translationOf: "miso-ramen",
   },
+  {
+    kind: "mixture (→ recipe kind)",
+    ref: { collection: "mixtures", locale: "en", slug: "harissa-blend" },
+    content1: { name: "Harissa Blend" },
+    content2: { name: "Harissa Blend updated" },
+    childMetaCollection: "meta",
+    childId: "mixtures/de/harissa-blend-de",
+    translationOf: "harissa-blend",
+  },
 ];
 
 describe("saveEntity — translation-sync contract (parameterised over translatable EntityKinds)", () => {
