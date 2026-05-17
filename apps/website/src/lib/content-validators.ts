@@ -6,30 +6,9 @@ import {
   type VariantsViolation,
 } from "entity-kind";
 
-/** Extract slug from a locale-prefixed content id (e.g. "en/cardamom" → "cardamom"). */
 function slugFromId(id: string): string {
   const slash = id.indexOf("/");
   return slash === -1 ? id : id.slice(slash + 1);
-}
-
-/**
- * Parse the locale from a meta id.
- * Meta ids are: "kind/locale/slug" for recipes/mixtures.
- * e.g. "recipes/en/miso-ramen" → "en"
- */
-function localeFromMetaId(id: string): string {
-  const parts = id.split("/");
-  return parts[1] ?? "";
-}
-
-/**
- * Parse the slug from a meta id.
- * Meta ids are: "kind/locale/slug" for recipes/mixtures.
- * e.g. "recipes/en/miso-ramen" → "miso-ramen"
- */
-function slugFromMetaId(id: string): string {
-  const parts = id.split("/");
-  return parts[2] ?? "";
 }
 
 export type SlugsByCollection = {
@@ -76,14 +55,10 @@ export async function collectCanonicalVariants(
     const canonicalLocale = meta["canonicalLocale"];
     if (!canonicalLocale) continue;
 
-    const locale = localeFromMetaId(item.id);
-    if (locale !== canonicalLocale) continue;
-
-    // translationOf being set means this is a translation, not the canonical entity
+    // Meta id: "kind/locale/slug"
+    const [, locale, slug] = item.id.split("/");
+    if (!slug || locale !== canonicalLocale) continue;
     if (meta["translationOf"]) continue;
-
-    const slug = slugFromMetaId(item.id);
-    if (!slug) continue;
 
     const variants = Array.isArray(meta["variants"]) ? (meta["variants"] as string[]) : [];
     result[slug] = variants;

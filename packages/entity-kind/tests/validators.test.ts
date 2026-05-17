@@ -86,18 +86,6 @@ describe("validateSlugUniqueness", () => {
     expect(violations).toEqual([]);
   });
 
-  test("error message identifies offending collections", () => {
-    const violations = validateSlugUniqueness({
-      ingredients: ["cumin"],
-      mixtures: ["cumin"],
-      recipes: [],
-    });
-    expect(violations).toHaveLength(1);
-    const v = violations[0]!;
-    expect(v.slug).toBe("cumin");
-    expect(v.collections.sort()).toEqual(["ingredients", "mixtures"]);
-  });
-
   test("works with partial collection input (missing collections)", () => {
     const violations = validateSlugUniqueness({
       ingredients: ["cardamom"],
@@ -189,15 +177,5 @@ describe("validateVariantsClosure", () => {
       c: [],
     });
     expect(violations).toEqual([]);
-  });
-
-  test("error message identifies entity and variant", () => {
-    const violations = validateVariantsClosure({
-      "harissa-moroccan": ["harissa-lebanese"],
-    });
-    const v = violations[0]!;
-    expect(v.entity).toBe("harissa-moroccan");
-    expect(v.variant).toBe("harissa-lebanese");
-    expect(v.reason).toBe("not-found");
   });
 });

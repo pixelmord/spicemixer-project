@@ -6,8 +6,6 @@ import {
   validateContent,
 } from "../../src/lib/content-validators.ts";
 
-// ── collectSlugsByCollection ──────────────────────────────────────────────────
-
 describe("collectSlugsByCollection", () => {
   test("returns empty arrays when store has no content", async () => {
     const store = new InMemoryStore();
@@ -48,8 +46,6 @@ describe("collectSlugsByCollection", () => {
     expect(result.ingredients.filter((s) => s === "cardamom")).toHaveLength(1);
   });
 });
-
-// ── collectCanonicalVariants ──────────────────────────────────────────────────
 
 describe("collectCanonicalVariants", () => {
   test("returns empty object when store has no meta", async () => {
@@ -110,8 +106,6 @@ describe("collectCanonicalVariants", () => {
   });
 });
 
-// ── validateContent ───────────────────────────────────────────────────────────
-
 describe("validateContent", () => {
   test("returns no violations for clean content", async () => {
     const store = new InMemoryStore();
@@ -165,8 +159,6 @@ describe("validateContent", () => {
     expect(result.variantsViolations).toEqual([]);
   });
 });
-
-// ── integration: actual content on disk ──────────────────────────────────────
 
 describe("actual content validation", () => {
   test("current content has no cross-collection slug conflicts", async () => {
