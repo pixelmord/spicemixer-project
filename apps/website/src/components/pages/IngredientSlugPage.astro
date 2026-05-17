@@ -46,23 +46,16 @@ const pagefindFilters = withPagefindFilters({
 const usedIn = await getUsedIn(slug, prefix);
 
 const pairingEntities = await getPairings(slug);
-const pairingsResolved = pairingEntities.length > 0
-  ? await Promise.all(
-      pairingEntities.map(async (pairing) => {
-        const otherSlug = pairing.ingredients[0] === slug ? pairing.ingredients[1] : pairing.ingredients[0];
-        const entry = await getIngredient(otherSlug, locale);
-        const descriptions = pairing.descriptions ?? {};
-        const description = descriptions[locale] ?? descriptions["en"] ?? pairing.description ?? "";
-        const pairingFallback = !descriptions[locale] && (!!descriptions["en"] || !!pairing.description);
-        return { slug: otherSlug, name: entry?.data.name ?? otherSlug, description, isFallback: pairingFallback };
-      })
-    )
-  : await Promise.all(
-      (data.pairings ?? []).map(async ({ slug: pairSlug, note }) => {
-        const entry = await getIngredient(pairSlug, locale);
-        return { slug: pairSlug, name: entry?.data.name ?? pairSlug, description: note ?? "", isFallback: false };
-      })
-    );
+const pairingsResolved = await Promise.all(
+  pairingEntities.map(async (pairing) => {
+    const otherSlug = pairing.ingredients[0] === slug ? pairing.ingredients[1] : pairing.ingredients[0];
+    const entry = await getIngredient(otherSlug, locale);
+    const descriptions = pairing.descriptions ?? {};
+    const description = descriptions[locale] ?? descriptions["en"] ?? pairing.description ?? "";
+    const pairingFallback = !descriptions[locale] && (!!descriptions["en"] || !!pairing.description);
+    return { slug: otherSlug, name: entry?.data.name ?? otherSlug, description, isFallback: pairingFallback };
+  })
+);
 
 const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().replace(/\/$/, "") ?? "");
 ---

@@ -172,8 +172,6 @@ describe("recipeMetaSchema", () => {
     expect(result.aiEvents).toEqual([]);
     expect(result.tags).toEqual([]);
     expect(result.ingredientLinks).toEqual([]);
-    expect(result.goesWellWith).toEqual([]);
-    expect(result.usesBase).toEqual([]);
     expect(result.variants).toEqual([]);
     expect(result.translations).toEqual({});
   });
@@ -195,6 +193,46 @@ describe("recipeMetaSchema", () => {
   test("accepts draft: true", () => {
     const result = recipeMetaSchema.parse({ draft: true });
     expect(result.draft).toBe(true);
+  });
+
+  test("variants still present as authored symmetric list", () => {
+    const result = recipeMetaSchema.parse({ variants: ["harissa-moroccan", "harissa-lebanese"] });
+    expect(result.variants).toEqual(["harissa-moroccan", "harissa-lebanese"]);
+  });
+
+  test("strips deleted goesWellWith field from old shape", () => {
+    const result = recipeMetaSchema.parse({
+      goesWellWith: [{ collection: "recipes", slug: "miso-ramen" }],
+    });
+    expect(result).not.toHaveProperty("goesWellWith");
+  });
+
+  test("strips deleted usesBase field from old shape", () => {
+    const result = recipeMetaSchema.parse({
+      usesBase: [{ collection: "mixtures", slug: "harissa" }],
+    });
+    expect(result).not.toHaveProperty("usesBase");
+  });
+
+  test("strips deleted variantOf field from old shape", () => {
+    const result = recipeMetaSchema.parse({ variantOf: "harissa-canonical" });
+    expect(result).not.toHaveProperty("variantOf");
+  });
+});
+
+describe("ingredientSchema — pairings removed", () => {
+  test("parses valid ingredient without pairings field", () => {
+    const result = ingredientSchema.parse({ name: "Cardamom", category: "spice" });
+    expect(result).not.toHaveProperty("pairings");
+  });
+
+  test("strips old pairings field from old shape", () => {
+    const result = ingredientSchema.parse({
+      name: "Cardamom",
+      category: "spice",
+      pairings: [{ slug: "saffron", note: "Floral pair" }],
+    });
+    expect(result).not.toHaveProperty("pairings");
   });
 });
 

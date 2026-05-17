@@ -130,10 +130,6 @@ export const ingredientSchema = z.object({
     .optional(),
   region: z.array(z.enum(REGIONS)).default([]),
   imageAttribution: imageAttributionSchema,
-  pairings: z
-    .array(z.object({ slug: z.string(), note: z.string().optional() }))
-    .optional()
-    .default([]),
 });
 
 export type Ingredient = z.infer<typeof ingredientSchema>;
@@ -190,11 +186,6 @@ export const pairingMetaSchema = z.object({
 export type PairingMeta = z.infer<typeof pairingMetaSchema>;
 
 // ── Recipe meta schema ────────────────────────────────────────────────────────
-
-const recipeLinkRef = z.object({
-  collection: z.enum(["recipes", "ingredients", "mixtures"]),
-  slug: z.string(),
-});
 
 const ingredientLinkItem = z.object({
   pattern: z.string(),
@@ -256,10 +247,7 @@ export const recipeMetaSchema = z.object({
   canonicalContentHash: z.string().optional(),
   canonicalFieldHashes: z.record(z.string(), z.string()).optional(),
   translations: z.record(z.string(), z.string()).default({}),
-  variantOf: z.string().optional(),
   variants: z.array(z.string()).default([]),
-  goesWellWith: z.array(recipeLinkRef).default([]),
-  usesBase: z.array(recipeLinkRef).default([]),
   ingredientLinks: z.array(ingredientLinkItem).default([]),
   externalSources: z
     .array(
