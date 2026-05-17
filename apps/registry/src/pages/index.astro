@@ -34,6 +34,19 @@ const primitives = [
   { name: "tag-chips-input", title: "TagChipsInput", description: "Inline tag chip editor with Enter/comma confirmation." },
 ];
 
+const blocks = [
+  { name: "ai-suggestions-indicator", title: "AiSuggestionsIndicator", description: "Small widget showing idle / running / has-suggestions / mixed states with a counter (N auto-applied · M to review) and an Options affordance." },
+  { name: "suggestions-options", title: "SuggestionsOptions", description: "Options panel composing PresetPicker, UserPromptField, and WritePolicyPicker with a Run button. Reads run state from SuggestionFlowProvider context." },
+  { name: "inline-field-suggestion", title: "InlineFieldSuggestion", description: "Per-field AI suggestion block mounting adjacent to a form input. Dispatches by field kind via renderers prop. Ships defaultRenderers for text, array, enum, multi-enum, date." },
+  { name: "file-text-prompt-source-picker", title: "FileTextPromptSourcePicker", description: "Tabbed three-way source input (File / Text / Prompt) emitting a controlled { kind, …payload }. Used as the source-selection panel inside IngestDialog." },
+  { name: "ingest-dialog", title: "IngestDialog", description: "Modal for cold-fill operations: bundles FileTextPromptSourcePicker + options (preset, user-prompt, write-policy) + post-run inline-suggestion review. Consumer wires onRun to their fill action." },
+];
+
+const hooks = [
+  { name: "use-ai-suggestions", title: "useAiSuggestions", description: "Headless orchestration hook owning run state, per-field accept/reject/revert flows, viewed-field tracking, and accept-all gating." },
+  { name: "suggestion-flow-provider", title: "SuggestionFlowProvider", description: "Context provider hosting useAiSuggestions return for deep forms, with useSuggestionFlowContext() reader." },
+];
+
 const legacySmoke = [
   { name: "__hello-world__", title: "Hello World", description: "Trivial smoke-test component for CLI verification." },
 ];
@@ -96,6 +109,42 @@ const legacySmoke = [
         <h2 class="text-xl font-semibold">Primitives (PRD 9.3)</h2>
         <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
           {primitives.map(({ name, title, description }) => (
+            <li class="px-4 py-3 space-y-1">
+              <div class="flex items-center gap-3">
+                <code class="font-mono text-sm font-medium">{name}</code>
+                <span class="text-stone-400 text-xs">{title}</span>
+              </div>
+              <p class="text-stone-500 text-sm">{description}</p>
+              <pre class="mt-2 bg-stone-50 text-stone-700 rounded p-2 text-xs overflow-x-auto"><code>pnpm dlx shadcn@latest add {REGISTRY_BASE}/r/{name}</code></pre>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section class="space-y-4">
+        <h2 class="text-xl font-semibold">Blocks (PRD 9.4)</h2>
+        <p class="text-stone-600 text-sm">
+          Larger composed components — paste one to get the full feature.
+          Each block reads run state from <code class="bg-stone-100 px-1 rounded">SuggestionFlowProvider</code> context.
+        </p>
+        <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
+          {blocks.map(({ name, title, description }) => (
+            <li class="px-4 py-3 space-y-1">
+              <div class="flex items-center gap-3">
+                <code class="font-mono text-sm font-medium">{name}</code>
+                <span class="text-stone-400 text-xs">{title}</span>
+              </div>
+              <p class="text-stone-500 text-sm">{description}</p>
+              <pre class="mt-2 bg-stone-50 text-stone-700 rounded p-2 text-xs overflow-x-auto"><code>pnpm dlx shadcn@latest add {REGISTRY_BASE}/r/{name}</code></pre>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section class="space-y-4">
+        <h2 class="text-xl font-semibold">Hooks (PRD 9.5)</h2>
+        <ul class="divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
+          {hooks.map(({ name, title, description }) => (
             <li class="px-4 py-3 space-y-1">
               <div class="flex items-center gap-3">
                 <code class="font-mono text-sm font-medium">{name}</code>

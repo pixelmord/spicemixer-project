@@ -338,6 +338,42 @@
           "type": "registry:hook"
         }
       ]
+    },
+    {
+      "name": "file-text-prompt-source-picker",
+      "type": "registry:block",
+      "title": "FileTextPromptSourcePicker",
+      "description": "Tabbed three-way source input (File / Text / Prompt) emitting a controlled { kind, …payload }. Used as the source-selection panel inside IngestDialog.",
+      "registryDependencies": ["file-input", "text-area-source", "prompt-input-source"],
+      "files": [
+        {
+          "path": "components/ui/file-text-prompt-source-picker.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "ingest-dialog",
+      "type": "registry:block",
+      "title": "IngestDialog",
+      "description": "Modal for cold-fill operations: bundles FileTextPromptSourcePicker + options (preset, user-prompt, write-policy) + post-run inline-suggestion review. Consumer wires onRun to their fill action.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "use-ai-suggestions",
+        "suggestion-flow-provider",
+        "file-text-prompt-source-picker",
+        "preset-picker",
+        "user-prompt-field",
+        "write-policy-picker",
+        "accept-reject-buttons",
+        "confidence-badge"
+      ],
+      "files": [
+        {
+          "path": "components/ui/ingest-dialog.tsx",
+          "type": "registry:block"
+        }
+      ]
     }
   ]
 }
