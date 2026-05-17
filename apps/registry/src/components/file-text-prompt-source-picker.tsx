@@ -4,94 +4,119 @@ import { FileInput } from "./file-input";
 import { TextAreaSource } from "./text-area-source";
 import { PromptInputSource } from "./prompt-input-source";
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-export type IngestSource =
-  | { kind: "file"; file: File }
-  | { kind: "text"; text: string }
+export type SourceShape =
+  | { kind: "file"; file: File; mimeType: string }
+  | { kind: "text"; content: string }
   | { kind: "prompt"; prompt: string };
 
-type TabId = "file" | "text" | "prompt";
+export type SourceKind = "file" | "text" | "prompt";
+
+const TABS: Array<{ id: SourceKind; label: string }> = [
+  { id: "file", label: "From file" },
+  { id: "text", label: "From text" },
+  { id: "prompt", label: "From prompt" },
+];
+
+const ACCEPTED_MIME = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "text/plain",
+  "text/markdown",
+];
 
 interface FileTextPromptSourcePickerProps {
-  value: IngestSource | null;
-  onChange: (source: IngestSource | null) => void;
+  onChange: (source: SourceShape | null) => void;
   className?: string;
 }
 
-const TAB_LABELS: Record<TabId, string> = {
-  file: "File",
-  text: "Text",
-  prompt: "Prompt",
-};
-
-// ── Component ──────────────────────────────────────────────────────────────────
-
 export function FileTextPromptSourcePicker({
-  value,
   onChange,
   className,
 }: FileTextPromptSourcePickerProps) {
-  const [activeTab, setActiveTab] = useState<TabId>(value ? value.kind : "file");
-  const [text, setText] = useState<string>(value?.kind === "text" ? value.text : "");
-  const [prompt, setPrompt] = useState<string>(value?.kind === "prompt" ? value.prompt : "");
+  const [activeTab, setActiveTab] = useState<SourceKind>("file");
+  const [text, setText] = useState("");
+  const [prompt, setPrompt] = useState("");
+  // file input is uncontrolled; we reset via key
+  const [fileKey, setFileKey] = useState(0);
 
-  function handleTabChange(tab: TabId) {
+  function handleTabChange(tab: SourceKind) {
     setActiveTab(tab);
     onChange(null);
+    if (tab === "file") setFileKey((k) => k + 1);
   }
 
   function handleFileChange(file: File | null) {
-    onChange(file ? { kind: "file", file } : null);
+    if (!file) {
+      onChange(null);
+      return;
+    }
+    if (!ACCEPTED_MIME.includes(file.type)) {
+      onChange(null);
+      return;
+    }
+    onChange({ kind: "file", file, mimeType: file.type });
   }
 
-  function handleTextChange(t: string) {
-    setText(t);
-    onChange(t ? { kind: "text", text: t } : null);
+  function handleTextChange(value: string) {
+    setText(value);
+    onChange(value.trim() ? { kind: "text", content: value } : null);
   }
 
-  function handlePromptChange(p: string) {
-    setPrompt(p);
-    onChange(p ? { kind: "prompt", prompt: p } : null);
+  function handlePromptChange(value: string) {
+    setPrompt(value);
+    onChange(value.trim() ? { kind: "prompt", prompt: value } : null);
   }
 
   return (
     <div className={cn("space-y-3", className)}>
-      <div role="tablist" aria-label="Source type" className="flex border-b border-border">
-        {(["file", "text", "prompt"] as TabId[]).map((tab) => (
+      <div className="flex gap-1 rounded-lg bg-muted p-1 w-fit">
+        {TABS.map((t) => (
           <button
-            key={tab}
+            key={t.id}
             type="button"
-            role="tab"
-            aria-selected={activeTab === tab}
-            aria-controls={`source-panel-${tab}`}
-            id={`source-tab-${tab}`}
-            onClick={() => handleTabChange(tab)}
+            onClick={() => handleTabChange(t.id)}
             className={cn(
-              "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
-              activeTab === tab
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
+              "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              activeTab === t.id
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {TAB_LABELS[tab]}
+            {t.label}
           </button>
         ))}
       </div>
 
-      <div
-        role="tabpanel"
-        id={`source-panel-${activeTab}`}
-        aria-labelledby={`source-tab-${activeTab}`}
-      >
-        {activeTab === "file" && (
-          <FileInput onChange={handleFileChange} accept=".pdf,.txt,.md" hint=".pdf, .txt, or .md" />
-        )}
-        {activeTab === "text" && <TextAreaSource value={text} onChange={handleTextChange} />}
-        {activeTab === "prompt" && (
-          <PromptInputSource value={prompt} onChange={handlePromptChange} />
-        )}
-      </div>
+      {activeTab === "file" && (
+        <FileInput
+          key={fileKey}
+          accept=".pdf,image/*,.md,.txt,text/plain,text/markdown"
+          onChange={handleFileChange}
+          label="Upload file"
+          hint="PDF, JPEG, PNG, WebP · or .md / .txt text files · max 10 MB"
+        />
+      )}
+
+      {activeTab === "text" && (
+        <TextAreaSource
+          value={text}
+          onChange={handleTextChange}
+          label="Paste text or markdown"
+          placeholder={`# My Content\n\nPaste any text — markdown, notes, or plain text.`}
+        />
+      )}
+
+      {activeTab === "prompt" && (
+        <PromptInputSource
+          value={prompt}
+          onChange={handlePromptChange}
+          label="Prompt"
+          placeholder="Describe what you want the AI to generate…"
+        />
+      )}
     </div>
   );
 }

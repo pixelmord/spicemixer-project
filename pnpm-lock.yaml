@@ -126,6 +126,9 @@ importers:
 
   apps/registry:
     dependencies:
+      '@base-ui/react':
+        specifier: 'catalog:'
+        version: 1.4.1(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.2.4(vite@8.0.10(@types/node@25.6.0)(esbuild@0.27.7)(jiti@2.6.1)(yaml@2.9.0))

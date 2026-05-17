@@ -258,7 +258,7 @@
       "name": "suggestions-options",
       "type": "registry:block",
       "title": "SuggestionsOptions",
-      "description": "Options panel composing PresetPicker, UserPromptField, and WritePolicyPicker with a Run button. Reads run state from SuggestionFlowProvider context.",
+      "description": "Options panel composing PresetPicker, UserPromptField, and WritePolicyPicker with a Run button. Reads run state from SuggestionFlowProvider context. Pass showRunButton={false} when embedding inside IngestDialog.",
       "registryDependencies": [
         "use-ai-suggestions",
         "suggestion-flow-provider",
@@ -269,6 +269,39 @@
       "files": [
         {
           "path": "components/ui/suggestions-options.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "file-text-prompt-source-picker",
+      "type": "registry:block",
+      "title": "FileTextPromptSourcePicker",
+      "description": "Tabbed three-way source input (file / text / prompt) that emits a controlled { kind, …payload } union. Reference block for IngestDialog source selection.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": ["file-input", "text-area-source", "prompt-input-source"],
+      "files": [
+        {
+          "path": "components/ui/file-text-prompt-source-picker.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "ingest-dialog",
+      "type": "registry:block",
+      "title": "IngestDialog",
+      "description": "Modal bundling FileTextPromptSourcePicker + SuggestionsOptions (options only) + post-run review body. Handles cold-fill and merge patterns. Wraps in SuggestionFlowProvider when flow prop is provided.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "use-ai-suggestions",
+        "suggestion-flow-provider",
+        "suggestions-options",
+        "file-text-prompt-source-picker"
+      ],
+      "files": [
+        {
+          "path": "components/ui/ingest-dialog.tsx",
           "type": "registry:block"
         }
       ]

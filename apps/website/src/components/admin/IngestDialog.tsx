@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Loader2, Sparkles, ChevronLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { FileTextPromptSourcePicker } from "./file-text-prompt-source-picker";
-import { SuggestionsOptions } from "./suggestions-options";
-import { SuggestionFlowProvider } from "./suggestion-flow-provider";
-import type { SourceShape } from "./file-text-prompt-source-picker";
-import type { AiPreset, UseAiSuggestionsReturn } from "./use-ai-suggestions";
+import { cn } from "@/lib/utils.ts";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog.tsx";
+import { FileTextPromptSourcePicker } from "./FileTextPromptSourcePicker.tsx";
+import { SuggestionsOptions } from "./SuggestionsOptions.tsx";
+import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
+import type { SourceShape } from "./FileTextPromptSourcePicker.tsx";
+import type { AiPreset, UseAiSuggestionsReturn } from "@/hooks/use-ai-suggestions.tsx";
 
 export type { SourceShape };
 
@@ -14,10 +14,7 @@ export interface IngestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title?: string;
-  /**
-   * Presets to show in the options panel.
-   * Requires flow — ignored when flow is not provided.
-   */
+  /** Presets for SuggestionsOptions. Requires flow — ignored when flow is not provided. */
   presets?: AiPreset[];
   /**
    * Flow from useAiSuggestions. When provided:
