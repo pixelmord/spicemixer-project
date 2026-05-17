@@ -401,6 +401,7 @@ export default function RecipeForm({
   const [translateOpen, setTranslateOpen] = useState(false);
   const [translateRunId] = useState(() => crypto.randomUUID());
   const translationSlugRef = useRef<string>("");
+  const entityKind = collection === "mixtures" ? "mixture" : "recipe";
 
   // Entity options
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
@@ -2133,7 +2134,7 @@ export default function RecipeForm({
                 },
               }}
               sourceRef={{
-                kind: collection === "mixtures" ? "mixture" : "recipe",
+                kind: entityKind,
                 id: slug ?? "",
               }}
               sourceLocale={language || "en"}
@@ -2151,7 +2152,7 @@ export default function RecipeForm({
                 translationSlugRef.current = translationSlug ?? "";
                 const sidecarMeta = {
                   draft: true,
-                  kind: collection === "mixtures" ? "mixture" : "recipe",
+                  kind: entityKind,
                   tags: [] as string[],
                   ingredientLinks: [] as unknown[],
                   externalSources: [] as unknown[],
@@ -2176,10 +2177,7 @@ export default function RecipeForm({
                   meta: sidecarMeta as Record<string, unknown>,
                 });
                 if (error) throw new Error(error.message);
-                return {
-                  kind: collection === "mixtures" ? "mixture" : "recipe",
-                  id: translationSlug ?? "",
-                };
+                return { kind: entityKind, id: translationSlug ?? "" };
               }}
               onComplete={() => {
                 const ts = translationSlugRef.current;
@@ -2196,11 +2194,8 @@ export default function RecipeForm({
                   sourceData: Record<string, unknown>;
                 };
                 const { data, error } = await actions.aiFillTranslation({
-                  kind: collection === "mixtures" ? "mixture" : "recipe",
-                  sourceRef: {
-                    id: slug ?? "",
-                    kind: collection === "mixtures" ? "mixture" : "recipe",
-                  },
+                  kind: entityKind,
+                  sourceRef: { id: slug ?? "", kind: entityKind },
                   sourceLocale: ctx.sourceLocale as "en" | "de",
                   targetLocale: ctx.targetLocale as "en" | "de",
                   sourceData: ctx.sourceData,
@@ -2212,7 +2207,7 @@ export default function RecipeForm({
               origin={{
                 surface: "admin",
                 action: "aiFillTranslation",
-                entityKind: collection === "mixtures" ? "mixture" : "recipe",
+                entityKind,
                 entityRef: slug ?? "",
                 userInitiated: true,
                 runId: translateRunId,

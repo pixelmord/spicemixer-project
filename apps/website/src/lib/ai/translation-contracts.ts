@@ -1,8 +1,6 @@
 import { z } from "zod";
 import type { IngestContract, SiblingLocaleSource } from "@pixelmord/content-ai-ingest";
 
-type SiblingSource = SiblingLocaleSource;
-
 // ── Recipe translation contract ────────────────────────────────────────────────
 // Covers the prose / label fields that need LLM translation for recipes and
 // mixtures. Structural / URL / duration fields (recipeYield, prepTime, …) are
@@ -18,7 +16,7 @@ const recipeTranslationSchema = z.object({
 
 export const recipeTranslationContract: IngestContract<
   typeof recipeTranslationSchema,
-  SiblingSource
+  SiblingLocaleSource
 > = {
   schema: recipeTranslationSchema,
   systemPrompt:
@@ -62,7 +60,7 @@ const ingredientTranslationSchema = z.object({
 
 export const ingredientTranslationContract: IngestContract<
   typeof ingredientTranslationSchema,
-  SiblingSource
+  SiblingLocaleSource
 > = {
   schema: ingredientTranslationSchema,
   systemPrompt:
@@ -100,7 +98,7 @@ const pairingTranslationSchema = z.object({
 
 export const pairingTranslationContract: IngestContract<
   typeof pairingTranslationSchema,
-  SiblingSource
+  SiblingLocaleSource
 > = {
   schema: pairingTranslationSchema,
   systemPrompt:

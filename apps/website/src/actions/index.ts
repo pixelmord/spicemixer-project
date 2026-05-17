@@ -1602,12 +1602,13 @@ export const server = {
       } = await import("@/lib/ai/translation-contracts.ts");
       const { runFill } = await import("@pixelmord/content-ai-ingest");
 
-      const contract =
-        kind === "ingredient"
-          ? ingredientTranslationContract
-          : kind === "pairing"
-            ? pairingTranslationContract
-            : recipeTranslationContract;
+      const contractByKind = {
+        ingredient: ingredientTranslationContract,
+        pairing: pairingTranslationContract,
+        recipe: recipeTranslationContract,
+        mixture: recipeTranslationContract,
+      } as const;
+      const contract = contractByKind[kind];
 
       const sourceContext = {
         kind: "sibling-locale" as const,
