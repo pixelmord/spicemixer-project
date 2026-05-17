@@ -29,6 +29,9 @@ export type {
   Recipe,
   RecipeMeta,
 } from "./schemas.ts";
+
+export type { SlugConflict, VariantsViolation } from "./validators.ts";
+export { validateSlugUniqueness, validateVariantsClosure } from "./validators.ts";
 export {
   ingredientSchema,
   ingredientMetaSchema,
