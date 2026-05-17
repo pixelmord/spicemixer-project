@@ -3,36 +3,47 @@ export const prerender = false;
 import AdminShell from "@/components/admin/AdminShell.tsx";
 import ContentTable from "@/components/admin/ContentTable.tsx";
 import { createStore } from "@/lib/content-store.ts";
-import { PAIRING_META } from "@/lib/meta-sidecar.ts";
 import { scorePairing } from "@/lib/completeness.ts";
 
 const store = await createStore();
-const [items, metaItems] = await Promise.all([
-  store.list("pairings"),
-  store.list(PAIRING_META),
-]);
+const allItems = await store.list("pairings");
 
-const metaMap = new Map(metaItems.map((m) => [m.id, m.data as Record<string, unknown>]));
+// Group by pairing slug, deduplicate to one row per slug
+const slugMap = new Map<string, typeof allItems[number][]>();
+for (const item of allItems) {
+  const slash = item.id.indexOf("/");
+  if (slash === -1) continue; // skip stale root-level files
+  const slug = item.id.slice(slash + 1);
+  if (!slugMap.has(slug)) slugMap.set(slug, []);
+  slugMap.get(slug)!.push(item);
+}
 
-const rows = items.map((item) => {
-  const d = item.data as Record<string, unknown>;
-  const ings = (d["ingredients"] as string[]) ?? [];
-  const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
-  const translations = ["en", "de"].filter((l) => !!descriptions[l]);
-  const meta = metaMap.get(item.id) ?? {};
-  const draft = !!(meta["draft"] as boolean);
-  const completeness = scorePairing(d, "en");
-  const description = descriptions["en"] ?? String(d["description"] ?? "");
+const rows = Array.from(slugMap.entries()).map(([slug, localeItems]) => {
+  // Primary: EN version, fall back to first available
+  const primary =
+    localeItems.find((i) => i.id.startsWith("en/")) ?? localeItems[0]!;
+  const d = primary.data as Record<string, unknown>;
+  const endpoints = (d["endpoints"] as Array<{ collection: string; slug: string }>) ?? [];
+  const ep0 = endpoints[0]?.slug ?? "?";
+  const ep1 = endpoints[1]?.slug ?? "?";
+  const description = typeof d["description"] === "string" ? d["description"] : "";
+  const completeness = scorePairing(d);
+  const translations = localeItems
+    .map((i) => i.id.slice(0, i.id.indexOf("/")))
+    .filter(Boolean)
+    .sort();
   return {
     type: "pairing" as const,
     collection: "pairings",
-    id: item.id,
-    name: `${ings[0] ?? "?"} ↔ ${ings[1] ?? "?"}`,
-    draft,
+    id: primary.id,
+    name: `${ep0} ↔ ${ep1}`,
+    draft: false,
     completeness,
-    updatedAt: item.updatedAt,
+    updatedAt: primary.updatedAt,
     translations,
-    subtitle: description ? description.slice(0, 100) + (description.length > 100 ? "…" : "") : undefined,
+    subtitle: description
+      ? description.slice(0, 100) + (description.length > 100 ? "…" : "")
+      : undefined,
   };
 });
 

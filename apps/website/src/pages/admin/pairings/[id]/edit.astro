@@ -5,28 +5,38 @@ import PairingForm from "@/components/admin/PairingForm.tsx";
 import type { ImageAttribution } from "@/components/admin/ImageSearchModal.tsx";
 import { createStore } from "@/lib/content-store.ts";
 import { createMetaSidecar } from "@/lib/meta-sidecar.ts";
+import type { EndpointRef } from "entity-kind";
 
 const { id } = Astro.params;
 if (!id) return Astro.redirect("/admin/pairings");
 
 // Decode the id (may be URL-encoded for the -- separator)
 const pairingId = decodeURIComponent(id);
+// Locale lives in ?locale=en|de to avoid Astro i18n routing stripping the default locale
+const locale = (Astro.url.searchParams.get("locale") ?? "en") as "en" | "de";
 
 const store = await createStore();
-const item = await store.get("pairings", pairingId);
+const item = await store.get("pairings", `${locale}/${pairingId}`);
 if (!item) return Astro.redirect("/admin/pairings");
 
 const d = item.data as Record<string, unknown>;
-const ingredients = (d["ingredients"] as [string, string]) ?? ["", ""];
-const descriptions =
-  (d["descriptions"] as Record<string, string>) ??
-  (d["description"] ? { en: String(d["description"]) } : {});
+const endpoints = (d["endpoints"] as [EndpointRef, EndpointRef]) ?? [
+  { collection: "ingredients", slug: "" },
+  { collection: "ingredients", slug: "" },
+];
+const description = typeof d["description"] === "string" ? d["description"] : "";
+
 const sidecar = createMetaSidecar(store);
-const metaRecord = await sidecar.read({ collection: "pairings", slug: pairingId });
+const metaRecord = await sidecar.read({ collection: "pairings", locale, slug: pairingId });
 const metaData = (metaRecord?.data as Record<string, unknown>) ?? {};
 const isDraft = !!(metaData["draft"] as boolean);
 const imageUrl = typeof d["image"] === "string" ? d["image"] : "";
 const imageAttribution = d["imageAttribution"] as ImageAttribution | undefined;
+
+// Check which other locales have a translation of this pairing
+const otherLocale = locale === "en" ? "de" : "en";
+const otherItem = await store.get("pairings", `${otherLocale}/${pairingId}`);
+const existingTranslationLocales = otherItem ? [otherLocale] : [];
 
 const currentPath = Astro.url.pathname;
 ---
@@ -35,17 +45,19 @@ const currentPath = Astro.url.pathname;
     <meta charset="utf-8" />
     <link rel="stylesheet" href="/src/styles/global.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{ingredients.join(" ↔ ")} · Pairing · Admin</title>
+    <title>{endpoints.map(e => e.slug).join(" ↔ ")} [{locale}] · Pairing · Admin</title>
   </head>
   <body>
     <AdminShell currentPath={currentPath} client:load>
       <PairingForm
         pairingId={pairingId}
-        initialIngredients={ingredients}
-        initialDescriptions={descriptions}
+        locale={locale}
+        initialEndpoints={endpoints}
+        initialDescription={description}
         initialDraft={isDraft}
         initialImage={imageUrl}
         initialImageAttribution={imageAttribution}
+        existingTranslationLocales={existingTranslationLocales}
         client:load
       />
     </AdminShell>

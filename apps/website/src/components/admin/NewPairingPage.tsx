@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import PairingForm from "./PairingForm.tsx";
+import type { EndpointRef } from "entity-kind";
 
 interface Props {
   locale?: string;
@@ -30,17 +31,22 @@ export default function NewPairingPage({ locale = "en" }: Props) {
     }
   }, []);
 
-  const initialDescriptions = importData?.description ? { [locale]: importData.description } : {};
+  const initialEndpoints: [EndpointRef, EndpointRef] | undefined =
+    importData?.ingredient1 && importData?.ingredient2
+      ? [
+          { collection: "ingredients", slug: importData.ingredient1 },
+          { collection: "ingredients", slug: importData.ingredient2 },
+        ]
+      : undefined;
+
+  const initialDescription = importData?.description ?? "";
 
   return (
     <PairingForm
       isNew
-      initialIngredients={
-        importData?.ingredient1 && importData?.ingredient2
-          ? [importData.ingredient1, importData.ingredient2]
-          : undefined
-      }
-      initialDescriptions={initialDescriptions}
+      locale={locale}
+      initialEndpoints={initialEndpoints}
+      initialDescription={initialDescription}
     />
   );
 }

@@ -447,7 +447,7 @@ export const server = {
         imageAttribution,
       });
       await libSaveEntity(store, sidecar, {
-        ref: { collection: "pairings", slug: id },
+        ref: { collection: "pairings", locale, slug: id },
         content: pairingData,
         meta: draft !== undefined ? { draft } : undefined,
       });
@@ -474,12 +474,16 @@ export const server = {
   /** Toggle draft/published state for a pairing. */
   togglePairingDraft: defineAction({
     accept: "json",
-    input: z.object({ id: z.string().min(1), draft: z.boolean() }),
-    handler: async ({ id, draft }) => {
+    input: z.object({
+      id: z.string().min(1),
+      locale: z.string().length(2).default("en"),
+      draft: z.boolean(),
+    }),
+    handler: async ({ id, locale, draft }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
       try {
-        await libTogglePairingDraft(store, sidecar, { id, draft });
+        await libTogglePairingDraft(store, sidecar, { id, locale, draft });
       } catch (err) {
         if (err instanceof NotFoundError) {
           throw new ActionError({ code: "NOT_FOUND", message: err.message });
@@ -490,14 +494,14 @@ export const server = {
     },
   }),
 
-  /** Delete a pairing entity by id. */
+  /** Delete a pairing locale record. */
   deletePairing: defineAction({
     accept: "json",
-    input: z.object({ id: z.string().min(1) }),
-    handler: async ({ id }) => {
+    input: z.object({ id: z.string().min(1), locale: z.string().length(2).default("en") }),
+    handler: async ({ id, locale }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libDeletePairing(store, sidecar, { id });
+      await libDeletePairing(store, sidecar, { id, locale });
       return { ok: true };
     },
   }),
@@ -1267,11 +1271,12 @@ export const server = {
     }),
   }),
 
-  /** Save a pre-translated pairing description into the descriptions map. */
+  /** Save a pre-translated pairing description as a new per-locale record. */
   aiTranslatePairing: defineAction({
     accept: "json",
     input: z.object({
       id: z.string().min(1),
+      sourceLocale: z.enum(["en", "de"]),
       targetLocale: z.enum(["en", "de"]),
       description: z.string().min(1),
     }),
@@ -1281,26 +1286,38 @@ export const server = {
       entityKind: "pairing",
       triggeredBy: "editor",
       userInitiated: true,
-    })(async ({ id, targetLocale, description }) => {
+    })(async ({ id, sourceLocale, targetLocale, description }) => {
       const store = await createStore();
+      const sidecar = createMetaSidecar(store);
 
-      const existing = await store.get("pairings", id);
-      if (!existing)
-        throw new ActionError({ code: "NOT_FOUND", message: `Pairing ${id} not found.` });
-
-      const d = existing.data as Record<string, unknown>;
-      const ings = d["ingredients"] as [EntityRef, EntityRef];
-      const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
-
-      if (descriptions[targetLocale]) {
+      const existingTarget = await store.get("pairings", `${targetLocale}/${id}`);
+      if (existingTarget) {
         throw new ActionError({
           code: "CONFLICT",
           message: `Translation for ${targetLocale} already exists.`,
         });
       }
 
-      const updatedDescriptions = { ...descriptions, [targetLocale]: description };
-      await store.put("pairings", id, { ingredients: ings, descriptions: updatedDescriptions });
+      const source = await store.get("pairings", `${sourceLocale}/${id}`);
+      if (!source)
+        throw new ActionError({
+          code: "NOT_FOUND",
+          message: `Pairing ${sourceLocale}/${id} not found.`,
+        });
+
+      const pairingData = await libBuildPairingData(store, {
+        id,
+        locale: targetLocale,
+        endpoints: (source.data as Record<string, unknown>)["endpoints"] as [
+          EndpointRef,
+          EndpointRef,
+        ],
+        description,
+      });
+      await libSaveEntity(store, sidecar, {
+        ref: { collection: "pairings", locale: targetLocale, slug: id },
+        content: pairingData,
+      });
       return { ok: true, description };
     }),
   }),
@@ -1414,12 +1431,13 @@ export const server = {
     accept: "json",
     input: z.object({
       id: z.string().min(1),
+      locale: z.string().length(2).default("en"),
       patch: z.record(z.string(), z.unknown()),
     }),
-    handler: async ({ id, patch }) => {
+    handler: async ({ id, locale, patch }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libSavePairingMeta(sidecar, { id, patch });
+      await libSavePairingMeta(sidecar, { id, locale, patch });
       return { ok: true };
     },
   }),

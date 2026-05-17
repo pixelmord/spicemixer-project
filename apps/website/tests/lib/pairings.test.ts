@@ -20,9 +20,9 @@ async function savePairing(
   sidecar: ReturnType<typeof createMetaSidecar>,
   input: {
     id: string;
+    locale: string;
     endpoints: [EndpointRef, EndpointRef];
     description: string;
-    locale: string;
     draft?: boolean;
     image?: string;
     imageAttribution?: Record<string, unknown>;
@@ -30,7 +30,7 @@ async function savePairing(
 ): Promise<{ id: string }> {
   const content = await buildPairingData(store, input);
   await saveEntity(store, sidecar, {
-    ref: { collection: "pairings", slug: input.id },
+    ref: { collection: "pairings", locale: input.locale, slug: input.id },
     content,
     meta: input.draft !== undefined ? { draft: input.draft } : undefined,
   });
@@ -43,11 +43,11 @@ describe("buildPairingData + saveEntity", () => {
     const sidecar = createMetaSidecar(store);
     await savePairing(store, sidecar, {
       id: "cardamom--anise",
+      locale: "en",
       endpoints: [cardamom, anise],
       description: "Warm and licorice-y.",
-      locale: "en",
     });
-    const stored = await store.get("pairings", "cardamom--anise");
+    const stored = await store.get("pairings", "en/cardamom--anise");
     const eps = (stored!.data as Record<string, unknown>)["endpoints"] as EndpointRef[];
     expect(eps[0]?.slug).toBe("anise");
     expect(eps[1]?.slug).toBe("cardamom");
@@ -58,11 +58,11 @@ describe("buildPairingData + saveEntity", () => {
     const sidecar = createMetaSidecar(store);
     await savePairing(store, sidecar, {
       id: "harissa--cardamom",
+      locale: "en",
       endpoints: [harissa, cardamom],
       description: "Spicy warmth.",
-      locale: "en",
     });
-    const stored = await store.get("pairings", "harissa--cardamom");
+    const stored = await store.get("pairings", "en/harissa--cardamom");
     const eps = (stored!.data as Record<string, unknown>)["endpoints"] as EndpointRef[];
     expect(eps[0]).toEqual({ collection: "ingredients", slug: "cardamom" });
     expect(eps[1]).toEqual({ collection: "mixtures", slug: "harissa" });
@@ -73,11 +73,11 @@ describe("buildPairingData + saveEntity", () => {
     const sidecar = createMetaSidecar(store);
     await savePairing(store, sidecar, {
       id: "cardamom--harissa",
+      locale: "en",
       endpoints: [cardamom, harissa],
       description: "Spicy warmth.",
-      locale: "en",
     });
-    const stored = await store.get("pairings", "cardamom--harissa");
+    const stored = await store.get("pairings", "en/cardamom--harissa");
     expect(stored).not.toBeNull();
     const eps = (stored!.data as Record<string, unknown>)["endpoints"] as EndpointRef[];
     expect(eps).toHaveLength(2);
@@ -90,30 +90,46 @@ describe("buildPairingData + saveEntity", () => {
     const sidecar = createMetaSidecar(store);
     await savePairing(store, sidecar, {
       id: "anise--cardamom",
+      locale: "en",
       endpoints: [anise, cardamom],
       description: "Warm and licorice-y.",
-      locale: "en",
     });
-    const stored = await store.get("pairings", "anise--cardamom");
+    const stored = await store.get("pairings", "en/anise--cardamom");
     expect((stored!.data as Record<string, unknown>)["description"]).toBe("Warm and licorice-y.");
     expect((stored!.data as Record<string, unknown>)["descriptions"]).toBeUndefined();
+  });
+
+  test("stores content under locale-prefixed id", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    await savePairing(store, sidecar, {
+      id: "anise--cardamom",
+      locale: "de",
+      endpoints: [anise, cardamom],
+      description: "Warm und lakritzartig.",
+    });
+    const stored = await store.get("pairings", "de/anise--cardamom");
+    expect(stored).not.toBeNull();
+    expect((stored!.data as Record<string, unknown>)["description"]).toBe("Warm und lakritzartig.");
+    // EN record must NOT be auto-created
+    expect(await store.get("pairings", "en/anise--cardamom")).toBeNull();
   });
 
   test("preserves existing image when image is not supplied", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("pairings", "anise--cardamom", {
+    await store.put("pairings", "en/anise--cardamom", {
       endpoints: [anise, cardamom],
       description: "x",
       image: "https://example.com/img.jpg",
     });
     await savePairing(store, sidecar, {
       id: "anise--cardamom",
+      locale: "en",
       endpoints: [anise, cardamom],
       description: "y",
-      locale: "en",
     });
-    const stored = await store.get("pairings", "anise--cardamom");
+    const stored = await store.get("pairings", "en/anise--cardamom");
     expect((stored!.data as Record<string, unknown>)["image"]).toBe("https://example.com/img.jpg");
   });
 
@@ -121,52 +137,85 @@ describe("buildPairingData + saveEntity", () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     await expect(
-      togglePairingDraft(store, sidecar, { id: "ghost", draft: true }),
+      togglePairingDraft(store, sidecar, { id: "ghost", locale: "en", draft: true }),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
   test("togglePairingDraft updates draft in pairingMeta sidecar, not content", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("pairings", "anise--cardamom", {
-      ingredients: [anise, cardamom],
-      descriptions: { en: "x" },
-    });
-    await togglePairingDraft(store, sidecar, { id: "anise--cardamom", draft: true });
-    // draft NOT in content
-    const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored!.data as Record<string, unknown>)["draft"]).toBeUndefined();
-    // draft IS in meta
-    const meta = await store.get(PAIRING_META, "anise--cardamom");
-    expect((meta!.data as Record<string, unknown>)["draft"]).toBe(true);
-  });
-
-  test("deletePairing removes both the pairing and its meta sidecar", async () => {
-    const store = new InMemoryStore();
-    const sidecar = createMetaSidecar(store);
-    await store.put("pairings", "anise--cardamom", {
+    await store.put("pairings", "en/anise--cardamom", {
       endpoints: [anise, cardamom],
       description: "x",
     });
-    await store.put(PAIRING_META, "anise--cardamom", { aiEvents: [] });
-
-    await deletePairing(store, sidecar, { id: "anise--cardamom" });
-
-    expect(await store.get("pairings", "anise--cardamom")).toBeNull();
-    expect(await store.get(PAIRING_META, "anise--cardamom")).toBeNull();
+    await togglePairingDraft(store, sidecar, { id: "anise--cardamom", locale: "en", draft: true });
+    // draft NOT in content
+    const stored = await store.get("pairings", "en/anise--cardamom");
+    expect((stored!.data as Record<string, unknown>)["draft"]).toBeUndefined();
+    // draft IS in meta at locale-prefixed key
+    const meta = await store.get(PAIRING_META, "en/anise--cardamom");
+    expect((meta!.data as Record<string, unknown>)["draft"]).toBe(true);
   });
 
-  test("savePairingMeta merge-patches existing meta", async () => {
+  test("togglePairingDraft for DE locale writes to de/ meta key", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put(PAIRING_META, "anise--cardamom", {
+    await store.put("pairings", "de/anise--cardamom", {
+      endpoints: [anise, cardamom],
+      description: "Warm und lakritzartig.",
+    });
+    await togglePairingDraft(store, sidecar, { id: "anise--cardamom", locale: "de", draft: true });
+    const meta = await store.get(PAIRING_META, "de/anise--cardamom");
+    expect((meta!.data as Record<string, unknown>)["draft"]).toBe(true);
+    // EN meta untouched
+    expect(await store.get(PAIRING_META, "en/anise--cardamom")).toBeNull();
+  });
+
+  test("deletePairing removes the locale-prefixed record and its meta", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    await store.put("pairings", "en/anise--cardamom", {
+      endpoints: [anise, cardamom],
+      description: "x",
+    });
+    await store.put(PAIRING_META, "en/anise--cardamom", { aiEvents: [] });
+
+    await deletePairing(store, sidecar, { id: "anise--cardamom", locale: "en" });
+
+    expect(await store.get("pairings", "en/anise--cardamom")).toBeNull();
+    expect(await store.get(PAIRING_META, "en/anise--cardamom")).toBeNull();
+  });
+
+  test("deletePairing does not affect other locale records", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    await store.put("pairings", "en/anise--cardamom", {
+      endpoints: [anise, cardamom],
+      description: "x",
+    });
+    await store.put("pairings", "de/anise--cardamom", {
+      endpoints: [anise, cardamom],
+      description: "y",
+    });
+
+    await deletePairing(store, sidecar, { id: "anise--cardamom", locale: "en" });
+
+    expect(await store.get("pairings", "en/anise--cardamom")).toBeNull();
+    expect(await store.get("pairings", "de/anise--cardamom")).not.toBeNull();
+  });
+
+  test("savePairingMeta merge-patches existing meta at locale-prefixed key", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    await store.put(PAIRING_META, "en/anise--cardamom", {
       aiEvents: [],
     });
     await savePairingMeta(sidecar, {
       id: "anise--cardamom",
+      locale: "en",
       patch: { aiSuggestions: { en: { contentHash: "abc" } } },
     });
-    const meta = await store.get(PAIRING_META, "anise--cardamom");
+    const meta = await store.get(PAIRING_META, "en/anise--cardamom");
     expect(meta?.data).toEqual({
       aiEvents: [],
       aiSuggestions: { en: { contentHash: "abc" } },
@@ -186,12 +235,12 @@ describe("buildPairingData + saveEntity", () => {
     };
     await savePairing(store, sidecar, {
       id: "anise--cardamom",
+      locale: "en",
       endpoints: [anise, cardamom],
       description: "Warm and licorice-y.",
-      locale: "en",
       imageAttribution: attribution,
     });
-    const stored = await store.get("pairings", "anise--cardamom");
+    const stored = await store.get("pairings", "en/anise--cardamom");
     expect((stored!.data as Record<string, unknown>)["imageAttribution"]).toEqual(attribution);
   });
 
@@ -208,49 +257,52 @@ describe("buildPairingData + saveEntity", () => {
     };
     await savePairing(store, sidecar, {
       id: "anise--cardamom",
+      locale: "en",
       endpoints: [anise, cardamom],
       description: "Warm and licorice-y.",
-      locale: "en",
       imageAttribution: attribution,
     });
-    // Second save without imageAttribution preserves existing
+    // Second save in DE locale, no imageAttribution — should NOT preserve EN's image
+    // (each locale is an independent record; image is locale-scoped)
     await savePairing(store, sidecar, {
       id: "anise--cardamom",
+      locale: "de",
       endpoints: [anise, cardamom],
       description: "Warm und lakritzartig.",
-      locale: "de",
     });
-    const stored = await store.get("pairings", "anise--cardamom");
-    expect((stored!.data as Record<string, unknown>)["imageAttribution"]).toEqual(attribution);
+    const storedEn = await store.get("pairings", "en/anise--cardamom");
+    expect((storedEn!.data as Record<string, unknown>)["imageAttribution"]).toEqual(attribution);
+    const storedDe = await store.get("pairings", "de/anise--cardamom");
+    expect((storedDe!.data as Record<string, unknown>)["imageAttribution"]).toBeUndefined();
   });
 
-  test("routes draft=true to pairingMeta sidecar, not content", async () => {
+  test("routes draft=true to pairingMeta sidecar at locale key, not content", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
     await savePairing(store, sidecar, {
       id: "anise--cardamom",
+      locale: "en",
       endpoints: [anise, cardamom],
       description: "Warm and licorice-y.",
-      locale: "en",
       draft: true,
     });
-    const stored = await store.get("pairings", "anise--cardamom");
+    const stored = await store.get("pairings", "en/anise--cardamom");
     expect((stored!.data as Record<string, unknown>)["draft"]).toBeUndefined();
-    const meta = await store.get(PAIRING_META, "anise--cardamom");
+    const meta = await store.get(PAIRING_META, "en/anise--cardamom");
     expect((meta!.data as Record<string, unknown>)["draft"]).toBe(true);
   });
 
   test("save without draft leaves existing meta draft untouched", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put(PAIRING_META, "anise--cardamom", { aiEvents: [], draft: true });
+    await store.put(PAIRING_META, "en/anise--cardamom", { aiEvents: [], draft: true });
     await savePairing(store, sidecar, {
       id: "anise--cardamom",
+      locale: "en",
       endpoints: [anise, cardamom],
       description: "y",
-      locale: "en",
     });
-    const meta = await store.get(PAIRING_META, "anise--cardamom");
+    const meta = await store.get(PAIRING_META, "en/anise--cardamom");
     expect((meta!.data as Record<string, unknown>)["draft"]).toBe(true);
   });
 
@@ -259,30 +311,30 @@ describe("buildPairingData + saveEntity", () => {
     const sidecar = createMetaSidecar(store);
     await savePairing(store, sidecar, {
       id: "anise--cardamom",
+      locale: "en",
       endpoints: [anise, cardamom],
       description: "Warm and licorice-y.",
-      locale: "en",
     });
-    const meta = await store.get(PAIRING_META, "anise--cardamom");
+    const meta = await store.get(PAIRING_META, "en/anise--cardamom");
     expect(meta).toBeNull();
   });
 
   test("clears image when empty string is supplied", async () => {
     const store = new InMemoryStore();
     const sidecar = createMetaSidecar(store);
-    await store.put("pairings", "anise--cardamom", {
+    await store.put("pairings", "en/anise--cardamom", {
       endpoints: [anise, cardamom],
       description: "x",
       image: "https://example.com/img.jpg",
     });
     await savePairing(store, sidecar, {
       id: "anise--cardamom",
+      locale: "en",
       endpoints: [anise, cardamom],
       description: "y",
-      locale: "en",
       image: "",
     });
-    const stored = await store.get("pairings", "anise--cardamom");
+    const stored = await store.get("pairings", "en/anise--cardamom");
     expect((stored!.data as Record<string, unknown>)["image"]).toBeUndefined();
   });
 });

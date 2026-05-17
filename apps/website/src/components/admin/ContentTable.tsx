@@ -61,6 +61,13 @@ function getLocale(row: ContentRow): string | null {
   return slashIdx !== -1 ? row.id.slice(0, slashIdx) : null;
 }
 
+function splitLocalePrefix(id: string): { locale: string; slug: string } {
+  const idx = id.indexOf("/");
+  return idx !== -1
+    ? { locale: id.slice(0, idx), slug: id.slice(idx + 1) }
+    : { locale: "en", slug: id };
+}
+
 function editHref(row: ContentRow) {
   if (row.type === "ingredient") {
     const slashIdx = row.id.indexOf("/");
@@ -70,7 +77,8 @@ function editHref(row: ContentRow) {
     return `/admin/ingredients/${slug}/edit?locale=${locale}`;
   }
   if (row.type === "pairing") {
-    return `/admin/pairings/${encodeURIComponent(row.id)}/edit`;
+    const { locale, slug } = splitLocalePrefix(row.id);
+    return `/admin/pairings/${encodeURIComponent(slug)}/edit?locale=${locale}`;
   }
   const slashIdx = row.id.indexOf("/");
   if (slashIdx !== -1) {
@@ -129,7 +137,8 @@ export default function ContentTable({ initialRows }: { initialRows: ContentRow[
     if (row.type === "ingredient") return;
 
     if (row.type === "pairing") {
-      const { error } = await actions.togglePairingDraft({ id: row.id, draft: !row.draft });
+      const { locale, slug } = splitLocalePrefix(row.id);
+      const { error } = await actions.togglePairingDraft({ id: slug, locale, draft: !row.draft });
       if (error) {
         toast.error("Failed to update status");
         return;
@@ -164,7 +173,8 @@ export default function ContentTable({ initialRows }: { initialRows: ContentRow[
     if (!confirm(`Delete "${row.name}"? This cannot be undone.`)) return;
 
     if (row.type === "pairing") {
-      const { error } = await actions.deletePairing({ id: row.id });
+      const { locale, slug } = splitLocalePrefix(row.id);
+      const { error } = await actions.deletePairing({ id: slug, locale });
       if (error) {
         toast.error("Delete failed");
         return;

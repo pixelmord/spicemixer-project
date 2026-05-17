@@ -6,9 +6,9 @@ import { entityMeta } from "content-ai";
 
 export interface BuildPairingDataInput {
   id: string;
+  locale: string;
   endpoints: [EndpointRef, EndpointRef];
   description: string;
-  locale: string;
   image?: string;
   imageAttribution?: Record<string, unknown>;
 }
@@ -21,7 +21,7 @@ export async function buildPairingData(
     EndpointRef,
     EndpointRef,
   ];
-  const existing = await store.get("pairings", input.id);
+  const existing = await store.get("pairings", `${input.locale}/${input.id}`);
   const existingData = (existing?.data as Record<string, unknown>) ?? {};
   // image / imageAttribution: explicit value wins; undefined = preserve existing; "" = clear
   const imageValue =
@@ -42,26 +42,30 @@ export async function buildPairingData(
 export async function togglePairingDraft(
   store: ContentStore,
   sidecar: MetaSidecar,
-  input: { id: string; draft: boolean },
+  input: { id: string; locale: string; draft: boolean },
 ): Promise<void> {
-  const existing = await store.get("pairings", input.id);
-  if (!existing) throw new NotFoundError(`Pairing ${input.id} not found.`);
-  await savePairingMeta(sidecar, { id: input.id, patch: { draft: input.draft } });
+  const existing = await store.get("pairings", `${input.locale}/${input.id}`);
+  if (!existing) throw new NotFoundError(`Pairing ${input.locale}/${input.id} not found.`);
+  await savePairingMeta(sidecar, {
+    id: input.id,
+    locale: input.locale,
+    patch: { draft: input.draft },
+  });
 }
 
 export async function deletePairing(
   store: ContentStore,
   sidecar: MetaSidecar,
-  input: { id: string },
+  input: { id: string; locale: string },
 ): Promise<void> {
-  await store.delete("pairings", input.id);
-  await sidecar.remove({ collection: "pairings", slug: input.id });
+  await store.delete("pairings", `${input.locale}/${input.id}`);
+  await sidecar.remove({ collection: "pairings", locale: input.locale, slug: input.id });
 }
 
 export async function savePairingMeta(
   sidecar: MetaSidecar,
-  input: { id: string; patch: Record<string, unknown> },
+  input: { id: string; locale: string; patch: Record<string, unknown> },
 ): Promise<void> {
-  const ref = { collection: "pairings" as const, slug: input.id };
+  const ref = { collection: "pairings" as const, locale: input.locale, slug: input.id };
   await entityMeta.merge(sidecar, ref, input.patch);
 }
