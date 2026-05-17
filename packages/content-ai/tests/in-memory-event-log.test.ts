@@ -158,6 +158,42 @@ for (const [name, makeFactory] of PARITY_CASES) {
       expect(await log.read(REF)).toHaveLength(1);
       expect(await log.read(REF2)).toHaveLength(1);
     });
+
+    test("events on DE translation do not appear in EN source locale log", async () => {
+      // Validates ADR 0014 folder-per-locale: the DE record's events are isolated
+      // from the EN record's event log even for the same entity.
+      const { makeLog } = makeFactory();
+      const log = makeLog();
+      const enRef: MetaRef = { collection: "ingredients", locale: "en", slug: "cardamom" };
+      const deRef: MetaRef = { collection: "ingredients", locale: "de", slug: "kardamom" };
+
+      await log.append(enRef, {
+        type: "accepted",
+        field: "description",
+        suggestion: { hash: "en-h1", summary: "EN description accepted" },
+        model: "m",
+      });
+      await log.append(deRef, {
+        type: "ingested",
+        suggestion: { hash: "de-h1", summary: "Translation to de" },
+        model: "m",
+      });
+      await log.append(deRef, {
+        type: "accepted",
+        field: "description",
+        suggestion: { hash: "de-h2", summary: "DE description accepted" },
+        model: "m",
+      });
+
+      const enEvents = await log.read(enRef);
+      const deEvents = await log.read(deRef);
+
+      expect(enEvents).toHaveLength(1);
+      expect(enEvents[0].suggestion.hash).toBe("en-h1");
+
+      expect(deEvents).toHaveLength(2);
+      expect(deEvents.map((e) => e.suggestion.hash)).toEqual(["de-h1", "de-h2"]);
+    });
   });
 
   describe(`${name} — parity: shouldSkip (suppression)`, () => {

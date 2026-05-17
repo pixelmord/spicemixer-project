@@ -504,3 +504,63 @@ describe("preset handling", () => {
     expect(call.system).toContain("Write in more detail.");
   });
 });
+
+// ── Structural prohibition: sibling-locale source ─────────────────────────────
+
+describe("structural prohibition — sibling-locale source", () => {
+  test("throws when sourceContext.kind is 'sibling-locale'", async () => {
+    const siblingSource = {
+      kind: "sibling-locale",
+      sourceRef: { id: "basil-en", kind: "ingredient" },
+      sourceData: { name: "Basil" },
+      sourceLocale: "en",
+      targetLocale: "de",
+      fieldHashes: {},
+    };
+
+    await expect(
+      runRefine({
+        contract: baseContract,
+        currentData: { name: "Basilikum" },
+        sourceContext: siblingSource as never,
+        config: MOCK_CONFIG,
+      }),
+    ).rejects.toThrow(/sibling-locale/);
+  });
+
+  test("does not call generateText when sibling-locale source is rejected", async () => {
+    const siblingSource = {
+      kind: "sibling-locale",
+      sourceRef: { id: "basil-en", kind: "ingredient" },
+      sourceData: { name: "Basil" },
+      sourceLocale: "en",
+      targetLocale: "de",
+      fieldHashes: {},
+    };
+
+    await expect(
+      runRefine({
+        contract: baseContract,
+        currentData: { name: "Basilikum" },
+        sourceContext: siblingSource as never,
+        config: MOCK_CONFIG,
+      }),
+    ).rejects.toThrow();
+
+    expect(vi.mocked(generateText)).not.toHaveBeenCalled();
+  });
+
+  test("allows non-sibling-locale source contexts", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { value: "result" } } as never);
+
+    // Should NOT throw for a non-sibling source
+    await expect(
+      runRefine({
+        contract: baseContract,
+        currentData: { name: "Cumin" },
+        sourceContext: { kind: "text", content: "some source text" } as never,
+        config: MOCK_CONFIG,
+      }),
+    ).resolves.toBeDefined();
+  });
+});

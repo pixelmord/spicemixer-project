@@ -72,9 +72,23 @@ function extractFieldSchema(entitySchema: ZodSchema, field: string): ZodSchema |
   return shape[field] as ZodSchema | undefined;
 }
 
+function isSiblingLocaleSource(ctx: unknown): boolean {
+  return (
+    typeof ctx === "object" &&
+    ctx !== null &&
+    (ctx as Record<string, unknown>).kind === "sibling-locale"
+  );
+}
+
 export async function runRefine<S extends ZodSchema, Source = never>(
   params: RunRefineParams<S, Source>,
 ): Promise<RunRefineResult> {
+  if (isSiblingLocaleSource(params.sourceContext)) {
+    throw new Error(
+      "runRefine does not accept sibling-locale sources — use runFill for translation operations.",
+    );
+  }
+
   const {
     contract,
     currentData,
