@@ -32,6 +32,11 @@ function makeAccessor(suggestion?: FieldSuggestion): PerFieldAccessor {
     recordReject: vi.fn(),
     revertAutoApply: vi.fn(),
     markViewed: vi.fn(),
+    source: undefined,
+    sourceLocale: undefined,
+    isStale: false,
+    translationMode: undefined,
+    retranslate: vi.fn(),
   };
 }
 
