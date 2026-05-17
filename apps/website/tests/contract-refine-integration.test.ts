@@ -1,22 +1,5 @@
-/**
- * End-to-end refine integration tests for the three Spicemixer AI contracts.
- *
- * Suite A: Contract field-config correctness — no mocking required.
- *   Calls the contract's systemPrompt functions, checks autoApply policies,
- *   writePolicy values, and presetIds directly.
- *
- * Suite B: End-to-end flow per contract through runAiRefresh — mocks runRefine
- *   the same way runner.test.ts does (top-level module mock), then verifies
- *   that the Spicemixer runner passes the right contract and returns the
- *   correct output shape.
- *
- * Covers PRD 8 testing requirement: "Add one end-to-end refine flow per contract."
- */
-
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import type { FieldSuggestion } from "@pixelmord/content-ai-refine";
-
-// ── Stub runRefine at module level (same pattern as runner.test.ts) ───────────
 
 vi.mock("@pixelmord/content-ai-refine", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@pixelmord/content-ai-refine")>();
@@ -30,7 +13,6 @@ vi.mock("@pixelmord/content-ai-refine", async (importOriginal) => {
   };
 });
 
-// content-ai stubs — same pattern as runner.test.ts
 vi.mock("content-ai", async (importOriginal) => {
   const actual = await importOriginal<typeof import("content-ai")>();
   return {
@@ -97,12 +79,6 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Suite A: Contract field-config correctness (no mocking)
-// ══════════════════════════════════════════════════════════════════════════════
-
-// ── Recipe contract field configs ─────────────────────────────────────────────
-
 describe("recipeContract field configs", () => {
   const recipe = {
     name: "Cardamom Rice",
@@ -126,8 +102,7 @@ describe("recipeContract field configs", () => {
   });
 
   test("description field has never auto-apply policy", () => {
-    const { autoApply } = recipeContract.fields.description;
-    expect(typeof autoApply === "object" && autoApply.policy).toBe("never");
+    expect(recipeContract.fields.description.autoApply).toMatchObject({ policy: "never" });
   });
 
   test("description field has replace write policy", () => {
@@ -140,11 +115,10 @@ describe("recipeContract field configs", () => {
   });
 
   test("language field auto-applies at threshold 0.0", () => {
-    const { autoApply } = recipeContract.fields.language;
-    expect(typeof autoApply === "object" && autoApply.policy).toBe("high-confidence");
-    expect(typeof autoApply === "object" && "threshold" in autoApply && autoApply.threshold).toBe(
-      0.0,
-    );
+    expect(recipeContract.fields.language.autoApply).toMatchObject({
+      policy: "high-confidence",
+      threshold: 0.0,
+    });
   });
 
   test("language field has fill-if-empty write policy", () => {
@@ -176,8 +150,6 @@ describe("recipeContract field configs", () => {
   });
 });
 
-// ── Ingredient contract field configs ─────────────────────────────────────────
-
 describe("ingredientContract field configs", () => {
   const ingredient = {
     name: "Cumin",
@@ -207,11 +179,10 @@ describe("ingredientContract field configs", () => {
 
   test("language field has fill-if-empty write policy and high-confidence auto-apply", () => {
     expect(ingredientContract.fields.language.writePolicy).toBe("fill-if-empty");
-    const { autoApply } = ingredientContract.fields.language;
-    expect(typeof autoApply === "object" && autoApply.policy).toBe("high-confidence");
-    expect(typeof autoApply === "object" && "threshold" in autoApply && autoApply.threshold).toBe(
-      0.0,
-    );
+    expect(ingredientContract.fields.language.autoApply).toMatchObject({
+      policy: "high-confidence",
+      threshold: 0.0,
+    });
   });
 
   test("pairings field generates empty string when inventory is empty", () => {
@@ -235,13 +206,10 @@ describe("ingredientContract field configs", () => {
   });
 
   test("text fields have never auto-apply policy and replace write policy", () => {
-    const { autoApply, writePolicy } = ingredientContract.fields.description;
-    expect(typeof autoApply === "object" && autoApply.policy).toBe("never");
-    expect(writePolicy).toBe("replace");
+    expect(ingredientContract.fields.description.autoApply).toMatchObject({ policy: "never" });
+    expect(ingredientContract.fields.description.writePolicy).toBe("replace");
   });
 });
-
-// ── Pairing contract field configs ────────────────────────────────────────────
 
 describe("pairingContract field configs", () => {
   const pairing = {
@@ -262,8 +230,7 @@ describe("pairingContract field configs", () => {
   });
 
   test("description field has never auto-apply policy", () => {
-    const { autoApply } = pairingContract.fields.description;
-    expect(typeof autoApply === "object" && autoApply.policy).toBe("never");
+    expect(pairingContract.fields.description.autoApply).toMatchObject({ policy: "never" });
   });
 
   test("description field has replace write policy", () => {
@@ -286,10 +253,6 @@ describe("pairingContract field configs", () => {
     expect(expand?.appliesTo).toBe("text");
   });
 });
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Suite B: End-to-end refine flow per contract through runAiRefresh
-// ══════════════════════════════════════════════════════════════════════════════
 
 describe("recipeContract: end-to-end runAiRefresh flow", () => {
   test("runAiRefresh writes aiSuggestions to sidecar with recipe fields", async () => {
@@ -339,7 +302,6 @@ describe("recipeContract: end-to-end runAiRefresh flow", () => {
     const data = meta!.data as Record<string, unknown>;
     expect(data["aiSuggestions"]).toBeDefined();
 
-    // runRefine was called (the contract was passed to the runner)
     expect(vi.mocked(refine.runRefine)).toHaveBeenCalled();
     const [callArgs] = vi.mocked(refine.runRefine).mock.calls;
     expect(callArgs[0]).toHaveProperty("contract");
@@ -391,7 +353,6 @@ describe("ingredientContract: end-to-end runAiRefresh flow", () => {
     expect(result.skipped).toBe(false);
     expect(result.autoLinked).toBe(0);
 
-    // Ingredient runner returns suggestions inline (no sidecar write on its own)
     const aiSuggs = result.aiSuggestions as {
       improvements: Array<{ field: string; suggestion: unknown }>;
     };
@@ -400,7 +361,6 @@ describe("ingredientContract: end-to-end runAiRefresh flow", () => {
     expect(summaryImprovement).toBeDefined();
     expect(summaryImprovement?.suggestion).toBe("Cumin is a warm, earthy spice.");
 
-    // runRefine was called with the ingredientContract
     expect(vi.mocked(refine.runRefine)).toHaveBeenCalled();
     const [callArgs] = vi.mocked(refine.runRefine).mock.calls;
     expect(callArgs[0]).toHaveProperty("contract");
@@ -454,12 +414,10 @@ describe("pairingContract: end-to-end runAiRefresh flow", () => {
     expect(result.skipped).toBe(false);
     expect(result.autoLinked).toBe(0);
 
-    // Pairing runner returns locale-keyed suggestions (no sidecar write — caller handles that)
     const aiSuggs = result.aiSuggestions as Record<string, { improvements: unknown[] }>;
     expect(aiSuggs["en"]).toBeDefined();
     expect(aiSuggs["en"].improvements.length).toBeGreaterThan(0);
 
-    // runRefine was called with the pairingContract
     expect(vi.mocked(refine.runRefine)).toHaveBeenCalled();
     const [callArgs] = vi.mocked(refine.runRefine).mock.calls;
     expect(callArgs[0]).toHaveProperty("contract");
