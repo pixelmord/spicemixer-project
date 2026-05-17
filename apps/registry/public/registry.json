@@ -388,6 +388,19 @@
           "type": "registry:block"
         }
       ]
+    },
+    {
+      "name": "create-pairing-dialog",
+      "type": "registry:block",
+      "title": "CreatePairingDialog",
+      "description": "Atomic-create pairing dialog seeded from an AI suggestion. Prefills both endpoints and rationale as editable description. Seeds featured=true for ingredient-only pairs, false for recipe/mixture-bearing pairs. Atomic save: new Pairing entity + meta + ingested aiEvent in one call.",
+      "registryDependencies": ["use-ai-suggestions"],
+      "files": [
+        {
+          "path": "components/ui/create-pairing-dialog.tsx",
+          "type": "registry:block"
+        }
+      ]
     }
   ]
 }
