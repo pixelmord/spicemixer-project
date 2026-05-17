@@ -32,7 +32,7 @@ export function FileTextPromptSourcePicker({
   onChange,
   className,
 }: FileTextPromptSourcePickerProps) {
-  const [activeTab, setActiveTab] = useState<TabId>(value ? (value.kind as TabId) : "file");
+  const [activeTab, setActiveTab] = useState<TabId>(value ? value.kind : "file");
   const [text, setText] = useState<string>(value?.kind === "text" ? value.text : "");
   const [prompt, setPrompt] = useState<string>(value?.kind === "prompt" ? value.prompt : "");
 

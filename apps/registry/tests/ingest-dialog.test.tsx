@@ -13,7 +13,6 @@ import type {
   UseAiSuggestionsReturn,
   PerFieldAccessor,
   FieldSuggestion,
-  AppliedSuggestion,
   AiPreset,
 } from "../src/components/use-ai-suggestions";
 
