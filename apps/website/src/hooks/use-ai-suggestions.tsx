@@ -179,10 +179,7 @@ export interface UseAiSuggestionsInput {
 
 // ── Hash utility ─────────────────────────────────────────────────────────────
 
-/**
- * Stable deterministic hash for a field value used in staleness detection.
- * Consumers must use the same function when storing canonicalFieldHashes.
- */
+/** Consumers must use the same function when storing canonicalFieldHashes. */
 export function hashFieldValue(value: unknown): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value;
@@ -276,7 +273,6 @@ export function useAiSuggestions({
       const appliedSuggestion = autoApplied.get(field);
       const trace = traces.get(field);
 
-      // Sibling locale derived values
       const source = siblingLocale ? siblingLocale.data[field] : undefined;
       const sourceLocale = siblingLocale ? siblingLocale.locale : undefined;
       const storedHash = siblingLocale?.fieldHashes[field];
@@ -285,14 +281,12 @@ export function useAiSuggestions({
         storedHash !== undefined &&
         hashFieldValue(siblingLocale.data[field]) !== storedHash;
 
-      // Translation mode from contract
       const fieldConfig = contract.fields[field];
       const translationMode = fieldConfig?.translation?.mode;
 
       const retranslate = async (): Promise<void> => {
         if (!siblingLocale || !onFill) return;
         const mode = translationMode ?? "translate";
-        // copy-mode fields don't invoke the LLM
         if (mode === "copy" || mode === "skip") return;
         const result = await onFill({
           currentData,
@@ -307,7 +301,6 @@ export function useAiSuggestions({
             fieldHashes: siblingLocale.fieldHashes,
           },
         });
-        // Merge new suggestions into existing state (don't clear other fields)
         setSuggestions((prev) => {
           const next = new Map(prev);
           for (const [f, s] of Object.entries(result.suggestions ?? {})) {

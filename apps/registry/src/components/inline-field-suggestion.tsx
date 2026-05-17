@@ -237,15 +237,23 @@ export function InlineFieldSuggestion({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fieldPath, suggestionKey]);
 
-  // Retranslate is shown when source is available and translation mode allows it
   const showRetranslate =
     accessor.sourceLocale !== undefined &&
     accessor.translationMode !== undefined &&
     accessor.translationMode !== "copy" &&
     accessor.translationMode !== "skip";
 
+  const retranslateBlock = showRetranslate ? (
+    <div className="mt-1">
+      <RetranslateButton
+        sourceLocale={accessor.sourceLocale!}
+        isStale={accessor.isStale}
+        onRetranslate={() => void accessor.retranslate()}
+      />
+    </div>
+  ) : null;
+
   if (!suggestion) {
-    // Still render the retranslate button even when no current suggestion
     if (!showRetranslate) return null;
     return (
       <div className={cn("mt-1.5", className)}>
@@ -267,15 +275,7 @@ export function InlineFieldSuggestion({
           </div>
         )}
         <ChoiceSuggestionBlock suggestion={suggestion} onApply={onApply} accessor={accessor} />
-        {showRetranslate && (
-          <div className="mt-1">
-            <RetranslateButton
-              sourceLocale={accessor.sourceLocale!}
-              isStale={accessor.isStale}
-              onRetranslate={() => void accessor.retranslate()}
-            />
-          </div>
-        )}
+        {retranslateBlock}
       </div>
     );
   }
@@ -307,15 +307,7 @@ export function InlineFieldSuggestion({
         <div className="text-xs text-muted-foreground" />
         <div>
           {suggestionContent}
-          {showRetranslate && (
-            <div className="mt-1">
-              <RetranslateButton
-                sourceLocale={accessor.sourceLocale!}
-                isStale={accessor.isStale}
-                onRetranslate={() => void accessor.retranslate()}
-              />
-            </div>
-          )}
+          {retranslateBlock}
         </div>
       </div>
     );
@@ -324,15 +316,7 @@ export function InlineFieldSuggestion({
   return (
     <div className={cn("mt-1.5", className)}>
       {suggestionContent}
-      {showRetranslate && (
-        <div className="mt-1">
-          <RetranslateButton
-            sourceLocale={accessor.sourceLocale!}
-            isStale={accessor.isStale}
-            onRetranslate={() => void accessor.retranslate()}
-          />
-        </div>
-      )}
+      {retranslateBlock}
     </div>
   );
 }
