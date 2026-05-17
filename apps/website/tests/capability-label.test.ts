@@ -22,12 +22,11 @@ const REQUIRED_ACTIONS = [
   "aiProposeRecipeImprovements",
   "aiProposeIngredientImprovements",
   "aiProposeIngredientPairings",
-  "aiTranslateRecipe",
-  "aiTranslateIngredient",
   "aiTranslatePairing",
   "aiSuggestSlug",
   "aiCreateTranslation",
   "aiCreateIngredientTranslation",
+  "aiFillTranslation",
 ];
 
 describe("CapabilityLabel component", () => {

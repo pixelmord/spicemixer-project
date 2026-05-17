@@ -11,7 +11,6 @@ import {
   Link2,
   Tag,
   Lightbulb,
-  Languages,
   ThumbsDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
@@ -65,13 +64,6 @@ interface EnrichedImprovement extends ImprovementField {
   summary: string;
 }
 
-interface EnrichedTranslationField {
-  field: string;
-  value: string;
-  hash: string;
-  summary: string;
-}
-
 interface EnrichedPairing extends PairingProposal {
   field: "pairings";
   hash: string;
@@ -97,10 +89,6 @@ function enrichImprovement(f: ImprovementField): EnrichedImprovement {
   return { ...f, hash: hashSuggestion(f.suggestion), summary: f.suggestion.slice(0, 120) };
 }
 
-function enrichTranslationField(field: string, value: string): EnrichedTranslationField {
-  return { field, value, hash: hashSuggestion(value), summary: value.slice(0, 120) };
-}
-
 function enrichPairing(p: PairingProposal): EnrichedPairing {
   return {
     ...p,
@@ -116,7 +104,6 @@ type ResultState =
   | { op: "links"; items: EnrichedLink[] }
   | { op: "tags"; items: EnrichedTag[] }
   | { op: "improve"; items: EnrichedImprovement[] }
-  | { op: "translate"; items: EnrichedTranslationField[] }
   | { op: "pairings"; items: EnrichedPairing[] };
 
 // ── Panel props ───────────────────────────────────────────────────────────────
@@ -133,7 +120,6 @@ interface RecipePanelProps {
   missingFields: string[];
   recipeIngredients: string[];
   locale: "en" | "de";
-  targetLocale: "en" | "de";
   aiEvents?: AiEvent[];
   /** When provided, each accepted/rejected event is persisted immediately via aiRecordEvent. */
   entityRef?: EntityRef;
@@ -142,7 +128,6 @@ interface RecipePanelProps {
   onApplyIngredientLinks: (links: IngredientLinkProposal[]) => void;
   onApplyTags: (tags: string[]) => void;
   onApplyField: (field: string, value: unknown) => void;
-  onApplyTranslation: (fields: Record<string, string>) => void;
 }
 
 interface IngredientPanelProps {
@@ -150,7 +135,6 @@ interface IngredientPanelProps {
   snapshot: Record<string, unknown>;
   missingFields: string[];
   locale: "en" | "de";
-  targetLocale: "en" | "de";
   aiEvents?: AiEvent[];
   /** When provided, each accepted/rejected event is persisted immediately via aiRecordEvent. */
   entityRef?: EntityRef;
@@ -158,7 +142,6 @@ interface IngredientPanelProps {
   model?: string;
   onApplyPairings: (pairings: PairingProposal[]) => void;
   onApplyField: (field: string, value: unknown) => void;
-  onApplyTranslation: (fields: Record<string, string>) => void;
 }
 
 type AiAssistPanelProps = RecipePanelProps | IngredientPanelProps;
@@ -342,53 +325,6 @@ function ImprovementsResult({
   );
 }
 
-function TranslationResult({
-  fields,
-  targetLocale,
-  onAcceptAll,
-  onAcceptOne,
-  onRejectOne,
-  onDismiss,
-}: {
-  fields: EnrichedTranslationField[];
-  targetLocale: string;
-  onAcceptAll: () => void;
-  onAcceptOne: (item: EnrichedTranslationField) => void;
-  onRejectOne: (item: EnrichedTranslationField) => void;
-  onDismiss: () => void;
-}) {
-  if (!fields.length) return <p className="text-xs text-muted-foreground">Nothing to translate.</p>;
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">Draft translation → {targetLocale}</p>
-      {fields.map((item) => (
-        <div
-          key={item.field}
-          className="text-xs border border-border rounded p-2 flex items-start gap-2"
-        >
-          <div className="flex-1">
-            <span className="font-medium">{item.field}</span>
-            <p className="text-muted-foreground mt-0.5 line-clamp-2">{item.value}</p>
-          </div>
-          <AcceptRejectButtons
-            onAccept={() => onAcceptOne(item)}
-            onReject={() => onRejectOne(item)}
-          />
-        </div>
-      ))}
-      <div className="flex gap-2">
-        <Button size="sm" variant="default" className="h-6 text-xs px-2" onClick={onAcceptAll}>
-          Apply all
-        </Button>
-        <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={onDismiss}>
-          Dismiss
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function PairingsResult({
   pairings,
   onAcceptAll,
@@ -484,28 +420,6 @@ async function runImprove(
   return { op: "improve", items: filterSuggestions(aiEvents, enriched) };
 }
 
-async function runTranslate(
-  props: AiAssistPanelProps,
-  isRecipe: boolean,
-  aiEvents: AiEvent[],
-): Promise<ResultState> {
-  const { data, error } = isRecipe
-    ? await actions.aiTranslateRecipe({
-        recipe: props.snapshot,
-        sourceLocale: props.locale,
-        targetLocale: props.targetLocale,
-      })
-    : await actions.aiTranslateIngredient({
-        ingredient: props.snapshot,
-        sourceLocale: props.locale,
-        targetLocale: props.targetLocale,
-      });
-  if (error) throw new Error(error.message);
-  const raw = data as { fields: Record<string, string> };
-  const enriched = Object.entries(raw.fields ?? {}).map(([f, v]) => enrichTranslationField(f, v));
-  return { op: "translate", items: filterSuggestions(aiEvents, enriched) };
-}
-
 async function runPairings(
   ingredient: IngredientPanelProps,
   aiEvents: AiEvent[],
@@ -526,7 +440,6 @@ interface ResultsProps {
   props: AiAssistPanelProps;
   recipe: RecipePanelProps | null;
   ingredient: IngredientPanelProps | null;
-  targetLocale: string;
   onAccept: (
     item: { field: string; hash: string; summary: string },
     applyFn: () => void,
@@ -550,7 +463,6 @@ function AiAssistResults({
   props,
   recipe,
   ingredient,
-  targetLocale,
   onAccept,
   onReject,
   onAcceptAll,
@@ -629,26 +541,6 @@ function AiAssistResults({
         </>
       )}
 
-      {result.op === "translate" && (
-        <>
-          <SectionHeader icon={<Languages size={11} />} label="Translation" />
-          <TranslationResult
-            fields={result.items}
-            targetLocale={targetLocale}
-            onAcceptAll={() =>
-              onAcceptAll(result.items, () =>
-                props.onApplyTranslation(
-                  Object.fromEntries(result.items.map((item) => [item.field, item.value])),
-                ),
-              )
-            }
-            onAcceptOne={(item) => onAccept(item, () => props.onApplyField(item.field, item.value))}
-            onRejectOne={onReject}
-            onDismiss={onDismiss}
-          />
-        </>
-      )}
-
       <button
         type="button"
         onClick={onDismiss}
@@ -663,7 +555,7 @@ function AiAssistResults({
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-type Op = "links" | "tags" | "improve" | "translate" | "pairings";
+type Op = "links" | "tags" | "improve" | "pairings";
 
 function opToAction(op: Op, isRecipe: boolean): string {
   switch (op) {
@@ -673,8 +565,6 @@ function opToAction(op: Op, isRecipe: boolean): string {
       return "aiProposeTags";
     case "improve":
       return isRecipe ? "aiProposeRecipeImprovements" : "aiProposeIngredientImprovements";
-    case "translate":
-      return isRecipe ? "aiTranslateRecipe" : "aiTranslateIngredient";
     case "pairings":
       return "aiProposeIngredientPairings";
   }
@@ -690,7 +580,6 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
   const ingredient = !isRecipe ? (props as IngredientPanelProps) : null;
   const aiEvents = props.aiEvents ?? [];
   const model = props.model ?? "ai-assist";
-  const targetLocale = props.targetLocale;
   const entityRef = props.entityRef;
 
   function emitEvent(params: Omit<AiEvent, "at">) {
@@ -787,8 +676,6 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
         next = await runTags(props.snapshot, aiEvents);
       } else if (op === "improve") {
         next = await runImprove(props, isRecipe, aiEvents);
-      } else if (op === "translate") {
-        next = await runTranslate(props, isRecipe, aiEvents);
       } else if (op === "pairings" && ingredient) {
         next = await runPairings(ingredient, aiEvents);
       }
@@ -857,14 +744,6 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
               active={result?.op === "improve"}
               onClick={() => run("improve")}
             />
-            <ActionButton
-              icon={<Languages size={12} />}
-              label={`Draft translation → ${targetLocale.toUpperCase()}`}
-              op="translate"
-              loading={loading}
-              active={result?.op === "translate"}
-              onClick={() => run("translate")}
-            />
           </div>
 
           {loading && (
@@ -880,7 +759,6 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
               props={props}
               recipe={recipe}
               ingredient={ingredient}
-              targetLocale={targetLocale}
               onAccept={handleAccept}
               onReject={handleReject}
               onAcceptAll={acceptAllAndDismiss}

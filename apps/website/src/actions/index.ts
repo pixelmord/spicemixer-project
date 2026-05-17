@@ -1004,27 +1004,6 @@ export const server = {
     }),
   }),
 
-  /** Draft a translation of recipe text fields into targetLocale. */
-  aiTranslateRecipe: defineAction({
-    accept: "json",
-    input: z.object({
-      recipe: z.record(z.string(), z.unknown()),
-      sourceLocale: z.enum(["en", "de"]),
-      targetLocale: z.enum(["en", "de"]),
-    }),
-    handler: withOrigin({
-      surface: "admin",
-      action: "aiTranslateRecipe",
-      entityKind: "recipe",
-      triggeredBy: "editor",
-      userInitiated: true,
-    })(async ({ recipe, sourceLocale, targetLocale }) => {
-      const config = resolveAiConfig();
-      const { translateRecipeFields } = await import("content-ai");
-      return translateRecipeFields(recipe as never, sourceLocale, targetLocale, config);
-    }),
-  }),
-
   // ──────────────────────────────────────────────
   // AI: Ingredient curation
   // ──────────────────────────────────────────────
@@ -1104,27 +1083,6 @@ export const server = {
     }),
   }),
 
-  /** Draft a translation of ingredient text fields into targetLocale. */
-  aiTranslateIngredient: defineAction({
-    accept: "json",
-    input: z.object({
-      ingredient: z.record(z.string(), z.unknown()),
-      sourceLocale: z.enum(["en", "de"]),
-      targetLocale: z.enum(["en", "de"]),
-    }),
-    handler: withOrigin({
-      surface: "admin",
-      action: "aiTranslateIngredient",
-      entityKind: "ingredient",
-      triggeredBy: "editor",
-      userInitiated: true,
-    })(async ({ ingredient, sourceLocale, targetLocale }) => {
-      const config = resolveAiConfig();
-      const { translateIngredientFields } = await import("content-ai");
-      return translateIngredientFields(ingredient as never, sourceLocale, targetLocale, config);
-    }),
-  }),
-
   /** Merge new content into an existing ingredient and return the proposed merged version. */
   aiMergeIngredient: defineAction({
     accept: "form",
@@ -1196,16 +1154,18 @@ export const server = {
   }),
 
   /**
-   * Translate an ingredient's text fields and save as locale-twin.
+   * Save a pre-translated ingredient as a locale-twin.
+   * Receives fields already translated by aiFillTranslation.
    * Returns CONFLICT if the target locale file already exists.
    */
   aiCreateIngredientTranslation: defineAction({
     accept: "json",
     input: z.object({
       slug: z.string().min(1),
-      ingredient: z.record(z.string(), z.unknown()),
       sourceLocale: z.enum(["en", "de"]),
       targetLocale: z.enum(["en", "de"]),
+      fields: z.record(z.string(), z.unknown()),
+      meta: z.record(z.string(), z.unknown()),
     }),
     handler: withOrigin({
       surface: "admin",
@@ -1213,9 +1173,7 @@ export const server = {
       entityKind: "ingredient",
       triggeredBy: "editor",
       userInitiated: true,
-    })(async ({ slug, ingredient, sourceLocale, targetLocale }) => {
-      const config = resolveAiConfig();
-      const { translateIngredientFields } = await import("content-ai");
+    })(async ({ slug, sourceLocale, targetLocale, fields, meta }) => {
       const store = await createStore();
 
       const existing = await store.get("ingredients", `${targetLocale}/${slug}`);
@@ -1226,22 +1184,9 @@ export const server = {
         });
       }
 
-      const translation = await translateIngredientFields(
-        ingredient as never,
-        sourceLocale,
-        targetLocale,
-        config,
-      );
-
       const sidecar = createMetaSidecar(store);
-      const translatedIngredient = { ...ingredient, ...translation.fields };
-      await store.put("ingredients", `${targetLocale}/${slug}`, translatedIngredient);
-
-      // Create minimal ingredient meta for the translation
-      await sidecar.write(
-        { collection: "ingredients", locale: targetLocale, slug },
-        { translationOf: `${sourceLocale}/${slug}`, translations: {} },
-      );
+      await store.put("ingredients", `${targetLocale}/${slug}`, fields);
+      await sidecar.write({ collection: "ingredients", locale: targetLocale, slug }, meta);
 
       // Back-link: update source meta to record the translation
       const sourceRef = { collection: "ingredients" as const, locale: sourceLocale, slug };
@@ -1325,13 +1270,13 @@ export const server = {
     }),
   }),
 
-  /** Translate a pairing description into targetLocale and save it in the descriptions map. */
+  /** Save a pre-translated pairing description into the descriptions map. */
   aiTranslatePairing: defineAction({
     accept: "json",
     input: z.object({
       id: z.string().min(1),
-      sourceLocale: z.enum(["en", "de"]),
       targetLocale: z.enum(["en", "de"]),
+      description: z.string().min(1),
     }),
     handler: withOrigin({
       surface: "admin",
@@ -1339,9 +1284,7 @@ export const server = {
       entityKind: "pairing",
       triggeredBy: "editor",
       userInitiated: true,
-    })(async ({ id, sourceLocale, targetLocale }) => {
-      const config = resolveAiConfig();
-      const { translatePairingDescription } = await import("content-ai");
+    })(async ({ id, targetLocale, description }) => {
       const store = await createStore();
 
       const existing = await store.get("pairings", id);
@@ -1349,9 +1292,8 @@ export const server = {
         throw new ActionError({ code: "NOT_FOUND", message: `Pairing ${id} not found.` });
 
       const d = existing.data as Record<string, unknown>;
-      const descriptions =
-        (d["descriptions"] as Record<string, string>) ??
-        (typeof d["description"] === "string" ? { en: d["description"] } : {});
+      const ings = d["ingredients"] as [EntityRef, EntityRef];
+      const descriptions = (d["descriptions"] as Record<string, string>) ?? {};
 
       if (descriptions[targetLocale]) {
         throw new ActionError({
@@ -1360,25 +1302,9 @@ export const server = {
         });
       }
 
-      const sourceDescription =
-        descriptions[sourceLocale] ?? descriptions["en"] ?? Object.values(descriptions)[0] ?? "";
-      const ings = d["ingredients"] as [EntityRef, EntityRef];
-      const slug1 = typeof ings[0] === "string" ? ings[0] : (ings[0]?.slug ?? "");
-      const slug2 = typeof ings[1] === "string" ? ings[1] : (ings[1]?.slug ?? "");
-
-      const result = await translatePairingDescription(
-        { ingredient1: slug1, ingredient2: slug2, description: sourceDescription },
-        sourceLocale,
-        targetLocale,
-        config,
-      );
-
-      const updatedDescriptions: Record<string, string> = {
-        ...descriptions,
-        [targetLocale]: result.fields["description"] ?? sourceDescription,
-      };
+      const updatedDescriptions = { ...descriptions, [targetLocale]: description };
       await store.put("pairings", id, { ingredients: ings, descriptions: updatedDescriptions });
-      return { ok: true, description: updatedDescriptions[targetLocale] };
+      return { ok: true, description };
     }),
   }),
 
@@ -1591,7 +1517,8 @@ export const server = {
   }),
 
   /**
-   * Translate a recipe into a target locale and save it as a new linked document.
+   * Save a pre-translated recipe as a new linked document.
+   * Receives fields already translated by aiFillTranslation.
    * Also updates the original's meta.translations map.
    */
   aiCreateTranslation: defineAction({
@@ -1599,11 +1526,11 @@ export const server = {
     input: z.object({
       collection: recipeCollectionEnum,
       slug: z.string().min(1),
-      recipe: z.record(z.string(), z.unknown()),
-      meta: z.record(z.string(), z.unknown()),
       sourceLocale: z.enum(["en", "de"]),
       targetLocale: z.enum(["en", "de"]),
       translationSlug: z.string().min(1),
+      fields: z.record(z.string(), z.unknown()),
+      meta: z.record(z.string(), z.unknown()),
     }),
     handler: withOrigin({
       surface: "admin",
@@ -1611,9 +1538,7 @@ export const server = {
       entityKind: "recipe",
       triggeredBy: "editor",
       userInitiated: true,
-    })(async ({ collection, slug, recipe, meta, sourceLocale, targetLocale, translationSlug }) => {
-      const config = resolveAiConfig();
-      const { translateRecipeFields } = await import("content-ai");
+    })(async ({ collection, slug, sourceLocale, targetLocale, translationSlug, fields, meta }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
 
@@ -1625,30 +1550,8 @@ export const server = {
         });
       }
 
-      const translation = await translateRecipeFields(
-        recipe as never,
-        sourceLocale,
-        targetLocale,
-        config,
-      );
-
-      const translatedRecipe = { ...recipe, ...translation.fields };
-
-      await store.put(collection, `${targetLocale}/${translationSlug}`, translatedRecipe);
-
-      const translationMeta: Record<string, unknown> = {
-        ...meta,
-        draft: true,
-        language: targetLocale,
-        locale: targetLocale,
-        translationOf: slug,
-        translations: {},
-        variants: [],
-      };
-      await sidecar.write(
-        { collection, locale: targetLocale, slug: translationSlug },
-        translationMeta,
-      );
+      await store.put(collection, `${targetLocale}/${translationSlug}`, fields);
+      await sidecar.write({ collection, locale: targetLocale, slug: translationSlug }, meta);
 
       // Back-link original → translation
       const currentTranslations =
@@ -1664,6 +1567,66 @@ export const server = {
       );
 
       return { ok: true, translationSlug };
+    }),
+  }),
+
+  /** Run fill for translation via sibling-locale source; returns suggestions as plain records. */
+  aiFillTranslation: defineAction({
+    accept: "json",
+    input: z.object({
+      kind: z.enum(["recipe", "mixture", "ingredient", "pairing"]),
+      sourceRef: z.object({ id: z.string(), kind: z.string() }),
+      sourceLocale: z.enum(["en", "de"]),
+      targetLocale: z.enum(["en", "de"]),
+      sourceData: z.record(z.string(), z.unknown()),
+      target: z.array(z.string()).optional(),
+    }),
+    handler: withOrigin({
+      surface: "admin",
+      action: "aiFillTranslation",
+      entityKind: "recipe",
+      triggeredBy: "editor",
+      userInitiated: true,
+    })(async ({ kind, sourceRef, sourceLocale, targetLocale, sourceData, target }) => {
+      const config = resolveAiConfig();
+      const {
+        recipeTranslationContract,
+        ingredientTranslationContract,
+        pairingTranslationContract,
+      } = await import("@/lib/ai/translation-contracts.ts");
+      const { runFill } = await import("@pixelmord/content-ai-ingest");
+
+      const contract =
+        kind === "ingredient"
+          ? ingredientTranslationContract
+          : kind === "pairing"
+            ? pairingTranslationContract
+            : recipeTranslationContract;
+
+      const sourceContext = {
+        kind: "sibling-locale" as const,
+        sourceRef,
+        sourceData,
+        sourceLocale,
+        targetLocale,
+        fieldHashes: {} as Record<string, string>,
+      };
+
+      const result = await runFill({ contract, sourceContext, config });
+
+      let suggestions = Object.fromEntries(result.suggestions);
+      if (target && target.length > 0) {
+        const targetSet = new Set(target);
+        suggestions = Object.fromEntries(
+          Object.entries(suggestions).filter(([f]) => targetSet.has(f)),
+        );
+      }
+
+      return {
+        suggestions,
+        autoApplied: Object.fromEntries(result.autoApplied),
+        traces: Object.fromEntries(result.traces),
+      };
     }),
   }),
 

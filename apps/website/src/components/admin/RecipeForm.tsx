@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type Dispatch, type SetStateAction } from "react";
+import { useState, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
@@ -55,7 +55,8 @@ import SectionNav, { type SectionDef } from "./SectionNav.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
 import RecommendedHint from "./RecommendedHint.tsx";
 import EnhanceModal from "./EnhanceModal.tsx";
-import TranslateModal from "./TranslateModal.tsx";
+import { TranslateEntityDialog } from "./TranslateEntityDialog.tsx";
+import { Dialog, DialogContent } from "@/components/ui/dialog.tsx";
 import IngredientLinkModal from "./IngredientLinkModal.tsx";
 import { useAiSuggestions, type RunResult, type FieldSuggestion } from "@/hooks/use-ai-suggestions";
 import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
@@ -398,6 +399,8 @@ export default function RecipeForm({
   // Modals
   const [enhanceOpen, setEnhanceOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
+  const [translateRunId] = useState(() => crypto.randomUUID());
+  const translationSlugRef = useRef<string>("");
 
   // Entity options
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
@@ -2115,16 +2118,109 @@ export default function RecipeForm({
           onApplied={() => window.location.reload()}
         />
 
-        {/* Translate modal */}
-        <TranslateModal
-          open={translateOpen}
-          onClose={() => setTranslateOpen(false)}
-          collection={collection}
-          slug={slug}
-          recipe={buildRecipeSnapshot()}
-          meta={buildMetaSnapshot()}
-          currentLocale={language || "en"}
-        />
+        {/* Translate dialog */}
+        <Dialog open={translateOpen} onOpenChange={(o) => !o && setTranslateOpen(false)}>
+          <DialogContent className="sm:max-w-lg">
+            <TranslateEntityDialog
+              contract={{
+                presets: [],
+                fields: {
+                  name: { translation: { mode: "translate" } },
+                  description: { translation: { mode: "translate" } },
+                  recipeCategory: { translation: { mode: "translate" } },
+                  recipeCuisine: { translation: { mode: "translate" } },
+                  slug: { translation: { mode: "translate" } },
+                },
+              }}
+              sourceRef={{
+                kind: collection === "mixtures" ? "mixture" : "recipe",
+                id: slug ?? "",
+              }}
+              sourceLocale={language || "en"}
+              sourceData={buildRecipeSnapshot()}
+              availableLocales={(language || "en") === "en" ? ["de"] : ["en"]}
+              onCheckSlugAvailable={async (_kind, candidateSlug) => {
+                const { data } = await actions.checkSlugAvailable({
+                  collection,
+                  slug: candidateSlug,
+                  locale: (language || "en") === "en" ? "de" : "en",
+                });
+                return data?.available ?? false;
+              }}
+              onCreate={async (targetLocale, translationSlug, fields, meta) => {
+                translationSlugRef.current = translationSlug ?? "";
+                const sidecarMeta = {
+                  draft: true,
+                  kind: collection === "mixtures" ? "mixture" : "recipe",
+                  tags: [] as string[],
+                  ingredientLinks: [] as unknown[],
+                  externalSources: [] as unknown[],
+                  goesWellWith: [] as unknown[],
+                  usesBase: [] as unknown[],
+                  variants: [] as string[],
+                  language: targetLocale,
+                  locale: targetLocale,
+                  translationOf: slug ?? "",
+                  translations: {},
+                  aiEvents: meta.aiEvents,
+                  canonicalLocale: meta.canonicalLocale,
+                  canonicalFieldHashes: meta.canonicalFieldHashes,
+                };
+                const { error } = await actions.aiCreateTranslation({
+                  collection,
+                  slug: slug ?? "",
+                  sourceLocale: (language || "en") as "en" | "de",
+                  targetLocale: targetLocale as "en" | "de",
+                  translationSlug: translationSlug ?? "",
+                  fields,
+                  meta: sidecarMeta as Record<string, unknown>,
+                });
+                if (error) throw new Error(error.message);
+                return {
+                  kind: collection === "mixtures" ? "mixture" : "recipe",
+                  id: translationSlug ?? "",
+                };
+              }}
+              onComplete={() => {
+                const ts = translationSlugRef.current;
+                const tl = (language || "en") === "en" ? "de" : "en";
+                setTranslateOpen(false);
+                toast.success("Translation created");
+                if (ts) window.open(`/admin/${collection}/${ts}/edit?locale=${tl}`, "_blank");
+              }}
+              aiEventLog={{ read: async () => [], append: async () => {} }}
+              onFill={async (params) => {
+                const ctx = params.sourceContext as {
+                  sourceLocale: string;
+                  targetLocale: string;
+                  sourceData: Record<string, unknown>;
+                };
+                const { data, error } = await actions.aiFillTranslation({
+                  kind: collection === "mixtures" ? "mixture" : "recipe",
+                  sourceRef: {
+                    id: slug ?? "",
+                    kind: collection === "mixtures" ? "mixture" : "recipe",
+                  },
+                  sourceLocale: ctx.sourceLocale as "en" | "de",
+                  targetLocale: ctx.targetLocale as "en" | "de",
+                  sourceData: ctx.sourceData,
+                  target: params.target,
+                });
+                if (error) throw new Error(error.message);
+                return data!;
+              }}
+              origin={{
+                surface: "admin",
+                action: "aiFillTranslation",
+                entityKind: collection === "mixtures" ? "mixture" : "recipe",
+                entityRef: slug ?? "",
+                userInitiated: true,
+                runId: translateRunId,
+                triggeredBy: "editor" as const,
+              }}
+            />
+          </DialogContent>
+        </Dialog>
 
         {/* Quick create dialog */}
         {quickCreateKind && (

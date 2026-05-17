@@ -59,10 +59,6 @@ describe("AiAssistPanel decomposition", () => {
     expect(src).toMatch(/^async function runImprove\(/m);
   });
 
-  test("runTranslate is a module-level async function", () => {
-    expect(src).toMatch(/^async function runTranslate\(/m);
-  });
-
   test("runPairings is a module-level async function", () => {
     expect(src).toMatch(/^async function runPairings\(/m);
   });
