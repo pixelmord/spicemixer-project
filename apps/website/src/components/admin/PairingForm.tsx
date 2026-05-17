@@ -165,7 +165,6 @@ export default function PairingForm({
         }
       },
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [initialId, locale],
   );
 
