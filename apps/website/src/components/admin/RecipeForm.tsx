@@ -60,6 +60,7 @@ import IngredientLinkModal from "./IngredientLinkModal.tsx";
 import { useAiSuggestions, type RunResult, type FieldSuggestion } from "@/hooks/use-ai-suggestions";
 import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
 import { InlineFieldSuggestion } from "./InlineFieldSuggestion.tsx";
+import { AiSuggestionsIndicator } from "./AiSuggestionsIndicator.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
@@ -2075,6 +2076,7 @@ export default function RecipeForm({
 
             {/* Right: completeness + AI assist */}
             <aside className="sticky top-0 h-fit w-56 shrink-0 pt-1 space-y-3">
+              <AiSuggestionsIndicator presets={[]} />
               <CompletenessPanel
                 result={completeness}
                 requiredFields={requiredFields}
