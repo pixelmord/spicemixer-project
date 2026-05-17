@@ -171,6 +171,34 @@ function inferKind(value: unknown): string {
   return "text";
 }
 
+// ── RetranslateButton ──────────────────────────────────────────────────────────
+
+function RetranslateButton({
+  sourceLocale,
+  isStale,
+  onRetranslate,
+}: {
+  sourceLocale: string;
+  isStale: boolean;
+  onRetranslate: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-stale={isStale ? "true" : undefined}
+      onClick={onRetranslate}
+      className={cn(
+        "inline-flex items-center rounded px-2 py-0.5 text-xs",
+        isStale
+          ? "bg-amber-100 font-medium text-amber-800 hover:bg-amber-200"
+          : "text-muted-foreground hover:bg-muted",
+      )}
+    >
+      Retranslate from {sourceLocale}
+    </button>
+  );
+}
+
 // ── InlineFieldSuggestion ──────────────────────────────────────────────────────
 
 export interface InlineFieldSuggestionProps {
@@ -181,6 +209,8 @@ export interface InlineFieldSuggestionProps {
   /** Renderer kind key. Inferred from suggestion value type if omitted. */
   kind?: string;
   className?: string;
+  /** Read-only rendering of the source-locale value for translation flows */
+  sourceSlot?: React.ReactNode;
 }
 
 export function InlineFieldSuggestion({
@@ -189,6 +219,7 @@ export function InlineFieldSuggestion({
   renderers = defaultRenderers,
   kind,
   className,
+  sourceSlot,
 }: InlineFieldSuggestionProps) {
   const flow = useSuggestionFlowContext();
   const accessor = flow.forField(fieldPath);
@@ -206,16 +237,46 @@ export function InlineFieldSuggestion({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fieldPath, suggestionKey]);
 
-  if (!suggestion) return null;
+  // Retranslate is shown when source is available and translation mode allows it
+  const showRetranslate =
+    accessor.sourceLocale !== undefined &&
+    accessor.translationMode !== undefined &&
+    accessor.translationMode !== "copy" &&
+    accessor.translationMode !== "skip";
+
+  if (!suggestion) {
+    // Still render the retranslate button even when no current suggestion
+    if (!showRetranslate) return null;
+    return (
+      <div className={cn("mt-1.5", className)}>
+        <RetranslateButton
+          sourceLocale={accessor.sourceLocale!}
+          isStale={accessor.isStale}
+          onRetranslate={() => void accessor.retranslate()}
+        />
+      </div>
+    );
+  }
 
   if (suggestion.kind === "choice") {
     return (
-      <ChoiceSuggestionBlock
-        suggestion={suggestion}
-        onApply={onApply}
-        accessor={accessor}
-        className={cn("mt-1.5", className)}
-      />
+      <div className={cn("mt-1.5", className)}>
+        {sourceSlot && (
+          <div className="mb-1.5 rounded-md border border-dashed bg-muted/40 p-2 text-xs text-muted-foreground">
+            {sourceSlot}
+          </div>
+        )}
+        <ChoiceSuggestionBlock suggestion={suggestion} onApply={onApply} accessor={accessor} />
+        {showRetranslate && (
+          <div className="mt-1">
+            <RetranslateButton
+              sourceLocale={accessor.sourceLocale!}
+              isStale={accessor.isStale}
+              onRetranslate={() => void accessor.retranslate()}
+            />
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -224,20 +285,54 @@ export function InlineFieldSuggestion({
 
   if (!renderer) return null;
 
+  const suggestionContent = renderer({
+    value: suggestion.value,
+    confidence: suggestion.confidence,
+    summary: suggestion.summary,
+    onApply: (v) => {
+      onApply(v);
+      accessor.recordAccept(suggestion.hash, v);
+    },
+    onReject: () => {
+      accessor.recordReject(suggestion.hash);
+    },
+  });
+
+  if (sourceSlot) {
+    return (
+      <div className={cn("mt-1.5 grid grid-cols-[1fr_1fr_2fr] gap-2", className)}>
+        <div className="rounded-md border border-dashed bg-muted/40 p-2 text-xs text-muted-foreground">
+          {sourceSlot}
+        </div>
+        <div className="text-xs text-muted-foreground" />
+        <div>
+          {suggestionContent}
+          {showRetranslate && (
+            <div className="mt-1">
+              <RetranslateButton
+                sourceLocale={accessor.sourceLocale!}
+                isStale={accessor.isStale}
+                onRetranslate={() => void accessor.retranslate()}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn("mt-1.5", className)}>
-      {renderer({
-        value: suggestion.value,
-        confidence: suggestion.confidence,
-        summary: suggestion.summary,
-        onApply: (v) => {
-          onApply(v);
-          accessor.recordAccept(suggestion.hash, v);
-        },
-        onReject: () => {
-          accessor.recordReject(suggestion.hash);
-        },
-      })}
+      {suggestionContent}
+      {showRetranslate && (
+        <div className="mt-1">
+          <RetranslateButton
+            sourceLocale={accessor.sourceLocale!}
+            isStale={accessor.isStale}
+            onRetranslate={() => void accessor.retranslate()}
+          />
+        </div>
+      )}
     </div>
   );
 }

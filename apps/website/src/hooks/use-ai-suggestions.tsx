@@ -6,6 +6,12 @@ type FieldPath = string;
 type Confidence = "high" | "medium" | "low";
 type WritePolicy = "preserve" | "replace" | "fill-if-empty" | "merge-instructions";
 
+export type TranslationBehavior =
+  | { mode: "translate" }
+  | { mode: "copy" }
+  | { mode: "localize"; instruction?: string }
+  | { mode: "skip" };
+
 export type FieldSuggestion<T = unknown> =
   | {
       kind: "single";
@@ -81,7 +87,7 @@ export interface AiPreset {
 
 export interface AiContract {
   presets: AiPreset[];
-  fields: Record<string, { writePolicy?: WritePolicy }>;
+  fields: Record<string, { writePolicy?: WritePolicy; translation?: TranslationBehavior }>;
 }
 
 export interface RunParams {
@@ -91,6 +97,10 @@ export interface RunParams {
   writePolicy?: WritePolicy;
   entityRef: EntityRef;
   origin: Origin;
+  /** For fill operations: which fields to fill */
+  target?: string[];
+  /** Source context for sibling-locale translations */
+  sourceContext?: unknown;
 }
 
 export interface RunResult {
@@ -107,6 +117,16 @@ export interface PerFieldAccessor {
   recordReject(hash?: string): void;
   revertAutoApply(): void;
   markViewed(): void;
+  /** Current source-locale field value (undefined when no siblingLocale provided) */
+  source: unknown | undefined;
+  /** Source locale code (undefined when no siblingLocale provided) */
+  sourceLocale: string | undefined;
+  /** True when source field changed since translation was made */
+  isStale: boolean;
+  /** Translation behavior for this field per contract, undefined if not declared */
+  translationMode: TranslationBehavior["mode"] | undefined;
+  /** Re-run fill for this field using the sibling-locale source */
+  retranslate: () => Promise<void>;
 }
 
 export interface UseAiSuggestionsReturn {
@@ -130,6 +150,14 @@ export interface UseAiSuggestionsReturn {
   run(): Promise<void>;
 }
 
+export interface SiblingLocale {
+  ref: EntityRef;
+  data: Record<string, unknown>;
+  locale: string;
+  /** Stored canonical field hashes recorded when translation was last made */
+  fieldHashes: Record<string, string>;
+}
+
 export interface UseAiSuggestionsInput {
   contract: AiContract;
   currentData?: unknown;
@@ -138,6 +166,8 @@ export interface UseAiSuggestionsInput {
   aiEventLog: AiEventLog;
   entityRef: EntityRef;
   origin: Origin;
+  /** Sibling locale data for translation flows */
+  siblingLocale?: SiblingLocale;
   // Controlled-with-default overrides
   presetProp?: string;
   onPresetChange?: (preset: string | undefined) => void;
@@ -147,14 +177,29 @@ export interface UseAiSuggestionsInput {
   onWritePolicyChange?: (policy: WritePolicy) => void;
 }
 
+// ── Hash utility ─────────────────────────────────────────────────────────────
+
+/**
+ * Stable deterministic hash for a field value used in staleness detection.
+ * Consumers must use the same function when storing canonicalFieldHashes.
+ */
+export function hashFieldValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  return JSON.stringify(value);
+}
+
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useAiSuggestions({
+  contract,
   currentData,
   onRefine,
+  onFill,
   aiEventLog,
   entityRef,
   origin,
+  siblingLocale,
   presetProp,
   onPresetChange,
   userPromptProp,
@@ -231,10 +276,70 @@ export function useAiSuggestions({
       const appliedSuggestion = autoApplied.get(field);
       const trace = traces.get(field);
 
+      // Sibling locale derived values
+      const source = siblingLocale ? siblingLocale.data[field] : undefined;
+      const sourceLocale = siblingLocale ? siblingLocale.locale : undefined;
+      const storedHash = siblingLocale?.fieldHashes[field];
+      const isStale =
+        siblingLocale !== undefined &&
+        storedHash !== undefined &&
+        hashFieldValue(siblingLocale.data[field]) !== storedHash;
+
+      // Translation mode from contract
+      const fieldConfig = contract.fields[field];
+      const translationMode = fieldConfig?.translation?.mode;
+
+      const retranslate = async (): Promise<void> => {
+        if (!siblingLocale || !onFill) return;
+        const mode = translationMode ?? "translate";
+        // copy-mode fields don't invoke the LLM
+        if (mode === "copy" || mode === "skip") return;
+        const result = await onFill({
+          currentData,
+          entityRef,
+          origin,
+          target: [field],
+          sourceContext: {
+            kind: "sibling-locale",
+            sourceRef: siblingLocale.ref,
+            sourceData: siblingLocale.data,
+            sourceLocale: siblingLocale.locale,
+            fieldHashes: siblingLocale.fieldHashes,
+          },
+        });
+        // Merge new suggestions into existing state (don't clear other fields)
+        setSuggestions((prev) => {
+          const next = new Map(prev);
+          for (const [f, s] of Object.entries(result.suggestions ?? {})) {
+            next.set(f, s);
+          }
+          return next;
+        });
+        setAutoApplied((prev) => {
+          const next = new Map(prev);
+          for (const [f, a] of Object.entries(result.autoApplied ?? {})) {
+            next.set(f, a);
+          }
+          return next;
+        });
+        setTraces((prev) => {
+          const next = new Map(prev);
+          for (const [f, t] of Object.entries(result.traces ?? {})) {
+            next.set(f, t);
+          }
+          return next;
+        });
+      };
+
       return {
         suggestion,
         autoApplied: appliedSuggestion,
         trace,
+        source,
+        sourceLocale,
+        isStale,
+        translationMode,
+        retranslate,
         recordAccept(hash: string, value: unknown) {
           setSuggestions((prev) => {
             const next = new Map(prev);
@@ -286,7 +391,18 @@ export function useAiSuggestions({
         },
       };
     },
-    [suggestions, autoApplied, traces, aiEventLog, entityRef],
+    [
+      suggestions,
+      autoApplied,
+      traces,
+      aiEventLog,
+      entityRef,
+      origin,
+      siblingLocale,
+      contract,
+      onFill,
+      currentData,
+    ],
   );
 
   const acceptAll = useCallback((): { requiresReview: FieldPath[] } | void => {

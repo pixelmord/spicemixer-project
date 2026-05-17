@@ -58,7 +58,10 @@ const choiceMultiSuggestion: FieldSuggestion = {
   traceId: "trace-004",
 };
 
-function makeAccessor(suggestion: FieldSuggestion | undefined): PerFieldAccessor {
+function makeAccessor(
+  suggestion: FieldSuggestion | undefined,
+  overrides: Partial<PerFieldAccessor> = {},
+): PerFieldAccessor {
   return {
     suggestion,
     autoApplied: undefined,
@@ -67,15 +70,22 @@ function makeAccessor(suggestion: FieldSuggestion | undefined): PerFieldAccessor
     recordReject: vi.fn(),
     revertAutoApply: vi.fn(),
     markViewed: vi.fn(),
+    source: undefined,
+    sourceLocale: undefined,
+    isStale: false,
+    translationMode: undefined,
+    retranslate: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
   };
 }
 
 function makeFlow(
   fieldSuggestions: Record<string, FieldSuggestion>,
+  accessorOverrides: Record<string, PerFieldAccessor> = {},
 ): UseAiSuggestionsReturn & { accessors: Record<string, PerFieldAccessor> } {
   const accessors: Record<string, PerFieldAccessor> = {};
   for (const [field, sug] of Object.entries(fieldSuggestions)) {
-    accessors[field] = makeAccessor(sug);
+    accessors[field] = accessorOverrides[field] ?? makeAccessor(sug);
   }
   return {
     isRunning: false,
@@ -373,5 +383,214 @@ describe("markViewed gating", () => {
     );
     await act(async () => {}); // flush effects
     expect(flow.accessors["description"].markViewed).toHaveBeenCalled();
+  });
+});
+
+// ── sourceSlot: 3-column layout ────────────────────────────────────────────────
+
+describe("sourceSlot layout", () => {
+  test("renders sourceSlot content when provided", () => {
+    const flow = makeFlow({ description: textSuggestion });
+    renderWithFlow(
+      <InlineFieldSuggestion
+        fieldPath="description"
+        currentValue=""
+        onApply={vi.fn()}
+        sourceSlot={<span>source-content</span>}
+      />,
+      flow,
+    );
+    expect(screen.getByText("source-content")).toBeDefined();
+  });
+
+  test("does not render source column when sourceSlot not provided", () => {
+    const flow = makeFlow({ description: textSuggestion });
+    renderWithFlow(
+      <InlineFieldSuggestion fieldPath="description" currentValue="" onApply={vi.fn()} />,
+      flow,
+    );
+    expect(screen.queryByText("source-content")).toBeNull();
+  });
+
+  test("sourceSlot renders alongside the suggestion", () => {
+    const flow = makeFlow({ description: textSuggestion });
+    renderWithFlow(
+      <InlineFieldSuggestion
+        fieldPath="description"
+        currentValue=""
+        onApply={vi.fn()}
+        sourceSlot={<span>original english text</span>}
+        kind="text"
+      />,
+      flow,
+    );
+    expect(screen.getByText("original english text")).toBeDefined();
+    expect(screen.getByText(String(textSuggestion.value))).toBeDefined();
+  });
+});
+
+// ── retranslate menu ───────────────────────────────────────────────────────────
+
+describe("retranslate menu", () => {
+  test("shows Retranslate button when sourceLocale and translate mode", () => {
+    const flow = makeFlow(
+      { description: textSuggestion },
+      {
+        description: makeAccessor(textSuggestion, {
+          sourceLocale: "en",
+          translationMode: "translate",
+          isStale: false,
+        }),
+      },
+    );
+    renderWithFlow(
+      <InlineFieldSuggestion
+        fieldPath="description"
+        currentValue=""
+        onApply={vi.fn()}
+        kind="text"
+      />,
+      flow,
+    );
+    expect(screen.getByRole("button", { name: /retranslate from en/i })).toBeDefined();
+  });
+
+  test("shows Retranslate button when sourceLocale and localize mode", () => {
+    const flow = makeFlow(
+      { description: textSuggestion },
+      {
+        description: makeAccessor(textSuggestion, {
+          sourceLocale: "en",
+          translationMode: "localize",
+          isStale: false,
+        }),
+      },
+    );
+    renderWithFlow(
+      <InlineFieldSuggestion
+        fieldPath="description"
+        currentValue=""
+        onApply={vi.fn()}
+        kind="text"
+      />,
+      flow,
+    );
+    expect(screen.getByRole("button", { name: /retranslate from en/i })).toBeDefined();
+  });
+
+  test("does not show Retranslate button when no sourceLocale", () => {
+    const flow = makeFlow({ description: textSuggestion });
+    renderWithFlow(
+      <InlineFieldSuggestion
+        fieldPath="description"
+        currentValue=""
+        onApply={vi.fn()}
+        kind="text"
+      />,
+      flow,
+    );
+    expect(screen.queryByRole("button", { name: /retranslate/i })).toBeNull();
+  });
+
+  test("does not show Retranslate button for copy-mode fields", () => {
+    const flow = makeFlow(
+      { description: textSuggestion },
+      {
+        description: makeAccessor(textSuggestion, {
+          sourceLocale: "en",
+          translationMode: "copy",
+        }),
+      },
+    );
+    renderWithFlow(
+      <InlineFieldSuggestion
+        fieldPath="description"
+        currentValue=""
+        onApply={vi.fn()}
+        kind="text"
+      />,
+      flow,
+    );
+    expect(screen.queryByRole("button", { name: /retranslate/i })).toBeNull();
+  });
+
+  test("Retranslate button calls retranslate on accessor", async () => {
+    const retranslate = vi.fn().mockResolvedValue(undefined);
+    const flow = makeFlow(
+      { description: textSuggestion },
+      {
+        description: makeAccessor(textSuggestion, {
+          sourceLocale: "en",
+          translationMode: "translate",
+          retranslate,
+        }),
+      },
+    );
+    renderWithFlow(
+      <InlineFieldSuggestion
+        fieldPath="description"
+        currentValue=""
+        onApply={vi.fn()}
+        kind="text"
+      />,
+      flow,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /retranslate from en/i }));
+    expect(retranslate).toHaveBeenCalled();
+  });
+});
+
+// ── isStale promotes retranslate to inline button ─────────────────────────────
+
+describe("stale retranslate promotion", () => {
+  test("retranslate button has stale indicator when isStale is true", () => {
+    const flow = makeFlow(
+      { description: textSuggestion },
+      {
+        description: makeAccessor(textSuggestion, {
+          sourceLocale: "en",
+          translationMode: "translate",
+          isStale: true,
+        }),
+      },
+    );
+    renderWithFlow(
+      <InlineFieldSuggestion
+        fieldPath="description"
+        currentValue=""
+        onApply={vi.fn()}
+        kind="text"
+      />,
+      flow,
+    );
+    // Stale promotion: button should be more prominent (aria-label still matches)
+    const btn = screen.getByRole("button", { name: /retranslate from en/i });
+    expect(btn).toBeDefined();
+    // Stale button has a data-stale attribute or specific class
+    expect(btn.getAttribute("data-stale")).toBe("true");
+  });
+
+  test("retranslate button does not have stale indicator when isStale is false", () => {
+    const flow = makeFlow(
+      { description: textSuggestion },
+      {
+        description: makeAccessor(textSuggestion, {
+          sourceLocale: "en",
+          translationMode: "translate",
+          isStale: false,
+        }),
+      },
+    );
+    renderWithFlow(
+      <InlineFieldSuggestion
+        fieldPath="description"
+        currentValue=""
+        onApply={vi.fn()}
+        kind="text"
+      />,
+      flow,
+    );
+    const btn = screen.getByRole("button", { name: /retranslate from en/i });
+    expect(btn.getAttribute("data-stale")).not.toBe("true");
   });
 });
