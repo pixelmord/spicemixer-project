@@ -33,6 +33,13 @@ export default defineConfig({
   lint: { options: { typeAware: true, typeCheck: true } },
   run: {
     cache: true,
+    tasks: {
+      "validate-content": {
+        command: "node --experimental-strip-types scripts/validate-content.ts",
+        cwd: "apps/website",
+        input: ["apps/website/src/content/**", "apps/website/src/lib/content-validators.ts"],
+      },
+    },
   },
   test: {
     exclude: [
