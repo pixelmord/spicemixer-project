@@ -407,7 +407,7 @@ export async function resolveFeaturedPairings(
         const otherEndpoint =
           pairing.endpoints.find((ep) => ep.slug !== slug) ?? pairing.endpoints[1];
         const name = (await resolveEndpointName(otherEndpoint, locale)) ?? otherEndpoint.slug;
-        const href = `${localePrefix}/${otherEndpoint.collection}/${otherEndpoint.slug}/`;
+        const href = localePrefix + "/" + otherEndpoint.collection + "/" + otherEndpoint.slug + "/";
         return { href, name, description: pairing.description };
       }),
   );
