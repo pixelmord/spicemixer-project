@@ -29,7 +29,6 @@ import {
   type IngredientFlavorProfile,
 } from "@/lib/ingredient-schema.ts";
 import { slugify } from "@/lib/slugify.ts";
-import type { EntityOption } from "./EntityCombobox.tsx";
 import SectionNav, { type SectionDef } from "./SectionNav.tsx";
 import TagInput from "./TagInput.tsx";
 import FormActionBar from "./FormActionBar.tsx";
@@ -41,7 +40,7 @@ import EnhanceModal from "./EnhanceModal.tsx";
 import { TranslateEntityDialog } from "./TranslateEntityDialog.tsx";
 import AiAssistPanel from "./AiAssistPanel.tsx";
 import { Dialog, DialogContent } from "@/components/ui/dialog.tsx";
-import PairingEditor, { type Pairing } from "./PairingEditor.tsx";
+import { CreatePairingDialog, type PairingAiSuggestion } from "./CreatePairingDialog.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
@@ -107,12 +106,17 @@ function adaptIngredientImprovementsToRunResult(
   return { suggestions, autoApplied: {}, traces: {} };
 }
 
+interface PairingListItem {
+  id: string;
+  endpoints: [{ collection: string; slug: string }, { collection: string; slug: string }];
+  description: string;
+}
+
 interface Props {
   locale: "en" | "de";
   slug?: string;
   initialData?: Partial<IngredientData>;
   initialMeta?: Record<string, unknown>;
-  initialPairings?: Pairing[];
   isNew?: boolean;
   /** Locale codes for which a translation already exists (e.g. ["de"] if de/slug.json exists) */
   existingTranslationLocales?: string[];
@@ -138,6 +142,7 @@ const SECTIONS: SectionDef[] = [
   { id: "section-sources", label: "Sources" },
   { id: "section-pairings", label: "Pairings" },
 ];
+// Note: section-pairings is now read-only (pairing entities, not inline note field)
 
 const LONGFORM_SECTIONS: {
   key: keyof IngredientData;
@@ -214,7 +219,6 @@ export default function IngredientForm({
   slug: initialSlug,
   initialData,
   initialMeta,
-  initialPairings = [],
   isNew,
   existingTranslationLocales = [],
 }: Props) {
@@ -247,8 +251,10 @@ export default function IngredientForm({
   const [regions, setRegions] = useState<RegionCode[]>(
     (initialData?.["region"] as RegionCode[] | undefined) ?? [],
   );
-  const [pairings, setPairings] = useState<Pairing[]>(initialPairings);
-  const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
+  const [featuredPairings, setFeaturedPairings] = useState<PairingListItem[]>([]);
+  const [pendingPairingDialog, setPendingPairingDialog] = useState<PairingAiSuggestion | null>(
+    null,
+  );
   const [quickCreateName] = useState("");
   const [quickCreateCallback, setQuickCreateCallback] = useState<
     ((slug: string, label: string) => void) | null
@@ -272,7 +278,7 @@ export default function IngredientForm({
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
 
   // AI state — pairings, language mismatch (not managed by useAiSuggestions)
-  const [pendingPairingProposals, setPendingPairingProposals] = useState<PairingProposal[]>([]);
+  const [pairingProposals, setPairingProposals] = useState<PairingProposal[]>([]);
   const [dismissedPairingProposals, setDismissedPairingProposals] = useState<Set<string>>(
     new Set(),
   );
@@ -292,16 +298,11 @@ export default function IngredientForm({
   const translationTargetLocaleRef = useRef<string>("");
 
   useEffect(() => {
-    void actions.listIngredientOptions({ locale }).then((r: { data?: unknown }) => {
-      if (r.data)
-        setIngredientOptions(
-          (r.data as { slug: string; name: string }[]).map((d) => ({
-            value: d.slug,
-            label: d.name,
-            sublabel: d.slug,
-          })),
-        );
-    });
+    if (!isNew && slug) {
+      void actions.listPairingsFor({ slug }).then((r: { data?: unknown }) => {
+        if (r.data) setFeaturedPairings(r.data as PairingListItem[]);
+      });
+    }
   }, [locale]);
 
   // Check image URL health on mount
@@ -452,12 +453,12 @@ export default function IngredientForm({
       setDetectedLanguage(parsed.detectedLanguage);
       setLanguageMismatch(parsed.languageMismatch ?? false);
       if (parsed.pairings.length > 0) {
-        setPendingPairingProposals(parsed.pairings);
+        setPairingProposals(parsed.pairings);
         const autoLinked = (result as Record<string, unknown>)?.autoLinked as number;
         if (autoLinked > 0) {
           toast.success(`Auto-paired ${autoLinked} ingredient${autoLinked !== 1 ? "s" : ""}`);
           void actions.listPairingsFor({ slug }).then((pr: { data?: unknown }) => {
-            if (pr.data) setPairings(pr.data as Pairing[]);
+            if (pr.data) setFeaturedPairings(pr.data as PairingListItem[]);
           });
         }
       }
@@ -538,6 +539,43 @@ export default function IngredientForm({
     }
   }
 
+  const pairingRunId = useMemo(() => `ingredient-pairing-${slug ?? "new"}`, [slug]);
+
+  async function handleCreatePairing(
+    pairingLocale: string,
+    fields: Record<string, unknown>,
+    pairingMeta: { draft: boolean; aiEvents: unknown[] },
+  ) {
+    const endpoints = fields.endpoints as [
+      { collection: string; slug: string },
+      { collection: string; slug: string },
+    ];
+    const sorted = [...endpoints].sort((a, b) => a.slug.localeCompare(b.slug));
+    const id = sorted.map((e) => e.slug).join("--");
+    const { error: saveError } = await actions.savePairing({
+      id,
+      endpoints: sorted as [
+        { collection: "ingredients" | "mixtures" | "recipes"; slug: string },
+        { collection: "ingredients" | "mixtures" | "recipes"; slug: string },
+      ],
+      description: fields.description as string,
+      locale: pairingLocale as "en" | "de",
+      draft: pairingMeta.draft,
+    });
+    if (saveError) throw new Error(saveError.message);
+    if (fields.featured !== undefined) {
+      await actions.savePairingMeta({
+        id,
+        locale: pairingLocale as "en" | "de",
+        patch: { featured: fields.featured },
+      });
+    }
+    void actions.listPairingsFor({ slug: slug ?? "" }).then((r: { data?: unknown }) => {
+      if (r.data) setFeaturedPairings(r.data as PairingListItem[]);
+    });
+    return { kind: "pairing" as const, id };
+  }
+
   // Per-section: propose origins
   async function runProposeOrigin() {
     setAiOriginsLoading(true);
@@ -613,15 +651,11 @@ export default function IngredientForm({
     };
   }
 
-  // Pending pairing proposals (non-dismissed, non-accepted)
-  const visiblePairingProposals = pendingPairingProposals.filter(
+  // Visible pairing proposals (non-dismissed, not already in featured pairings)
+  const visiblePairingProposals = pairingProposals.filter(
     (p) =>
       !dismissedPairingProposals.has(p.otherSlug) &&
-      !pairings.some((existing) => {
-        const other =
-          existing.ingredients[0] === slug ? existing.ingredients[1] : existing.ingredients[0];
-        return other === p.otherSlug;
-      }),
+      !featuredPairings.some((fp) => fp.endpoints.some((ep) => ep.slug === p.otherSlug)),
   );
 
   function togglePart(part: IngredientPart) {
@@ -1314,23 +1348,93 @@ export default function IngredientForm({
                   <section id="section-pairings" className="scroll-mt-4">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Pairings</CardTitle>
+                        <div className="flex items-center justify-between">
+                          <CardTitle>Pairings</CardTitle>
+                          {visiblePairingProposals.length > 0 && (
+                            <span className="text-xs text-primary">
+                              {visiblePairingProposals.length} AI suggestion
+                              {visiblePairingProposals.length !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
                       </CardHeader>
-                      <CardContent>
-                        <PairingEditor
-                          currentSlug={slug}
-                          locale={locale}
-                          pairings={pairings}
-                          pendingProposals={visiblePairingProposals}
-                          ingredientOptions={ingredientOptions}
-                          onPairingsChange={setPairings}
-                          onDismissProposal={(s) =>
-                            setDismissedPairingProposals((prev) => new Set([...prev, s]))
-                          }
-                          onApplyProposal={() => {
-                            /* proposals automatically accepted via PairingEditor */
-                          }}
-                        />
+                      <CardContent className="space-y-3">
+                        {/* AI pairing suggestions */}
+                        {visiblePairingProposals.length > 0 && (
+                          <div className="rounded-md border border-primary/20 bg-primary/5 p-2 space-y-1.5">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">
+                              AI suggested pairings
+                            </p>
+                            {visiblePairingProposals.map((p, i) => (
+                              <div key={i} className="flex items-start gap-2 text-xs">
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-muted-foreground">
+                                    {p.otherCollection}:{" "}
+                                  </span>
+                                  <span className="font-medium">{p.otherSlug}</span>
+                                  {p.rationale && (
+                                    <p className="text-muted-foreground mt-0.5 truncate">
+                                      {p.rationale}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPendingPairingDialog(p)}
+                                    className="flex items-center gap-1 rounded border border-primary/20 px-1.5 py-0.5 text-primary hover:bg-primary/10"
+                                  >
+                                    Add
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setDismissedPairingProposals(
+                                        (prev) => new Set([...prev, p.otherSlug]),
+                                      )
+                                    }
+                                    className="rounded border border-border px-1.5 py-0.5 text-muted-foreground hover:text-foreground"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Read-only pairings featuring this entity */}
+                        {featuredPairings.length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              Pairings featuring this entity
+                            </p>
+                            {featuredPairings.map((p) => (
+                              <div
+                                key={p.id}
+                                className="flex items-center gap-2 text-xs rounded border border-border px-2 py-1.5"
+                              >
+                                <span className="font-medium font-mono">{p.id}</span>
+                                {p.description && (
+                                  <span className="text-muted-foreground truncate">
+                                    {p.description}
+                                  </span>
+                                )}
+                                <a
+                                  href={`/admin/pairings/${p.id}/edit`}
+                                  className="ml-auto shrink-0 text-primary hover:underline"
+                                >
+                                  Edit
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {!isNew &&
+                          featuredPairings.length === 0 &&
+                          visiblePairingProposals.length === 0 && (
+                            <p className="text-xs text-muted-foreground">No pairings yet.</p>
+                          )}
                       </CardContent>
                     </Card>
                   </section>
@@ -1352,7 +1456,7 @@ export default function IngredientForm({
                       missingFields={completeness.missing}
                       locale={locale}
                       onApplyPairings={(proposals) => {
-                        setPendingPairingProposals((prev) => [
+                        setPairingProposals((prev) => [
                           ...prev,
                           ...proposals
                             .filter((p) => !prev.some((x) => x.otherSlug === p.slug))
@@ -1468,6 +1572,43 @@ export default function IngredientForm({
                 triggeredBy: "editor" as const,
               }}
             />
+          </DialogContent>
+        </Dialog>
+
+        {/* Create pairing dialog */}
+        <Dialog
+          open={!!pendingPairingDialog}
+          onOpenChange={(o) => !o && setPendingPairingDialog(null)}
+        >
+          <DialogContent className="sm:max-w-md">
+            {pendingPairingDialog && (
+              <CreatePairingDialog
+                contract={{
+                  presets: [],
+                  fields: { description: { translation: { mode: "translate" } } },
+                }}
+                sourceRef={{ kind: "ingredient", id: slug ?? "" }}
+                aiSuggestion={pendingPairingDialog}
+                locale={locale}
+                onCreate={async (pairingLocale, fields, pairingMeta) =>
+                  handleCreatePairing(pairingLocale, fields, pairingMeta)
+                }
+                onComplete={() => {
+                  setPendingPairingDialog(null);
+                  toast.success("Pairing created");
+                }}
+                aiEventLog={{ read: async () => [], append: async () => {} }}
+                onFill={async () => ({ suggestions: {}, autoApplied: {}, traces: {} })}
+                origin={{
+                  surface: "admin",
+                  action: "createPairing",
+                  entityKind: "ingredient",
+                  userInitiated: true,
+                  runId: pairingRunId,
+                  triggeredBy: "editor",
+                }}
+              />
+            )}
           </DialogContent>
         </Dialog>
 

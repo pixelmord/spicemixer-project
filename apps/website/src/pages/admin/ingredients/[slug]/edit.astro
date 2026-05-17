@@ -15,26 +15,8 @@ const store = await createStore();
 const item = await store.get("ingredients", `${locale}/${slug}`);
 if (!item) return Astro.redirect("/admin/ingredients");
 
-// Load ingredient meta (AI suggestions cache) and pairings
+// Load ingredient meta (AI suggestions cache)
 const metaItem = await store.get("ingredientMeta", `${locale}/${slug}`);
-const allPairings = await store.list("pairings");
-const ingredientPairings = allPairings
-  .filter((p) => {
-    const d = p.data as Record<string, unknown>;
-    const ings = d["ingredients"];
-    return Array.isArray(ings) && ings.includes(slug);
-  })
-  .map((p) => {
-    const d = p.data as Record<string, unknown>;
-    const descriptions =
-      (d["descriptions"] as Record<string, string>) ??
-      (d["description"] ? { en: String(d["description"]) } : {});
-    return {
-      id: p.id,
-      ingredients: d["ingredients"] as [string, string],
-      descriptions,
-    };
-  });
 
 // Check which other locales already have a translation of this ingredient
 const otherLocale = locale === "en" ? "de" : "en";
@@ -58,7 +40,6 @@ const currentPath = Astro.url.pathname;
         slug={slug}
         initialData={item.data as never}
         initialMeta={metaItem?.data as never ?? {}}
-        initialPairings={ingredientPairings as never}
         existingTranslationLocales={existingTranslationLocales}
         client:load
       />
