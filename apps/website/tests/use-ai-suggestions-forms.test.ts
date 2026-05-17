@@ -73,6 +73,54 @@ describe("IngredientForm — useAiSuggestions orchestration", () => {
   });
 });
 
+describe("PairingForm — useAiSuggestions orchestration", () => {
+  let src: string;
+
+  beforeAll(async () => {
+    src = await readFile(join(COMPONENTS, "PairingForm.tsx"), "utf-8");
+  });
+
+  test("imports useAiSuggestions", () => {
+    expect(src).toMatch(/useAiSuggestions/);
+  });
+
+  test("imports SuggestionFlowProvider", () => {
+    expect(src).toMatch(/SuggestionFlowProvider/);
+  });
+
+  test("imports InlineFieldSuggestion", () => {
+    expect(src).toMatch(/InlineFieldSuggestion/);
+  });
+
+  test("calls useAiSuggestions hook", () => {
+    expect(src).toMatch(/useAiSuggestions\(\{/);
+  });
+
+  test("wraps JSX with SuggestionFlowProvider", () => {
+    expect(src).toMatch(/<SuggestionFlowProvider/);
+  });
+
+  test("mounts InlineFieldSuggestion for description field", () => {
+    expect(src).toMatch(/InlineFieldSuggestion[^>]*fieldPath="description"/s);
+  });
+
+  test("handleManualRefresh delegates to aiFlow.run()", () => {
+    expect(src).toMatch(/aiFlow\.run\(\)/);
+  });
+
+  test("no longer maintains raw aiSuggestions array state", () => {
+    expect(src).not.toMatch(/useState<AiSuggestion\[\]>/);
+  });
+
+  test("sets up aiEventLog via useMemo", () => {
+    expect(src).toMatch(/aiEventLog.*=.*useMemo|useMemo.*aiEventLog/s);
+  });
+
+  test("CompletenessPanel receives aiFlow.isRunning as aiRefreshing", () => {
+    expect(src).toMatch(/aiRefreshing.*aiFlow\.isRunning|isRunning.*aiRefreshing/s);
+  });
+});
+
 describe("RecipeForm — useAiSuggestions integration verification", () => {
   let src: string;
 
