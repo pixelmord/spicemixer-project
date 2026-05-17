@@ -483,20 +483,16 @@ describe("aiTranslatePairing: meta sidecar for target locale", () => {
       { canonicalLocale: "en" },
     );
 
-    // Simulate what aiTranslatePairing should do:
-    // 1. Create target content
     await store.put("pairings", `de/${id}`, {
       endpoints: [ep1, ep2],
       description: "Wärmende Gewürze.",
     });
-    // 2. Read source meta, derive canonicalLocale
     const sourceMeta = await entityMeta.read(sidecar, {
       collection: "pairings",
       locale: "en",
       slug: id,
     });
     const canonicalLocale = sourceMeta.canonicalLocale ?? "en";
-    // 3. Write target locale meta
     await entityMeta.merge(
       sidecar,
       { collection: "pairings", locale: "de", slug: id },
@@ -506,7 +502,6 @@ describe("aiTranslatePairing: meta sidecar for target locale", () => {
         draft: false,
       },
     );
-    // 4. Back-link on source meta
     await entityMeta.merge(
       sidecar,
       { collection: "pairings", locale: "en", slug: id },
@@ -544,7 +539,6 @@ describe("aiTranslatePairing: meta sidecar for target locale", () => {
       description: "Warm and licorice-y.",
     });
 
-    // Simulate aiTranslatePairing: source has no meta, so canonicalLocale defaults to sourceLocale
     await store.put("pairings", `de/${id}`, {
       endpoints: [ep1, ep2],
       description: "Warm und lakritzartig.",

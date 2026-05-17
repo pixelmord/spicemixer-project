@@ -1333,11 +1333,8 @@ export const server = {
         content: pairingData,
       });
 
-      const sourceMeta = await entityMeta.read(sidecar, {
-        collection: "pairings",
-        locale: sourceLocale,
-        slug: id,
-      });
+      const sourceRef = { collection: "pairings" as const, locale: sourceLocale, slug: id };
+      const sourceMeta = await entityMeta.read(sidecar, sourceRef);
       const canonicalLocale = sourceMeta.canonicalLocale ?? sourceLocale;
       await entityMeta.merge(
         sidecar,
@@ -1348,13 +1345,9 @@ export const server = {
           draft: false,
         },
       );
-      await entityMeta.merge(
-        sidecar,
-        { collection: "pairings", locale: sourceLocale, slug: id },
-        {
-          translations: { ...sourceMeta.translations, [targetLocale]: `${targetLocale}/${id}` },
-        },
-      );
+      await entityMeta.merge(sidecar, sourceRef, {
+        translations: { ...sourceMeta.translations, [targetLocale]: `${targetLocale}/${id}` },
+      });
 
       return { ok: true, description };
     }),
