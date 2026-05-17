@@ -45,15 +45,13 @@ const pagefindFilters = withPagefindFilters({
 
 const usedIn = await getUsedIn(slug, prefix);
 
-const pairingEntities = await getPairings(slug);
+const pairingEntities = await getPairings(slug, locale);
 const pairingsResolved = await Promise.all(
   pairingEntities.map(async (pairing) => {
-    const otherSlug = pairing.ingredients[0] === slug ? pairing.ingredients[1] : pairing.ingredients[0];
+    const [a, b] = pairing.endpoints;
+    const otherSlug = a.slug === slug ? b.slug : a.slug;
     const entry = await getIngredient(otherSlug, locale);
-    const descriptions = pairing.descriptions ?? {};
-    const description = descriptions[locale] ?? descriptions["en"] ?? pairing.description ?? "";
-    const pairingFallback = !descriptions[locale] && (!!descriptions["en"] || !!pairing.description);
-    return { slug: otherSlug, name: entry?.data.name ?? otherSlug, description, isFallback: pairingFallback };
+    return { slug: otherSlug, name: entry?.data.name ?? otherSlug, description: pairing.description };
   })
 );
 
@@ -210,7 +208,7 @@ const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().
                 {t("section.pairings")}
               </h2>
               <ul class="space-y-3">
-                {pairingsResolved.map(({ slug: pairSlug, name, description, isFallback: pairingFallback }) => (
+                {pairingsResolved.map(({ slug: pairSlug, name, description }) => (
                   <li class="rounded-xl bg-white p-4 ring-1 ring-stone-200">
                     <a
                       href={`${prefix}/ingredients/${pairSlug}/`}
@@ -219,10 +217,7 @@ const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().
                       {name}
                     </a>
                     {description && (
-                      <p class={`mt-1 text-sm ${pairingFallback ? "text-stone-400 italic" : "text-stone-600"}`}>
-                        {description}
-                        {pairingFallback && <span class="ml-1 text-xs not-italic">(EN)</span>}
-                      </p>
+                      <p class="mt-1 text-sm text-stone-600">{description}</p>
                     )}
                   </li>
                 ))}

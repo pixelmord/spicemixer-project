@@ -100,6 +100,23 @@ describe("Pagefind: SiteNav search link", () => {
   });
 });
 
+describe("Pagefind: locale-aware pairing slug routes", () => {
+  test("EN pairing route passes 'en' locale to pairingSlugPaths", async () => {
+    const src = await readFile(join(PAGES, "pairings", "[slug].astro"), "utf-8");
+    expect(src).toContain('pairingSlugPaths("en")');
+  });
+
+  test("DE pairing route passes 'de' locale to pairingSlugPaths", async () => {
+    const src = await readFile(join(PAGES, "de", "pairings", "[slug].astro"), "utf-8");
+    expect(src).toContain('pairingSlugPaths("de")');
+  });
+
+  test("pagefind integration uses de/**/*.html glob to include DE pairings in DE index", async () => {
+    const src = await readFile(join(ROOT, "astro.config.mjs"), "utf-8");
+    expect(src).toContain("de/**/*.html");
+  });
+});
+
 describe("Pagefind: search pages exist", () => {
   let sharedSrc: string;
   beforeAll(async () => {

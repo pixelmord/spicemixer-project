@@ -79,8 +79,14 @@ describe("getPublishedPairings — region from ingredient content", () => {
       if (name === "pairings") {
         return [
           {
-            id: "cardamom--cumin",
-            data: { ingredients: ["cardamom", "cumin"], descriptions: {} },
+            id: "en/cardamom--cumin",
+            data: {
+              endpoints: [
+                { collection: "ingredients", slug: "cardamom" },
+                { collection: "ingredients", slug: "cumin" },
+              ],
+              description: "",
+            },
           },
         ] as never;
       }
@@ -93,7 +99,7 @@ describe("getPublishedPairings — region from ingredient content", () => {
       return [] as never;
     });
 
-    const result = await getPublishedPairings();
+    const result = await getPublishedPairings("en");
     expect(result).toHaveLength(1);
     expect(result[0].regions).toEqual(
       expect.arrayContaining(["south-asia", "north-africa", "levant"]),
@@ -106,8 +112,14 @@ describe("getPublishedPairings — region from ingredient content", () => {
       if (name === "pairings") {
         return [
           {
-            id: "cumin--sumac",
-            data: { ingredients: ["cumin", "sumac"], descriptions: {} },
+            id: "en/cumin--sumac",
+            data: {
+              endpoints: [
+                { collection: "ingredients", slug: "cumin" },
+                { collection: "ingredients", slug: "sumac" },
+              ],
+              description: "",
+            },
           },
         ] as never;
       }
@@ -121,7 +133,7 @@ describe("getPublishedPairings — region from ingredient content", () => {
       return [] as never;
     });
 
-    const result = await getPublishedPairings();
+    const result = await getPublishedPairings("en");
     expect(result[0].regions).toEqual(expect.arrayContaining(["north-africa", "levant"]));
     expect(result[0].regions).toHaveLength(2);
   });
@@ -130,17 +142,35 @@ describe("getPublishedPairings — region from ingredient content", () => {
     vi.mocked(getCollection).mockImplementation(async (name) => {
       if (name === "pairings") {
         return [
-          { id: "caraway--cumin", data: { ingredients: ["caraway", "cumin"], descriptions: {} } },
-          { id: "cumin--sumac", data: { ingredients: ["cumin", "sumac"], descriptions: {} } },
+          {
+            id: "en/caraway--cumin",
+            data: {
+              endpoints: [
+                { collection: "ingredients", slug: "caraway" },
+                { collection: "ingredients", slug: "cumin" },
+              ],
+              description: "",
+            },
+          },
+          {
+            id: "en/cumin--sumac",
+            data: {
+              endpoints: [
+                { collection: "ingredients", slug: "cumin" },
+                { collection: "ingredients", slug: "sumac" },
+              ],
+              description: "",
+            },
+          },
         ] as never;
       }
       if (name === "pairingMeta") {
-        return [{ id: "caraway--cumin", data: { draft: true, aiEvents: [] } }] as never;
+        return [{ id: "en/caraway--cumin", data: { draft: true, aiEvents: [] } }] as never;
       }
       return [] as never;
     });
 
-    const result = await getPublishedPairings();
+    const result = await getPublishedPairings("en");
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe("cumin--sumac");
   });
@@ -149,13 +179,83 @@ describe("getPublishedPairings — region from ingredient content", () => {
     vi.mocked(getCollection).mockImplementation(async (name) => {
       if (name === "pairings") {
         return [
-          { id: "cardamom--cumin", data: { ingredients: ["cardamom", "cumin"], descriptions: {} } },
+          {
+            id: "en/cardamom--cumin",
+            data: {
+              endpoints: [
+                { collection: "ingredients", slug: "cardamom" },
+                { collection: "ingredients", slug: "cumin" },
+              ],
+              description: "",
+            },
+          },
         ] as never;
       }
       return [] as never;
     });
 
-    const result = await getPublishedPairings();
+    const result = await getPublishedPairings("en");
     expect(result).toHaveLength(1);
+  });
+
+  test("filters by locale — DE pairings not returned for EN locale", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/cardamom--cumin",
+            data: {
+              endpoints: [
+                { collection: "ingredients", slug: "cardamom" },
+                { collection: "ingredients", slug: "cumin" },
+              ],
+              description: "EN description",
+            },
+          },
+          {
+            id: "de/cardamom--cumin",
+            data: {
+              endpoints: [
+                { collection: "ingredients", slug: "cardamom" },
+                { collection: "ingredients", slug: "cumin" },
+              ],
+              description: "DE description",
+            },
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const enResult = await getPublishedPairings("en");
+    expect(enResult).toHaveLength(1);
+    expect(enResult[0].description).toBe("EN description");
+
+    const deResult = await getPublishedPairings("de");
+    expect(deResult).toHaveLength(1);
+    expect(deResult[0].description).toBe("DE description");
+  });
+
+  test("id in result is slug without locale prefix", async () => {
+    vi.mocked(getCollection).mockImplementation(async (name) => {
+      if (name === "pairings") {
+        return [
+          {
+            id: "en/cardamom--cumin",
+            data: {
+              endpoints: [
+                { collection: "ingredients", slug: "cardamom" },
+                { collection: "ingredients", slug: "cumin" },
+              ],
+              description: "",
+            },
+          },
+        ] as never;
+      }
+      return [] as never;
+    });
+
+    const result = await getPublishedPairings("en");
+    expect(result[0].id).toBe("cardamom--cumin");
   });
 });

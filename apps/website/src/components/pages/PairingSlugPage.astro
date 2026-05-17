@@ -12,24 +12,22 @@ interface Props {
 
 const { pairing } = Astro.props;
 const locale = Astro.currentLocale as Lang;
-const otherLocale = locale === "de" ? "en" : "de";
 const prefix = locale === "de" ? "/de" : "";
 const t = useTranslations(locale);
 
 const [aEntry, bEntry] = await Promise.all([
-  getIngredient(pairing.ingredients[0], locale),
-  getIngredient(pairing.ingredients[1], locale),
+  getIngredient(pairing.endpoints[0].slug, locale),
+  getIngredient(pairing.endpoints[1].slug, locale),
 ]);
-const aName = aEntry?.data.name ?? pairing.ingredients[0];
-const bName = bEntry?.data.name ?? pairing.ingredients[1];
-const description = pairing.descriptions?.[locale] ?? pairing.descriptions?.[otherLocale] ?? "";
+const aName = aEntry?.data.name ?? pairing.endpoints[0].slug;
+const bName = bEntry?.data.name ?? pairing.endpoints[1].slug;
 
 const pagefindFilters = withPagefindFilters({ region: pairing.regions });
 ---
 
 <BaseLayout
   title={`${aName} & ${bName} — Spicemixer`}
-  description={description || undefined}
+  description={pairing.description || undefined}
 >
   <main
     class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8"
@@ -49,20 +47,20 @@ const pagefindFilters = withPagefindFilters({ region: pairing.regions });
       <h1 class="font-serif text-5xl leading-tight text-stone-900">
         {aName} & {bName}
       </h1>
-      {description && (
-        <p class="mt-4 text-lg italic text-stone-700">{description}</p>
+      {pairing.description && (
+        <p class="mt-4 text-lg italic text-stone-700">{pairing.description}</p>
       )}
     </header>
 
     <section class="mb-10 flex flex-wrap gap-4">
       <a
-        href={`${prefix}/ingredients/${pairing.ingredients[0]}/`}
+        href={`${prefix}/ingredients/${pairing.endpoints[0].slug}/`}
         class="rounded-full bg-amber-100 px-5 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-200"
       >
         {aName}
       </a>
       <a
-        href={`${prefix}/ingredients/${pairing.ingredients[1]}/`}
+        href={`${prefix}/ingredients/${pairing.endpoints[1].slug}/`}
         class="rounded-full bg-amber-100 px-5 py-2.5 text-sm font-medium text-amber-800 transition hover:bg-amber-200"
       >
         {bName}

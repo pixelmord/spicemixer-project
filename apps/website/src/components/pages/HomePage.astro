@@ -17,7 +17,7 @@ const prefix = locale === "de" ? "/de" : "";
 const [mixtures, rawIngredients, pairings, allIngredientsMeta, allMeta] = await Promise.all([
   getPublished("mixtures"),
   getPublishedIngredients(locale),
-  getPublishedPairings(),
+  getPublishedPairings(locale),
   getCollection("ingredientMeta"),
   getCollection("meta"),
 ]);
@@ -75,7 +75,7 @@ const ingredientEntries: RecentEntry[] = ingredients.map((e) => {
 const pairingEntries: RecentEntry[] = pairings.map((p) => ({
   type: "pairing",
   slug: p.id,
-  name: `${p.ingredients[0]} & ${p.ingredients[1]}`,
+  name: `${p.endpoints[0].slug} & ${p.endpoints[1].slug}`,
   href: `${prefix}/pairings/${p.id}/`,
 }));
 
@@ -103,13 +103,9 @@ const featuredPairing = pairings.find((p) => p.id === FEATURED_PAIRING_SLUG) ?? 
       featuredPairing && (
         <FeaturedPairingBlock
           label={t("page.home.featuredPairing")}
-          ingredientA={featuredPairing.ingredients[0]}
-          ingredientB={featuredPairing.ingredients[1]}
-          description={
-            featuredPairing.descriptions[locale] ??
-            featuredPairing.descriptions["en"] ??
-            ""
-          }
+          ingredientA={featuredPairing.endpoints[0].slug}
+          ingredientB={featuredPairing.endpoints[1].slug}
+          description={featuredPairing.description}
           href={`${prefix}/pairings/${featuredPairing.id}/`}
         />
       )

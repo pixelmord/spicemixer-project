@@ -9,7 +9,7 @@ const locale = Astro.currentLocale as Lang;
 const t = useTranslations(locale);
 const prefix = locale === "de" ? "/de" : "";
 
-const pairings = await getPublishedPairings();
+const pairings = await getPublishedPairings(locale);
 
 const recentlyAdded = pairings.slice(0, 6);
 
@@ -42,8 +42,8 @@ const groups = [
           </h2>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {recentlyAdded.map((pairing) => {
-              const [a, b] = pairing.ingredients;
-              const description = pairing.descriptions[locale] ?? pairing.descriptions["en"] ?? "";
+              const [a, b] = pairing.endpoints;
+              const description = pairing.description;
               const href = `${prefix}/pairings/${pairing.id}/`;
               return (
                 <a
@@ -51,7 +51,7 @@ const groups = [
                   class="group rounded-2xl bg-white p-5 shadow-sm ring-1 ring-stone-200 transition hover:shadow-md hover:ring-stone-300"
                 >
                   <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-500">
-                    {a} + {b}
+                    {a.slug} + {b.slug}
                   </p>
                   {description && (
                     <p class="mt-2 line-clamp-3 text-sm text-stone-600">{description}</p>
@@ -78,8 +78,8 @@ const groups = [
     <section class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
       {
         pairings.map((pairing) => {
-          const [a, b] = pairing.ingredients;
-          const description = pairing.descriptions[locale] ?? pairing.descriptions["en"] ?? "";
+          const [a, b] = pairing.endpoints;
+          const description = pairing.description;
           const href = `${prefix}/pairings/${pairing.id}/`;
           return (
             <article
@@ -93,14 +93,14 @@ const groups = [
                     <figure class="overflow-hidden">
                       <img
                         src={pairing.image}
-                        alt={`${a} + ${b}`}
+                        alt={`${a.slug} + ${b.slug}`}
                         loading="lazy"
                         class="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.02]"
                       />
                     </figure>
                     <div class="px-5 py-4">
                       <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-500">
-                        {a} + {b}
+                        {a.slug} + {b.slug}
                       </p>
                       {description && (
                         <p class="mt-1 line-clamp-2 text-sm text-stone-600">{description}</p>
@@ -110,10 +110,10 @@ const groups = [
                 ) : (
                   <div class="bg-gradient-to-br from-teal-50 via-stone-50 to-cyan-50 px-6 pb-5 pt-7">
                     <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-500">
-                      {a} + {b}
+                      {a.slug} + {b.slug}
                     </p>
                     <p class="mt-2 font-serif text-2xl leading-tight text-stone-900">
-                      {a} <span class="text-stone-400">&amp;</span> {b}
+                      {a.slug} <span class="text-stone-400">&amp;</span> {b.slug}
                     </p>
                     {description && (
                       <p class="mt-2 line-clamp-3 text-sm italic text-stone-600">{description}</p>

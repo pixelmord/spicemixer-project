@@ -1,4 +1,5 @@
 import { getEntry, getCollection } from "astro:content";
+import type { EndpointRef } from "entity-kind";
 import type { MixtureKind } from "./mixture-schema.ts";
 import { INGREDIENT_META, PAIRING_META } from "./meta-sidecar.ts";
 import { regionsForPairing } from "./region-derivation.ts";
@@ -43,9 +44,8 @@ export type Meta = {
 type MetaEntry = { id: string; data: { draft?: boolean; ingredientLinks?: IngredientLink[] } };
 type NamedEntry = { id: string; data: { name: string } };
 type PairingData = {
-  ingredients: [string, string];
-  descriptions?: Record<string, string>;
-  description?: string;
+  endpoints: [EndpointRef, EndpointRef];
+  description: string;
   image?: string;
 };
 
@@ -172,14 +172,14 @@ export function annotateTextHtml(
 
 export interface PublishedPairing {
   id: string;
-  ingredients: [string, string];
-  descriptions: Record<string, string>;
+  endpoints: [EndpointRef, EndpointRef];
+  description: string;
   image?: string;
   regions: string[];
 }
 
-/** Get all published pairings, each annotated with the union of both endpoints' regions. */
-export async function getPublishedPairings(): Promise<PublishedPairing[]> {
+/** Get published pairings for the given locale, annotated with the union of both endpoint regions. */
+export async function getPublishedPairings(locale: string): Promise<PublishedPairing[]> {
   const [rawPairings, rawIngredients, rawPairingMeta] = await Promise.all([
     getCollection("pairings"),
     getCollection("ingredients"),
@@ -199,15 +199,19 @@ export async function getPublishedPairings(): Promise<PublishedPairing[]> {
     regionsBySlug.set(slug, [...new Set([...prev, ...(m.data.region ?? [])])]);
   }
 
+  const localePrefix = `${locale}/`;
   return (rawPairings as Array<{ id: string; data: PairingData }>)
-    .filter((p) => !draftIds.has(p.id))
+    .filter((p) => p.id.startsWith(localePrefix) && !draftIds.has(p.id))
     .map((p) => {
-      const [a, b] = p.data.ingredients;
-      const regions = regionsForPairing(regionsBySlug.get(a), regionsBySlug.get(b));
+      const [a, b] = p.data.endpoints;
+      const regions = regionsForPairing(
+        a.collection === "ingredients" ? regionsBySlug.get(a.slug) : undefined,
+        b.collection === "ingredients" ? regionsBySlug.get(b.slug) : undefined,
+      );
       return {
-        id: p.id,
-        ingredients: p.data.ingredients,
-        descriptions: p.data.descriptions ?? {},
+        id: slugFromLocaleId(p.id),
+        endpoints: p.data.endpoints,
+        description: p.data.description,
         image: p.data.image,
         regions,
       };
@@ -221,21 +225,23 @@ function pairingId(slugA: string, slugB: string): string {
 
 export interface PairingEntity {
   id: string;
-  ingredients: [string, string];
-  descriptions: Record<string, string>;
-  /** Legacy single-locale field, may be absent after migration */
-  description?: string;
+  endpoints: [EndpointRef, EndpointRef];
+  description: string;
 }
 
-/** Get all pairings that include a given ingredient slug. */
-export async function getPairings(slug: string): Promise<PairingEntity[]> {
+/** Get pairings for the given locale that include a given ingredient slug. */
+export async function getPairings(slug: string, locale: string): Promise<PairingEntity[]> {
   const all = (await getCollection("pairings")) as { id: string; data: PairingData }[];
+  const localePrefix = `${locale}/`;
   return all
-    .filter((entry) => entry.data.ingredients.includes(slug))
+    .filter((entry) => {
+      if (!entry.id.startsWith(localePrefix)) return false;
+      const [a, b] = entry.data.endpoints;
+      return a.slug === slug || b.slug === slug;
+    })
     .map((entry) => ({
-      id: entry.id,
-      ingredients: entry.data.ingredients as [string, string],
-      descriptions: (entry.data.descriptions ?? {}) as Record<string, string>,
+      id: slugFromLocaleId(entry.id),
+      endpoints: entry.data.endpoints,
       description: entry.data.description,
     }));
 }

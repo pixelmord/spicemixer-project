@@ -36,7 +36,7 @@ const ingredients = defineCollection({
 });
 
 const pairings = defineCollection({
-  loader: glob({ pattern: "[^.]+.json", base: "./src/content/pairings" }),
+  loader: glob({ pattern: "[a-z][a-z]/[^.]+.json", base: "./src/content/pairings" }),
   schema: pairingSchema,
 });
 
@@ -51,11 +51,11 @@ const ingredientMeta = defineCollection({
   schema: ingredientMetaSchema,
 });
 
-// Meta files colocated with pairings: pairings/slug.meta.json
-// IDs are "slug1--slug2" — same as before.
+// Meta files colocated with pairings: pairings/<locale>/slug.meta.json
+// IDs are "locale/slug1--slug2" e.g. "en/caraway--cumin".
 const pairingMeta = defineCollection({
   loader: glob({
-    pattern: "pairings/*.meta.json",
+    pattern: "pairings/[a-z][a-z]/*.meta.json",
     base: "./src/content",
     generateId: ({ entry }) => entry.replace("pairings/", "").replace(".meta.json", ""),
   }),
