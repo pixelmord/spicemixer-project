@@ -339,7 +339,14 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
           "pairings",
           {
             kind: "single" as const,
-            value: [{ slug: "cumin", description: "Fragrant pair", confidence: "high" as const }],
+            value: [
+              {
+                otherCollection: "ingredients",
+                otherSlug: "cumin",
+                rationale: "Fragrant pair",
+                confidence: "high" as const,
+              },
+            ],
             confidence: "high" as const,
             summary: "pairings: [1 items]",
             hash: "abc123",
@@ -364,6 +371,9 @@ describe("ai-contract: AI action handlers with writes also persist an aiEvent", 
 
     const pairing = await mockStore.get("pairings", "cardamom--cumin");
     expect(pairing, "auto-applied pairing must be written to the store").not.toBeNull();
+    // Verify the pairing uses the new endpoints shape
+    const pairingData = pairing?.data as Record<string, unknown>;
+    expect(pairingData["endpoints"], "auto-applied pairing must use endpoints field").toBeDefined();
 
     const meta = await sidecar.read({ collection: "ingredients", locale: "en", slug: "cardamom" });
     expect(meta, "ingredient meta sidecar must be written after auto-apply").not.toBeNull();

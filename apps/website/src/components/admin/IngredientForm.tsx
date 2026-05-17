@@ -82,7 +82,12 @@ interface IngredientData {
   imageAttribution?: ImageAttribution;
 }
 
-type PairingProposal = { slug: string; description: string; confidence: string };
+type PairingProposal = {
+  otherCollection: "ingredients" | "mixtures" | "recipes";
+  otherSlug: string;
+  rationale: string;
+  traceId?: string;
+};
 
 function adaptIngredientImprovementsToRunResult(
   improvements: Array<{ field: string; suggestion: string; rationale: string }>,
@@ -611,11 +616,11 @@ export default function IngredientForm({
   // Pending pairing proposals (non-dismissed, non-accepted)
   const visiblePairingProposals = pendingPairingProposals.filter(
     (p) =>
-      !dismissedPairingProposals.has(p.slug) &&
+      !dismissedPairingProposals.has(p.otherSlug) &&
       !pairings.some((existing) => {
         const other =
           existing.ingredients[0] === slug ? existing.ingredients[1] : existing.ingredients[0];
-        return other === p.slug;
+        return other === p.otherSlug;
       }),
   );
 
@@ -1350,11 +1355,11 @@ export default function IngredientForm({
                         setPendingPairingProposals((prev) => [
                           ...prev,
                           ...proposals
-                            .filter((p) => !prev.some((x) => x.slug === p.slug))
+                            .filter((p) => !prev.some((x) => x.otherSlug === p.slug))
                             .map((p) => ({
-                              slug: p.slug,
-                              description: p.note ?? "",
-                              confidence: "medium" as const,
+                              otherCollection: "ingredients" as const,
+                              otherSlug: p.slug,
+                              rationale: p.note ?? "",
                             })),
                         ]);
                       }}

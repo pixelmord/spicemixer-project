@@ -6,7 +6,11 @@ type IngredientSchema = typeof ingredientSchema;
 
 // Context passed from the action handler so prompts can reference the inventory.
 export interface IngredientRefineContext {
-  inventory?: Array<{ slug: string; name: string }>;
+  inventory?: Array<{
+    slug: string;
+    name: string;
+    collection?: "ingredients" | "mixtures" | "recipes";
+  }>;
   locale?: string;
 }
 
@@ -67,12 +71,14 @@ Rules:
   writePolicy: "replace",
 });
 
-// Pairing proposals field (replacing proposeIngredientPairings)
+// Pairing proposals field — each item seeds a new Pairing entity on accept.
+// confidence is retained here (not surfaced to UI) so the runner can auto-apply high-confidence items.
 const pairingsOutputSchema = z.array(
   z.object({
-    slug: z.string(),
-    description: z.string(),
-    confidence: z.string(),
+    otherCollection: z.enum(["ingredients", "mixtures", "recipes"]),
+    otherSlug: z.string(),
+    rationale: z.string(),
+    confidence: z.enum(["high", "medium", "low"]),
   }),
 );
 
@@ -118,8 +124,7 @@ Text: "${text}"`;
       writePolicy: "fill-if-empty" as const,
     },
 
-    // Pairing proposals — replaces proposeIngredientPairings
-    // outputSchema differs from entity schema (includes description + confidence)
+    // outputSchema differs from entity schema; rationale becomes the new Pairing's description.
     // autoApply is "never" here; high-confidence auto-creation of pairing entities
     // is handled by the caller (runAiRefresh / action handlers).
     pairings: {
@@ -127,19 +132,22 @@ Text: "${text}"`;
         const ctx = buildIngredientCtx(currentData);
         const inventory = sourceContext?.inventory ?? [];
         if (!inventory.length) return "";
-        const inventoryList = inventory.map((i) => `${i.slug}: ${i.name}`).join("\n");
-        return `You are a culinary expert. Suggest ingredient pairings for this spice/ingredient.
+        const inventoryList = inventory
+          .map((i) => `[${i.collection ?? "ingredients"}] ${i.slug}: ${i.name}`)
+          .join("\n");
+        return `You are a culinary expert. Suggest pairings for this spice/ingredient with other spices, mixtures, or recipes.
 Only select slugs that exist verbatim in the inventory. Do not invent slugs.
 
 Ingredient:
 ${ctx}
 
-Inventory (slug: name):
+Inventory ([collection] slug: name):
 ${inventoryList}
 
 Return up to 6 pairings. For each:
-- slug: exact slug from the inventory
-- description: 1-2 sentences explaining why they pair well (culinary reason, flavor harmony)
+- otherCollection: the collection of the other entity (ingredients / mixtures / recipes)
+- otherSlug: exact slug from the inventory for that collection
+- rationale: 1-2 sentences explaining why they pair well (culinary reason, flavor harmony) — this becomes the pairing description
 - confidence: high / medium / low`;
       },
       outputSchema: pairingsOutputSchema,

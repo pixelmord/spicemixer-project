@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { Loader2, Save, Trash2, Link2, Sparkles, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
 import { cn } from "@/lib/utils.ts";
 import type { EntityOption } from "./EntityCombobox.tsx";
 import EntityCombobox from "./EntityCombobox.tsx";
@@ -27,10 +26,11 @@ function resolveDescription(
   return { text: first ?? "", isFallback: !!first };
 }
 
-interface PairingProposal {
-  slug: string;
-  description: string;
-  confidence: string;
+export interface PairingProposal {
+  otherCollection: "ingredients" | "mixtures" | "recipes";
+  otherSlug: string;
+  rationale: string;
+  traceId?: string;
 }
 
 interface Props {
@@ -40,7 +40,7 @@ interface Props {
   pendingProposals: PairingProposal[];
   ingredientOptions: EntityOption[];
   onPairingsChange: (pairings: Pairing[]) => void;
-  onDismissProposal: (slug: string) => void;
+  onDismissProposal: (otherSlug: string) => void;
   onApplyProposal: (p: PairingProposal) => void;
 }
 
@@ -154,29 +154,30 @@ export default function PairingEditor({
   }
 
   async function handleAcceptProposal(p: PairingProposal) {
-    const id = [currentSlug, p.slug].sort().join("--");
+    const id = [currentSlug, p.otherSlug].sort().join("--");
     if (pairings.some((x) => x.id === id)) {
       toast.info("Pairing already exists");
-      onDismissProposal(p.slug);
+      onDismissProposal(p.otherSlug);
       return;
     }
     setSaving(id);
     try {
       await actions.savePairing({
         id,
-        ingredients: [
+        endpoints: [
           { collection: "ingredients" as const, slug: currentSlug },
-          { collection: "ingredients" as const, slug: p.slug },
+          { collection: p.otherCollection, slug: p.otherSlug },
         ],
-        description: p.description,
+        description: p.rationale,
         locale,
+        traceId: p.traceId,
       });
       onPairingsChange([
         ...pairings,
         {
           id,
-          ingredients: [currentSlug, p.slug].sort() as [string, string],
-          descriptions: { [locale]: p.description },
+          ingredients: [currentSlug, p.otherSlug].sort() as [string, string],
+          descriptions: { [locale]: p.rationale },
         },
       ]);
       onApplyProposal(p);
@@ -196,28 +197,20 @@ export default function PairingEditor({
             {pendingProposals.length} pairing suggestion{pendingProposals.length !== 1 ? "s" : ""}
           </p>
           {pendingProposals.map((p) => (
-            <div key={p.slug} className="flex items-start gap-2 text-xs">
+            <div key={p.otherSlug} className="flex items-start gap-2 text-xs">
               <div className="flex-1 min-w-0">
-                <span className="font-medium">{getOtherName(p.slug)}</span>
-                <p className="text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
-              </div>
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-[10px] shrink-0",
-                  {
-                    high: "text-emerald-600 border-emerald-200",
-                    medium: "text-amber-600 border-amber-200",
-                    low: "text-muted-foreground",
-                  }[p.confidence] ?? "text-muted-foreground",
+                <span className="font-medium">{getOtherName(p.otherSlug)}</span>
+                {p.otherCollection !== "ingredients" && (
+                  <span className="ml-1 text-[10px] text-muted-foreground">
+                    ({p.otherCollection})
+                  </span>
                 )}
-              >
-                {p.confidence}
-              </Badge>
+                <p className="text-muted-foreground mt-0.5 line-clamp-2">{p.rationale}</p>
+              </div>
               <button
                 type="button"
                 onClick={() => handleAcceptProposal(p)}
-                disabled={saving === [currentSlug, p.slug].sort().join("--")}
+                disabled={saving === [currentSlug, p.otherSlug].sort().join("--")}
                 className="shrink-0 text-emerald-500 hover:text-emerald-700"
                 title="Accept"
               >
@@ -225,7 +218,7 @@ export default function PairingEditor({
               </button>
               <button
                 type="button"
-                onClick={() => onDismissProposal(p.slug)}
+                onClick={() => onDismissProposal(p.otherSlug)}
                 className="shrink-0 text-muted-foreground hover:text-foreground"
                 title="Dismiss"
               >

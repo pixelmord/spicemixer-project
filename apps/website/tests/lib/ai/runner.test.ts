@@ -367,7 +367,14 @@ describe("runAiRefresh ingredient: auto-apply pairings", () => {
           "pairings",
           {
             kind: "single" as const,
-            value: [{ slug: "cumin", description: "Fragrant pair", confidence: "high" as const }],
+            value: [
+              {
+                otherCollection: "ingredients",
+                otherSlug: "cumin",
+                rationale: "Fragrant pair",
+                confidence: "high" as const,
+              },
+            ],
             confidence: "high" as const,
             summary: "pairings: [1 items]",
             hash: "def456",
