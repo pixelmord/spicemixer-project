@@ -1,4 +1,4 @@
-import type { MetaSidecar, SyncCollection } from "./meta-sidecar.ts";
+import type { MetaSidecar } from "./meta-sidecar.ts";
 
 export type VariantsCollection = "recipes" | "mixtures";
 
@@ -45,12 +45,11 @@ export async function applyVariantsClosure(
   entitySlug: string,
   newVariants: string[],
 ): Promise<string[]> {
-  const all = await sidecar.listSync(collection as SyncCollection);
+  const all = await sidecar.listSync(collection);
   const allEntries = parseCollectionMetas(collection, all);
   const canonicalEntries = allEntries.filter((e) => !e.data["translationOf"]);
 
   if (newVariants.length === 0) {
-    // Unlink: strip entitySlug from every other canonical member's variants.
     for (const entry of canonicalEntries) {
       if (entry.slug === entitySlug) continue;
       const variants = slugVariants(entry);
@@ -63,14 +62,11 @@ export async function applyVariantsClosure(
     return [];
   }
 
-  // Build a lookup map from slug to canonical entry (first canonical wins).
   const bySlug = new Map<string, MetaEntry>();
   for (const entry of canonicalEntries) {
     if (!bySlug.has(entry.slug)) bySlug.set(entry.slug, entry);
   }
 
-  // Compute transitive closure starting from entitySlug + newVariants.
-  // Only include slugs that have a canonical meta in the store.
   const knownVariants = newVariants.filter((s) => bySlug.has(s));
   const group = new Set<string>([entitySlug, ...knownVariants]);
   const worklist = [...knownVariants];
@@ -86,8 +82,7 @@ export async function applyVariantsClosure(
     }
   }
 
-  // Write unified list to every member except the entity being saved
-  // (its own meta is written by the caller via saveEntity).
+  // Caller writes the saved entity's own meta, so skip it here.
   const listFor = (slug: string) =>
     Array.from(group)
       .filter((s) => s !== slug)

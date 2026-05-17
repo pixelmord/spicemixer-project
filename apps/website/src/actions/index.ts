@@ -354,7 +354,6 @@ export const server = {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
 
-      // Apply variants closure for canonical recipe/mixture saves.
       // Translation metas (translationOf is set) never carry variants.
       let effectiveMeta = meta;
       if (meta !== undefined && Array.isArray(meta["variants"]) && !meta["translationOf"]) {
