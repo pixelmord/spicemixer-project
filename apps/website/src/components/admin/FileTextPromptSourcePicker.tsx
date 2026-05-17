@@ -50,35 +50,33 @@ export function FileTextPromptSourcePicker({
     onChange(null);
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] ?? null;
+  function acceptFile(f: File | null) {
     if (f && !ACCEPTED_TYPES.includes(f.type)) {
       toast.error("Unsupported file type. Use PDF, image, or a .md/.txt text file.");
       return;
     }
     setFile(f);
     onChange(f ? { kind: "file", file: f, mimeType: f.type } : null);
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    acceptFile(e.target.files?.[0] ?? null);
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
-    const f = e.dataTransfer.files[0] ?? null;
-    if (f && !ACCEPTED_TYPES.includes(f.type)) {
-      toast.error("Unsupported file type. Use PDF, image, or a .md/.txt text file.");
-      return;
-    }
-    setFile(f);
-    onChange(f ? { kind: "file", file: f, mimeType: f.type } : null);
+    acceptFile(e.dataTransfer.files[0] ?? null);
   }
 
-  const isText = file?.type === "text/plain" || file?.type === "text/markdown";
-  const fileIcon = file ? (
-    file.type === "application/pdf" || isText ? (
-      <FileText size={16} className="text-muted-foreground" />
-    ) : (
-      <Image size={16} className="text-muted-foreground" />
-    )
-  ) : null;
+  function fileIcon() {
+    if (!file) return null;
+    const isDocument =
+      file.type === "application/pdf" ||
+      file.type === "text/plain" ||
+      file.type === "text/markdown";
+    const Icon = isDocument ? FileText : Image;
+    return <Icon size={16} className="text-muted-foreground" />;
+  }
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -111,7 +109,7 @@ export function FileTextPromptSourcePicker({
           >
             {file ? (
               <div className="flex items-center justify-center gap-2">
-                {fileIcon}
+                {fileIcon()}
                 <span className="text-sm font-medium">{file.name}</span>
                 <Badge variant="secondary">{(file.size / 1024).toFixed(0)} KB</Badge>
               </div>

@@ -60,17 +60,21 @@ function IngestDialogContent({
   const [isRunning, setIsRunning] = useState(false);
 
   const running = isRunning || (flow?.isRunning ?? false);
+  const hasReviewPhase = onReviewBack !== undefined || reviewChildren !== undefined;
 
   async function handleGenerate() {
     if (!source) return;
     setIsRunning(true);
     try {
       await onRun(source);
-      if (reviewChildren !== undefined) {
+      if (hasReviewPhase) {
         setPhase("review");
       } else {
         onOpenChange(false);
       }
+    } catch {
+      // Consumer is responsible for error reporting (e.g. toast);
+      // stay on source phase so the user can retry.
     } finally {
       setIsRunning(false);
     }

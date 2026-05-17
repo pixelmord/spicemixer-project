@@ -65,40 +65,45 @@ export default function EnhanceModal(props: Props) {
   }
 
   async function handleRun(source: SourceShape) {
-    if (props.kind === "recipe") {
-      const formData = new FormData();
-      formData.append("existing", JSON.stringify(existing));
-      appendSource(formData, source);
-      const { data, error } = await actions.aiMergeRecipe(formData);
-      if (error || !data) throw new Error(error?.message ?? "Merge failed");
-      setProposed(data.recipe as Record<string, unknown>);
-      setWarnings(data.warnings);
-      setMergeModel(data.model ?? null);
-    } else if (props.kind === "ingredient") {
-      const formData = new FormData();
-      formData.append("existing", JSON.stringify(existing));
-      appendSource(formData, source);
-      const { data, error } = await actions.aiMergeIngredient(formData);
-      if (error || !data) throw new Error(error?.message ?? "Merge failed");
-      setProposed(data.ingredient as Record<string, unknown>);
-      setWarnings(data.warnings);
-      setMergeModel(data.model ?? null);
-    } else {
-      const descriptions = (existing["descriptions"] as Record<string, string>) ?? {};
-      const currentDesc =
-        descriptions[props.locale] ??
-        descriptions["en"] ??
-        (typeof existing["description"] === "string" ? existing["description"] : "");
-      const formData = new FormData();
-      formData.append("existing", JSON.stringify({ ...existing, description: currentDesc }));
-      formData.append("locale", props.locale);
-      appendSource(formData, source);
-      const { data, error } = await actions.aiMergePairing(formData);
-      if (error || !data) throw new Error(error?.message ?? "Merge failed");
-      const proposedDescriptions = { ...descriptions, [props.locale]: data.pairing.description };
-      setProposed({ ...existing, descriptions: proposedDescriptions });
-      setWarnings(data.warnings);
-      setMergeModel(data.model ?? null);
+    try {
+      if (props.kind === "recipe") {
+        const formData = new FormData();
+        formData.append("existing", JSON.stringify(existing));
+        appendSource(formData, source);
+        const { data, error } = await actions.aiMergeRecipe(formData);
+        if (error || !data) throw new Error(error?.message ?? "Merge failed");
+        setProposed(data.recipe as Record<string, unknown>);
+        setWarnings(data.warnings);
+        setMergeModel(data.model ?? null);
+      } else if (props.kind === "ingredient") {
+        const formData = new FormData();
+        formData.append("existing", JSON.stringify(existing));
+        appendSource(formData, source);
+        const { data, error } = await actions.aiMergeIngredient(formData);
+        if (error || !data) throw new Error(error?.message ?? "Merge failed");
+        setProposed(data.ingredient as Record<string, unknown>);
+        setWarnings(data.warnings);
+        setMergeModel(data.model ?? null);
+      } else {
+        const descriptions = (existing["descriptions"] as Record<string, string>) ?? {};
+        const currentDesc =
+          descriptions[props.locale] ??
+          descriptions["en"] ??
+          (typeof existing["description"] === "string" ? existing["description"] : "");
+        const formData = new FormData();
+        formData.append("existing", JSON.stringify({ ...existing, description: currentDesc }));
+        formData.append("locale", props.locale);
+        appendSource(formData, source);
+        const { data, error } = await actions.aiMergePairing(formData);
+        if (error || !data) throw new Error(error?.message ?? "Merge failed");
+        const proposedDescriptions = { ...descriptions, [props.locale]: data.pairing.description };
+        setProposed({ ...existing, descriptions: proposedDescriptions });
+        setWarnings(data.warnings);
+        setMergeModel(data.model ?? null);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+      throw e;
     }
   }
 
