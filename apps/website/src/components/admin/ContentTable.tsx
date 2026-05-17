@@ -70,6 +70,12 @@ function editHref(row: ContentRow) {
     return `/admin/ingredients/${slug}/edit?locale=${locale}`;
   }
   if (row.type === "pairing") {
+    const slashIdx = row.id.indexOf("/");
+    if (slashIdx !== -1) {
+      const locale = row.id.slice(0, slashIdx);
+      const slug = row.id.slice(slashIdx + 1);
+      return `/admin/pairings/${encodeURIComponent(slug)}/edit?locale=${locale}`;
+    }
     return `/admin/pairings/${encodeURIComponent(row.id)}/edit`;
   }
   const slashIdx = row.id.indexOf("/");
@@ -129,7 +135,10 @@ export default function ContentTable({ initialRows }: { initialRows: ContentRow[
     if (row.type === "ingredient") return;
 
     if (row.type === "pairing") {
-      const { error } = await actions.togglePairingDraft({ id: row.id, draft: !row.draft });
+      const slashIdx = row.id.indexOf("/");
+      const locale = slashIdx !== -1 ? row.id.slice(0, slashIdx) : "en";
+      const slug = slashIdx !== -1 ? row.id.slice(slashIdx + 1) : row.id;
+      const { error } = await actions.togglePairingDraft({ id: slug, locale, draft: !row.draft });
       if (error) {
         toast.error("Failed to update status");
         return;
@@ -164,7 +173,10 @@ export default function ContentTable({ initialRows }: { initialRows: ContentRow[
     if (!confirm(`Delete "${row.name}"? This cannot be undone.`)) return;
 
     if (row.type === "pairing") {
-      const { error } = await actions.deletePairing({ id: row.id });
+      const slashIdx = row.id.indexOf("/");
+      const locale = slashIdx !== -1 ? row.id.slice(0, slashIdx) : "en";
+      const slug = slashIdx !== -1 ? row.id.slice(slashIdx + 1) : row.id;
+      const { error } = await actions.deletePairing({ id: slug, locale });
       if (error) {
         toast.error("Delete failed");
         return;
