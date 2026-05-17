@@ -214,7 +214,10 @@ export async function getPublishedPairings(locale?: string): Promise<PublishedPa
       const pLocale = p.id.slice(0, slash);
       const slug = p.id.slice(slash + 1);
       const [a, b] = p.data.endpoints;
-      const regions = regionsForPairing(regionsBySlug.get(a.slug), regionsBySlug.get(b.slug));
+      const regions = regionsForPairing(
+        a.collection === "ingredients" ? regionsBySlug.get(a.slug) : undefined,
+        b.collection === "ingredients" ? regionsBySlug.get(b.slug) : undefined,
+      );
       const meta = metaById.get(p.id);
       const canonicalLocale = meta?.canonicalLocale ?? pLocale;
       return {
@@ -244,7 +247,6 @@ export async function getPairings(slug: string, locale = "en"): Promise<PairingE
 
   const matching = all.filter((e) => e.data.endpoints.some((ep) => ep.slug === slug));
 
-  // Group by pairing slug (strip locale prefix)
   const groups = new Map<string, Array<{ id: string; data: PairingData }>>();
   for (const entry of matching) {
     const pairingSlug = slugFromLocaleId(entry.id);

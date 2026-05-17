@@ -208,7 +208,7 @@ const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().
                 {t("section.pairings")}
               </h2>
               <ul class="space-y-3">
-                {pairingsResolved.map(({ slug: pairSlug, name, description, isFallback: pairingFallback }) => (
+                {pairingsResolved.map(({ slug: pairSlug, name, description }) => (
                   <li class="rounded-xl bg-white p-4 ring-1 ring-stone-200">
                     <a
                       href={`${prefix}/ingredients/${pairSlug}/`}
@@ -217,10 +217,7 @@ const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().
                       {name}
                     </a>
                     {description && (
-                      <p class={`mt-1 text-sm ${pairingFallback ? "text-stone-400 italic" : "text-stone-600"}`}>
-                        {description}
-                        {pairingFallback && <span class="ml-1 text-xs not-italic">(EN)</span>}
-                      </p>
+                      <p class="mt-1 text-sm text-stone-600">{description}</p>
                     )}
                   </li>
                 ))}
