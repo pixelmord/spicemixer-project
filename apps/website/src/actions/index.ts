@@ -1332,6 +1332,23 @@ export const server = {
         ref: { collection: "pairings", locale: targetLocale, slug: id },
         content: pairingData,
       });
+
+      const sourceRef = { collection: "pairings" as const, locale: sourceLocale, slug: id };
+      const sourceMeta = await entityMeta.read(sidecar, sourceRef);
+      const canonicalLocale = sourceMeta.canonicalLocale ?? sourceLocale;
+      await entityMeta.merge(
+        sidecar,
+        { collection: "pairings", locale: targetLocale, slug: id },
+        {
+          canonicalLocale,
+          translationOf: id,
+          draft: false,
+        },
+      );
+      await entityMeta.merge(sidecar, sourceRef, {
+        translations: { ...sourceMeta.translations, [targetLocale]: `${targetLocale}/${id}` },
+      });
+
       return { ok: true, description };
     }),
   }),

@@ -402,3 +402,169 @@ describe("per-locale aiEvents isolation", () => {
     expect(deEvents).toHaveLength(2);
   });
 });
+
+describe("per-locale aiEvents isolation for pairings", () => {
+  test("appending accepted event to de/pairing does not appear in en/pairing event log", async () => {
+    const { store, eventLog } = makeEnv();
+    const id = "cardamom--saffron";
+    const ep1 = { collection: "ingredients", slug: "cardamom" };
+    const ep2 = { collection: "ingredients", slug: "saffron" };
+
+    await store.put("pairings", `en/${id}`, { endpoints: [ep1, ep2], description: "EN" });
+    await store.put("pairings", `de/${id}`, { endpoints: [ep1, ep2], description: "DE" });
+
+    const enRef = { collection: "pairings" as const, locale: "en" as const, slug: id };
+    const deRef = { collection: "pairings" as const, locale: "de" as const, slug: id };
+
+    const deEvent = {
+      type: "accepted" as const,
+      at: new Date().toISOString(),
+      model: "gpt-4o-mini",
+      field: "description",
+      suggestion: { hash: "de-accepted-hash", summary: "DE description accepted" },
+      traceId: "de-trace-1",
+    };
+
+    await eventLog.append(deRef, deEvent);
+
+    const enEvents = await eventLog.read(enRef);
+    const deEvents = await eventLog.read(deRef);
+
+    expect(enEvents).toHaveLength(0);
+    expect(deEvents).toHaveLength(1);
+    expect(deEvents[0]!.suggestion.hash).toBe("de-accepted-hash");
+  });
+
+  test("appending to de/pairing does not increment en/pairing event count", async () => {
+    const { store, eventLog } = makeEnv();
+    const id = "cumin--turmeric";
+    const ep1 = { collection: "ingredients", slug: "cumin" };
+    const ep2 = { collection: "ingredients", slug: "turmeric" };
+
+    await store.put("pairings", `en/${id}`, { endpoints: [ep1, ep2], description: "EN" });
+    await store.put("pairings", `de/${id}`, { endpoints: [ep1, ep2], description: "DE" });
+
+    const enRef = { collection: "pairings" as const, locale: "en" as const, slug: id };
+    const deRef = { collection: "pairings" as const, locale: "de" as const, slug: id };
+
+    const makeEvent = (hash: string) => ({
+      type: "ingested" as const,
+      at: new Date().toISOString(),
+      model: "gpt-4o-mini",
+      suggestion: { hash, summary: `event ${hash}` },
+    });
+
+    await eventLog.append(enRef, makeEvent("en-1"));
+    await eventLog.append(deRef, makeEvent("de-1"));
+    await eventLog.append(deRef, makeEvent("de-2"));
+
+    const enEvents = await eventLog.read(enRef);
+    const deEvents = await eventLog.read(deRef);
+
+    expect(enEvents).toHaveLength(1);
+    expect(deEvents).toHaveLength(2);
+  });
+});
+
+describe("aiTranslatePairing: meta sidecar for target locale", () => {
+  test("translation creates pairingMeta with translationOf and canonicalLocale on target locale", async () => {
+    const { store, sidecar } = makeEnv();
+    const id = "cumin--turmeric";
+    const ep1 = { collection: "ingredients", slug: "cumin" };
+    const ep2 = { collection: "ingredients", slug: "turmeric" };
+
+    // Source locale content + meta
+    await store.put("pairings", `en/${id}`, {
+      endpoints: [ep1, ep2],
+      description: "Warming spices.",
+    });
+    await sidecar.write(
+      { collection: "pairings", locale: "en", slug: id },
+      { canonicalLocale: "en" },
+    );
+
+    await store.put("pairings", `de/${id}`, {
+      endpoints: [ep1, ep2],
+      description: "Wärmende Gewürze.",
+    });
+    const sourceMeta = await entityMeta.read(sidecar, {
+      collection: "pairings",
+      locale: "en",
+      slug: id,
+    });
+    const canonicalLocale = sourceMeta.canonicalLocale ?? "en";
+    await entityMeta.merge(
+      sidecar,
+      { collection: "pairings", locale: "de", slug: id },
+      {
+        canonicalLocale,
+        translationOf: id,
+        draft: false,
+      },
+    );
+    await entityMeta.merge(
+      sidecar,
+      { collection: "pairings", locale: "en", slug: id },
+      {
+        translations: { ...sourceMeta.translations, de: `de/${id}` },
+      },
+    );
+
+    const deMeta = await entityMeta.read(sidecar, {
+      collection: "pairings",
+      locale: "de",
+      slug: id,
+    });
+    expect(deMeta.translationOf).toBe(id);
+    expect(deMeta.canonicalLocale).toBe("en");
+    expect(deMeta.draft).toBe(false);
+
+    const enMetaAfter = await entityMeta.read(sidecar, {
+      collection: "pairings",
+      locale: "en",
+      slug: id,
+    });
+    expect((enMetaAfter.translations as Record<string, string>)["de"]).toBe(`de/${id}`);
+  });
+
+  test("target meta translationOf is set even when source has no explicit meta", async () => {
+    const { store, sidecar } = makeEnv();
+    const id = "anise--cardamom";
+    const ep1 = { collection: "ingredients", slug: "anise" };
+    const ep2 = { collection: "ingredients", slug: "cardamom" };
+
+    // Source content with no meta sidecar
+    await store.put("pairings", `en/${id}`, {
+      endpoints: [ep1, ep2],
+      description: "Warm and licorice-y.",
+    });
+
+    await store.put("pairings", `de/${id}`, {
+      endpoints: [ep1, ep2],
+      description: "Warm und lakritzartig.",
+    });
+    const sourceMeta = await entityMeta.read(sidecar, {
+      collection: "pairings",
+      locale: "en",
+      slug: id,
+    });
+    const canonicalLocale = sourceMeta.canonicalLocale ?? "en";
+    await entityMeta.merge(
+      sidecar,
+      { collection: "pairings", locale: "de", slug: id },
+      {
+        canonicalLocale,
+        translationOf: id,
+        draft: false,
+      },
+    );
+
+    const deMeta = await entityMeta.read(sidecar, {
+      collection: "pairings",
+      locale: "de",
+      slug: id,
+    });
+    expect(deMeta.translationOf).toBe(id);
+    expect(deMeta.canonicalLocale).toBe("en");
+  });
+});
