@@ -17,14 +17,16 @@ const locale = Astro.currentLocale as Lang;
 const prefix = locale === "de" ? "/de" : "";
 const t = useTranslations(locale);
 
+type EndpointCollection = "ingredients" | "mixtures" | "recipes";
+
 async function resolveEndpointName(
-  collection: string,
+  collection: EndpointCollection,
   slug: string,
   loc: string,
 ): Promise<string | null> {
   const entry =
-    (await getEntry(collection as "ingredients" | "mixtures" | "recipes", `${loc}/${slug}`)) ??
-    (await getEntry(collection as "ingredients" | "mixtures" | "recipes", `en/${slug}`));
+    (await getEntry(collection, `${loc}/${slug}`)) ??
+    (await getEntry(collection, `en/${slug}`));
   return entry ? (entry.data as { name: string }).name : null;
 }
 

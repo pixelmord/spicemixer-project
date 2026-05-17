@@ -191,10 +191,10 @@ export async function getPublishedPairings(locale?: string): Promise<PublishedPa
     getCollection(PAIRING_META),
   ]);
 
-  type MetaEntry = { id: string; data: { draft?: boolean; canonicalLocale?: string } };
-  const metaById = new Map<string, MetaEntry["data"]>();
+  type PairingMetaEntry = { id: string; data: { draft?: boolean; canonicalLocale?: string } };
+  const metaById = new Map<string, PairingMetaEntry["data"]>();
   const draftIds = new Set<string>();
-  for (const m of rawPairingMeta as MetaEntry[]) {
+  for (const m of rawPairingMeta as PairingMetaEntry[]) {
     metaById.set(m.id, m.data);
     if (m.data.draft === true) draftIds.add(m.id);
   }
@@ -247,8 +247,7 @@ export async function getPairings(slug: string, locale = "en"): Promise<PairingE
   // Group by pairing slug (strip locale prefix)
   const groups = new Map<string, Array<{ id: string; data: PairingData }>>();
   for (const entry of matching) {
-    const slash = entry.id.indexOf("/");
-    const pairingSlug = entry.id.slice(slash + 1);
+    const pairingSlug = slugFromLocaleId(entry.id);
     const bucket = groups.get(pairingSlug) ?? [];
     bucket.push(entry);
     groups.set(pairingSlug, bucket);
@@ -261,10 +260,10 @@ export async function getPairings(slug: string, locale = "en"): Promise<PairingE
       entries.find((e) => e.id.startsWith("en/")) ??
       entries[0];
     if (!chosen) continue;
-    const slash = chosen.id.indexOf("/");
+    const chosenLocale = chosen.id.slice(0, chosen.id.indexOf("/"));
     result.push({
       id: pairingSlug,
-      locale: chosen.id.slice(0, slash),
+      locale: chosenLocale,
       endpoints: chosen.data.endpoints,
       description: chosen.data.description,
     });

@@ -1,5 +1,4 @@
-import { getPublishedPairings } from "../recipe-augment.ts";
-import type { PublishedPairing } from "../recipe-augment.ts";
+import { getPublishedPairings, type PublishedPairing } from "../recipe-augment.ts";
 
 export async function pairingSlugPaths(locale: string) {
   const allPairings = await getPublishedPairings();
