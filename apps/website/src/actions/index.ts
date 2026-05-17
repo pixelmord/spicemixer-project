@@ -28,6 +28,7 @@ import {
   savePairingMeta as libSavePairingMeta,
 } from "@/lib/pairings.ts";
 import { saveEntity as libSaveEntity } from "@/lib/save-entity.ts";
+import { applyVariantsClosure } from "@/lib/variants-closure.ts";
 import { NotFoundError } from "@/lib/errors.ts";
 import { AiError, withOrigin, entityMeta, SidecarEventLog, hashSuggestion } from "content-ai";
 import { createSourceStore } from "@/lib/stores/source-store.ts";
@@ -352,10 +353,24 @@ export const server = {
     handler: async ({ collection, slug, locale, recipe, meta, aiMergeModel, traceId }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
+
+      // Apply variants closure for canonical recipe/mixture saves.
+      // Translation metas (translationOf is set) never carry variants.
+      let effectiveMeta = meta;
+      if (meta !== undefined && Array.isArray(meta["variants"]) && !meta["translationOf"]) {
+        const unifiedVariants = await applyVariantsClosure(
+          sidecar,
+          collection,
+          slug,
+          meta["variants"] as string[],
+        );
+        effectiveMeta = { ...meta, variants: unifiedVariants };
+      }
+
       await libSaveEntity(store, sidecar, {
         ref: { collection, locale, slug },
         content: recipe,
-        meta,
+        meta: effectiveMeta,
       });
       if (aiMergeModel) {
         const eventLog = new SidecarEventLog(sidecar);
