@@ -255,6 +255,43 @@
       ]
     },
     {
+      "name": "suggestions-options",
+      "type": "registry:block",
+      "title": "SuggestionsOptions",
+      "description": "Options panel composing PresetPicker, UserPromptField, and WritePolicyPicker with a Run button. Reads run state from SuggestionFlowProvider context.",
+      "registryDependencies": [
+        "use-ai-suggestions",
+        "suggestion-flow-provider",
+        "preset-picker",
+        "user-prompt-field",
+        "write-policy-picker"
+      ],
+      "files": [
+        {
+          "path": "components/ui/suggestions-options.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "ai-suggestions-indicator",
+      "type": "registry:block",
+      "title": "AiSuggestionsIndicator",
+      "description": "Small widget showing idle / running / has-suggestions / mixed-auto-applied-with-review states with a counter (N auto-applied · M to review) and an Options affordance that opens SuggestionsOptions.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "use-ai-suggestions",
+        "suggestion-flow-provider",
+        "suggestions-options"
+      ],
+      "files": [
+        {
+          "path": "components/ui/ai-suggestions-indicator.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
       "name": "inline-field-suggestion",
       "type": "registry:block",
       "title": "InlineFieldSuggestion",
