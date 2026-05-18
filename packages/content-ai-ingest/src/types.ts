@@ -1,6 +1,6 @@
 import type { ZodSchema, z } from "zod";
 import type { ModelMessage } from "ai";
-import type { SourceDescriptor } from "@pixelmord/content-ai-core";
+import type { SourceDescriptor, TraceSink } from "@pixelmord/content-ai-core";
 
 // ── AiConfig ─────────────────────────────────────────────────────────────────
 
@@ -123,6 +123,7 @@ export interface RunFillParams<S extends ZodSchema, Source> {
   contract: IngestContract<S, Source>;
   sourceContext: Source;
   config: AiConfig;
+  sinks?: TraceSink[];
   currentData?: Record<string, unknown>;
   preset?: string;
   userPrompt?: string;

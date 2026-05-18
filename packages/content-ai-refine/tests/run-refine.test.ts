@@ -14,6 +14,7 @@ vi.mock("../src/provider.ts", () => ({
 
 const { generateText } = await import("ai");
 const { runRefine } = await import("../src/run-refine.ts");
+const { createProvider } = await import("../src/provider.ts");
 
 const MOCK_CONFIG = { baseUrl: "http://localhost", apiKey: "test", model: "gpt-4o-mini" };
 
@@ -562,5 +563,37 @@ describe("structural prohibition — sibling-locale source", () => {
         config: MOCK_CONFIG,
       }),
     ).resolves.toBeDefined();
+  });
+});
+
+// ── Sinks threading ───────────────────────────────────────────────────────────
+
+describe("runRefine — sinks threading", () => {
+  test("passes sinks to createProvider when provided in params", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { value: "A summary" } } as never);
+    const sink = { emit: vi.fn() };
+
+    await runRefine({
+      contract: baseContract,
+      currentData: { name: "Cumin" },
+      target: "summary",
+      config: MOCK_CONFIG,
+      sinks: [sink],
+    });
+
+    expect(vi.mocked(createProvider)).toHaveBeenCalledWith(MOCK_CONFIG, { sinks: [sink] });
+  });
+
+  test("passes undefined for options when no sinks provided", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { value: "A summary" } } as never);
+
+    await runRefine({
+      contract: baseContract,
+      currentData: { name: "Cumin" },
+      target: "summary",
+      config: MOCK_CONFIG,
+    });
+
+    expect(vi.mocked(createProvider)).toHaveBeenCalledWith(MOCK_CONFIG, undefined);
   });
 });

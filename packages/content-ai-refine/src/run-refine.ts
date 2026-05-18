@@ -97,6 +97,7 @@ export async function runRefine<S extends ZodSchema, Source = never>(
     preset,
     userPrompt,
     config,
+    sinks,
     events = [],
   } = params;
 
@@ -154,7 +155,7 @@ export async function runRefine<S extends ZodSchema, Source = never>(
       const start = Date.now();
 
       try {
-        const model = createProvider(config);
+        const model = createProvider(config, sinks?.length ? { sinks } : undefined);
         const wrappedSchema = z.object({ value: outputSchema });
 
         const { output } = await generateText({

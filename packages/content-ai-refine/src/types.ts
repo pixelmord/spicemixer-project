@@ -1,4 +1,5 @@
 import type { ZodSchema, z } from "zod";
+import type { TraceSink } from "@pixelmord/content-ai-core";
 import type { AiConfig } from "./provider.ts";
 
 // ── Re-export core types inline to avoid dist dependency ─────────────────────
@@ -116,6 +117,7 @@ export interface RunRefineParams<S extends ZodSchema, Source = never> {
   preset?: string;
   userPrompt?: string;
   config: AiConfig;
+  sinks?: TraceSink[];
   events?: AiEvent[];
 }
 

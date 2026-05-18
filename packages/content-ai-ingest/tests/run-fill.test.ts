@@ -14,6 +14,7 @@ vi.mock("../src/provider.ts", () => ({
 
 const { generateText } = await import("ai");
 const { runFill } = await import("../src/run-fill.ts");
+const { createProvider } = await import("../src/provider.ts");
 
 const MOCK_CONFIG = { baseUrl: "http://localhost", apiKey: "test", model: "gpt-test" };
 
@@ -675,5 +676,35 @@ describe("runFill — sibling-locale source", () => {
     });
 
     expect(result.traces.size).toBe(1);
+  });
+});
+
+// ── Sinks threading ───────────────────────────────────────────────────────────
+
+describe("runFill — sinks threading", () => {
+  test("passes sinks to createProvider when provided in params", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: FIXTURE_OUTPUT } as never);
+    const sink = { emit: vi.fn() };
+
+    await runFill({
+      contract: makeContract(),
+      sourceContext: { kind: "text", content: "Basil is an herb." } as TestSource,
+      config: MOCK_CONFIG,
+      sinks: [sink],
+    });
+
+    expect(vi.mocked(createProvider)).toHaveBeenCalledWith(MOCK_CONFIG, { sinks: [sink] });
+  });
+
+  test("passes undefined for options when no sinks provided", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: FIXTURE_OUTPUT } as never);
+
+    await runFill({
+      contract: makeContract(),
+      sourceContext: { kind: "text", content: "Basil is an herb." } as TestSource,
+      config: MOCK_CONFIG,
+    });
+
+    expect(vi.mocked(createProvider)).toHaveBeenCalledWith(MOCK_CONFIG, undefined);
   });
 });

@@ -1,14 +1,21 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createMockLanguageModel } from "@pixelmord/content-ai-core/testing";
+import { tracingMiddleware, type TraceSink } from "@pixelmord/content-ai-core";
+import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type { LanguageModel } from "ai";
+import { wrapLanguageModel } from "ai";
 import type { AiConfig } from "./types.ts";
 
 export const PROVIDER_OPTIONS = {
   openai: { strictJsonSchema: false },
 } as const;
 
-export function createProvider(config: AiConfig): LanguageModel {
-  if (process.env["AI_PROVIDER"] === "mock") return createMockLanguageModel();
+export function createProvider(config: AiConfig, options?: { sinks?: TraceSink[] }): LanguageModel {
+  const sinks = options?.sinks;
+  const wrap = (model: LanguageModelV3): LanguageModel =>
+    sinks?.length ? wrapLanguageModel({ model, middleware: tracingMiddleware(sinks) }) : model;
+
+  if (process.env["AI_PROVIDER"] === "mock") return wrap(createMockLanguageModel());
   const openai = createOpenAI({ baseURL: config.baseUrl, apiKey: config.apiKey });
-  return openai(config.model);
+  return wrap(openai(config.model));
 }

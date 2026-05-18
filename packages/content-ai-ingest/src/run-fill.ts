@@ -1,5 +1,6 @@
 import { generateText, Output } from "ai";
 import type { ZodSchema } from "zod";
+import type { TraceSink } from "@pixelmord/content-ai-core";
 import { hashSuggestion } from "./hash.ts";
 import { createProvider, PROVIDER_OPTIONS } from "./provider.ts";
 import type {
@@ -78,8 +79,9 @@ async function callLlm(
   config: AiConfig,
   messageSet: MessageSet,
   userPrompt?: string,
+  sinks?: TraceSink[],
 ): Promise<Record<string, unknown>> {
-  const model = createProvider(config);
+  const model = createProvider(config, sinks?.length ? { sinks } : undefined);
   const effectivePrompt = userPrompt
     ? `${messageSet.prompt ?? ""}\n\nAdditional instructions: ${userPrompt}`.trim()
     : messageSet.prompt;
@@ -152,6 +154,7 @@ export async function runFill<S extends ZodSchema, Source>(
         config,
         { messages, prompt },
         userPrompt,
+        params.sinks,
       );
 
       for (const field of llmFields) {
@@ -221,6 +224,7 @@ export async function runFill<S extends ZodSchema, Source>(
     config,
     { messages, prompt },
     userPrompt,
+    params.sinks,
   );
 
   const runtimeMs = Date.now() - start;
