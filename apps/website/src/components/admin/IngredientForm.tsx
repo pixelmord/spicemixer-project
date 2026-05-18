@@ -668,30 +668,30 @@ export default function IngredientForm({
   function handleApplyEnhancement() {
     if (!ingestProposed) return;
     const p = ingestProposed as Partial<IngredientData>;
-    if (p.name !== undefined) form.setFieldValue("name" as never, p.name as never);
-    if (p.summary !== undefined) form.setFieldValue("summary" as never, (p.summary ?? "") as never);
-    if (p.description !== undefined)
-      form.setFieldValue("description" as never, (p.description ?? "") as never);
-    if (p.culinaryUse !== undefined)
-      form.setFieldValue("culinaryUse" as never, (p.culinaryUse ?? "") as never);
-    if (p.medicinalUses !== undefined)
-      form.setFieldValue("medicinalUses" as never, (p.medicinalUses ?? "") as never);
-    if (p.healthBenefits !== undefined)
-      form.setFieldValue("healthBenefits" as never, (p.healthBenefits ?? "") as never);
-    if (p.safetyNotes !== undefined)
-      form.setFieldValue("safetyNotes" as never, (p.safetyNotes ?? "") as never);
-    if (p.history !== undefined) form.setFieldValue("history" as never, (p.history ?? "") as never);
-    if (p.storage !== undefined) form.setFieldValue("storage" as never, (p.storage ?? "") as never);
-    if (p.sourcing !== undefined)
-      form.setFieldValue("sourcing" as never, (p.sourcing ?? "") as never);
+
+    const textFields = [
+      "name",
+      "summary",
+      "description",
+      "culinaryUse",
+      "medicinalUses",
+      "healthBenefits",
+      "safetyNotes",
+      "history",
+      "storage",
+      "sourcing",
+      "botanicalName",
+      "family",
+      "seasonality",
+    ] as const;
+    for (const key of textFields) {
+      if (p[key] !== undefined) {
+        form.setFieldValue(key as never, (p[key] ?? "") as never);
+      }
+    }
+    if (p.category !== undefined) form.setFieldValue("category" as never, p.category as never);
     if (p.images?.[0] !== undefined)
       form.setFieldValue("image" as never, (p.images[0] ?? "") as never);
-    if (p.category !== undefined) form.setFieldValue("category" as never, p.category as never);
-    if (p.botanicalName !== undefined)
-      form.setFieldValue("botanicalName" as never, (p.botanicalName ?? "") as never);
-    if (p.family !== undefined) form.setFieldValue("family" as never, (p.family ?? "") as never);
-    if (p.seasonality !== undefined)
-      form.setFieldValue("seasonality" as never, (p.seasonality ?? "") as never);
     if (p.origin !== undefined) setOrigins(p.origin);
     if (p.flavorNotes !== undefined) setFlavorNotes(p.flavorNotes);
     if (p.commonNames !== undefined) setCommonNames(p.commonNames);
