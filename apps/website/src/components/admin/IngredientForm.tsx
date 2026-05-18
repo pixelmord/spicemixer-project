@@ -1445,8 +1445,6 @@ export default function IngredientForm({
                     result={completeness}
                     requiredFields={requiredFields}
                     recommendedFields={recommendedFields}
-                    aiRefreshing={aiFlow.isRunning}
-                    onRefreshSuggestions={!isNew ? handleManualRefresh : undefined}
                   />
                   {!isNew && (
                     <AiAssistPanel

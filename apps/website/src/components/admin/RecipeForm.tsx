@@ -2158,12 +2158,6 @@ export default function RecipeForm({
                 requiredFields={requiredFields}
                 recommendedFields={recommendedFields}
                 bonusFields={bonusFields}
-                aiSuggestions={visibleImprovements}
-                aiRefreshing={aiRefreshing}
-                activeProposers={activeProposers}
-                onRefreshSuggestions={!isNew ? handleManualRefresh : undefined}
-                onApplySuggestion={handleApplySuggestion}
-                onDismissSuggestion={handleDismissSuggestion}
               />
             </aside>
           </div>
