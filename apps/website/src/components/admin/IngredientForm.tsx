@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, Loader2, Languages } from "lucide-react";
+import { ArrowLeft, Sparkles, Loader2, Languages, Check } from "lucide-react";
 import LinkButton from "@/components/admin/LinkButton.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
@@ -36,10 +36,13 @@ import CompletenessPanel from "./CompletenessPanel.tsx";
 import RecommendedHint from "./RecommendedHint.tsx";
 import QuickCreateDialog from "./QuickCreateDialog.tsx";
 import TranslationCompanion, { FieldWithTranslation } from "./TranslationCompanion.tsx";
-import EnhanceModal from "./EnhanceModal.tsx";
+import { IngestDialog } from "./IngestDialog.tsx";
+import IngredientDiff from "./IngredientDiff.tsx";
+import { Button } from "@/components/ui/button.tsx";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog.tsx";
 import { TranslateEntityDialog } from "./TranslateEntityDialog.tsx";
 import AiAssistPanel from "./AiAssistPanel.tsx";
-import { Dialog, DialogContent } from "@/components/ui/dialog.tsx";
+import { useIngestAction } from "@/lib/ai/use-ingest-action.ts";
 import { CreatePairingDialog, type PairingAiSuggestion } from "./CreatePairingDialog.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
@@ -648,6 +651,57 @@ export default function IngredientForm({
       parts: parts.length > 0 ? parts : undefined,
       flavorProfile: flavorProfile.length > 0 ? flavorProfile : undefined,
     };
+  }
+
+  const {
+    onRun: onIngestRun,
+    proposed: ingestProposed,
+    warnings: ingestWarnings,
+    clearProposed: clearIngestProposed,
+  } = useIngestAction({
+    kind: "ingredient",
+    slug: slug ?? "",
+    locale,
+    existing: buildIngredientSnapshot(),
+  });
+
+  function handleApplyEnhancement() {
+    if (!ingestProposed) return;
+    const p = ingestProposed as Partial<IngredientData>;
+
+    const textFields = [
+      "name",
+      "summary",
+      "description",
+      "culinaryUse",
+      "medicinalUses",
+      "healthBenefits",
+      "safetyNotes",
+      "history",
+      "storage",
+      "sourcing",
+      "botanicalName",
+      "family",
+      "seasonality",
+    ] as const;
+    for (const key of textFields) {
+      if (p[key] !== undefined) {
+        form.setFieldValue(key as never, (p[key] ?? "") as never);
+      }
+    }
+    if (p.category !== undefined) form.setFieldValue("category" as never, p.category as never);
+    if (p.images?.[0] !== undefined)
+      form.setFieldValue("image" as never, (p.images[0] ?? "") as never);
+    if (p.origin !== undefined) setOrigins(p.origin);
+    if (p.flavorNotes !== undefined) setFlavorNotes(p.flavorNotes);
+    if (p.commonNames !== undefined) setCommonNames(p.commonNames);
+    if (p.parts !== undefined) setParts(p.parts);
+    if (p.flavorProfile !== undefined) setFlavorProfile(p.flavorProfile);
+    if (p.safetyFlags !== undefined) setSafetyFlags(p.safetyFlags);
+    if (p.sources !== undefined) setSources(p.sources);
+    clearIngestProposed();
+    setEnhanceOpen(false);
+    toast.success("Enhancement applied — review and save");
   }
 
   // Visible pairing proposals (non-dismissed, not already in featured pairings)
@@ -1489,15 +1543,44 @@ export default function IngredientForm({
           />
         </form>
 
-        {/* Modals */}
-        <EnhanceModal
-          kind="ingredient"
+        {/* Enhance dialog */}
+        <IngestDialog
           open={enhanceOpen}
-          onClose={() => setEnhanceOpen(false)}
-          locale={locale}
-          slug={slug}
-          existing={buildIngredientSnapshot()}
-          onApplied={() => window.location.reload()}
+          onOpenChange={(o) => {
+            if (!o) {
+              clearIngestProposed();
+              setEnhanceOpen(false);
+            }
+          }}
+          title="Enhance ingredient"
+          onRun={onIngestRun}
+          onReviewBack={clearIngestProposed}
+          reviewChildren={
+            ingestProposed ? (
+              <div className="space-y-4">
+                <div className="max-h-[50vh] overflow-y-auto">
+                  {ingestWarnings.length > 0 && (
+                    <div className="mb-3 space-y-0.5">
+                      {ingestWarnings.map((w, i) => (
+                        <p key={i} className="text-xs text-amber-700 dark:text-amber-400">
+                          ⚠ {w}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  <IngredientDiff existing={buildIngredientSnapshot()} proposed={ingestProposed} />
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleApplyEnhancement}>
+                    <Check size={14} className="mr-1" />
+                    Apply changes
+                  </Button>
+                </DialogFooter>
+              </div>
+            ) : undefined
+          }
+          generateLabel="Generate enhanced version"
+          className="sm:max-w-4xl"
         />
 
         <Dialog open={translateOpen} onOpenChange={(o) => !o && setTranslateOpen(false)}>
