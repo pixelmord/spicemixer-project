@@ -1,4 +1,4 @@
-import { describe, expect, test, vi, beforeEach } from "vite-plus/test";
+import { describe, expect, test, vi, beforeEach, afterEach } from "vite-plus/test";
 import { generateText } from "ai";
 import { generateTraceId, tracingMiddleware, withOrigin, createProvider } from "../src/index.ts";
 import type { TraceSink, TraceEvent } from "../src/trace.ts";
@@ -134,6 +134,10 @@ describe("createProvider with sinks", () => {
     process.env["AI_PROVIDER"] = "mock";
   });
 
+  afterEach(() => {
+    delete process.env["AI_PROVIDER"];
+  });
+
   test("wraps model and emits trace events when origin is in context", async () => {
     const emitted: TraceEvent[] = [];
     const sink: TraceSink = {
@@ -147,7 +151,6 @@ describe("createProvider with sinks", () => {
 
     expect(emitted).toHaveLength(1);
     expect(emitted[0]!.runId).toBe("run-trace-1");
-    delete process.env["AI_PROVIDER"];
   });
 
   test("does not emit trace events when no origin in context", async () => {
@@ -162,18 +165,15 @@ describe("createProvider with sinks", () => {
     await generateText({ model, prompt: "test" });
 
     expect(emitted).toHaveLength(0);
-    delete process.env["AI_PROVIDER"];
   });
 
   test("returns model without wrapping when no sinks provided", () => {
     const model = createProvider(MOCK_CONFIG);
     expect(model).toBeDefined();
-    delete process.env["AI_PROVIDER"];
   });
 
   test("returns model without wrapping when empty sinks array provided", () => {
     const model = createProvider(MOCK_CONFIG, { sinks: [] });
     expect(model).toBeDefined();
-    delete process.env["AI_PROVIDER"];
   });
 });

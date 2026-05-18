@@ -1,6 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createMockLanguageModel } from "@pixelmord/content-ai-core/testing";
-import { tracingMiddleware, type TraceSink } from "@pixelmord/content-ai-core";
+import { tracingMiddleware, type ProviderOptions } from "@pixelmord/content-ai-core";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type { LanguageModel } from "ai";
 import { wrapLanguageModel } from "ai";
@@ -15,7 +15,7 @@ export const PROVIDER_OPTIONS = {
   openai: { strictJsonSchema: false },
 } as const;
 
-export function createProvider(config: AiConfig, options?: { sinks?: TraceSink[] }): LanguageModel {
+export function createProvider(config: AiConfig, options?: ProviderOptions): LanguageModel {
   const sinks = options?.sinks;
   const wrap = (model: LanguageModelV3): LanguageModel =>
     sinks?.length ? wrapLanguageModel({ model, middleware: tracingMiddleware(sinks) }) : model;
