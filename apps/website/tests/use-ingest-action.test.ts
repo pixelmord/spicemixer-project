@@ -99,7 +99,7 @@ describe("use-ingest-action — action dispatch per kind", () => {
   });
 });
 
-describe("use-ingest-action — error handling parity with EnhanceModal", () => {
+describe("use-ingest-action — error handling", () => {
   test("surfaces errors via toast.error", () => {
     expect(src).toMatch(/toast\.error/);
   });

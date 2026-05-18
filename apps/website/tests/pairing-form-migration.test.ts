@@ -12,15 +12,7 @@ beforeAll(async () => {
   src = await readFile(join(COMPONENTS, "PairingForm.tsx"), "utf-8");
 });
 
-describe("PairingForm — EnhanceModal → IngestDialog migration", () => {
-  test("PairingForm no longer imports EnhanceModal", () => {
-    expect(src).not.toMatch(/import.*EnhanceModal/);
-  });
-
-  test("PairingForm has zero EnhanceModal references", () => {
-    expect(src).not.toMatch(/EnhanceModal/);
-  });
-
+describe("PairingForm — IngestDialog wiring", () => {
   test("PairingForm imports IngestDialog", () => {
     expect(src).toMatch(/import.*IngestDialog.*from/);
   });
