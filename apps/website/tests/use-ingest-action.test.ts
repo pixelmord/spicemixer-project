@@ -6,13 +6,13 @@ import { describe, expect, test, beforeAll } from "vite-plus/test";
 const WEBSITE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const LIB_AI = join(WEBSITE_ROOT, "src", "lib", "ai");
 
+let src: string;
+
+beforeAll(async () => {
+  src = await readFile(join(LIB_AI, "use-ingest-action.ts"), "utf-8");
+});
+
 describe("use-ingest-action — module contract", () => {
-  let src: string;
-
-  beforeAll(async () => {
-    src = await readFile(join(LIB_AI, "use-ingest-action.ts"), "utf-8");
-  });
-
   test("exports useIngestAction function", () => {
     expect(src).toMatch(/export function useIngestAction\b/);
   });
@@ -47,12 +47,6 @@ describe("use-ingest-action — module contract", () => {
 });
 
 describe("use-ingest-action — FormData assembly per source kind", () => {
-  let src: string;
-
-  beforeAll(async () => {
-    src = await readFile(join(LIB_AI, "use-ingest-action.ts"), "utf-8");
-  });
-
   test('appends sourceKind="file" for file source', () => {
     expect(src).toMatch(/"sourceKind".*"file"|"file".*sourceKind/);
   });
@@ -88,12 +82,6 @@ describe("use-ingest-action — FormData assembly per source kind", () => {
 });
 
 describe("use-ingest-action — action dispatch per kind", () => {
-  let src: string;
-
-  beforeAll(async () => {
-    src = await readFile(join(LIB_AI, "use-ingest-action.ts"), "utf-8");
-  });
-
   test("dispatches actions.aiMergeRecipe for recipe kind", () => {
     expect(src).toMatch(/actions\.aiMergeRecipe/);
   });
@@ -112,12 +100,6 @@ describe("use-ingest-action — action dispatch per kind", () => {
 });
 
 describe("use-ingest-action — error handling parity with EnhanceModal", () => {
-  let src: string;
-
-  beforeAll(async () => {
-    src = await readFile(join(LIB_AI, "use-ingest-action.ts"), "utf-8");
-  });
-
   test("surfaces errors via toast.error", () => {
     expect(src).toMatch(/toast\.error/);
   });
@@ -132,12 +114,6 @@ describe("use-ingest-action — error handling parity with EnhanceModal", () => 
 });
 
 describe("use-ingest-action — proposed data propagation", () => {
-  let src: string;
-
-  beforeAll(async () => {
-    src = await readFile(join(LIB_AI, "use-ingest-action.ts"), "utf-8");
-  });
-
   test("sets proposed from data.recipe for recipe kind", () => {
     expect(src).toMatch(/data\.recipe/);
   });

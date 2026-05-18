@@ -6,13 +6,13 @@ import { describe, expect, test, beforeAll } from "vite-plus/test";
 const WEBSITE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const LIB_AI = join(WEBSITE_ROOT, "src", "lib", "ai");
 
+let src: string;
+
+beforeAll(async () => {
+  src = await readFile(join(LIB_AI, "use-typed-suggestions.ts"), "utf-8");
+});
+
 describe("use-typed-suggestions — module contract", () => {
-  let src: string;
-
-  beforeAll(async () => {
-    src = await readFile(join(LIB_AI, "use-typed-suggestions.ts"), "utf-8");
-  });
-
   test("exports RecipeFieldPath type", () => {
     expect(src).toMatch(/export type RecipeFieldPath/);
   });
@@ -44,12 +44,6 @@ describe("use-typed-suggestions — module contract", () => {
 });
 
 describe("use-typed-suggestions — field path unions derive from contracts", () => {
-  let src: string;
-
-  beforeAll(async () => {
-    src = await readFile(join(LIB_AI, "use-typed-suggestions.ts"), "utf-8");
-  });
-
   test("RecipeFieldPath derives from recipeContract.fields", () => {
     expect(src).toMatch(/recipeContract\.fields|keyof.*recipeContract/);
   });
@@ -64,12 +58,6 @@ describe("use-typed-suggestions — field path unions derive from contracts", ()
 });
 
 describe("use-typed-suggestions — typed return types", () => {
-  let src: string;
-
-  beforeAll(async () => {
-    src = await readFile(join(LIB_AI, "use-typed-suggestions.ts"), "utf-8");
-  });
-
   test("RecipeAiSuggestionsReturn narrows forField to RecipeFieldPath", () => {
     expect(src).toMatch(/RecipeAiSuggestionsReturn/);
     expect(src).toMatch(/forField.*RecipeFieldPath|RecipeFieldPath.*forField/);
@@ -91,14 +79,7 @@ describe("use-typed-suggestions — typed return types", () => {
 });
 
 describe("use-typed-suggestions — known fields coverage", () => {
-  let src: string;
-
-  beforeAll(async () => {
-    src = await readFile(join(LIB_AI, "use-typed-suggestions.ts"), "utf-8");
-  });
-
   test("recipe field paths include description and name", () => {
-    // Derives from recipeContract.fields — these must be reachable via the type
     expect(src).toMatch(/recipeContract/);
   });
 

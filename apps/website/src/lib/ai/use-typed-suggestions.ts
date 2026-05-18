@@ -13,7 +13,6 @@ export type RecipeFieldPath = keyof typeof recipeContract.fields;
 export type IngredientFieldPath = keyof typeof ingredientContract.fields;
 export type PairingFieldPath = keyof typeof pairingContract.fields;
 
-// Typed return types narrowing forField's parameter to each kind's known fields.
 export interface RecipeAiSuggestionsReturn extends Omit<UseAiSuggestionsReturn, "forField"> {
   forField(field: RecipeFieldPath): PerFieldAccessor;
 }
