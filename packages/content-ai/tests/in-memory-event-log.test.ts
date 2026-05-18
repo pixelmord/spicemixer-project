@@ -1,16 +1,18 @@
 import { describe, expect, test } from "vite-plus/test";
-import { createAiEventLog, SidecarEventLog } from "../src/event-log.ts";
+import { createAiEventLog, SidecarEventLog, entityRefToMetaRef } from "../src/event-log.ts";
 import type { AiEventSidecar, MetaRef, AiEventLog } from "../src/event-log.ts";
 import type { AiEvent } from "../src/schemas/ai-events.ts";
+import type { EntityRef } from "@pixelmord/content-ai-core";
 import { InMemoryAiEventLog } from "../src/testing/in-memory-event-log.ts";
 
 // ── shared helpers ─────────────────────────────────────────────────────────────
 
-const REF: MetaRef = { collection: "ingredients", locale: "en", slug: "cardamom" };
-const REF2: MetaRef = { collection: "recipes", locale: "en", slug: "soup" };
+const REF: EntityRef = { kind: "ingredients", id: "en/cardamom" };
+const REF2: EntityRef = { kind: "recipes", id: "en/soup" };
 
 function makeEvent(type: AiEvent["type"], field: string, hash: string): AiEvent {
   return {
+    id: "seed-id",
     type,
     field,
     suggestion: { hash, summary: `${field} ${hash}` },
@@ -44,7 +46,7 @@ function makeSidecar(
 
 type LogFactory = {
   makeLog: () => AiEventLog;
-  seed: (ref: MetaRef, events: AiEvent[]) => Promise<void>;
+  seed: (ref: EntityRef, events: AiEvent[]) => Promise<void>;
 };
 
 function makeSidecarFactory(): LogFactory {
@@ -53,7 +55,8 @@ function makeSidecarFactory(): LogFactory {
   return {
     makeLog: () => log,
     seed: async (ref, events) => {
-      const key = `${ref.collection}/${ref.locale ?? "_"}/${ref.slug}`;
+      const metaRef = entityRefToMetaRef(ref);
+      const key = `${metaRef.collection}/${metaRef.locale ?? "_"}/${metaRef.slug}`;
       sidecar.store.set(key, { aiEvents: events });
     },
   };
@@ -122,6 +125,20 @@ for (const [name, makeFactory] of PARITY_CASES) {
       expect(events[0].at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
+    test("stamps a UUID id automatically", async () => {
+      const { makeLog } = makeFactory();
+      const log = makeLog();
+      await log.append(REF, {
+        type: "accepted",
+        field: "name",
+        suggestion: { hash: "abc", summary: "x" },
+        model: "m",
+      });
+      const events = await log.read(REF);
+      expect(typeof events[0].id).toBe("string");
+      expect(events[0].id.length).toBeGreaterThan(0);
+    });
+
     test("multiple appends accumulate events", async () => {
       const { makeLog } = makeFactory();
       const log = makeLog();
@@ -164,8 +181,8 @@ for (const [name, makeFactory] of PARITY_CASES) {
       // from the EN record's event log even for the same entity.
       const { makeLog } = makeFactory();
       const log = makeLog();
-      const enRef: MetaRef = { collection: "ingredients", locale: "en", slug: "cardamom" };
-      const deRef: MetaRef = { collection: "ingredients", locale: "de", slug: "kardamom" };
+      const enRef: EntityRef = { kind: "ingredients", id: "en/cardamom" };
+      const deRef: EntityRef = { kind: "ingredients", id: "de/kardamom" };
 
       await log.append(enRef, {
         type: "accepted",
@@ -193,80 +210,6 @@ for (const [name, makeFactory] of PARITY_CASES) {
 
       expect(deEvents).toHaveLength(2);
       expect(deEvents.map((e) => e.suggestion.hash)).toEqual(["de-h1", "de-h2"]);
-    });
-  });
-
-  describe(`${name} — parity: shouldSkip (suppression)`, () => {
-    test("returns false when no rejected events", async () => {
-      const { makeLog, seed } = makeFactory();
-      const log = makeLog();
-      await seed(REF, [makeEvent("accepted", "name", "abc")]);
-      expect(await log.shouldSkip(REF, { fieldPath: "name", hash: "abc" })).toBe(false);
-    });
-
-    test("returns true when a rejected event matches (fieldPath, hash)", async () => {
-      const { makeLog, seed } = makeFactory();
-      const log = makeLog();
-      await seed(REF, [makeEvent("rejected", "summary", "xyz")]);
-      expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "xyz" })).toBe(true);
-    });
-
-    test("returns false when field matches but hash differs", async () => {
-      const { makeLog, seed } = makeFactory();
-      const log = makeLog();
-      await seed(REF, [makeEvent("rejected", "summary", "xyz")]);
-      expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "aaa" })).toBe(false);
-    });
-
-    test("returns false when hash matches but fieldPath differs", async () => {
-      const { makeLog, seed } = makeFactory();
-      const log = makeLog();
-      await seed(REF, [makeEvent("rejected", "name", "xyz")]);
-      expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "xyz" })).toBe(false);
-    });
-
-    test("suppression filter drops fingerprint-matched inputs after reject append", async () => {
-      const { makeLog } = makeFactory();
-      const log = makeLog();
-      await log.append(REF, {
-        type: "rejected",
-        field: "pairings",
-        suggestion: { hash: "abc123", summary: "bad pairing" },
-        model: "m",
-      });
-      expect(await log.shouldSkip(REF, { fieldPath: "pairings", hash: "abc123" })).toBe(true);
-    });
-  });
-
-  describe(`${name} — parity: buildRejectedContext`, () => {
-    test("returns empty array when no rejected events", async () => {
-      const { makeLog } = makeFactory();
-      const result = await makeLog().buildRejectedContext(REF);
-      expect(result).toEqual([]);
-    });
-
-    test("returns structured items for rejected events", async () => {
-      const { makeLog, seed } = makeFactory();
-      const log = makeLog();
-      await seed(REF, [makeEvent("rejected", "description", "h1")]);
-      const result = await log.buildRejectedContext(REF);
-      expect(result).toHaveLength(1);
-      expect(result[0].fieldPath).toBe("description");
-      expect(result[0].summary).toMatch("description h1");
-      expect(result[0].at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-    });
-
-    test("excludes non-rejected events", async () => {
-      const { makeLog, seed } = makeFactory();
-      const log = makeLog();
-      await seed(REF, [
-        makeEvent("accepted", "name", "h1"),
-        makeEvent("rejected", "tags", "h2"),
-        makeEvent("auto-applied", "pairings", "h3"),
-      ]);
-      const result = await log.buildRejectedContext(REF);
-      expect(result).toHaveLength(1);
-      expect(result[0].fieldPath).toBe("tags");
     });
   });
 
@@ -313,6 +256,161 @@ for (const [name, makeFactory] of PARITY_CASES) {
     });
   });
 }
+
+// ── shouldSkip — concrete SidecarEventLog and InMemoryAiEventLog ──────────────
+
+describe("SidecarEventLog.shouldSkip (suppression)", () => {
+  test("returns false when no rejected events", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [makeEvent("accepted", "name", "abc")],
+    });
+    const log = createAiEventLog(sidecar);
+    expect(await log.shouldSkip(REF, { fieldPath: "name", hash: "abc" })).toBe(false);
+  });
+
+  test("returns true when a rejected event matches (fieldPath, hash)", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [makeEvent("rejected", "summary", "xyz")],
+    });
+    const log = createAiEventLog(sidecar);
+    expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "xyz" })).toBe(true);
+  });
+
+  test("returns false when field matches but hash differs", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [makeEvent("rejected", "summary", "xyz")],
+    });
+    const log = createAiEventLog(sidecar);
+    expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "aaa" })).toBe(false);
+  });
+
+  test("returns false when hash matches but fieldPath differs", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [makeEvent("rejected", "name", "xyz")],
+    });
+    const log = createAiEventLog(sidecar);
+    expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "xyz" })).toBe(false);
+  });
+
+  test("suppression filter drops fingerprint-matched inputs after reject append", async () => {
+    const { makeLog } = makeSidecarFactory();
+    const log = makeLog() as SidecarEventLog;
+    await log.append(REF, {
+      type: "rejected",
+      field: "pairings",
+      suggestion: { hash: "abc123", summary: "bad pairing" },
+      model: "m",
+    });
+    expect(await log.shouldSkip(REF, { fieldPath: "pairings", hash: "abc123" })).toBe(true);
+  });
+});
+
+describe("InMemoryAiEventLog.shouldSkip (suppression)", () => {
+  test("returns false when no rejected events", async () => {
+    const log = new InMemoryAiEventLog();
+    await log.seed(REF, makeEvent("accepted", "name", "abc"));
+    expect(await log.shouldSkip(REF, { fieldPath: "name", hash: "abc" })).toBe(false);
+  });
+
+  test("returns true when a rejected event matches (fieldPath, hash)", async () => {
+    const log = new InMemoryAiEventLog();
+    await log.seed(REF, makeEvent("rejected", "summary", "xyz"));
+    expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "xyz" })).toBe(true);
+  });
+
+  test("returns false when field matches but hash differs", async () => {
+    const log = new InMemoryAiEventLog();
+    await log.seed(REF, makeEvent("rejected", "summary", "xyz"));
+    expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "aaa" })).toBe(false);
+  });
+
+  test("returns false when hash matches but fieldPath differs", async () => {
+    const log = new InMemoryAiEventLog();
+    await log.seed(REF, makeEvent("rejected", "name", "xyz"));
+    expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "xyz" })).toBe(false);
+  });
+
+  test("suppression filter drops fingerprint-matched inputs after reject append", async () => {
+    const log = new InMemoryAiEventLog();
+    await log.append(REF, {
+      type: "rejected",
+      field: "pairings",
+      suggestion: { hash: "abc123", summary: "bad pairing" },
+      model: "m",
+    });
+    expect(await log.shouldSkip(REF, { fieldPath: "pairings", hash: "abc123" })).toBe(true);
+  });
+});
+
+// ── buildRejectedContext — concrete methods ────────────────────────────────────
+
+describe("SidecarEventLog.buildRejectedContext", () => {
+  test("returns empty array when no rejected events", async () => {
+    const log = createAiEventLog(makeSidecar());
+    const result = await log.buildRejectedContext(REF);
+    expect(result).toEqual([]);
+  });
+
+  test("returns structured items for rejected events", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [makeEvent("rejected", "description", "h1")],
+    });
+    const log = createAiEventLog(sidecar);
+    const result = await log.buildRejectedContext(REF);
+    expect(result).toHaveLength(1);
+    expect(result[0].fieldPath).toBe("description");
+    expect(result[0].summary).toMatch("description h1");
+    expect(result[0].at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  test("excludes non-rejected events", async () => {
+    const sidecar = makeSidecar();
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [
+        makeEvent("accepted", "name", "h1"),
+        makeEvent("rejected", "tags", "h2"),
+        makeEvent("auto-applied", "pairings", "h3"),
+      ],
+    });
+    const log = createAiEventLog(sidecar);
+    const result = await log.buildRejectedContext(REF);
+    expect(result).toHaveLength(1);
+    expect(result[0].fieldPath).toBe("tags");
+  });
+});
+
+describe("InMemoryAiEventLog.buildRejectedContext", () => {
+  test("returns empty array when no rejected events", async () => {
+    const log = new InMemoryAiEventLog();
+    const result = await log.buildRejectedContext(REF);
+    expect(result).toEqual([]);
+  });
+
+  test("returns structured items for rejected events", async () => {
+    const log = new InMemoryAiEventLog();
+    await log.seed(REF, makeEvent("rejected", "description", "h1"));
+    const result = await log.buildRejectedContext(REF);
+    expect(result).toHaveLength(1);
+    expect(result[0].fieldPath).toBe("description");
+    expect(result[0].summary).toMatch("description h1");
+    expect(result[0].at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  test("excludes non-rejected events", async () => {
+    const log = new InMemoryAiEventLog();
+    await log.seed(REF, makeEvent("accepted", "name", "h1"));
+    await log.seed(REF, makeEvent("rejected", "tags", "h2"));
+    await log.seed(REF, makeEvent("auto-applied", "pairings", "h3"));
+    const result = await log.buildRejectedContext(REF);
+    expect(result).toHaveLength(1);
+    expect(result[0].fieldPath).toBe("tags");
+  });
+});
 
 // ── InMemoryAiEventLog-specific tests ─────────────────────────────────────────
 

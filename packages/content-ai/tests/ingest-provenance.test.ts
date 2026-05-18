@@ -61,6 +61,7 @@ describe("ingest provenance — ingested event", () => {
   test("ingested event survives pruning when soft cap is exceeded (regression)", () => {
     // Fill to 100 with auto-applied events, then append an ingested event
     const autoApplied: AiEvent[] = Array.from({ length: 100 }, (_, i) => ({
+      id: `auto-${i}`,
       type: "auto-applied" as const,
       field: "tags",
       suggestion: { hash: `h${i}`, summary: "test" },
@@ -68,6 +69,7 @@ describe("ingest provenance — ingested event", () => {
       model: "m",
     }));
     const ingestedEvent: AiEvent = {
+      id: "ingested-id",
       type: "ingested",
       source: "https://example.com/recipe",
       suggestion: { hash: "abc123", summary: "Test Recipe" },

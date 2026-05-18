@@ -18,7 +18,14 @@ function makeEvent(
   hash: string,
   at = "2026-01-01T00:00:00.000Z",
 ): AiEvent {
-  return { type, field, suggestion: { hash, summary: "test" }, at, model: "test-model" };
+  return {
+    id: "test-id",
+    type,
+    field,
+    suggestion: { hash, summary: "test" },
+    at,
+    model: "test-model",
+  };
 }
 
 // ── hash ─────────────────────────────────────────────────────────────────────
@@ -279,6 +286,7 @@ describe("buildRejectedContext", () => {
   test("returns N formatted entries for N rejected events", () => {
     const events: AiEvent[] = [
       {
+        id: "test-id-1",
         type: "rejected",
         field: "name",
         suggestion: { hash: "h1", summary: "Use shorter title" },
@@ -286,6 +294,7 @@ describe("buildRejectedContext", () => {
         model: "m",
       },
       {
+        id: "test-id-2",
         type: "rejected",
         field: "tags",
         suggestion: { hash: "h2", summary: "Add vegan tag" },
@@ -302,6 +311,7 @@ describe("buildRejectedContext", () => {
   test("formats entry without field as [entity]", () => {
     const events: AiEvent[] = [
       {
+        id: "test-id",
         type: "rejected",
         suggestion: { hash: "h1", summary: "Reject whole document" },
         at: "2026-01-01T00:00:00Z",
@@ -316,6 +326,7 @@ describe("buildRejectedContext", () => {
     const events: AiEvent[] = [
       makeEvent("accepted", "name", "h1"),
       {
+        id: "test-id",
         type: "rejected",
         field: "desc",
         suggestion: { hash: "h2", summary: "rejected one" },

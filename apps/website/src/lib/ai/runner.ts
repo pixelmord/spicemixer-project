@@ -1,5 +1,6 @@
 import { hashSuggestion, hashContent, getCurrentOrigin, publish } from "content-ai";
 import type { AiConfig, AiEventSidecar, MetaRef, SidecarEventLog, Confidence } from "content-ai";
+import { metaRefToEntityRef } from "content-ai";
 import type { EndpointRef } from "entity-kind";
 import { runRefine } from "@pixelmord/content-ai-refine";
 import type { AiEvent as RefineAiEvent } from "@pixelmord/content-ai-refine";
@@ -81,7 +82,8 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
     existingMeta = {},
   } = input;
 
-  const existingEvents = await eventLog.read(metaRef);
+  const entityRef = metaRefToEntityRef(metaRef);
+  const existingEvents = await eventLog.read(entityRef);
 
   const [ingredientItems, mixtureItems] = await Promise.all([
     store.list("ingredients"),
@@ -187,7 +189,7 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
           endpoints: sortedRefs,
           description: pairing.rationale,
         });
-        await eventLog.append(metaRef, {
+        await eventLog.append(entityRef, {
           type: "auto-applied",
           field: "pairings",
           suggestion: {
@@ -220,8 +222,9 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     existingMeta: meta = {},
   } = input;
 
+  const entityRef = metaRefToEntityRef(metaRef);
   const skipResult = await eventLog.checkFingerprint(
-    metaRef,
+    entityRef,
     { recipe: payload, missingFields, locale, model: config.model },
     force,
   );
@@ -374,7 +377,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
       ...toAutoApply.map((l) => ({ pattern: l.pattern, slug: l.slug, kind: "ingredient" })),
     ];
     for (const link of toAutoApply) {
-      await eventLog.append(metaRef, {
+      await eventLog.append(entityRef, {
         type: "auto-applied",
         field: "ingredientLinks",
         suggestion: {
@@ -391,7 +394,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
   if (!meta["language"] && detectedLanguage) {
     updatedMeta["language"] = detectedLanguage;
     updatedMeta["locale"] = detectedLanguage;
-    await eventLog.append(metaRef, {
+    await eventLog.append(entityRef, {
       type: "auto-applied",
       field: "language",
       suggestion: {
@@ -438,7 +441,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
 async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult> {
   const { metaRef, payload, locale, eventLog, config } = input;
 
-  const existingEvents = await eventLog.read(metaRef);
+  const existingEvents = await eventLog.read(metaRefToEntityRef(metaRef));
 
   type IngRef = EntityRef | string | undefined;
   const ings = payload["ingredients"] as [IngRef, IngRef] | undefined;

@@ -4,6 +4,7 @@ import type { AiEvent } from "../src/events.ts";
 
 function rejected(field: string, hash: string): AiEvent {
   return {
+    id: "test-id",
     type: "rejected",
     field,
     at: new Date().toISOString(),
@@ -14,6 +15,7 @@ function rejected(field: string, hash: string): AiEvent {
 
 function accepted(field: string, hash: string): AiEvent {
   return {
+    id: "test-id",
     type: "accepted",
     field,
     at: new Date().toISOString(),
@@ -85,6 +87,7 @@ describe("buildRejectedContext", () => {
 
   test("uses 'entity' as fallback when field is absent", () => {
     const event: AiEvent = {
+      id: "test-id",
       type: "rejected",
       at: new Date().toISOString(),
       model: "gpt-test",

@@ -10,6 +10,7 @@ import type { AiEvent, SourceDescriptor } from "../src/events.ts";
 
 function makeEvent(type: AiEvent["type"], at = new Date().toISOString(), field?: string): AiEvent {
   return {
+    id: "test-id",
     type,
     at,
     model: "gpt-test",
@@ -98,8 +99,19 @@ describe("planPrune", () => {
 });
 
 describe("aiEventSchema", () => {
-  test("parses a valid event", () => {
+  test("id is a required field — events without id are rejected", () => {
+    const withoutId = {
+      type: "accepted",
+      at: "2024-01-01T00:00:00.000Z",
+      model: "gpt-4",
+      suggestion: { hash: "abc123def456", summary: "looks good" },
+    };
+    expect(() => aiEventSchema.parse(withoutId)).toThrow();
+  });
+
+  test("parses a valid event with id", () => {
     const input = {
+      id: "550e8400-e29b-41d4-a716-446655440000",
       type: "accepted",
       at: "2024-01-01T00:00:00.000Z",
       model: "gpt-4",
@@ -110,6 +122,7 @@ describe("aiEventSchema", () => {
 
   test("rejects unknown event type", () => {
     const input = {
+      id: "test-id",
       type: "unknown",
       at: "2024-01-01T00:00:00.000Z",
       model: "x",
@@ -120,6 +133,7 @@ describe("aiEventSchema", () => {
 
   test("accepts string source", () => {
     const input = {
+      id: "test-id",
       type: "ingested",
       at: "2024-01-01T00:00:00.000Z",
       model: "gpt-4",
@@ -131,6 +145,7 @@ describe("aiEventSchema", () => {
 
   test("accepts SourceDescriptor source", () => {
     const input = {
+      id: "test-id",
       type: "ingested",
       at: "2024-01-01T00:00:00.000Z",
       model: "gpt-4",
@@ -148,6 +163,7 @@ describe("aiEventSchema", () => {
 
   test("source is optional — event without source parses", () => {
     const input = {
+      id: "test-id",
       type: "accepted",
       at: "2024-01-01T00:00:00.000Z",
       model: "gpt-4",

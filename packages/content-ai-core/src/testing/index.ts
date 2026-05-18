@@ -14,10 +14,11 @@ export class InMemoryAiEventLog implements AiEventLog {
     return this.#store.get(refKey(ref)) ?? [];
   }
 
-  async append(ref: EntityRef, event: AiEvent): Promise<void> {
+  async append(ref: EntityRef, event: Omit<AiEvent, "at" | "id">): Promise<void> {
     const key = refKey(ref);
     const existing = this.#store.get(key) ?? [];
-    this.#store.set(key, [...existing, event]);
+    const stamped: AiEvent = { ...event, id: crypto.randomUUID(), at: new Date().toISOString() };
+    this.#store.set(key, [...existing, stamped]);
   }
 
   /** Clears all stored events. Useful for test isolation. */

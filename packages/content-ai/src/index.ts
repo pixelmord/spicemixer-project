@@ -43,7 +43,12 @@ export type { MergeSource, MergeRecipeInput, MergeRecipeResult } from "./merge-r
 export { AiError } from "./errors.ts";
 export type { AiErrorCode, AiErrorDetails } from "./errors.ts";
 
-export { SidecarEventLog, createAiEventLog } from "./event-log.ts";
+export {
+  SidecarEventLog,
+  createAiEventLog,
+  entityRefToMetaRef,
+  metaRefToEntityRef,
+} from "./event-log.ts";
 export type {
   AiEventLog,
   AiEventSidecar,

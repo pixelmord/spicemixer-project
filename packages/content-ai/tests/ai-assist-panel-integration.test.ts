@@ -8,6 +8,7 @@ import type { AiEvent } from "../src/schemas/ai-events.ts";
 
 function rejectedEvent(field: string, hash: string): AiEvent {
   return {
+    id: "test-id",
     type: "rejected",
     field,
     suggestion: { hash, summary: "test" },
