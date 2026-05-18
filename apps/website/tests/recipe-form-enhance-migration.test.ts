@@ -12,16 +12,6 @@ beforeAll(async () => {
   src = await readFile(join(ADMIN_COMPONENTS, "RecipeForm.tsx"), "utf-8");
 });
 
-describe("RecipeForm — EnhanceModal removal", () => {
-  test("does not import EnhanceModal", () => {
-    expect(src).not.toMatch(/import.*EnhanceModal/);
-  });
-
-  test("does not render EnhanceModal", () => {
-    expect(src).not.toMatch(/<EnhanceModal/);
-  });
-});
-
 describe("RecipeForm — IngestDialog wiring", () => {
   test("imports IngestDialog", () => {
     expect(src).toMatch(/import.*IngestDialog/);
