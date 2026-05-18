@@ -1,6 +1,11 @@
-import { hashSuggestion, hashContent, getCurrentOrigin, publish } from "content-ai";
+import {
+  hashSuggestion,
+  hashContent,
+  getCurrentOrigin,
+  publish,
+  metaRefToEntityRef,
+} from "content-ai";
 import type { AiConfig, AiEventSidecar, MetaRef, SidecarEventLog, Confidence } from "content-ai";
-import { metaRefToEntityRef } from "content-ai";
 import type { EndpointRef } from "entity-kind";
 import { runRefine } from "@pixelmord/content-ai-refine";
 import type { AiEvent as RefineAiEvent } from "@pixelmord/content-ai-refine";

@@ -28,7 +28,6 @@ export type SkipResult =
   | { skip: true; cachedSuggestion: Record<string, unknown>; fingerprint: string }
   | { skip: false; fingerprint: string; existingEvents: AiEvent[] };
 
-// Re-export the canonical AiEventLog interface (uses EntityRef from core).
 export type { AiEventLog };
 
 function metaRefKey(ref: MetaRef): string {
