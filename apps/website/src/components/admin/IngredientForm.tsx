@@ -41,7 +41,7 @@ import IngredientDiff from "./IngredientDiff.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog.tsx";
 import { TranslateEntityDialog } from "./TranslateEntityDialog.tsx";
-import AiAssistPanel from "./AiAssistPanel.tsx";
+import PairingSuggestionPanel from "./PairingSuggestionPanel.tsx";
 import { useIngestAction } from "@/lib/ai/use-ingest-action.ts";
 import { CreatePairingDialog, type PairingAiSuggestion } from "./CreatePairingDialog.tsx";
 import ImageSearchModal, {
@@ -1501,8 +1501,7 @@ export default function IngredientForm({
                     recommendedFields={recommendedFields}
                   />
                   {!isNew && (
-                    <AiAssistPanel
-                      mode="ingredient"
+                    <PairingSuggestionPanel
                       snapshot={buildIngredientSnapshot()}
                       missingFields={completeness.missing}
                       locale={locale}

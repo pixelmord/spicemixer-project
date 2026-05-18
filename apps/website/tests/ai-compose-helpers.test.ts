@@ -76,15 +76,11 @@ describe("AiImportPage uses use-import-action", () => {
   });
 });
 
-describe("AiAssistPanel decomposition", () => {
+describe("PairingSuggestionPanel decomposition", () => {
   let src: string;
 
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "AiAssistPanel.tsx"), "utf-8");
-  });
-
-  test("runLinks is a module-level async function", () => {
-    expect(src).toMatch(/^async function runLinks\(/m);
+    src = await readFile(join(COMPONENTS, "PairingSuggestionPanel.tsx"), "utf-8");
   });
 
   test("runTags is a module-level async function", () => {
@@ -99,7 +95,7 @@ describe("AiAssistPanel decomposition", () => {
     expect(src).toMatch(/^async function runPairings\(/m);
   });
 
-  test("AiAssistResults sub-component is defined", () => {
-    expect(src).toMatch(/^function AiAssistResults\(/m);
+  test("PairingSuggestionResults sub-component is defined", () => {
+    expect(src).toMatch(/^function PairingSuggestionResults\(/m);
   });
 });

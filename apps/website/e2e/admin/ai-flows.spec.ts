@@ -9,7 +9,7 @@ import { visitWithoutErrors } from "../fixtures/page-helpers.ts";
  * requires per-contract fixtures that don't exist yet. Tracking issue: add
  * when we wire pair-of-contracts snapshot fixtures.
  */
-test.fixme("aiProposeTags renders mock suggestion in AiAssistPanel", async () => {});
+test.fixme("aiProposeTags renders mock suggestion in PairingSuggestionPanel", async () => {});
 test.fixme("aiMergeRecipe shows diff with mock payload", async () => {});
 test.fixme("aiCreateTranslation persists a translated meta sidecar", async () => {});
 

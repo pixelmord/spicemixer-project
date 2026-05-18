@@ -69,6 +69,26 @@ describe("IngredientForm — useAiSuggestions orchestration", () => {
   });
 });
 
+describe("IngredientForm — PairingSuggestionPanel callsite", () => {
+  let src: string;
+
+  beforeAll(async () => {
+    src = await readFile(join(COMPONENTS, "IngredientForm.tsx"), "utf-8");
+  });
+
+  test("imports PairingSuggestionPanel", () => {
+    expect(src).toMatch(/import.*PairingSuggestionPanel.*from.*PairingSuggestionPanel/);
+  });
+
+  test("mounts PairingSuggestionPanel", () => {
+    expect(src).toMatch(/<PairingSuggestionPanel/);
+  });
+
+  test("does not reference AiAssistPanel", () => {
+    expect(src).not.toMatch(/AiAssistPanel/);
+  });
+});
+
 describe("PairingForm — useAiSuggestions orchestration", () => {
   let src: string;
 

@@ -14,19 +14,12 @@ import {
   ThumbsDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
 import { cn } from "@/lib/utils.ts";
 import CapabilityLabel from "./CapabilityLabel.tsx";
 import { hashSuggestion, filterSuggestions } from "content-ai";
 import type { AiEvent } from "content-ai";
 
 // ── Raw proposal types (from API) ──────────────────────────────────────────────
-
-interface IngredientLinkProposal {
-  pattern: string;
-  slug: string;
-  confidence: "high" | "medium" | "low";
-}
 
 interface ImprovementField {
   field: string;
@@ -40,12 +33,6 @@ interface PairingProposal {
 }
 
 // ── Enriched internal types (with hash + summary for event tracking) ───────────
-
-interface EnrichedLink extends IngredientLinkProposal {
-  field: "ingredientLinks";
-  hash: string;
-  summary: string;
-}
 
 interface EnrichedTag {
   tag: string;
@@ -67,15 +54,6 @@ interface EnrichedPairing extends PairingProposal {
 
 // ── Enrichment helpers ─────────────────────────────────────────────────────────
 
-function enrichLink(l: IngredientLinkProposal): EnrichedLink {
-  return {
-    ...l,
-    field: "ingredientLinks",
-    hash: hashSuggestion({ pattern: l.pattern, slug: l.slug }),
-    summary: `${l.pattern} → ${l.slug}`,
-  };
-}
-
 function enrichTag(tag: string): EnrichedTag {
   return { tag, field: "tags", hash: hashSuggestion(tag), summary: tag };
 }
@@ -96,7 +74,6 @@ function enrichPairing(p: PairingProposal): EnrichedPairing {
 // ── Result state ───────────────────────────────────────────────────────────────
 
 type ResultState =
-  | { op: "links"; items: EnrichedLink[] }
   | { op: "tags"; items: EnrichedTag[] }
   | { op: "improve"; items: EnrichedImprovement[] }
   | { op: "pairings"; items: EnrichedPairing[] };
@@ -109,24 +86,7 @@ interface EntityRef {
   slug: string;
 }
 
-interface RecipePanelProps {
-  mode: "recipe";
-  snapshot: Record<string, unknown>;
-  missingFields: string[];
-  recipeIngredients: string[];
-  locale: "en" | "de";
-  aiEvents?: AiEvent[];
-  /** When provided, each accepted/rejected event is persisted immediately via aiRecordEvent. */
-  entityRef?: EntityRef;
-  onRecordEvent?: (updatedEvents: AiEvent[]) => void;
-  model?: string;
-  onApplyIngredientLinks: (links: IngredientLinkProposal[]) => void;
-  onApplyTags: (tags: string[]) => void;
-  onApplyField: (field: string, value: unknown) => void;
-}
-
-interface IngredientPanelProps {
-  mode: "ingredient";
+export interface PairingSuggestionPanelProps {
   snapshot: Record<string, unknown>;
   missingFields: string[];
   locale: "en" | "de";
@@ -138,8 +98,6 @@ interface IngredientPanelProps {
   onApplyPairings: (pairings: PairingProposal[]) => void;
   onApplyField: (field: string, value: unknown) => void;
 }
-
-type AiAssistPanelProps = RecipePanelProps | IngredientPanelProps;
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -177,59 +135,6 @@ function AcceptRejectButtons({
       >
         <ThumbsDown size={12} />
       </button>
-    </div>
-  );
-}
-
-function IngredientLinksResult({
-  links,
-  onAcceptAll,
-  onAcceptOne,
-  onRejectOne,
-  onDismiss,
-}: {
-  links: EnrichedLink[];
-  onAcceptAll: () => void;
-  onAcceptOne: (link: EnrichedLink) => void;
-  onRejectOne: (link: EnrichedLink) => void;
-  onDismiss: () => void;
-}) {
-  if (!links.length)
-    return <p className="text-xs text-muted-foreground">No matches found in inventory.</p>;
-
-  return (
-    <div className="space-y-2">
-      <div className="space-y-1">
-        {links.map((l, i) => (
-          <div key={i} className="flex items-center gap-1.5 text-xs">
-            <span className="text-muted-foreground flex-1 truncate">{l.pattern}</span>
-            <span className="text-muted-foreground">→</span>
-            <code className="font-mono bg-muted px-1 rounded">{l.slug}</code>
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-[10px] px-1 py-0",
-                {
-                  high: "text-emerald-600",
-                  medium: "text-amber-600",
-                  low: "text-muted-foreground",
-                }[l.confidence] ?? "text-muted-foreground",
-              )}
-            >
-              {l.confidence}
-            </Badge>
-            <AcceptRejectButtons onAccept={() => onAcceptOne(l)} onReject={() => onRejectOne(l)} />
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" variant="default" className="h-6 text-xs px-2" onClick={onAcceptAll}>
-          Apply all
-        </Button>
-        <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={onDismiss}>
-          Dismiss
-        </Button>
-      </div>
     </div>
   );
 }
@@ -361,29 +266,6 @@ function PairingsResult({
 
 // ── Operation runners ─────────────────────────────────────────────────────────
 
-async function runLinks(
-  recipe: RecipePanelProps,
-  aiEvents: AiEvent[],
-): Promise<{ result: ResultState | null; autoApplied: EnrichedLink[] }> {
-  const { data, error } = await actions.aiProposeIngredientLinks({
-    recipeIngredients: recipe.recipeIngredients,
-    locale: recipe.locale,
-  });
-  if (error) throw new Error(error.message);
-  const enriched = (data as IngredientLinkProposal[]).map(enrichLink);
-  const filtered = filterSuggestions(aiEvents, enriched);
-
-  const toAutoApply: EnrichedLink[] = [];
-  const toSuggest: EnrichedLink[] = [];
-  for (const l of filtered) {
-    (l.confidence === "high" ? toAutoApply : toSuggest).push(l);
-  }
-  return {
-    result: toSuggest.length > 0 ? { op: "links", items: toSuggest } : null,
-    autoApplied: toAutoApply,
-  };
-}
-
 async function runTags(
   snapshot: Record<string, unknown>,
   aiEvents: AiEvent[],
@@ -395,31 +277,27 @@ async function runTags(
 }
 
 async function runImprove(
-  props: AiAssistPanelProps,
-  isRecipe: boolean,
+  snapshot: Record<string, unknown>,
+  missingFields: string[],
   aiEvents: AiEvent[],
 ): Promise<ResultState> {
-  const { data, error } = isRecipe
-    ? await actions.aiProposeRecipeImprovements({
-        recipe: props.snapshot,
-        missingFields: props.missingFields,
-      })
-    : await actions.aiProposeIngredientImprovements({
-        ingredient: props.snapshot,
-        missingFields: props.missingFields,
-      });
+  const { data, error } = await actions.aiProposeIngredientImprovements({
+    ingredient: snapshot,
+    missingFields,
+  });
   if (error) throw new Error(error.message);
   const enriched = (data as { fields: ImprovementField[] }).fields.map(enrichImprovement);
   return { op: "improve", items: filterSuggestions(aiEvents, enriched) };
 }
 
 async function runPairings(
-  ingredient: IngredientPanelProps,
+  snapshot: Record<string, unknown>,
+  locale: "en" | "de",
   aiEvents: AiEvent[],
 ): Promise<ResultState> {
   const { data, error } = await actions.aiProposeIngredientPairings({
-    ingredient: ingredient.snapshot,
-    locale: ingredient.locale,
+    ingredient: snapshot,
+    locale,
   });
   if (error) throw new Error(error.message);
   const enriched = (data as PairingProposal[]).map(enrichPairing);
@@ -430,32 +308,19 @@ async function runPairings(
 
 interface ResultsProps {
   result: ResultState;
-  props: AiAssistPanelProps;
-  recipe: RecipePanelProps | null;
-  ingredient: IngredientPanelProps | null;
-  onAccept: (
-    item: { field: string; hash: string; summary: string },
-    applyFn: () => void,
-    confidence?: "high" | "medium" | "low",
-  ) => void;
+  props: PairingSuggestionPanelProps;
+  onAccept: (item: { field: string; hash: string; summary: string }, applyFn: () => void) => void;
   onReject: (item: { field: string; hash: string; summary: string }) => void;
   onAcceptAll: (
-    items: ReadonlyArray<{
-      field: string;
-      hash: string;
-      summary: string;
-      confidence?: "high" | "medium" | "low";
-    }>,
+    items: ReadonlyArray<{ field: string; hash: string; summary: string }>,
     applyFn: () => void,
   ) => void;
   onDismiss: () => void;
 }
 
-function AiAssistResults({
+function PairingSuggestionResults({
   result,
   props,
-  recipe,
-  ingredient,
   onAccept,
   onReject,
   onAcceptAll,
@@ -463,30 +328,13 @@ function AiAssistResults({
 }: ResultsProps) {
   return (
     <div className="border-t border-border pt-3 space-y-1">
-      {result.op === "links" && recipe && (
-        <>
-          <SectionHeader icon={<Link2 size={11} />} label="Ingredient links" />
-          <IngredientLinksResult
-            links={result.items}
-            onAcceptAll={() =>
-              onAcceptAll(result.items, () => recipe.onApplyIngredientLinks(result.items))
-            }
-            onAcceptOne={(l) => onAccept(l, () => recipe.onApplyIngredientLinks([l]), l.confidence)}
-            onRejectOne={onReject}
-            onDismiss={onDismiss}
-          />
-        </>
-      )}
-
-      {result.op === "pairings" && ingredient && (
+      {result.op === "pairings" && (
         <>
           <SectionHeader icon={<Link2 size={11} />} label="Pairings" />
           <PairingsResult
             pairings={result.items}
-            onAcceptAll={() =>
-              onAcceptAll(result.items, () => ingredient.onApplyPairings(result.items))
-            }
-            onAcceptOne={(p) => onAccept(p, () => ingredient.onApplyPairings([p]))}
+            onAcceptAll={() => onAcceptAll(result.items, () => props.onApplyPairings(result.items))}
+            onAcceptOne={(p) => onAccept(p, () => props.onApplyPairings([p]))}
             onRejectOne={onReject}
             onDismiss={onDismiss}
           />
@@ -548,29 +396,24 @@ function AiAssistResults({
 
 // ── Main panel ────────────────────────────────────────────────────────────────
 
-type Op = "links" | "tags" | "improve" | "pairings";
+type Op = "tags" | "improve" | "pairings";
 
-function opToAction(op: Op, isRecipe: boolean): string {
+function opToAction(op: Op): string {
   switch (op) {
-    case "links":
-      return "aiProposeIngredientLinks";
     case "tags":
       return "aiProposeTags";
     case "improve":
-      return isRecipe ? "aiProposeRecipeImprovements" : "aiProposeIngredientImprovements";
+      return "aiProposeIngredientImprovements";
     case "pairings":
       return "aiProposeIngredientPairings";
   }
 }
 
-export default function AiAssistPanel(props: AiAssistPanelProps) {
+export default function PairingSuggestionPanel(props: PairingSuggestionPanelProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState<Op | null>(null);
   const [result, setResult] = useState<ResultState | null>(null);
 
-  const isRecipe = props.mode === "recipe";
-  const recipe = isRecipe ? (props as RecipePanelProps) : null;
-  const ingredient = !isRecipe ? (props as IngredientPanelProps) : null;
   const aiEvents = props.aiEvents ?? [];
   const model = props.model ?? "ai-assist";
   const entityRef = props.entityRef;
@@ -579,11 +422,9 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
     const at = new Date().toISOString();
     const id = crypto.randomUUID();
     const event: AiEvent = { ...params, at, id };
-    // Persist via server action when entityRef is known (existing entities).
     if (entityRef) {
       void actions.aiRecordEvent({ ...entityRef, event: event as Record<string, unknown> });
     }
-    // Also update local state so the UI reflects the change immediately.
     const updated = [...aiEvents, event];
     props.onRecordEvent?.(updated);
   }
@@ -602,7 +443,6 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
   function handleAccept(
     item: { field: string; hash: string; summary: string },
     applyFn: () => void,
-    confidence?: "high" | "medium" | "low",
   ) {
     applyFn();
     emitEvent({
@@ -610,7 +450,6 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
       field: item.field,
       suggestion: { hash: item.hash, summary: item.summary },
       model,
-      ...(confidence ? { confidence } : {}),
     });
     removeFromResult(item.field, item.hash);
   }
@@ -626,12 +465,7 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
   }
 
   function acceptAllAndDismiss(
-    items: ReadonlyArray<{
-      field: string;
-      hash: string;
-      summary: string;
-      confidence?: "high" | "medium" | "low";
-    }>,
+    items: ReadonlyArray<{ field: string; hash: string; summary: string }>,
     applyFn: () => void,
   ) {
     applyFn();
@@ -641,7 +475,6 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
         field: item.field,
         suggestion: { hash: item.hash, summary: item.summary },
         model,
-        ...(item.confidence ? { confidence: item.confidence } : {}),
       });
     }
     dismiss();
@@ -652,25 +485,12 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
     setResult(null);
     try {
       let next: ResultState | null = null;
-      if (op === "links" && recipe) {
-        const { result: r, autoApplied } = await runLinks(recipe, aiEvents);
-        for (const link of autoApplied) {
-          recipe.onApplyIngredientLinks([link]);
-          emitEvent({
-            type: "auto-applied",
-            field: link.field,
-            suggestion: { hash: link.hash, summary: link.summary },
-            model,
-            confidence: link.confidence,
-          });
-        }
-        next = r;
-      } else if (op === "tags") {
+      if (op === "tags") {
         next = await runTags(props.snapshot, aiEvents);
       } else if (op === "improve") {
-        next = await runImprove(props, isRecipe, aiEvents);
-      } else if (op === "pairings" && ingredient) {
-        next = await runPairings(ingredient, aiEvents);
+        next = await runImprove(props.snapshot, props.missingFields, aiEvents);
+      } else if (op === "pairings") {
+        next = await runPairings(props.snapshot, props.locale, aiEvents);
       }
       if (next) setResult(next);
     } catch (e) {
@@ -701,26 +521,14 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
       {open && (
         <div className="px-4 pb-4 space-y-4 border-t border-border pt-3">
           <div className="space-y-1.5">
-            {isRecipe && (
-              <ActionButton
-                icon={<Link2 size={12} />}
-                label="Propose ingredient links"
-                op="links"
-                loading={loading}
-                active={result?.op === "links"}
-                onClick={() => run("links")}
-              />
-            )}
-            {!isRecipe && (
-              <ActionButton
-                icon={<Link2 size={12} />}
-                label="Propose pairings"
-                op="pairings"
-                loading={loading}
-                active={result?.op === "pairings"}
-                onClick={() => run("pairings")}
-              />
-            )}
+            <ActionButton
+              icon={<Link2 size={12} />}
+              label="Propose pairings"
+              op="pairings"
+              loading={loading}
+              active={result?.op === "pairings"}
+              onClick={() => run("pairings")}
+            />
             <ActionButton
               icon={<Tag size={12} />}
               label="Propose tags"
@@ -742,16 +550,14 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
           {loading && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Loader2 size={11} className="animate-spin shrink-0" />
-              <CapabilityLabel action={opToAction(loading, isRecipe)} />
+              <CapabilityLabel action={opToAction(loading)} />
             </div>
           )}
 
           {result && (
-            <AiAssistResults
+            <PairingSuggestionResults
               result={result}
               props={props}
-              recipe={recipe}
-              ingredient={ingredient}
               onAccept={handleAccept}
               onReject={handleReject}
               onAcceptAll={acceptAllAndDismiss}
