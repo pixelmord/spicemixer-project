@@ -208,6 +208,14 @@ export default function PairingForm({
     },
   });
 
+  async function handleManualRefresh() {
+    try {
+      await aiFlow.run();
+    } catch {
+      toast.error("Could not refresh suggestions");
+    }
+  }
+
   const ingestAction = useIngestAction({
     kind: "pairing",
     slug: initialId ?? "",
