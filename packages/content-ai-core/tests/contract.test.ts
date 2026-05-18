@@ -1,6 +1,14 @@
 import { describe, expect, test } from "vite-plus/test";
 import { z } from "zod";
-import type { AiContract, FieldConfig, Preset } from "../src/contract.ts";
+import type {
+  AiContract,
+  FieldConfig,
+  FieldPath,
+  Preset,
+  PromptContext,
+  ResolvedPreset,
+} from "../src/contract.ts";
+import type { Origin } from "../src/origin.ts";
 
 const recipeSchema = z.object({
   name: z.string(),
@@ -100,5 +108,62 @@ describe("FieldWritePolicy in FieldConfig", () => {
       writePolicy: { mode: "merge-instructions", instruction: "Append new tags to existing." },
     };
     expect(config.writePolicy).toMatchObject({ mode: "merge-instructions" });
+  });
+});
+
+describe("PromptContext spec", () => {
+  const mockOrigin: Origin = {
+    surface: "editor",
+    action: "refine",
+    userInitiated: true,
+    runId: "run-1",
+    triggeredBy: "editor",
+  };
+
+  test("PromptContext with required fields only", () => {
+    const ctx: PromptContext<RecipeSchema> = {
+      field: "name",
+      rejectedSuggestions: [],
+      origin: mockOrigin,
+    };
+    expect(ctx.field).toBe("name");
+    expect(ctx.rejectedSuggestions).toEqual([]);
+    expect(ctx.origin).toBe(mockOrigin);
+  });
+
+  test("PromptContext field is constrained to schema keys", () => {
+    const _field: FieldPath<RecipeSchema> = "name";
+    expect(_field).toBe("name");
+  });
+
+  test("PromptContext accepts optional fields", () => {
+    const ctx: PromptContext<RecipeSchema> = {
+      field: "description",
+      currentData: { name: "Cumin" },
+      userPrompt: "Be concise",
+      rejectedSuggestions: [
+        { fieldPath: "description", summary: "Too vague", at: "2026-01-01T00:00:00Z" },
+      ],
+      origin: mockOrigin,
+    };
+    expect(ctx.currentData?.name).toBe("Cumin");
+    expect(ctx.rejectedSuggestions).toHaveLength(1);
+  });
+
+  test("PromptContext accepts ResolvedPreset object (not a string id)", () => {
+    const resolvedPreset: ResolvedPreset = {
+      id: "expand",
+      label: "Expand description",
+      instruction: "Write a detailed description.",
+      appliesTo: "text",
+    };
+    const ctx: PromptContext<RecipeSchema> = {
+      field: "description",
+      preset: resolvedPreset,
+      rejectedSuggestions: [],
+      origin: mockOrigin,
+    };
+    expect(ctx.preset?.id).toBe("expand");
+    expect(ctx.preset?.instruction).toBe("Write a detailed description.");
   });
 });

@@ -1,4 +1,5 @@
 import type { ZodSchema, z } from "zod";
+import type { Origin } from "./origin.ts";
 import type { FieldWritePolicy } from "./suggestions.ts";
 
 export type TranslationBehavior =
@@ -11,11 +12,30 @@ export type AutoApplyPolicy =
   | { policy: "never" }
   | { policy: "high-confidence"; threshold: number };
 
-export interface PromptContext<S extends ZodSchema, Source> {
-  currentData?: z.infer<S>;
+export type FieldPath<S extends ZodSchema> = keyof z.infer<S> & string;
+
+export interface ResolvedPreset {
+  id: string;
+  label: string;
+  description?: string;
+  instruction: string;
+  appliesTo: "text" | "array" | "enum" | "all";
+  autoApplyOverride?: AutoApplyPolicy;
+}
+
+export interface PromptContext<S extends ZodSchema, Source = never> {
+  field: FieldPath<S>;
+  currentData?: Partial<z.infer<S>>;
   sourceContext?: Source;
+  preset?: ResolvedPreset;
   userPrompt?: string;
-  preset?: string;
+  rejectedSuggestions: Array<{
+    fieldPath: string;
+    summary: string;
+    at: string;
+    reason?: string;
+  }>;
+  origin: Origin;
 }
 
 export interface Preset<S extends ZodSchema = ZodSchema, Source = never> {

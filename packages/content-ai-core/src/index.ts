@@ -1,9 +1,11 @@
 export type {
   AiContract,
   FieldConfig,
+  FieldPath,
   Preset,
   AutoApplyPolicy,
   PromptContext,
+  ResolvedPreset,
   TranslationBehavior,
 } from "./contract.ts";
 

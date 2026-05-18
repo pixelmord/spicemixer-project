@@ -104,6 +104,8 @@ export type { PubSubEvent } from "./pubsub.ts";
 export { translationBehaviorSchema, resolveTranslation } from "./translation.ts";
 export type { TranslationBehavior, FieldConfig } from "./translation.ts";
 
+export type { FieldPath, PromptContext, ResolvedPreset } from "@pixelmord/content-ai-core";
+
 export { diffFieldHashes, classifyRefreshKind } from "./field-diff.ts";
 export type { RefreshKind } from "./field-diff.ts";
 
