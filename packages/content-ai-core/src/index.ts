@@ -5,6 +5,7 @@ export type {
   Preset,
   AutoApplyPolicy,
   PromptContext,
+  RejectedSuggestion,
   ResolvedPreset,
   TranslationBehavior,
 } from "./contract.ts";

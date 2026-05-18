@@ -132,8 +132,8 @@ describe("PromptContext spec", () => {
   });
 
   test("PromptContext field is constrained to schema keys", () => {
-    const _field: FieldPath<RecipeSchema> = "name";
-    expect(_field).toBe("name");
+    const field: FieldPath<RecipeSchema> = "name";
+    expect(field).toBe("name");
   });
 
   test("PromptContext accepts optional fields", () => {

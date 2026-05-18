@@ -23,18 +23,20 @@ export interface ResolvedPreset {
   autoApplyOverride?: AutoApplyPolicy;
 }
 
+export interface RejectedSuggestion {
+  fieldPath: string;
+  summary: string;
+  at: string;
+  reason?: string;
+}
+
 export interface PromptContext<S extends ZodSchema, Source = never> {
   field: FieldPath<S>;
   currentData?: Partial<z.infer<S>>;
   sourceContext?: Source;
   preset?: ResolvedPreset;
   userPrompt?: string;
-  rejectedSuggestions: Array<{
-    fieldPath: string;
-    summary: string;
-    at: string;
-    reason?: string;
-  }>;
+  rejectedSuggestions: RejectedSuggestion[];
   origin: Origin;
 }
 
