@@ -1,5 +1,7 @@
 import type { APIRoute } from "astro";
-import { runWithOrigin, subscribe, createAiEventLog, resolveConfig } from "content-ai";
+import { withOrigin, resolveConfig } from "@pixelmord/content-ai-core";
+import { subscribe } from "@/lib/pubsub.ts";
+import { createAiEventLog } from "@/lib/sidecar-event-log.ts";
 import { createStore } from "@/lib/content-store.ts";
 import { createMetaSidecar } from "@/lib/meta-sidecar.ts";
 import { runAiRefresh } from "@/lib/ai/runner.ts";
@@ -50,7 +52,7 @@ export const POST: APIRoute = async ({ request }) => {
         const sidecar = createMetaSidecar(store);
         const eventLog = createAiEventLog(sidecar);
 
-        const result = await runWithOrigin(
+        const result = await withOrigin(
           {
             surface: "admin",
             action: "aiRefreshSuggestions",

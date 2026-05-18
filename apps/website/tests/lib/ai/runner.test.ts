@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { InMemoryStore } from "../../../src/lib/stores/in-memory.ts";
 import { createMetaSidecar } from "../../../src/lib/meta-sidecar.ts";
 import { runAiRefresh } from "../../../src/lib/ai/runner.ts";
-import type { AiConfig, PubSubEvent } from "content-ai";
-import { createAiEventLog, hashContent, runWithOrigin, subscribe } from "content-ai";
+import type { AiConfig } from "@pixelmord/content-ai-core";
+import { hashContent, withOrigin as runWithOrigin } from "@pixelmord/content-ai-core";
+import type { PubSubEvent } from "../../../src/lib/pubsub.ts";
+import { subscribe } from "../../../src/lib/pubsub.ts";
+import { createAiEventLog } from "../../../src/lib/sidecar-event-log.ts";
 import type { FieldSuggestion } from "@pixelmord/content-ai-refine";
 
 // Stub runRefine to avoid network calls; keep real event/hash utilities.

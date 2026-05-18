@@ -30,14 +30,9 @@ import {
 import { saveEntity as libSaveEntity } from "@/lib/save-entity.ts";
 import { applyVariantsClosure } from "@/lib/variants-closure.ts";
 import { NotFoundError } from "@/lib/errors.ts";
-import {
-  AiError,
-  withOrigin,
-  entityMeta,
-  SidecarEventLog,
-  hashSuggestion,
-  metaRefToEntityRef,
-} from "content-ai";
+import { AiError, wrapWithOrigin, hashSuggestion } from "@pixelmord/content-ai-core";
+import { entityMeta } from "@/lib/entity-meta.ts";
+import { SidecarEventLog, metaRefToEntityRef, createAiEventLog } from "@/lib/sidecar-event-log.ts";
 import { createSourceStore } from "@/lib/stores/source-store.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -202,7 +197,7 @@ async function persistSourceArtifacts(
       parentBinaryHash: binaryHash,
     });
   } else if (input.kind === "pdf") {
-    const { extractPdfContent } = await import("content-ai");
+    const { extractPdfContent } = await import("@/lib/pdf.ts");
     const pdfContent = await extractPdfContent(input.bytes);
     if (pdfContent.kind === "text") {
       await sourceStore.putText(binaryHash, "pdfjs", "5", pdfContent.text, {
@@ -751,7 +746,7 @@ export const server = {
   aiExtractRecipe: defineAction({
     accept: "form",
     input: fileOrTextInput,
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiExtractRecipe",
       entityKind: "recipe",
@@ -759,7 +754,7 @@ export const server = {
       userInitiated: true,
     })(async (input) => {
       const config = resolveAiConfig();
-      const { extractRecipeFromFile } = await import("content-ai");
+      const { extractRecipeFromFile } = await import("@/lib/ai/extract-recipe.ts");
       const debug = isDebug(input.debug);
       const resolved = await resolveFileInput(input);
       const { sourceStore, binaryHash, extractionInput, now } = await persistSourceArtifacts(
@@ -788,7 +783,7 @@ export const server = {
   aiExtractIngredient: defineAction({
     accept: "form",
     input: fileOrTextInput,
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiExtractIngredient",
       entityKind: "ingredient",
@@ -796,7 +791,7 @@ export const server = {
       userInitiated: true,
     })(async (input) => {
       const config = resolveAiConfig();
-      const { extractIngredientFromFile } = await import("content-ai");
+      const { extractIngredientFromFile } = await import("@/lib/ai/extract-ingredient.ts");
       const debug = isDebug(input.debug);
       const resolved = await resolveFileInput(input);
       const { sourceStore, binaryHash, extractionInput, now } = await persistSourceArtifacts(
@@ -830,7 +825,7 @@ export const server = {
       style: z.enum(["recipe", "mixture"]).default("recipe"),
       debug: z.boolean().optional(),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiGenerateRecipe",
       entityKind: "recipe",
@@ -838,7 +833,7 @@ export const server = {
       userInitiated: true,
     })(async ({ prompt, locale, style, debug }) => {
       const config = resolveAiConfig();
-      const { generateRecipeFromPrompt } = await import("content-ai");
+      const { generateRecipeFromPrompt } = await import("@/lib/ai/generate-recipe.ts");
       try {
         const result = await generateRecipeFromPrompt({ prompt, locale, style }, config, {
           debug: debug === true,
@@ -862,7 +857,7 @@ export const server = {
       prompt: z.string().optional(),
       debug: z.string().optional(),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiMergeRecipe",
       entityKind: "recipe",
@@ -870,7 +865,7 @@ export const server = {
       userInitiated: true,
     })(async ({ existing, sourceKind, file, mimeType, text, prompt, debug }) => {
       const config = resolveAiConfig();
-      const { mergeRecipe } = await import("content-ai");
+      const { mergeRecipe } = await import("@/lib/ai/merge-recipe.ts");
       const existingRecipe = JSON.parse(existing) as Record<string, unknown>;
       const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
 
@@ -914,7 +909,7 @@ export const server = {
       recipeIngredients: z.array(z.string()),
       locale: z.enum(["en", "de"]).default("en"),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiProposeIngredientLinks",
       entityKind: "recipe",
@@ -955,7 +950,7 @@ export const server = {
     input: z.object({
       recipe: z.record(z.string(), z.unknown()),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiProposeTags",
       entityKind: "recipe",
@@ -991,7 +986,7 @@ export const server = {
       recipe: z.record(z.string(), z.unknown()),
       missingFields: z.array(z.string()),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiProposeRecipeImprovements",
       entityKind: "recipe",
@@ -1028,7 +1023,7 @@ export const server = {
       ingredient: z.record(z.string(), z.unknown()),
       locale: z.enum(["en", "de"]).default("en"),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiProposeIngredientPairings",
       entityKind: "ingredient",
@@ -1070,7 +1065,7 @@ export const server = {
       ingredient: z.record(z.string(), z.unknown()),
       missingFields: z.array(z.string()),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiProposeIngredientImprovements",
       entityKind: "ingredient",
@@ -1107,7 +1102,7 @@ export const server = {
       text: z.string().optional(),
       prompt: z.string().optional(),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiMergeIngredient",
       entityKind: "ingredient",
@@ -1115,7 +1110,7 @@ export const server = {
       userInitiated: true,
     })(async ({ existing, sourceKind, file, mimeType, text, prompt }) => {
       const config = resolveAiConfig();
-      const { mergeIngredient } = await import("content-ai");
+      const { mergeIngredient } = await import("@/lib/ai/merge-ingredient.ts");
       const existingIngredient = JSON.parse(existing) as Record<string, unknown>;
       const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
       const result = await mergeIngredient(
@@ -1139,7 +1134,7 @@ export const server = {
       existingMeta: z.record(z.string(), z.unknown()).optional(),
       missingFields: z.array(z.string()).default([]),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiRefreshIngredientSuggestions",
       entityKind: "ingredient",
@@ -1147,7 +1142,6 @@ export const server = {
       userInitiated: true,
     })(async ({ locale, slug, ingredient, existingMeta = {}, missingFields }) => {
       const config = resolveAiConfig();
-      const { createAiEventLog } = await import("content-ai");
       const { runAiRefresh } = await import("@/lib/ai/runner.ts");
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
@@ -1180,7 +1174,7 @@ export const server = {
       fields: z.record(z.string(), z.unknown()),
       meta: z.record(z.string(), z.unknown()),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiCreateIngredientTranslation",
       entityKind: "ingredient",
@@ -1219,7 +1213,7 @@ export const server = {
   aiExtractPairing: defineAction({
     accept: "form",
     input: fileOrTextInput,
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiExtractPairing",
       entityKind: "pairing",
@@ -1227,7 +1221,7 @@ export const server = {
       userInitiated: true,
     })(async (input) => {
       const config = resolveAiConfig();
-      const { extractPairingFromFile } = await import("content-ai");
+      const { extractPairingFromFile } = await import("@/lib/ai/extract-pairing.ts");
       const debug = isDebug(input.debug);
       const resolved = await resolveFileInput(input);
       const { sourceStore, binaryHash, extractionInput, now } = await persistSourceArtifacts(
@@ -1264,7 +1258,7 @@ export const server = {
       text: z.string().optional(),
       prompt: z.string().optional(),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiMergePairing",
       entityKind: "pairing",
@@ -1272,7 +1266,7 @@ export const server = {
       userInitiated: true,
     })(async ({ existing, locale, sourceKind, file, mimeType, text, prompt }) => {
       const config = resolveAiConfig();
-      const { mergePairing } = await import("content-ai");
+      const { mergePairing } = await import("@/lib/ai/merge-pairing.ts");
       const existingData = JSON.parse(existing) as Record<string, unknown>;
       const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
       const result = await mergePairing(
@@ -1292,7 +1286,7 @@ export const server = {
       targetLocale: z.enum(["en", "de"]),
       description: z.string().min(1),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiTranslatePairing",
       entityKind: "pairing",
@@ -1359,7 +1353,7 @@ export const server = {
       locale: z.string().length(2).default("en"),
       pairing: z.record(z.string(), z.unknown()),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiRefreshPairingSuggestions",
       entityKind: "pairing",
@@ -1367,7 +1361,6 @@ export const server = {
       userInitiated: true,
     })(async ({ id, locale, pairing }) => {
       const config = resolveAiConfig();
-      const { createAiEventLog } = await import("content-ai");
       const { runAiRefresh } = await import("@/lib/ai/runner.ts");
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
@@ -1410,7 +1403,7 @@ export const server = {
       licenseType: z.enum(["commercial", "modification", "commercial,modification"]).optional(),
     }),
     handler: async ({ query, page, licenseType }) => {
-      const { searchImages } = await import("content-ai");
+      const { searchImages } = await import("@/lib/search-images.ts");
       return searchImages(query, { page, licenseType });
     },
   }),
@@ -1485,7 +1478,7 @@ export const server = {
       locale: z.string().length(2).default("en"),
       collection: recipeCollectionEnum,
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiSuggestSlug",
       triggeredBy: "editor",
@@ -1538,7 +1531,7 @@ export const server = {
       locale: z.enum(["en", "de"]).default("en"),
       force: z.boolean().default(false),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiRefreshSuggestions",
       entityKind: "recipe",
@@ -1546,7 +1539,6 @@ export const server = {
       userInitiated: true,
     })(async ({ collection, slug, recipe, meta, missingFields, locale, force }) => {
       const config = resolveAiConfig();
-      const { createAiEventLog } = await import("content-ai");
       const { runAiRefresh } = await import("@/lib/ai/runner.ts");
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
@@ -1582,7 +1574,7 @@ export const server = {
       fields: z.record(z.string(), z.unknown()),
       meta: z.record(z.string(), z.unknown()),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiCreateTranslation",
       entityKind: "recipe",
@@ -1631,7 +1623,7 @@ export const server = {
       sourceData: z.record(z.string(), z.unknown()),
       target: z.array(z.string()).optional(),
     }),
-    handler: withOrigin({
+    handler: wrapWithOrigin({
       surface: "admin",
       action: "aiFillTranslation",
       entityKind: "recipe",

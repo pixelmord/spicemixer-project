@@ -29,9 +29,9 @@ The substrate covers everything both consumers share verbatim:
 | Testing utilities         | `InMemoryAiEventLog`, `InMemoryTraceSink`                                                                       |
 
 Spicemixer-specific adapters (`SidecarEventLog`, `FileTraceSink`,
-`SentrySpanSink`, `LocalSourceStore`) stay in `apps/website/` and
-`packages/content-ai/`. pixelmord-hq will write its own `ConvexEventLog` and
-`ConvexTraceSink` implementing the same interfaces.
+`SentrySpanSink`, `LocalSourceStore`) live in `apps/website/src/lib/`.
+pixelmord-hq will write its own `ConvexEventLog` and `ConvexTraceSink`
+implementing the same interfaces.
 
 ## Motivation
 

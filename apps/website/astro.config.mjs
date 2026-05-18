@@ -96,9 +96,14 @@ export default defineConfig({
           __dirname,
           "../../packages/content-ai-refine/src/index.ts",
         ),
+        // Subpath alias must come before the base alias (Vite matches in insertion order)
         "@pixelmord/content-ai-core/testing": join(
           __dirname,
           "../../packages/content-ai-core/src/testing/index.ts",
+        ),
+        "@pixelmord/content-ai-core": join(
+          __dirname,
+          "../../packages/content-ai-core/src/index.ts",
         ),
       },
     },

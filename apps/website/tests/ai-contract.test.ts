@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { InMemoryStore } from "../src/lib/stores/in-memory.ts";
 import { createMetaSidecar } from "../src/lib/meta-sidecar.ts";
-import type { AiEvent } from "content-ai";
-import { hashContent } from "../../../packages/content-ai/src/hash.ts";
+import type { AiEvent } from "@pixelmord/content-ai-core";
+import { hashContent } from "@pixelmord/content-ai-core";
 
 // Contract tests ensuring AI policy is enforced centrally (ADR 0004 / PRD #4).
 
@@ -101,27 +101,31 @@ vi.mock("recipe-ingestion", async (importOriginal) => {
   return { ...actual, fetchRecipe: vi.fn() };
 });
 
-// content-ai is a workspace package whose dist/ is not built during tests.
-// vite.config.ts aliases "content-ai" → src/index.ts so imports resolve.
-// Keep pure event/hashing utilities real; stub every AI-provider call to
-// avoid network requests in unit tests.
-vi.mock("content-ai", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("content-ai")>();
-  return {
-    ...actual,
-    translateIngredientFields: vi.fn().mockResolvedValue({ targetLocale: "de", fields: {} }),
-    translateRecipeFields: vi.fn().mockResolvedValue({ targetLocale: "de", fields: {} }),
-    translatePairingDescription: vi.fn().mockResolvedValue({ targetLocale: "de", fields: {} }),
-    extractRecipeFromFile: vi.fn().mockResolvedValue({}),
-    extractIngredientFromFile: vi.fn().mockResolvedValue({}),
-    extractPairingFromFile: vi.fn().mockResolvedValue({}),
-    generateRecipeFromPrompt: vi.fn().mockResolvedValue({}),
-    mergeRecipe: vi.fn().mockResolvedValue({}),
-    mergeIngredient: vi.fn().mockResolvedValue({}),
-    mergePairing: vi.fn().mockResolvedValue({}),
-    searchImages: vi.fn().mockResolvedValue([]),
-  };
-});
+// Stub every AI-provider call to avoid network requests in unit tests.
+vi.mock("@/lib/ai/extract-recipe.ts", () => ({
+  extractRecipeFromFile: vi.fn().mockResolvedValue({}),
+}));
+vi.mock("@/lib/ai/extract-ingredient.ts", () => ({
+  extractIngredientFromFile: vi.fn().mockResolvedValue({}),
+}));
+vi.mock("@/lib/ai/extract-pairing.ts", () => ({
+  extractPairingFromFile: vi.fn().mockResolvedValue({}),
+}));
+vi.mock("@/lib/ai/generate-recipe.ts", () => ({
+  generateRecipeFromPrompt: vi.fn().mockResolvedValue({}),
+}));
+vi.mock("@/lib/ai/merge-recipe.ts", () => ({
+  mergeRecipe: vi.fn().mockResolvedValue({}),
+}));
+vi.mock("@/lib/ai/merge-ingredient.ts", () => ({
+  mergeIngredient: vi.fn().mockResolvedValue({}),
+}));
+vi.mock("@/lib/ai/merge-pairing.ts", () => ({
+  mergePairing: vi.fn().mockResolvedValue({}),
+}));
+vi.mock("@/lib/search-images.ts", () => ({
+  searchImages: vi.fn().mockResolvedValue([]),
+}));
 
 // Stub runRefine (@pixelmord/content-ai-refine) to avoid network calls in integration tests.
 vi.mock("@pixelmord/content-ai-refine", async (importOriginal) => {

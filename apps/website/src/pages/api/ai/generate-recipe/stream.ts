@@ -1,5 +1,7 @@
 import type { APIRoute } from "astro";
-import { runWithOrigin, subscribe, generateRecipeFromPrompt, resolveConfig } from "content-ai";
+import { withOrigin, resolveConfig } from "@pixelmord/content-ai-core";
+import { subscribe } from "@/lib/pubsub.ts";
+import { generateRecipeFromPrompt } from "@/lib/ai/generate-recipe.ts";
 
 export const prerender = false;
 
@@ -39,7 +41,7 @@ export const POST: APIRoute = async ({ request }) => {
       });
 
       try {
-        const result = await runWithOrigin(
+        const result = await withOrigin(
           {
             surface: "admin",
             action: "aiGenerateRecipe",

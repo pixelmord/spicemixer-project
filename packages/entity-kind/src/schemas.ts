@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { recipeSchema } from "recipe-ingestion";
-import { aiEventSchema } from "content-ai";
+import { aiEventSchema } from "@pixelmord/content-ai-core";
 
 export { recipeSchema };
 export type { Recipe } from "recipe-ingestion";
