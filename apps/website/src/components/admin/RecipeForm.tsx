@@ -1007,22 +1007,20 @@ export default function RecipeForm({
   }
 
   function applyProposedToForm(p: Record<string, unknown>) {
-    if (typeof p.name === "string") form.setFieldValue("name" as never, p.name as never);
-    if (typeof p.description === "string")
-      form.setFieldValue("description" as never, p.description as never);
-    if (typeof p.image === "string") form.setFieldValue("image" as never, p.image as never);
-    if (typeof p.recipeYield === "string")
-      form.setFieldValue("recipeYield" as never, p.recipeYield as never);
-    if (typeof p.recipeCategory === "string")
-      form.setFieldValue("recipeCategory" as never, p.recipeCategory as never);
-    if (typeof p.recipeCuisine === "string")
-      form.setFieldValue("recipeCuisine" as never, p.recipeCuisine as never);
-    if (typeof p.prepTime === "string")
-      form.setFieldValue("prepTime" as never, p.prepTime as never);
-    if (typeof p.cookTime === "string")
-      form.setFieldValue("cookTime" as never, p.cookTime as never);
-    if (typeof p.totalTime === "string")
-      form.setFieldValue("totalTime" as never, p.totalTime as never);
+    const stringFields = [
+      "name",
+      "description",
+      "image",
+      "recipeYield",
+      "recipeCategory",
+      "recipeCuisine",
+      "prepTime",
+      "cookTime",
+      "totalTime",
+    ] as const;
+    for (const f of stringFields) {
+      if (typeof p[f] === "string") form.setFieldValue(f as never, p[f] as never);
+    }
     if (p.author && typeof p.author === "object" && !Array.isArray(p.author)) {
       const author = p.author as Record<string, unknown>;
       if (typeof author.name === "string")
