@@ -309,19 +309,10 @@ async function runPairings(
 interface ResultsProps {
   result: ResultState;
   props: PairingSuggestionPanelProps;
-  onAccept: (
-    item: { field: string; hash: string; summary: string },
-    applyFn: () => void,
-    confidence?: "high" | "medium" | "low",
-  ) => void;
+  onAccept: (item: { field: string; hash: string; summary: string }, applyFn: () => void) => void;
   onReject: (item: { field: string; hash: string; summary: string }) => void;
   onAcceptAll: (
-    items: ReadonlyArray<{
-      field: string;
-      hash: string;
-      summary: string;
-      confidence?: "high" | "medium" | "low";
-    }>,
+    items: ReadonlyArray<{ field: string; hash: string; summary: string }>,
     applyFn: () => void,
   ) => void;
   onDismiss: () => void;
@@ -452,7 +443,6 @@ export default function PairingSuggestionPanel(props: PairingSuggestionPanelProp
   function handleAccept(
     item: { field: string; hash: string; summary: string },
     applyFn: () => void,
-    confidence?: "high" | "medium" | "low",
   ) {
     applyFn();
     emitEvent({
@@ -460,7 +450,6 @@ export default function PairingSuggestionPanel(props: PairingSuggestionPanelProp
       field: item.field,
       suggestion: { hash: item.hash, summary: item.summary },
       model,
-      ...(confidence ? { confidence } : {}),
     });
     removeFromResult(item.field, item.hash);
   }
@@ -476,12 +465,7 @@ export default function PairingSuggestionPanel(props: PairingSuggestionPanelProp
   }
 
   function acceptAllAndDismiss(
-    items: ReadonlyArray<{
-      field: string;
-      hash: string;
-      summary: string;
-      confidence?: "high" | "medium" | "low";
-    }>,
+    items: ReadonlyArray<{ field: string; hash: string; summary: string }>,
     applyFn: () => void,
   ) {
     applyFn();
@@ -491,7 +475,6 @@ export default function PairingSuggestionPanel(props: PairingSuggestionPanelProp
         field: item.field,
         suggestion: { hash: item.hash, summary: item.summary },
         model,
-        ...(item.confidence ? { confidence: item.confidence } : {}),
       });
     }
     dismiss();
