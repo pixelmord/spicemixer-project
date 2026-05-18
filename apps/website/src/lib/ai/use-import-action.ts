@@ -6,7 +6,7 @@ export type ContentType = "recipe" | "ingredient" | "pairing";
 export type RecipeCollection = "recipes" | "mixtures";
 export type Locale = "en" | "de";
 
-interface AiDebugInfo {
+export interface AiDebugInfo {
   modelId?: string;
   finishReason?: string;
   usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };

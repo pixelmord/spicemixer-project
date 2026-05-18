@@ -29,27 +29,17 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { FileTextPromptSourcePicker } from "./FileTextPromptSourcePicker.tsx";
 import type { SourceShape } from "./FileTextPromptSourcePicker.tsx";
 import CapabilityLabel from "./CapabilityLabel.tsx";
-import { useImportAction, parseActionError } from "../../lib/ai/use-import-action.ts";
+import { useImportAction, parseActionError } from "@/lib/ai/use-import-action.ts";
 import type {
   ContentType,
   RecipeCollection,
   Locale,
   ImportResult,
-} from "../../lib/ai/use-import-action.ts";
+  AiDebugInfo,
+  ParsedActionError,
+} from "@/lib/ai/use-import-action.ts";
 
-export type { SourceMeta } from "../../lib/ai/use-import-action.ts";
-
-interface AiDebugInfo {
-  modelId?: string;
-  finishReason?: string;
-  usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };
-  rawText?: string;
-}
-
-interface ErrorState {
-  message: string;
-  details?: AiDebugInfo & { cause?: string };
-}
+export type { SourceMeta } from "@/lib/ai/use-import-action.ts";
 
 function detectRecipeLanguage(recipe: Record<string, unknown> | null): Locale | null {
   if (!recipe) return null;
@@ -92,7 +82,7 @@ export default function AiImportPage() {
   const [partialRecipe, setPartialRecipe] = useState<Record<string, unknown> | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [debug, setDebug] = useState<AiDebugInfo | null>(null);
-  const [error, setError] = useState<ErrorState | null>(null);
+  const [error, setError] = useState<ParsedActionError | null>(null);
   const [sourceMeta, setSourceMeta] = useState<ImportResult["sourceMeta"] | null>(null);
 
   const run = useImportAction(contentType, locale, collection, (partial) =>
@@ -171,14 +161,16 @@ export default function AiImportPage() {
   const sourceKind = source?.kind;
   const isPromptMode = sourceKind === "prompt";
 
-  const submitLabel =
-    isPromptMode && contentType === "recipe"
-      ? "Generate recipe"
-      : contentType === "recipe"
-        ? "Extract recipe"
-        : contentType === "pairing"
-          ? "Extract pairing"
-          : "Extract ingredient";
+  let submitLabel: string;
+  if (isPromptMode && contentType === "recipe") {
+    submitLabel = "Generate recipe";
+  } else if (contentType === "recipe") {
+    submitLabel = "Extract recipe";
+  } else if (contentType === "pairing") {
+    submitLabel = "Extract pairing";
+  } else {
+    submitLabel = "Extract ingredient";
+  }
 
   const loadingAction = composeAction(sourceKind, contentType);
 
