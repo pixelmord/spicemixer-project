@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
+import type { AiConfig } from "@pixelmord/content-ai-core";
 import { createMockLanguageModel } from "@pixelmord/content-ai-core/testing";
 import { wrapLanguageModel } from "ai";
 import { AiError } from "./errors.ts";
@@ -15,9 +16,7 @@ const fileSink = new FileTraceSink();
 const sentrySink = new SentrySpanSink();
 const pubSubSink = new PubSubTraceSink();
 
-export function createProvider(
-  config: import("@pixelmord/content-ai-core").AiConfig,
-): LanguageModelV3 {
+export function createProvider(config: AiConfig): LanguageModelV3 {
   if (process.env["AI_PROVIDER"] === "mock") {
     return wrapLanguageModel({
       model: createMockLanguageModel(),

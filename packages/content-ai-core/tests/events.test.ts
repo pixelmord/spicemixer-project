@@ -3,6 +3,10 @@ import {
   aiEventSchema,
   isPrunable,
   planPrune,
+  prune,
+  appendEvent,
+  recordAiEvent,
+  hasAutoApplied,
   sourceDescriptorSchema,
   normalizeSourceField,
 } from "../src/events.ts";
@@ -232,9 +236,6 @@ describe("normalizeSourceField", () => {
     expect(normalizeSourceField(descriptor)).toBe(descriptor);
   });
 });
-
-// Additional imports for new helpers
-import { prune, appendEvent, recordAiEvent, hasAutoApplied } from "../src/events.ts";
 
 describe("prune — wrapper around planPrune(100)", () => {
   test("returns unchanged array when <= 100 events", () => {

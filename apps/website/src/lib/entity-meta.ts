@@ -11,7 +11,6 @@ export const entityMetaSchema = z.object({
   aiEvents: z.array(aiEventSchema).default([]),
   // Per-entity map of locale → "locale/slug" tracking which locales have translations
   translations: z.record(z.string(), z.string()).optional(),
-  // Header room for future additions
   featured: z.boolean().optional(),
   variants: z.array(z.string()).optional(),
 });
