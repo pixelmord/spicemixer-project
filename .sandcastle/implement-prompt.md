@@ -35,7 +35,7 @@ If applicable, use RGR to complete the task.
 
 # FEEDBACK LOOPS
 
-Before committing, run `vp check` (format + lint + types) and `vp run -r test` (recursive across the workspace) to ensure everything passes. Do not invoke pnpm/npm/yarn or vitest/oxlint/tsdown directly — Vite+ wraps them.
+Before committing, run `vp run -r check --fix` (format + lint + types) and `vp run -r test` (recursive across the workspace) to ensure everything passes. Do not invoke pnpm/npm/yarn or vitest/oxlint/tsdown directly — Vite+ wraps them.
 
 # COMMIT
 
@@ -54,7 +54,7 @@ Keep it concise.
 - **Never run `git add -A` or `git add .`**. Always `git add` explicit, named files — the source files you intentionally edited.
 - **Never stage `.pnpm-store/`, `node_modules/`, `.astro/`, `dist/`, `.cache/`, or any tool-generated directory** — even if `git status` shows them as untracked.
 - If `vp install` updates `pnpm-lock.yaml` and your task is the cause, stage that file; otherwise leave it.
-- If `git status` after `vp check` or `vp install` shows files you didn't expect, treat that as a bug to investigate, not noise to commit through.
+- If `git status` after `vp run -r check` or `vp install` shows files you didn't expect, treat that as a bug to investigate, not noise to commit through.
 
 # THE ISSUE
 
