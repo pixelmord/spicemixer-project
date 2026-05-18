@@ -6,7 +6,7 @@ export default defineConfig({
     alias: {
       "content-ai": path.resolve("../content-ai/src/index.ts"),
       "@pixelmord/content-ai-ingest": path.resolve("../content-ai-ingest/src/index.ts"),
-      // Subpath aliases must come before the base alias
+      // Subpath aliases must come before the base alias (Vite matches in insertion order)
       "@pixelmord/content-ai-core/testing": path.resolve("../content-ai-core/src/testing/index.ts"),
       "@pixelmord/content-ai-core": path.resolve("../content-ai-core/src/index.ts"),
       "recipe-ingestion": path.resolve("../recipe-ingestion/src/index.ts"),
