@@ -19,7 +19,6 @@ export interface RecipeExtractionResult {
   debug?: AiDebugInfo;
 }
 
-// Resolved input after PDF pre-processing
 type ResolvedInput =
   | { kind: "text"; content: string }
   | { kind: "image"; bytes: Uint8Array; mimeType: string }

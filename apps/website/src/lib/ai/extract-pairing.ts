@@ -3,7 +3,10 @@ import { debugFromResult, toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts"
 import { toImagePart } from "@/lib/image.ts";
 import { extractPdfContent } from "@/lib/pdf.ts";
 import { pairingExtractSchema, type PairingExtract } from "@/contracts/schemas/pairing-extract.ts";
-import type { ExtractOptions } from "@/lib/ai/extract-recipe.ts";
+
+export interface ExtractOptions {
+  debug?: boolean;
+}
 
 export type PairingFileInput =
   | { kind: "pdf"; bytes: Uint8Array }

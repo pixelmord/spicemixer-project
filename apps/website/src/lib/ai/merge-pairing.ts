@@ -31,7 +31,7 @@ interface ResolvedMergePairingInput {
   source: ResolvedMergePairingSource;
 }
 
-const MERGE_SYSTEM = `You are editing a culinary ingredient pairing description.
+const MERGE_SYSTEM_PROMPT = `You are editing a culinary ingredient pairing description.
 RULES:
 - Keep ingredient1 and ingredient2 the same unless the new content explicitly corrects them
 - Only update the description if the new content provides a clearly better one
@@ -41,7 +41,7 @@ RULES:
 const pairingMergeContract: IngestContract<typeof pairingExtractSchema, ResolvedMergePairingInput> =
   {
     schema: pairingExtractSchema,
-    systemPrompt: MERGE_SYSTEM,
+    systemPrompt: MERGE_SYSTEM_PROMPT,
     buildMessages: async (input) => {
       const existingJson = JSON.stringify(input.existing, null, 2);
       const base = `EXISTING PAIRING (copy fields unless new content explicitly changes them):\n${existingJson}`;

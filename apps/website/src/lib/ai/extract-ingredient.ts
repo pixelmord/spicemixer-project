@@ -6,7 +6,10 @@ import {
   ingredientExtractSchema,
   type IngredientExtract,
 } from "@/contracts/schemas/ingredient-extract.ts";
-import type { ExtractOptions } from "@/lib/ai/extract-recipe.ts";
+
+export interface ExtractOptions {
+  debug?: boolean;
+}
 
 export type IngredientFileInput =
   | { kind: "pdf"; bytes: Uint8Array }

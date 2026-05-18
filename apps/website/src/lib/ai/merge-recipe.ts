@@ -1,10 +1,10 @@
 import { runFill, type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
-import { toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts";
+import { debugFromResult, toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts";
 import { toImagePart } from "@/lib/image.ts";
 import { extractPdfContent } from "@/lib/pdf.ts";
 import { recipeExtractSchema, type RecipeExtract } from "@/contracts/schemas/recipe-extract.ts";
 
-export type MergeSource =
+export type MergeRecipeSource =
   | { kind: "pdf"; bytes: Uint8Array }
   | { kind: "image"; bytes: Uint8Array; mimeType: string }
   | { kind: "text"; content: string }
@@ -12,7 +12,7 @@ export type MergeSource =
 
 export interface MergeRecipeInput {
   existing: RecipeExtract;
-  source: MergeSource;
+  source: MergeRecipeSource;
 }
 
 export interface MergeRecipeResult {
@@ -25,7 +25,7 @@ export interface MergeOptions {
   debug?: boolean;
 }
 
-type ResolvedMergeSource =
+type ResolvedMergeRecipeSource =
   | { kind: "text"; content: string }
   | { kind: "image"; bytes: Uint8Array; mimeType: string }
   | { kind: "pdf-vision"; bytes: Uint8Array }
@@ -33,7 +33,7 @@ type ResolvedMergeSource =
 
 interface ResolvedMergeRecipeInput {
   existing: RecipeExtract;
-  source: ResolvedMergeSource;
+  source: ResolvedMergeRecipeSource;
 }
 
 const MERGE_SYSTEM_PROMPT = `You are a recipe editor merging new content into an existing recipe.
@@ -116,8 +116,8 @@ const recipeMergeContract: IngestContract<typeof recipeExtractSchema, ResolvedMe
 };
 
 async function resolveSource(
-  source: MergeSource,
-): Promise<{ resolved: ResolvedMergeSource; warnings: string[] }> {
+  source: MergeRecipeSource,
+): Promise<{ resolved: ResolvedMergeRecipeSource; warnings: string[] }> {
   if (source.kind === "pdf") {
     const content = await extractPdfContent(source.bytes);
     if (content.kind === "text") {
@@ -160,7 +160,7 @@ export async function mergeRecipe(
     };
 
     if (options.debug) {
-      base.debug = { modelId: config.model };
+      base.debug = debugFromResult({ response: { modelId: config.model } });
     }
 
     return base;
