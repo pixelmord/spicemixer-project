@@ -85,17 +85,6 @@ const ingredientLinksOutputSchema = z.array(
   }),
 );
 
-// Relations output schema (replaces proposeRelations)
-const relationsOutputSchema = z.array(
-  z.object({
-    kind: z.enum(["goesWellWith", "usesBase"]),
-    collection: z.enum(["recipes", "mixtures"]),
-    slug: z.string(),
-    name: z.string(),
-    rationale: z.string(),
-  }),
-);
-
 // Tags output schema (replaces proposeTags)
 const tagsOutputSchema = z.array(z.string());
 
@@ -171,35 +160,6 @@ Return an empty array if nothing matches confidently. Do not fabricate slugs.
 Valid slugs: ${[...inventorySet].join(", ")}`;
       },
       outputSchema: ingredientLinksOutputSchema,
-      autoApply: { policy: "never" },
-      translation: { mode: "copy" },
-    },
-
-    // Relation proposals (replaces proposeRelations)
-    relations: {
-      systemPrompt: ({ currentData, sourceContext }) => {
-        const existingRecipes = sourceContext?.existingRecipes ?? [];
-        if (!existingRecipes.length) return "";
-        const ctx = buildRecipeCtx(currentData);
-        const candidatesList = existingRecipes
-          .slice(0, 50)
-          .map((r) => `[${r.collection}] ${r.slug}: ${r.name}`)
-          .join("\n");
-        return `Based on this recipe, suggest related recipes from the catalog below.
-
-Current recipe:
-${ctx}
-
-Available recipes ([collection] slug: name):
-${candidatesList}
-
-Return up to 4 relations:
-- "goesWellWith": recipes this pairs or serves well alongside
-- "usesBase": recipes/mixtures this recipe uses as a base ingredient
-
-Only suggest relations with clear culinary logic. Return empty array if nothing fits.`;
-      },
-      outputSchema: relationsOutputSchema,
       autoApply: { policy: "never" },
       translation: { mode: "copy" },
     },

@@ -71,36 +71,7 @@
           "confidence": "high"
         }
       ],
-      "relations": [
-        {
-          "kind": "goesWellWith",
-          "collection": "recipes",
-          "slug": "preserved-lemon-couscous",
-          "name": "Preserved Lemon Couscous",
-          "rationale": "Dukkah adds a nutty and aromatic flavor that complements the citrus notes of preserved lemon in the couscous."
-        },
-        {
-          "kind": "goesWellWith",
-          "collection": "recipes",
-          "slug": "miso-butter-ramen",
-          "name": "Miso Butter Ramen",
-          "rationale": "The rich flavors of miso and butter can be enhanced with a sprinkle of dukkah for added texture and spice."
-        },
-        {
-          "kind": "usesBase",
-          "collection": "mixtures",
-          "slug": "ras-el-hanout",
-          "name": "Ras el Hanout",
-          "rationale": "Dukkah's spice profile can complement the complex spices found in ras el hanout, making it a suitable base for drizzling or seasoning."
-        },
-        {
-          "kind": "usesBase",
-          "collection": "mixtures",
-          "slug": "berbere",
-          "name": "Berbere",
-          "rationale": "Dukkah and berbere share similar aromatic qualities, making them compatible for enhancing the flavor of dishes."
-        }
-      ]
+      "pairings": []
     }
   }
 }

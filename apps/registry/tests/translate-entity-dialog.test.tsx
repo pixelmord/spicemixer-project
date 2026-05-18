@@ -17,7 +17,10 @@ import type {
   RunResult,
 } from "../src/components/use-ai-suggestions";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  document.body.innerHTML = "";
+});
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 

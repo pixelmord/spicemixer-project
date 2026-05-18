@@ -1,6 +1,6 @@
-import { cn } from "@/lib/utils";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { cn } from "../lib/utils";
+import { Label } from "./ui/label";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 
 type SimpleWritePolicy = "preserve" | "replace" | "fill-if-empty" | "merge-instructions";
 

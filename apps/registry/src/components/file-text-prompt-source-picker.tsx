@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 import { FileInput } from "./file-input";
 import { TextAreaSource } from "./text-area-source";
 import { PromptInputSource } from "./prompt-input-source";

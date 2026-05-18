@@ -36,36 +36,7 @@
         "quick-bake"
       ],
       "ingredientLinks": [],
-      "relations": [
-        {
-          "kind": "goesWellWith",
-          "collection": "recipes",
-          "slug": "miso-butter-ramen",
-          "name": "Miso Butter Ramen",
-          "rationale": "The rich umami flavor of miso complements the deep chocolate notes in the cookies, creating a unique dessert pairing."
-        },
-        {
-          "kind": "goesWellWith",
-          "collection": "recipes",
-          "slug": "preserved-lemon-couscous",
-          "name": "Preserved Lemon Couscous",
-          "rationale": "The bright acidity of preserved lemon adds a refreshing contrast to the dense and chocolatey cookies."
-        },
-        {
-          "kind": "goesWellWith",
-          "collection": "recipes",
-          "slug": "vegetable-beef-skillet",
-          "name": "Vegetable and Beef Skillet",
-          "rationale": "A hearty savory dish like this skillet can balance the sweetness of the dark chocolate cookies."
-        },
-        {
-          "kind": "usesBase",
-          "collection": "mixtures",
-          "slug": "dukkah",
-          "name": "Dukkah",
-          "rationale": "While not directly related, dukkah's nutty and spiced flavor profile can offer a unique twist when paired as a dusting alongside the cookies."
-        }
-      ]
+      "pairings": []
     }
   },
   "canonicalContentHash": "2655fdce375514b2"

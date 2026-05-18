@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 import { ConfidenceBadge } from "./confidence-badge";
 import { AcceptRejectButtons } from "./accept-reject-buttons";
 

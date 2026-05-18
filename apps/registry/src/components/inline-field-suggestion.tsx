@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 import { useSuggestionFlowContext } from "./suggestion-flow-provider";
 import { ConfidenceBadge } from "./confidence-badge";
 import { AcceptRejectButtons } from "./accept-reject-buttons";

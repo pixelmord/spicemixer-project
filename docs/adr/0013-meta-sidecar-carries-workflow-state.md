@@ -44,6 +44,9 @@ This ADR sharpens the rule:
 | `kind` literal                    | `ingredientMeta`   | n/a             | dropped            |
 | `aiEvents`                        | `ingredientMeta`   | `pairingMeta`   | unchanged (meta)   |
 | `canonicalLocale`, `translation*` | `ingredientMeta`   | n/a             | unchanged (meta)   |
+| `canonicalFieldHashes`            | n/a                | n/a             | meta (all kinds)   |
+
+`canonicalFieldHashes` (added with ADR 0015) is a `Record<FieldPath, string>` of per-field source-locale hashes, snapshotted at translation creation and at each refresh. It drives field-diff-aware stale refresh and is workflow state, not content — meta in all four kinds. See ADR 0015 for the full mechanism.
 
 Recipe and mixture meta are unchanged — schema.org Recipe storage
 (ADR 0001) still forces displacement for `region`, attribution,

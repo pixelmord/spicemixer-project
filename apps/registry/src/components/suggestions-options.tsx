@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 import { useSuggestionFlowContext } from "./suggestion-flow-provider";
 import { PresetPicker } from "./preset-picker";
 import { UserPromptField } from "./user-prompt-field";

@@ -15,7 +15,10 @@ import type {
   FieldSuggestion,
 } from "../src/components/use-ai-suggestions";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  document.body.innerHTML = "";
+});
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 

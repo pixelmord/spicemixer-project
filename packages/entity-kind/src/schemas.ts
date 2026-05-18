@@ -220,13 +220,13 @@ const aiSuggestionsCacheSchema = z
           }),
         )
         .default([]),
-      relations: z
+      pairings: z
         .array(
           z.object({
-            kind: z.string(),
-            collection: z.string(),
-            slug: z.string(),
-            name: z.string(),
+            otherCollection: z.enum(["ingredients", "mixtures", "recipes"]),
+            otherSlug: z.string(),
+            rationale: z.string(),
+            traceId: z.string().optional(),
           }),
         )
         .default([]),

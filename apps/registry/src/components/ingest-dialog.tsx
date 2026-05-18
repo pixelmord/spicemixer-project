@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Loader2, Sparkles, ChevronLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "../lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { FileTextPromptSourcePicker } from "./file-text-prompt-source-picker";
 import { SuggestionsOptions } from "./suggestions-options";
 import { SuggestionFlowProvider } from "./suggestion-flow-provider";

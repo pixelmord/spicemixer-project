@@ -1,6 +1,6 @@
-import { cn } from "@/lib/utils";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { cn } from "../lib/utils";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
 
 interface PromptInputSourceProps {
   value: string;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Loader2, Sparkles, Settings2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 import { useSuggestionFlowContext } from "./suggestion-flow-provider";
 import { SuggestionsOptions } from "./suggestions-options";
 import type { AiPreset } from "./use-ai-suggestions";
