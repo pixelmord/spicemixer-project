@@ -19,3 +19,9 @@ export function normalizePayload(value: unknown): string {
 export function fingerprintHash(payload: unknown): string {
   return bytesToHex(sha256(normalizePayload(payload))).slice(0, 12);
 }
+
+export const hashSuggestion = fingerprintHash;
+
+export function hashContent(record: unknown): string {
+  return bytesToHex(sha256(normalizePayload(record)));
+}

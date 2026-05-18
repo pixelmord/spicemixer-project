@@ -3,6 +3,10 @@ import {
   aiEventSchema,
   isPrunable,
   planPrune,
+  prune,
+  appendEvent,
+  recordAiEvent,
+  hasAutoApplied,
   sourceDescriptorSchema,
   normalizeSourceField,
 } from "../src/events.ts";
@@ -230,5 +234,101 @@ describe("normalizeSourceField", () => {
       ingestedAt: "2026-01-01T00:00:00.000Z",
     };
     expect(normalizeSourceField(descriptor)).toBe(descriptor);
+  });
+});
+
+describe("prune — wrapper around planPrune(100)", () => {
+  test("returns unchanged array when <= 100 events", () => {
+    const events = Array.from({ length: 100 }, (_, i) =>
+      makeEvent("auto-applied", `2024-01-01T0${i % 9}:00:00.000Z`),
+    );
+    expect(prune(events)).toHaveLength(100);
+  });
+
+  test("trims to 100 when over cap", () => {
+    const events = Array.from({ length: 101 }, (_, i) =>
+      makeEvent("accepted", `2024-01-${String(i + 1).padStart(2, "0")}T00:00:00.000Z`),
+    );
+    expect(prune(events)).toHaveLength(100);
+  });
+
+  test("never removes rejected events", () => {
+    const rejected = Array.from({ length: 100 }, (_, i) =>
+      makeEvent("rejected", `2024-01-${String(i + 1).padStart(2, "0")}T00:00:00.000Z`),
+    );
+    const extra = makeEvent("auto-applied", "2025-01-01T00:00:00.000Z");
+    const result = prune([...rejected, extra]);
+    expect(result).toHaveLength(100);
+    expect(result).not.toContain(extra);
+  });
+});
+
+describe("appendEvent", () => {
+  test("appends event to empty meta", () => {
+    const event = makeEvent("ingested");
+    const result = appendEvent({}, event);
+    expect(result.aiEvents).toHaveLength(1);
+    expect(result.aiEvents[0]).toBe(event);
+  });
+
+  test("preserves other fields in meta", () => {
+    const meta = { draft: false, aiEvents: [] as AiEvent[], tag: "x" };
+    const result = appendEvent(meta, makeEvent("accepted"));
+    expect((result as typeof meta).tag).toBe("x");
+    expect(result.draft).toBe(false);
+  });
+
+  test("applies prune when over cap", () => {
+    const existing = Array.from({ length: 100 }, (_, i) =>
+      makeEvent("auto-applied", `2024-01-${String(i + 1).padStart(2, "0")}T00:00:00.000Z`),
+    );
+    const result = appendEvent(
+      { aiEvents: existing },
+      makeEvent("accepted", "2025-01-01T00:00:00.000Z"),
+    );
+    expect(result.aiEvents).toHaveLength(100);
+  });
+});
+
+describe("recordAiEvent", () => {
+  test("stamps id and at", () => {
+    const result = recordAiEvent([], {
+      type: "accepted",
+      field: "name",
+      suggestion: { hash: "x", summary: "s" },
+      model: "m",
+    });
+    expect(result).toHaveLength(1);
+    expect(typeof result[0].id).toBe("string");
+    expect(result[0].at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  test("applies prune", () => {
+    const existing = Array.from({ length: 100 }, (_, i) =>
+      makeEvent("auto-applied", `2024-01-${String(i + 1).padStart(2, "0")}T00:00:00.000Z`),
+    );
+    const result = recordAiEvent(existing, {
+      type: "accepted",
+      suggestion: { hash: "y", summary: "new" },
+      model: "m",
+    });
+    expect(result).toHaveLength(100);
+  });
+});
+
+describe("hasAutoApplied", () => {
+  test("returns true when auto-applied event exists for field", () => {
+    const events = [makeEvent("auto-applied", undefined, "name")];
+    expect(hasAutoApplied(events, "name")).toBe(true);
+  });
+
+  test("returns false when no auto-applied event for field", () => {
+    const events = [makeEvent("accepted", undefined, "name")];
+    expect(hasAutoApplied(events, "name")).toBe(false);
+  });
+
+  test("returns false when auto-applied exists for different field", () => {
+    const events = [makeEvent("auto-applied", undefined, "tags")];
+    expect(hasAutoApplied(events, "name")).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { fingerprintHash, normalizePayload } from "../src/hash.ts";
+import { fingerprintHash, normalizePayload, hashSuggestion, hashContent } from "../src/hash.ts";
 
 describe("normalizePayload", () => {
   test("trims and lowercases strings", () => {
@@ -43,5 +43,30 @@ describe("fingerprintHash — determinism", () => {
 
   test("object and key-reordered object hash the same", () => {
     expect(fingerprintHash({ a: 1, b: 2 })).toBe(fingerprintHash({ b: 2, a: 1 }));
+  });
+});
+
+describe("hashSuggestion — alias of fingerprintHash", () => {
+  test("returns same 12-char hex as fingerprintHash", () => {
+    expect(hashSuggestion("basil")).toBe(fingerprintHash("basil"));
+  });
+
+  test("returns 12 hex characters", () => {
+    expect(hashSuggestion({ field: "name", value: "Cumin" })).toMatch(/^[0-9a-f]{12}$/);
+  });
+});
+
+describe("hashContent — full SHA-256", () => {
+  test("returns 64 hex characters", () => {
+    expect(hashContent({ name: "test" })).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  test("first 12 chars match hashSuggestion", () => {
+    const payload = { b: "x", a: "y" };
+    expect(hashContent(payload).slice(0, 12)).toBe(hashSuggestion(payload));
+  });
+
+  test("is deterministic", () => {
+    expect(hashContent({ x: 1 })).toBe(hashContent({ x: 1 }));
   });
 });

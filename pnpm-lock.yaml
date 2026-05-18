@@ -193,6 +193,12 @@ importers:
       '@fontsource-variable/geist':
         specifier: 'catalog:'
         version: 5.2.8
+      '@noble/hashes':
+        specifier: ^1.7.0
+        version: 1.8.0
+      '@pixelmord/content-ai-core':
+        specifier: workspace:*
+        version: link:../../packages/content-ai-core
       '@pixelmord/content-ai-ingest':
         specifier: workspace:*
         version: link:../../packages/content-ai-ingest
@@ -217,6 +223,9 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.2.3(@types/react@19.2.14)
+      ai:
+        specifier: 'catalog:'
+        version: 6.0.175(zod@4.4.3)
       astro:
         specifier: 'catalog:'
         version: 6.2.2(@types/node@24.12.2)(jiti@2.6.1)(typescript@6.0.3)(yaml@2.9.0)
@@ -238,6 +247,9 @@ importers:
       next-themes:
         specifier: 'catalog:'
         version: 0.4.6(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      pdfjs-dist:
+        specifier: 'catalog:'
+        version: 5.7.284
       react:
         specifier: 'catalog:'
         version: 19.2.5
