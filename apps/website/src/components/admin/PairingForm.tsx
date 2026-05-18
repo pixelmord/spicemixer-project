@@ -26,8 +26,7 @@ import ImageSearchModal, {
 } from "./ImageSearchModal.tsx";
 import { usePairingAiSuggestions } from "@/lib/ai/use-typed-suggestions.ts";
 import { useIngestAction } from "@/lib/ai/use-ingest-action.ts";
-import { pairingContract } from "@/contracts/pairingContract.ts";
-import type { RunResult, FieldSuggestion, AiContract } from "@/hooks/use-ai-suggestions.tsx";
+import type { RunResult, FieldSuggestion } from "@/hooks/use-ai-suggestions.tsx";
 import type { EndpointRef } from "entity-kind";
 
 interface Props {
@@ -174,7 +173,7 @@ export default function PairingForm({
   const aiEntityRef = useMemo(() => ({ kind: "pairing", id: initialId ?? "" }), [initialId]);
 
   const aiFlow = usePairingAiSuggestions({
-    contract: pairingContract as unknown as AiContract,
+    contract: { presets: [], fields: {} },
     onRefine: async () => {
       if (!initialId) return { suggestions: {}, autoApplied: {}, traces: {} };
       const { data } = await actions.aiRefreshPairingSuggestions({
@@ -245,10 +244,14 @@ export default function PairingForm({
     window.location.href = "/admin/pairings";
   }
 
+  const proposedDescription = ingestAction.proposed
+    ? ((ingestAction.proposed["descriptions"] as Record<string, string>)?.[locale] ??
+      (ingestAction.proposed["description"] as string) ??
+      "")
+    : "";
+
   async function handleApplyEnhancement() {
     if (!ingestAction.proposed || !initialId) return;
-    const descriptions = (ingestAction.proposed["descriptions"] as Record<string, string>) ?? {};
-    const newDesc = descriptions[locale] ?? "";
     setApplyingEnhancement(true);
     try {
       const { error } = await actions.savePairing({
@@ -257,7 +260,7 @@ export default function PairingForm({
           { collection: ep0.collection, slug: formValues.endpoint1Slug },
           { collection: ep1.collection, slug: formValues.endpoint2Slug },
         ],
-        description: newDesc,
+        description: proposedDescription,
         locale,
         ...(ingestAction.mergeModel ? { aiMergeModel: ingestAction.mergeModel } : {}),
       });
@@ -265,7 +268,7 @@ export default function PairingForm({
         toast.error("Save failed: " + error.message);
         return;
       }
-      form.setFieldValue("description" as never, newDesc as never);
+      form.setFieldValue("description" as never, proposedDescription as never);
       ingestAction.clearProposed();
       setEnhanceOpen(false);
       toast.success("Pairing updated!");
@@ -313,19 +316,12 @@ export default function PairingForm({
     (l) => l !== locale && !existingTranslationLocales.includes(l),
   );
 
-  // Normalize proposed for diff display: extract locale-specific description to top-level field.
   const pairingExistingForDiff = {
     endpoints: initialEndpoints ?? [],
     description: formValues.description,
   };
   const pairingProposedForDiff = ingestAction.proposed
-    ? {
-        ...ingestAction.proposed,
-        description:
-          (ingestAction.proposed["descriptions"] as Record<string, string>)?.[locale] ??
-          (ingestAction.proposed["description"] as string) ??
-          "",
-      }
+    ? { ...ingestAction.proposed, description: proposedDescription }
     : null;
 
   return (

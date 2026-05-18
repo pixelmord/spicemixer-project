@@ -12,7 +12,6 @@ test.fixme("aiProposeTags renders mock suggestion in AiAssistPanel", async () =>
 test.fixme("aiMergeRecipe shows diff with mock payload", async () => {});
 test.fixme("aiCreateTranslation persists a translated meta sidecar", async () => {});
 
-// F3: PairingForm enhance flow via IngestDialog
 test.fixme("PairingForm enhance — file source: opens IngestDialog, shows PairingDiff, applies description", async () => {});
 test.fixme("PairingForm enhance — text source: opens IngestDialog, shows PairingDiff, applies description", async () => {});
 test.fixme("PairingForm enhance — prompt source: opens IngestDialog, shows PairingDiff, applies description", async () => {});
