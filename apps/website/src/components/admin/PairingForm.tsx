@@ -24,9 +24,12 @@ import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
 } from "./ImageSearchModal.tsx";
-import { usePairingAiSuggestions } from "@/lib/ai/use-typed-suggestions.ts";
 import { useIngestAction } from "@/lib/ai/use-ingest-action.ts";
-import type { RunResult, FieldSuggestion } from "@/hooks/use-ai-suggestions.tsx";
+import {
+  useAiSuggestions,
+  type RunResult,
+  type FieldSuggestion,
+} from "@/hooks/use-ai-suggestions.tsx";
 import type { EndpointRef } from "entity-kind";
 
 interface Props {
@@ -172,7 +175,7 @@ export default function PairingForm({
 
   const aiEntityRef = useMemo(() => ({ kind: "pairing", id: initialId ?? "" }), [initialId]);
 
-  const aiFlow = usePairingAiSuggestions({
+  const aiFlow = useAiSuggestions({
     contract: { presets: [], fields: {} },
     onRefine: async () => {
       if (!initialId) return { suggestions: {}, autoApplied: {}, traces: {} };
@@ -214,6 +217,14 @@ export default function PairingForm({
       description: formValues.description,
     },
   });
+
+  async function handleManualRefresh() {
+    try {
+      await aiFlow.run();
+    } catch {
+      toast.error("Could not refresh suggestions");
+    }
+  }
 
   async function handleToggleDraft() {
     if (!initialId) return;

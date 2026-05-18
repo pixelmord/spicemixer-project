@@ -21,8 +21,8 @@ describe("PairingForm — IngestDialog wiring", () => {
     expect(src).toMatch(/<IngestDialog\b/);
   });
 
-  test("PairingForm uses usePairingAiSuggestions typed wrapper", () => {
-    expect(src).toMatch(/usePairingAiSuggestions/);
+  test("PairingForm uses useAiSuggestions hook", () => {
+    expect(src).toMatch(/useAiSuggestions/);
   });
 
   test("PairingForm uses useIngestAction hook", () => {

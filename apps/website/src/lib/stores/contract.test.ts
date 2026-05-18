@@ -32,6 +32,10 @@ async function* walkSrc(dir: string): AsyncGenerator<string> {
 function isExcluded(filePath: string): boolean {
   const rel = relative(SRC_ROOT, filePath);
   if (rel.startsWith("lib/stores/")) return true;
+  // source-store and trace are legitimate filesystem-touching storage modules,
+  // not ContentStore bypasses
+  if (rel.startsWith("lib/source-store/")) return true;
+  if (rel.startsWith("lib/trace/")) return true;
   if (/\.(test|spec)\.(ts|tsx)$/.test(filePath)) return true;
   return false;
 }

@@ -468,7 +468,7 @@ export const server = {
       });
       if (aiMergeModel) {
         const eventLog = new SidecarEventLog(sidecar);
-        await eventLog.append(metaRefToEntityRef({ collection: "pairings", locale, slug: id }), {
+        await eventLog.append(metaRefToEntityRef({ collection: "pairings", slug: id }), {
           type: "accepted",
           field: "description",
           suggestion: {
