@@ -61,9 +61,11 @@ import FormActionBar from "./FormActionBar.tsx";
 import SectionNav, { type SectionDef } from "./SectionNav.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
 import RecommendedHint from "./RecommendedHint.tsx";
-import EnhanceModal from "./EnhanceModal.tsx";
+import { IngestDialog } from "./IngestDialog.tsx";
+import RecipeDiff from "./RecipeDiff.tsx";
+import { useIngestAction } from "@/lib/ai/use-ingest-action.ts";
 import { TranslateEntityDialog } from "./TranslateEntityDialog.tsx";
-import { Dialog, DialogContent } from "@/components/ui/dialog.tsx";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog.tsx";
 import IngredientLinkModal from "./IngredientLinkModal.tsx";
 import { useAiSuggestions, type RunResult, type FieldSuggestion } from "@/hooks/use-ai-suggestions";
 import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
@@ -822,6 +824,19 @@ export default function RecipeForm({
     },
   });
 
+  const {
+    onRun: ingestOnRun,
+    proposed: ingestProposed,
+    warnings: ingestWarnings,
+    clearProposed: clearIngestProposed,
+  } = useIngestAction({
+    kind: "recipe",
+    slug: slug ?? "",
+    locale: (language || "en") as "en" | "de",
+    collection,
+    existing: buildRecipeSnapshot(),
+  });
+
   function handleApplySuggestion(field: string, value: string) {
     const coerced = TIME_FIELDS.has(field) ? toIsoDuration(value) : value;
     if (field === "tags") setTags((prev) => [...new Set([...prev, coerced])]);
@@ -989,6 +1004,51 @@ export default function RecipeForm({
       externalSources,
       variants,
     };
+  }
+
+  function applyProposedToForm(p: Record<string, unknown>) {
+    const stringFields = [
+      "name",
+      "description",
+      "image",
+      "recipeYield",
+      "recipeCategory",
+      "recipeCuisine",
+      "prepTime",
+      "cookTime",
+      "totalTime",
+    ] as const;
+    for (const f of stringFields) {
+      if (typeof p[f] === "string") form.setFieldValue(f as never, p[f] as never);
+    }
+    if (p.author && typeof p.author === "object" && !Array.isArray(p.author)) {
+      const author = p.author as Record<string, unknown>;
+      if (typeof author.name === "string")
+        form.setFieldValue("authorName" as never, author.name as never);
+      if (typeof author["@type"] === "string")
+        form.setFieldValue("authorType" as never, author["@type"] as never);
+    }
+    if (Array.isArray(p.recipeIngredient)) {
+      setIngredients(p.recipeIngredient.filter((i): i is string => typeof i === "string"));
+    }
+    if (Array.isArray(p.recipeInstructions)) {
+      setInstructions(
+        p.recipeInstructions.map(
+          (s): HowToStep => ({
+            "@type": "HowToStep",
+            text: stepText(s),
+            name: stepName(s) || undefined,
+            image: stepImage(s) || undefined,
+          }),
+        ),
+      );
+    }
+    if (Array.isArray(p.keywords)) {
+      setKeywords(p.keywords.filter((k): k is string => typeof k === "string"));
+    }
+    if (Array.isArray(p.suitableForDiet)) {
+      setDietTags(p.suitableForDiet.filter((d): d is string => typeof d === "string"));
+    }
   }
 
   // Map ingredient string → link for badge display
@@ -2173,16 +2233,51 @@ export default function RecipeForm({
           />
         </form>
 
-        {/* Enhance modal */}
-        <EnhanceModal
-          kind="recipe"
+        {/* Enhance dialog */}
+        <IngestDialog
           open={enhanceOpen}
-          onClose={() => setEnhanceOpen(false)}
-          collection={collection}
-          locale={(language || "en") as "en" | "de"}
-          slug={slug}
-          existing={buildRecipeSnapshot()}
-          onApplied={() => window.location.reload()}
+          onOpenChange={(o) => {
+            if (!o) clearIngestProposed();
+            setEnhanceOpen(o);
+          }}
+          title="Enhance recipe"
+          flow={aiFlow}
+          onRun={ingestOnRun}
+          onReviewBack={clearIngestProposed}
+          reviewChildren={
+            ingestProposed ? (
+              <div className="space-y-4">
+                <div className="max-h-[50vh] overflow-y-auto">
+                  {ingestWarnings.length > 0 && (
+                    <div className="mb-3 space-y-0.5">
+                      {ingestWarnings.map((w, i) => (
+                        <p key={i} className="text-xs text-amber-700 dark:text-amber-400">
+                          ⚠ {w}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  <RecipeDiff existing={buildRecipeSnapshot()} proposed={ingestProposed} />
+                </div>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      applyProposedToForm(ingestProposed);
+                      clearIngestProposed();
+                      setEnhanceOpen(false);
+                      toast.success("Recipe enhanced!");
+                    }}
+                  >
+                    <Check size={14} className="mr-1" />
+                    Apply changes
+                  </Button>
+                </DialogFooter>
+              </div>
+            ) : undefined
+          }
+          generateLabel="Generate enhanced version"
+          className="sm:max-w-4xl"
         />
 
         {/* Translate dialog */}
