@@ -575,9 +575,10 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
   const model = props.model ?? "ai-assist";
   const entityRef = props.entityRef;
 
-  function emitEvent(params: Omit<AiEvent, "at">) {
+  function emitEvent(params: Omit<AiEvent, "at" | "id">) {
     const at = new Date().toISOString();
-    const event: AiEvent = { ...params, at } as AiEvent;
+    const id = crypto.randomUUID();
+    const event: AiEvent = { ...params, at, id };
     // Persist via server action when entityRef is known (existing entities).
     if (entityRef) {
       void actions.aiRecordEvent({ ...entityRef, event: event as Record<string, unknown> });

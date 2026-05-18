@@ -334,12 +334,11 @@ describe("per-locale aiEvents isolation", () => {
     await store.put("ingredients", "en/turmeric", { name: "Turmeric" });
     await store.put("ingredients", "de/turmeric", { name: "Kurkuma" });
 
-    const enRef = { collection: "ingredients" as const, locale: "en" as const, slug: "turmeric" };
-    const deRef = { collection: "ingredients" as const, locale: "de" as const, slug: "turmeric" };
+    const enRef = { kind: "ingredients", id: "en/turmeric" };
+    const deRef = { kind: "ingredients", id: "de/turmeric" };
 
     const enEvent = {
       type: "ingested" as const,
-      at: new Date().toISOString(),
       model: "gpt-4o-mini",
       suggestion: { hash: "en-hash", summary: "EN ingested" },
       traceId: "en-trace",
@@ -347,7 +346,6 @@ describe("per-locale aiEvents isolation", () => {
 
     const deEvent = {
       type: "accepted" as const,
-      at: new Date().toISOString(),
       model: "gpt-4o-mini",
       field: "name",
       suggestion: { hash: "de-hash", summary: "DE accepted" },
@@ -379,12 +377,11 @@ describe("per-locale aiEvents isolation", () => {
     await store.put("ingredients", "en/cumin", { name: "Cumin" });
     await store.put("ingredients", "de/cumin", { name: "Kreuzkümmel" });
 
-    const enRef = { collection: "ingredients" as const, locale: "en" as const, slug: "cumin" };
-    const deRef = { collection: "ingredients" as const, locale: "de" as const, slug: "cumin" };
+    const enRef = { kind: "ingredients", id: "en/cumin" };
+    const deRef = { kind: "ingredients", id: "de/cumin" };
 
     const makeEvent = (hash: string) => ({
       type: "ingested" as const,
-      at: new Date().toISOString(),
       model: "gpt-4o-mini",
       suggestion: { hash, summary: `event ${hash}` },
     });
@@ -411,12 +408,11 @@ describe("per-locale aiEvents isolation for pairings", () => {
     await store.put("pairings", `en/${id}`, { endpoints: [ep1, ep2], description: "EN" });
     await store.put("pairings", `de/${id}`, { endpoints: [ep1, ep2], description: "DE" });
 
-    const enRef = { collection: "pairings" as const, locale: "en" as const, slug: id };
-    const deRef = { collection: "pairings" as const, locale: "de" as const, slug: id };
+    const enRef = { kind: "pairings", id: `en/${id}` };
+    const deRef = { kind: "pairings", id: `de/${id}` };
 
     const deEvent = {
       type: "accepted" as const,
-      at: new Date().toISOString(),
       model: "gpt-4o-mini",
       field: "description",
       suggestion: { hash: "de-accepted-hash", summary: "DE description accepted" },
@@ -442,12 +438,11 @@ describe("per-locale aiEvents isolation for pairings", () => {
     await store.put("pairings", `en/${id}`, { endpoints: [ep1, ep2], description: "EN" });
     await store.put("pairings", `de/${id}`, { endpoints: [ep1, ep2], description: "DE" });
 
-    const enRef = { collection: "pairings" as const, locale: "en" as const, slug: id };
-    const deRef = { collection: "pairings" as const, locale: "de" as const, slug: id };
+    const enRef = { kind: "pairings", id: `en/${id}` };
+    const deRef = { kind: "pairings", id: `de/${id}` };
 
     const makeEvent = (hash: string) => ({
       type: "ingested" as const,
-      at: new Date().toISOString(),
       model: "gpt-4o-mini",
       suggestion: { hash, summary: `event ${hash}` },
     });

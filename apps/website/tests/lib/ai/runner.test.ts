@@ -557,12 +557,15 @@ describe("runAiRefresh pairing", () => {
     const metaRef = { collection: "pairings" as const, slug: "cardamom--cumin" };
 
     // Pre-seed a rejected event.
-    await eventLog.append(metaRef, {
-      type: "rejected",
-      field: "description",
-      suggestion: { hash: "abc123", summary: "Bad suggestion" },
-      model: "gpt-4o",
-    });
+    await eventLog.append(
+      { kind: metaRef.collection, id: metaRef.slug },
+      {
+        type: "rejected",
+        field: "description",
+        suggestion: { hash: "abc123", summary: "Bad suggestion" },
+        model: "gpt-4o",
+      },
+    );
 
     const result = await runAiRefresh({
       kind: "pairing",

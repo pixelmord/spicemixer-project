@@ -18,7 +18,7 @@ export async function mixtureSlugPaths(locale: Lang) {
     params: { slug: MIXTURE_KIND_PLURALS[kind] },
     props: {
       kind,
-      kindMixtures: enMixtures.filter((m) => kindBySlug.get(m.id) === kind),
+      kindMixtures: enMixtures.filter((m: { id: string }) => kindBySlug.get(m.id) === kind),
       mix: null as CollectionEntry<"mixtures"> | null,
       isFallback: false,
       canonicalLocale: "en",
@@ -26,7 +26,7 @@ export async function mixtureSlugPaths(locale: Lang) {
   }));
 
   const detailPathResults = await Promise.all(
-    enMixtures.map(async (entry) => {
+    enMixtures.map(async (entry: { id: string }) => {
       const slug = slugFromLocaleId(entry.id);
       const resolved = await resolvePublished("mixtures", slug, locale);
       if (!resolved) return null;

@@ -6,7 +6,7 @@ import { resolvePublished } from "../published-entity.ts";
 export async function recipeSlugPaths(locale: Lang) {
   const enEntries = await getPublished("recipes", "en");
   const paths = await Promise.all(
-    enEntries.map(async (entry) => {
+    enEntries.map(async (entry: { id: string }) => {
       const slug = slugFromLocaleId(entry.id);
       const resolved = await resolvePublished("recipes", slug, locale);
       if (!resolved) return null;
