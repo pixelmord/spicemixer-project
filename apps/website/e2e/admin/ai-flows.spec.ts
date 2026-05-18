@@ -80,3 +80,7 @@ test.describe("IngredientForm enhance flow (IngestDialog)", () => {
     await expect(page.getByRole("button", { name: /apply changes/i })).not.toBeVisible();
   });
 });
+
+test.fixme("PairingForm enhance — file source: opens IngestDialog, shows PairingDiff, applies description", async () => {});
+test.fixme("PairingForm enhance — text source: opens IngestDialog, shows PairingDiff, applies description", async () => {});
+test.fixme("PairingForm enhance — prompt source: opens IngestDialog, shows PairingDiff, applies description", async () => {});

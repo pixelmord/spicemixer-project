@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, Languages, Loader2, Trash2, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Sparkles, Languages, Loader2, Trash2, Eye, EyeOff, Check } from "lucide-react";
 import LinkButton from "@/components/admin/LinkButton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -16,18 +16,17 @@ import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
 import { InlineFieldSuggestion } from "./InlineFieldSuggestion.tsx";
 import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
-import EnhanceModal from "./EnhanceModal.tsx";
+import { IngestDialog } from "./IngestDialog.tsx";
+import PairingDiff from "./PairingDiff.tsx";
 import { TranslateEntityDialog } from "./TranslateEntityDialog.tsx";
-import { Dialog, DialogContent } from "@/components/ui/dialog.tsx";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
 } from "./ImageSearchModal.tsx";
-import {
-  useAiSuggestions,
-  type RunResult,
-  type FieldSuggestion,
-} from "@/hooks/use-ai-suggestions.tsx";
+import { usePairingAiSuggestions } from "@/lib/ai/use-typed-suggestions.ts";
+import { useIngestAction } from "@/lib/ai/use-ingest-action.ts";
+import type { RunResult, FieldSuggestion } from "@/hooks/use-ai-suggestions.tsx";
 import type { EndpointRef } from "entity-kind";
 
 interface Props {
@@ -83,6 +82,7 @@ export default function PairingForm({
 
   const [ingredientOptions, setIngredientOptions] = useState<EntityOption[]>([]);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
+  const [applyingEnhancement, setApplyingEnhancement] = useState(false);
 
   // Modals
   const [enhanceOpen, setEnhanceOpen] = useState(false);
@@ -172,7 +172,7 @@ export default function PairingForm({
 
   const aiEntityRef = useMemo(() => ({ kind: "pairing", id: initialId ?? "" }), [initialId]);
 
-  const aiFlow = useAiSuggestions({
+  const aiFlow = usePairingAiSuggestions({
     contract: { presets: [], fields: {} },
     onRefine: async () => {
       if (!initialId) return { suggestions: {}, autoApplied: {}, traces: {} };
@@ -205,13 +205,15 @@ export default function PairingForm({
     },
   });
 
-  async function handleManualRefresh() {
-    try {
-      await aiFlow.run();
-    } catch {
-      toast.error("Could not refresh suggestions");
-    }
-  }
+  const ingestAction = useIngestAction({
+    kind: "pairing",
+    slug: initialId ?? "",
+    locale,
+    existing: {
+      endpoints: initialEndpoints ?? [],
+      description: formValues.description,
+    },
+  });
 
   async function handleToggleDraft() {
     if (!initialId) return;
@@ -240,6 +242,39 @@ export default function PairingForm({
     }
     toast.success("Deleted");
     window.location.href = "/admin/pairings";
+  }
+
+  const proposedDescription = ingestAction.proposed
+    ? ((ingestAction.proposed["descriptions"] as Record<string, string>)?.[locale] ??
+      (ingestAction.proposed["description"] as string) ??
+      "")
+    : "";
+
+  async function handleApplyEnhancement() {
+    if (!ingestAction.proposed || !initialId) return;
+    setApplyingEnhancement(true);
+    try {
+      const { error } = await actions.savePairing({
+        id: initialId,
+        endpoints: [
+          { collection: ep0.collection, slug: formValues.endpoint1Slug },
+          { collection: ep1.collection, slug: formValues.endpoint2Slug },
+        ],
+        description: proposedDescription,
+        locale,
+        ...(ingestAction.mergeModel ? { aiMergeModel: ingestAction.mergeModel } : {}),
+      });
+      if (error) {
+        toast.error("Save failed: " + error.message);
+        return;
+      }
+      form.setFieldValue("description" as never, proposedDescription as never);
+      ingestAction.clearProposed();
+      setEnhanceOpen(false);
+      toast.success("Pairing updated!");
+    } finally {
+      setApplyingEnhancement(false);
+    }
   }
 
   const completeness = computeCompletenessFromBlob(
@@ -280,6 +315,14 @@ export default function PairingForm({
   const availableTranslationLocales = ALL_LOCALES.filter(
     (l) => l !== locale && !existingTranslationLocales.includes(l),
   );
+
+  const pairingExistingForDiff = {
+    endpoints: initialEndpoints ?? [],
+    description: formValues.description,
+  };
+  const pairingProposedForDiff = ingestAction.proposed
+    ? { ...ingestAction.proposed, description: proposedDescription }
+    : null;
 
   return (
     <SuggestionFlowProvider value={aiFlow}>
@@ -522,18 +565,59 @@ export default function PairingForm({
         {/* Modals */}
         {!isNew && initialId && (
           <>
-            <EnhanceModal
-              kind="pairing"
+            <IngestDialog
               open={enhanceOpen}
-              onClose={() => setEnhanceOpen(false)}
-              pairingId={initialId}
-              locale={locale}
-              slug={initialId}
-              existing={{
-                endpoints: initialEndpoints ?? [],
-                description: formValues.description,
+              onOpenChange={(o) => {
+                if (!o) {
+                  ingestAction.clearProposed();
+                  setEnhanceOpen(false);
+                }
               }}
-              onApplied={(desc) => form.setFieldValue("description" as never, desc as never)}
+              title={`Enhance pairing description (${locale.toUpperCase()})`}
+              onRun={ingestAction.onRun}
+              onReviewBack={ingestAction.clearProposed}
+              reviewChildren={
+                pairingProposedForDiff ? (
+                  <div className="space-y-4">
+                    <div className="max-h-[50vh] overflow-y-auto">
+                      {ingestAction.warnings.length > 0 && (
+                        <div className="mb-3 space-y-0.5">
+                          {ingestAction.warnings.map((w, i) => (
+                            <p key={i} className="text-xs text-amber-700 dark:text-amber-400">
+                              ⚠ {w}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                      <PairingDiff
+                        existing={pairingExistingForDiff}
+                        proposed={pairingProposedForDiff}
+                        locale={locale}
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        onClick={() => void handleApplyEnhancement()}
+                        disabled={applyingEnhancement}
+                      >
+                        {applyingEnhancement ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin mr-1" />
+                            Applying…
+                          </>
+                        ) : (
+                          <>
+                            <Check size={14} className="mr-1" />
+                            Apply changes
+                          </>
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </div>
+                ) : undefined
+              }
+              generateLabel="Generate enhanced version"
+              className="sm:max-w-4xl"
             />
             <Dialog open={translateOpen} onOpenChange={(o) => !o && setTranslateOpen(false)}>
               <DialogContent className="sm:max-w-lg">
