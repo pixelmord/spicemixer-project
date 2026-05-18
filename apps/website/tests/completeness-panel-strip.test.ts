@@ -3,9 +3,6 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test, beforeAll } from "vite-plus/test";
 
-// Structural contract tests for PRE-3 — strip AI props from CompletenessPanel.
-// Each test asserts source-level absence of the removed surface.
-
 const WEBSITE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const COMPONENTS = join(WEBSITE_ROOT, "src", "components", "admin");
 
@@ -27,7 +24,6 @@ describe("CompletenessPanel — AI props stripped", () => {
 
   for (const prop of AI_PROPS) {
     test(`Props interface does not contain ${prop}`, () => {
-      // Match prop declarations in the interface block (name?: type)
       const propDecl = new RegExp(`^\\s*${prop}\\??:`, "m");
       expect(src).not.toMatch(propDecl);
     });
@@ -49,8 +45,7 @@ describe("Form callsites — no AI props passed to CompletenessPanel", () => {
 
       for (const prop of AI_PROPS) {
         test(`does not pass ${prop} to CompletenessPanel`, () => {
-          // Look for the pattern inside a CompletenessPanel JSX block
-          const panelBlock = extractCompletenesspanelBlock(src);
+          const panelBlock = extractCompletenessPanelBlock(src);
           expect(panelBlock).not.toMatch(new RegExp(`\\b${prop}=`));
         });
       }
@@ -58,11 +53,7 @@ describe("Form callsites — no AI props passed to CompletenessPanel", () => {
   }
 });
 
-/**
- * Extracts the JSX block for CompletenessPanel from source text.
- * Finds the opening tag and captures until the closing />.
- */
-function extractCompletenesspanelBlock(src: string): string {
+function extractCompletenessPanelBlock(src: string): string {
   const start = src.indexOf("<CompletenessPanel");
   if (start === -1) return "";
   const end = src.indexOf("/>", start);
