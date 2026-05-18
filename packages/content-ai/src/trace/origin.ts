@@ -1,41 +1,12 @@
-import { AsyncLocalStorage } from "node:async_hooks";
+// Re-export shim: delegates to the canonical ALS in @pixelmord/content-ai-core.
+// Consumers can keep using `runWithOrigin` and the curried `withOrigin(config)` form
+// unchanged; both now operate on the single shared originContext.
+export type { Origin, OriginConfig } from "@pixelmord/content-ai-core";
 
-export interface Origin {
-  surface: string;
-  action: string;
-  entityKind?: string;
-  entityRef?: string;
-  field?: string;
-  userInitiated: boolean;
-  runId: string;
-  parentRunId?: string;
-  triggeredBy: "editor" | "system";
-  sourceUrl?: string;
-  sourceHash?: string;
-}
+export { getCurrentOrigin } from "@pixelmord/content-ai-core";
 
-const als = new AsyncLocalStorage<Origin>();
+// runWithOrigin(origin, fn) is the old name for core's withOrigin(origin, fn)
+export { withOrigin as runWithOrigin } from "@pixelmord/content-ai-core";
 
-export function runWithOrigin<T>(origin: Origin, fn: () => T | PromiseLike<T>): Promise<T> {
-  return Promise.resolve(als.run(origin, fn));
-}
-
-export function getCurrentOrigin(): Origin | undefined {
-  return als.getStore();
-}
-
-export type OriginConfig = Omit<Origin, "runId"> & { runId?: string };
-
-export function withOrigin(
-  config: OriginConfig,
-): <A extends unknown[], R>(handler: (...a: A) => Promise<R>) => (...a: A) => Promise<R> {
-  return <A extends unknown[], R>(handler: (...a: A) => Promise<R>) => {
-    return (...args: A): Promise<R> => {
-      const origin: Origin = {
-        ...config,
-        runId: config.runId ?? crypto.randomUUID(),
-      };
-      return runWithOrigin(origin, () => handler(...args));
-    };
-  };
-}
+// withOrigin(config) is the old curried-factory name for core's wrapWithOrigin(config)
+export { wrapWithOrigin as withOrigin } from "@pixelmord/content-ai-core";

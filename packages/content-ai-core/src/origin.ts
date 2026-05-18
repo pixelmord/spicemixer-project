@@ -16,7 +16,7 @@ export interface Origin {
 
 export const originContext = new AsyncLocalStorage<Origin>();
 
-export function withOrigin<T>(origin: Origin, fn: () => Promise<T>): Promise<T> {
+export function withOrigin<T>(origin: Origin, fn: () => T | PromiseLike<T>): Promise<T> {
   return Promise.resolve(originContext.run(origin, fn));
 }
 

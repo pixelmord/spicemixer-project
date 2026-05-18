@@ -7,6 +7,10 @@ import { readFile, rm } from "node:fs/promises";
 
 import { runWithOrigin, getCurrentOrigin, withOrigin } from "../src/trace/origin.ts";
 import type { Origin } from "../src/trace/origin.ts";
+import {
+  withOrigin as coreWithOrigin,
+  getCurrentOrigin as coreGetCurrentOrigin,
+} from "@pixelmord/content-ai-core";
 
 const BASE_ORIGIN: Origin = {
   surface: "admin",
@@ -98,6 +102,29 @@ describe("withOrigin", () => {
     });
     await handler();
     expect(capturedRunId).toBe("fixed-id");
+  });
+});
+
+describe("shim/core ALS unification", () => {
+  test("shim getCurrentOrigin reads from the same ALS as core withOrigin", async () => {
+    const origin: Origin = { ...BASE_ORIGIN, runId: "cross-als-test" };
+    let capturedFromShim: Origin | undefined;
+    let capturedFromCore: Origin | undefined;
+    await coreWithOrigin(origin, async () => {
+      capturedFromShim = getCurrentOrigin();
+      capturedFromCore = coreGetCurrentOrigin();
+    });
+    expect(capturedFromShim).toEqual(origin);
+    expect(capturedFromCore).toEqual(origin);
+  });
+
+  test("core getCurrentOrigin reads from the same ALS as shim runWithOrigin", async () => {
+    const origin: Origin = { ...BASE_ORIGIN, runId: "cross-als-test-2" };
+    let capturedFromCore: Origin | undefined;
+    await runWithOrigin(origin, async () => {
+      capturedFromCore = coreGetCurrentOrigin();
+    });
+    expect(capturedFromCore).toEqual(origin);
   });
 });
 
