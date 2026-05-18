@@ -1,9 +1,9 @@
 ---
 export const prerender = false;
 import AdminLayout from "@/layouts/AdminLayout.astro";
-import AiComposeForm from "@/components/admin/AiComposeForm.tsx";
+import AiImportPage from "@/components/admin/AiImportPage.tsx";
 ---
 
-<AdminLayout title="AI compose · Admin · SpiceMixer">
-  <AiComposeForm client:load />
+<AdminLayout title="AI import · Admin · SpiceMixer">
+  <AiImportPage client:load />
 </AdminLayout>
