@@ -488,8 +488,6 @@ export default function PairingForm({
               result={completeness}
               requiredFields={requiredFields}
               recommendedFields={recommendedFields}
-              aiRefreshing={aiFlow.isRunning}
-              onRefreshSuggestions={!isNew && initialId ? handleManualRefresh : undefined}
             />
           </aside>
         </div>

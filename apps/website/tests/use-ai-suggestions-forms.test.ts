@@ -67,10 +67,6 @@ describe("IngredientForm — useAiSuggestions orchestration", () => {
   test("sets up aiEventLog via useMemo", () => {
     expect(src).toMatch(/aiEventLog.*=.*useMemo|useMemo.*aiEventLog/s);
   });
-
-  test("CompletenessPanel receives aiFlow.isRunning as aiRefreshing", () => {
-    expect(src).toMatch(/aiRefreshing.*aiFlow\.isRunning|isRunning.*aiRefreshing/s);
-  });
 });
 
 describe("PairingForm — useAiSuggestions orchestration", () => {
@@ -114,10 +110,6 @@ describe("PairingForm — useAiSuggestions orchestration", () => {
 
   test("sets up aiEventLog via useMemo", () => {
     expect(src).toMatch(/aiEventLog.*=.*useMemo|useMemo.*aiEventLog/s);
-  });
-
-  test("CompletenessPanel receives aiFlow.isRunning as aiRefreshing", () => {
-    expect(src).toMatch(/aiRefreshing.*aiFlow\.isRunning|isRunning.*aiRefreshing/s);
   });
 });
 
