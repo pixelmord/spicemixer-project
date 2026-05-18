@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { actions } from "astro:actions";
 import { toast } from "sonner";
 import {
   Upload,
@@ -8,7 +7,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Sparkles,
-  AlignLeft,
   Bug,
 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
@@ -28,14 +26,18 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
-import { cn } from "@/lib/utils.ts";
-import { readSSE } from "@/lib/sse.ts";
-import SourcePicker, { type Source, type SourceMode } from "./SourcePicker.tsx";
+import { FileTextPromptSourcePicker } from "./FileTextPromptSourcePicker.tsx";
+import type { SourceShape } from "./FileTextPromptSourcePicker.tsx";
 import CapabilityLabel from "./CapabilityLabel.tsx";
+import { useImportAction, parseActionError } from "../../lib/ai/use-import-action.ts";
+import type {
+  ContentType,
+  RecipeCollection,
+  Locale,
+  ImportResult,
+} from "../../lib/ai/use-import-action.ts";
 
-type ContentType = "recipe" | "ingredient" | "pairing";
-type RecipeCollection = "recipes" | "mixtures";
-type Locale = "en" | "de";
+export type { SourceMeta } from "../../lib/ai/use-import-action.ts";
 
 interface AiDebugInfo {
   modelId?: string;
@@ -44,53 +46,11 @@ interface AiDebugInfo {
   rawText?: string;
 }
 
-export interface SourceMeta {
-  kind: "pdf" | "image" | "text";
-  mime: string;
-  sizeBytes: number;
-  filename?: string;
-  hash: string;
-  ingestedAt: string;
-  traceId: string;
-}
-
-interface SubmitResult {
-  result: Record<string, unknown>;
-  warnings: string[];
-  successMessage: string;
-  debug?: AiDebugInfo;
-  sourceMeta?: SourceMeta;
-}
-
 interface ErrorState {
   message: string;
   details?: AiDebugInfo & { cause?: string };
 }
 
-const AI_DETAILS_MARKER = "__AI_DETAILS__";
-
-/**
- * Server actions wrap AiError details into the message after a sentinel marker.
- * Strip and parse them so the UI can render a structured debug panel.
- */
-function parseActionError(message: string): ErrorState {
-  const idx = message.indexOf(AI_DETAILS_MARKER);
-  if (idx === -1) return { message };
-  const head = message.slice(0, idx).trim();
-  const tail = message.slice(idx + AI_DETAILS_MARKER.length);
-  try {
-    const details = JSON.parse(tail) as ErrorState["details"];
-    return { message: head || "Action failed", details };
-  } catch {
-    return { message };
-  }
-}
-
-/**
- * Best-effort source-language detection from the extracted recipe. Looks for
- * characters that appear in German but not English (ä/ö/ü/ß). Returns null
- * when nothing distinctive is found so callers can fall back to user choice.
- */
 function detectRecipeLanguage(recipe: Record<string, unknown> | null): Locale | null {
   if (!recipe) return null;
   const fields = [recipe["name"], recipe["description"]];
@@ -108,14 +68,8 @@ function detectRecipeLanguage(recipe: Record<string, unknown> | null): Locale | 
   return null;
 }
 
-const TABS: Array<{ id: SourceMode; label: string; icon: React.ReactNode }> = [
-  { id: "file", label: "From file", icon: <Upload size={14} /> },
-  { id: "text", label: "From text", icon: <AlignLeft size={14} /> },
-  { id: "prompt", label: "Generate", icon: <Sparkles size={14} /> },
-];
-
-function composeAction(tab: SourceMode, contentType: ContentType): string {
-  if (tab === "prompt" && contentType === "recipe") return "aiGenerateRecipe";
+function composeAction(sourceKind: string | undefined, contentType: ContentType): string {
+  if (sourceKind === "prompt" && contentType === "recipe") return "aiGenerateRecipe";
   switch (contentType) {
     case "recipe":
       return "aiExtractRecipe";
@@ -126,157 +80,24 @@ function composeAction(tab: SourceMode, contentType: ContentType): string {
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-export function buildFormData(source: Source, debug?: boolean): FormData {
-  const fd = new FormData();
-  if (source.kind === "file") {
-    fd.append("file", source.file);
-    fd.append("mimeType", source.mimeType);
-  } else {
-    fd.append(
-      "text",
-      source.kind === "text" ? source.content : (source as { prompt: string }).prompt,
-    );
-  }
-  if (debug) fd.append("debug", "1");
-  return fd;
-}
-
-async function generateRecipe(
-  prompt: string,
-  locale: Locale,
-  collection: RecipeCollection,
-  onPartial?: (partial: Record<string, unknown>) => void,
-): Promise<SubmitResult> {
-  const response = await fetch("/api/ai/generate-recipe/stream", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt,
-      locale,
-      style: collection === "recipes" ? "recipe" : "mixture",
-    }),
-  });
-
-  if (!response.ok || !response.body) {
-    throw new Error(`Generation failed: ${response.statusText}`);
-  }
-
-  for await (const event of readSSE(response.body)) {
-    if (event["type"] === "partial" && onPartial) {
-      onPartial(event["recipe"] as Record<string, unknown>);
-    } else if (event["type"] === "complete") {
-      const result = event["result"] as { recipe: Record<string, unknown>; warnings: string[] };
-      return {
-        result: result.recipe,
-        warnings: result.warnings ?? [],
-        successMessage: "Recipe generated!",
-      };
-    } else if (event["type"] === "error") {
-      const msg = typeof event["message"] === "string" ? event["message"] : "Generation failed";
-      throw new Error(msg);
-    }
-  }
-
-  throw new Error("Stream ended without a complete event");
-}
-
-function sourceKindFromMime(mime: string): "pdf" | "image" | "text" {
-  if (mime === "application/pdf") return "pdf";
-  if (mime.startsWith("image/")) return "image";
-  return "text";
-}
-
-function buildSourceMeta(
-  source: Source,
-  data: { traceId?: string; binaryHash?: string },
-): SourceMeta | undefined {
-  if (!data.traceId || !data.binaryHash) return undefined;
-  if (source.kind === "file") {
-    const mime = source.mimeType;
-    return {
-      kind: sourceKindFromMime(mime),
-      mime,
-      sizeBytes: source.file.size,
-      filename: source.file.name,
-      hash: data.binaryHash,
-      ingestedAt: new Date().toISOString(),
-      traceId: data.traceId,
-    };
-  }
-  if (source.kind === "text") {
-    const bytes = new TextEncoder().encode(source.content).length;
-    return {
-      kind: "text",
-      mime: "text/plain",
-      sizeBytes: bytes,
-      hash: data.binaryHash,
-      ingestedAt: new Date().toISOString(),
-      traceId: data.traceId,
-    };
-  }
-  return undefined;
-}
-
-async function extractContent(
-  contentType: ContentType,
-  source: Source,
-  debug: boolean,
-): Promise<SubmitResult> {
-  const formData = buildFormData(source, debug);
-  if (contentType === "recipe") {
-    const { data, error } = await actions.aiExtractRecipe(formData);
-    if (error || !data) throw new Error(error?.message ?? "Extraction failed");
-    return {
-      result: data.recipe as Record<string, unknown>,
-      warnings: data.warnings,
-      successMessage: "Recipe extracted!",
-      debug: (data as { debug?: AiDebugInfo }).debug,
-      sourceMeta: buildSourceMeta(source, data),
-    };
-  }
-  if (contentType === "ingredient") {
-    const { data, error } = await actions.aiExtractIngredient(formData);
-    if (error || !data) throw new Error(error?.message ?? "Extraction failed");
-    return {
-      result: data.ingredient as Record<string, unknown>,
-      warnings: data.warnings,
-      successMessage: "Ingredient extracted!",
-      debug: (data as { debug?: AiDebugInfo }).debug,
-      sourceMeta: buildSourceMeta(source, data),
-    };
-  }
-  const { data, error } = await actions.aiExtractPairing(formData);
-  if (error || !data) throw new Error(error?.message ?? "Extraction failed");
-  return {
-    result: data.pairing as Record<string, unknown>,
-    warnings: data.warnings,
-    successMessage: "Pairing extracted!",
-    debug: (data as { debug?: AiDebugInfo }).debug,
-    sourceMeta: buildSourceMeta(source, data),
-  };
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
-
-export default function AiComposeForm() {
-  const [tab, setTab] = useState<SourceMode>("file");
+export default function AiImportPage() {
   const [contentType, setContentType] = useState<ContentType>("recipe");
   const [collection, setCollection] = useState<RecipeCollection>("recipes");
   const [locale, setLocale] = useState<Locale>("en");
-  /** Tracks whether the user has explicitly chosen the locale, so auto-detect
-   * never overwrites a deliberate selection. */
   const [localeUserSet, setLocaleUserSet] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
-  const [source, setSource] = useState<Source | null>(null);
+  const [source, setSource] = useState<SourceShape | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [partialRecipe, setPartialRecipe] = useState<Record<string, unknown> | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [debug, setDebug] = useState<AiDebugInfo | null>(null);
   const [error, setError] = useState<ErrorState | null>(null);
-  const [sourceMeta, setSourceMeta] = useState<SourceMeta | null>(null);
+  const [sourceMeta, setSourceMeta] = useState<ImportResult["sourceMeta"] | null>(null);
+
+  const run = useImportAction(contentType, locale, collection, (partial) =>
+    setPartialRecipe(partial),
+  );
 
   function reset() {
     setResult(null);
@@ -284,8 +105,12 @@ export default function AiComposeForm() {
     setError(null);
     setWarnings([]);
     setDebug(null);
-    setSource(null);
     setSourceMeta(null);
+  }
+
+  function handleSourceChange(s: SourceShape | null) {
+    setSource(s);
+    if (!s) reset();
   }
 
   async function handleSubmit() {
@@ -299,21 +124,12 @@ export default function AiComposeForm() {
     setPartialRecipe(null);
     setDebug(null);
     try {
-      const submitted =
-        contentType === "recipe" && tab === "prompt"
-          ? await generateRecipe(
-              (source as { prompt: string }).prompt,
-              locale,
-              collection,
-              (partial) => setPartialRecipe(partial),
-            )
-          : await extractContent(contentType, source, debugMode);
+      const submitted = await run(source, debugMode);
       setPartialRecipe(null);
       setResult(submitted.result);
       setWarnings(submitted.warnings);
       if (submitted.debug) setDebug(submitted.debug);
       if (submitted.sourceMeta) setSourceMeta(submitted.sourceMeta);
-      // Auto-detect source language for recipes when user hasn't picked one.
       if (contentType === "recipe" && !localeUserSet) {
         const detected = detectRecipeLanguage(submitted.result);
         if (detected) setLocale(detected);
@@ -352,8 +168,11 @@ export default function AiComposeForm() {
     }
   }
 
+  const sourceKind = source?.kind;
+  const isPromptMode = sourceKind === "prompt";
+
   const submitLabel =
-    tab === "prompt" && contentType === "recipe"
+    isPromptMode && contentType === "recipe"
       ? "Generate recipe"
       : contentType === "recipe"
         ? "Extract recipe"
@@ -361,48 +180,21 @@ export default function AiComposeForm() {
           ? "Extract pairing"
           : "Extract ingredient";
 
-  const loadingAction = composeAction(tab, contentType);
+  const loadingAction = composeAction(sourceKind, contentType);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">AI compose</h1>
+        <h1 className="text-2xl font-bold">AI import</h1>
         <p className="text-muted-foreground text-sm mt-1">
           Extract a recipe or ingredient from a file, pasted text, or generate from a prompt.
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-lg bg-muted p-1">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => {
-              setTab(t.id);
-              reset();
-            }}
-            className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-              tab === t.id
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t.icon}
-            {t.label}
-          </button>
-        ))}
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Options</CardTitle>
-          <CardDescription>
-            {tab === "prompt"
-              ? "Describe what you want to create."
-              : "Choose the content target and source."}
-          </CardDescription>
+          <CardDescription>Choose the content target and source.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Content type */}
@@ -420,8 +212,8 @@ export default function AiComposeForm() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="recipe">Recipe</SelectItem>
-                {tab !== "prompt" && <SelectItem value="ingredient">Ingredient</SelectItem>}
-                {tab !== "prompt" && <SelectItem value="pairing">Pairing</SelectItem>}
+                {!isPromptMode && <SelectItem value="ingredient">Ingredient</SelectItem>}
+                {!isPromptMode && <SelectItem value="pairing">Pairing</SelectItem>}
               </SelectContent>
             </Select>
           </div>
@@ -445,7 +237,7 @@ export default function AiComposeForm() {
             </div>
           )}
 
-          {/* Locale (always shown — required by the editor for save) */}
+          {/* Locale */}
           <div className="space-y-1.5">
             <Label>Locale</Label>
             <Select
@@ -463,15 +255,15 @@ export default function AiComposeForm() {
                 <SelectItem value="de">German</SelectItem>
               </SelectContent>
             </Select>
-            {contentType === "recipe" && tab !== "prompt" && (
+            {contentType === "recipe" && !isPromptMode && (
               <p className="text-xs text-muted-foreground">
                 Auto-detected from the source. Override if needed before opening the editor.
               </p>
             )}
           </div>
 
-          {/* Source input */}
-          <SourcePicker key={tab} mode={tab} onChange={setSource} />
+          {/* Source input via registry primitive */}
+          <FileTextPromptSourcePicker onChange={handleSourceChange} />
 
           {/* Debug toggle */}
           <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
@@ -493,7 +285,7 @@ export default function AiComposeForm() {
               </>
             ) : (
               <>
-                {tab === "prompt" ? (
+                {isPromptMode ? (
                   <Sparkles size={14} className="mr-1" />
                 ) : (
                   <Upload size={14} className="mr-1" />
@@ -612,7 +404,7 @@ export default function AiComposeForm() {
       )}
 
       {/* Live recipe preview while generating */}
-      {loading && partialRecipe && tab === "prompt" && contentType === "recipe" && (
+      {loading && partialRecipe && isPromptMode && contentType === "recipe" && (
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground flex items-center gap-1.5">

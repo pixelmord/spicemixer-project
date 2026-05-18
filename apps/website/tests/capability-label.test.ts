@@ -55,11 +55,11 @@ describe("CapabilityLabel component", () => {
   });
 });
 
-describe("AiComposeForm uses CapabilityLabel", () => {
+describe("AiImportPage uses CapabilityLabel", () => {
   let src: string;
 
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "AiComposeForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "AiImportPage.tsx"), "utf-8");
   });
 
   test("imports CapabilityLabel", () => {
