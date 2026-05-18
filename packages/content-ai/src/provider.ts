@@ -8,25 +8,16 @@ import { FileTraceSink } from "./trace/sinks/file.ts";
 import { SentrySpanSink } from "./trace/sinks/sentry.ts";
 import { PubSubTraceSink } from "./trace/sinks/pubsub.ts";
 
-export interface AiConfig {
-  baseUrl: string;
-  apiKey: string;
-  model: string;
-}
-
-export function resolveConfig(): AiConfig {
-  return {
-    baseUrl: process.env["AI_BASE_URL"] ?? "https://api.openai.com/v1",
-    apiKey: process.env["AI_API_KEY"] ?? process.env["OPENAI_API_KEY"] ?? "",
-    model: process.env["AI_MODEL"] ?? "gpt-4o-mini",
-  };
-}
+export { resolveConfig } from "@pixelmord/content-ai-core";
+export type { AiConfig } from "@pixelmord/content-ai-core";
 
 const fileSink = new FileTraceSink();
 const sentrySink = new SentrySpanSink();
 const pubSubSink = new PubSubTraceSink();
 
-export function createProvider(config: AiConfig): LanguageModelV3 {
+export function createProvider(
+  config: import("@pixelmord/content-ai-core").AiConfig,
+): LanguageModelV3 {
   if (process.env["AI_PROVIDER"] === "mock") {
     return wrapLanguageModel({
       model: createMockLanguageModel(),

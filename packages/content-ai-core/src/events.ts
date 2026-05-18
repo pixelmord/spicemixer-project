@@ -91,3 +91,23 @@ export function planPrune(events: AiEvent[], capHint = 100): AiEvent[] {
 
   return events.filter((e) => !toRemove.has(e));
 }
+
+export function prune(events: AiEvent[]): AiEvent[] {
+  return planPrune(events, 100);
+}
+
+export function appendEvent<M extends { aiEvents?: AiEvent[] }>(
+  meta: M,
+  event: AiEvent,
+): M & { aiEvents: AiEvent[] } {
+  const current = meta.aiEvents ?? [];
+  return { ...meta, aiEvents: prune([...current, event]) } as M & { aiEvents: AiEvent[] };
+}
+
+export function recordAiEvent(events: AiEvent[], params: Omit<AiEvent, "at" | "id">): AiEvent[] {
+  return prune([...events, { ...params, id: crypto.randomUUID(), at: new Date().toISOString() }]);
+}
+
+export function hasAutoApplied(events: AiEvent[], field: string): boolean {
+  return events.some((e) => e.type === "auto-applied" && e.field === field);
+}
