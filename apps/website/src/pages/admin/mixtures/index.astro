@@ -1,6 +1,6 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import ContentTable from "@/components/admin/ContentTable.tsx";
 import { createStore } from "@/lib/content-store.ts";
 import { scoreRecipe } from "@/lib/completeness.ts";
@@ -15,24 +15,16 @@ const rows = items.map((item) => {
   const language = String((meta as Record<string, unknown>).language ?? "") || undefined;
   return { type: "recipe" as const, collection: "mixtures", id: item.id, name: String((item.data as Record<string, unknown>).name ?? item.id), draft: !!(meta as Record<string, unknown>).draft, completeness, updatedAt: item.updatedAt, language };
 });
-
-const currentPath = Astro.url.pathname;
 ---
-<html lang="en">
-  <head><meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" /><title>Mixtures · Admin · SpiceMixer</title></head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h1 class="text-2xl font-bold">Mixtures</h1>
-          <div class="flex gap-2">
-            <a href="/admin/mixtures/import" class="inline-flex items-center justify-center rounded-lg border border-border bg-background px-2.5 h-8 text-sm font-medium hover:bg-muted transition-colors">Import from URL</a>
-            <a href="/admin/mixtures/new" class="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-2.5 h-8 text-sm font-medium hover:opacity-90 transition-colors">+ New mixture</a>
-          </div>
-        </div>
-        <ContentTable initialRows={rows} client:load />
+<AdminLayout title="Mixtures · Admin · SpiceMixer">
+  <div class="space-y-4">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Mixtures</h1>
+      <div class="flex gap-2">
+        <a href="/admin/mixtures/import" class="inline-flex items-center justify-center rounded-lg border border-border bg-background px-2.5 h-8 text-sm font-medium hover:bg-muted transition-colors">Import from URL</a>
+        <a href="/admin/mixtures/new" class="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-2.5 h-8 text-sm font-medium hover:opacity-90 transition-colors">+ New mixture</a>
       </div>
-    </AdminShell>
-  </body>
-</html>
+    </div>
+    <ContentTable initialRows={rows} client:load />
+  </div>
+</AdminLayout>

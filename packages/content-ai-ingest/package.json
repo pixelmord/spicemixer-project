@@ -30,6 +30,7 @@
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@noble/hashes": "^1.7.0",
+    "@pixelmord/content-ai-core": "workspace:*",
     "ai": "catalog:",
     "zod": "catalog:"
   },

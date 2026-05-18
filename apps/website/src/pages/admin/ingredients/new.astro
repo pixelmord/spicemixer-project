@@ -1,20 +1,10 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import NewIngredientPage from "@/components/admin/NewIngredientPage.tsx";
 
 const locale = (Astro.url.searchParams.get("locale") ?? "en") as "en" | "de";
-const currentPath = Astro.url.pathname;
 ---
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <title>New ingredient · Admin</title>
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
-      <NewIngredientPage locale={locale} client:load />
-    </AdminShell>
-  </body>
-</html>
+<AdminLayout title="New ingredient · Admin">
+  <NewIngredientPage locale={locale} client:load />
+</AdminLayout>

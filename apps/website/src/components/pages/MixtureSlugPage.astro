@@ -14,7 +14,6 @@ import {
   getMeta,
   linkIngredients,
   annotateTextHtml,
-  resolveRefs,
   resolveVariants,
   slugFromLocaleId,
   resolveFeaturedPairings,
@@ -49,11 +48,8 @@ let transitionName = "";
 let jsonLd = "";
 let meta: Meta | null = null;
 let linkedIngredients: ReturnType<typeof linkIngredients> = [];
-let goesWellWithItems: { name: string; href: string }[] = [];
-let usesBaseItems: { name: string; href: string }[] = [];
 let usedInItems: { name: string; href: string; kind: string }[] = [];
 let variantItems: { name: string; href: string }[] = [];
-let variantOfItem: { name: string; href: string } | null = null;
 let featuredPairings: { href: string; name: string; description: string }[] = [];
 let lightboxSteps: { name?: string; text: string; image?: string; html: string }[] = [];
 let kindBadgeLabel = "";
@@ -77,17 +73,10 @@ if (mix) {
 
   const effectiveVariantSlugs = await getEffectiveVariants("mixtures", slug, meta, canonicalLocale);
 
-  [goesWellWithItems, usesBaseItems, variantItems, usedInItems] = await Promise.all([
-    resolveRefs(meta.goesWellWith, prefix),
-    resolveRefs(meta.usesBase, prefix),
+  [variantItems, usedInItems] = await Promise.all([
     resolveVariants("mixtures", effectiveVariantSlugs, prefix, locale),
     getUsedIn(slug, prefix),
   ]);
-
-  if (meta.variantOf) {
-    const [item] = await resolveVariants("mixtures", [meta.variantOf], prefix, locale);
-    variantOfItem = item ?? null;
-  }
 
   featuredPairings = await resolveFeaturedPairings(slug, locale, prefix);
 
@@ -321,19 +310,8 @@ const hreflang = mix ? await hreflangTags(mixSlug, "mixtures", Astro.site?.toStr
           </div>
         </section>
 
-        {(variantOfItem || (meta?.externalSources.length ?? 0) > 0) && (
+        {(meta?.externalSources.length ?? 0) > 0 && (
           <section slot="encyclopedia" data-cook="hide" class="mb-10">
-            {variantOfItem && (
-              <p class="mb-4 text-sm text-stone-500">
-                {t("section.variantOf")}{" "}
-                <a
-                  href={variantOfItem.href}
-                  class="text-amber-700 underline decoration-dotted underline-offset-2 hover:text-amber-900"
-                >
-                  {variantOfItem.name}
-                </a>
-              </p>
-            )}
             <ExternalSourceList
               heading={t("section.externalRecipes")}
               sources={meta!.externalSources}
@@ -433,8 +411,6 @@ const hreflang = mix ? await hreflangTags(mixSlug, "mixtures", Astro.site?.toStr
             </section>
           )}
           <RelatedList heading={t("section.usedIn")} items={usedInItems} />
-          <RelatedList heading={t("section.goesWellWith")} items={goesWellWithItems} />
-          <RelatedList heading={t("section.usesBase")} items={usesBaseItems} />
           <RelatedList heading={t("section.variants")} items={variantItems} />
 
           {

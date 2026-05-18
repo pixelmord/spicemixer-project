@@ -1,6 +1,6 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import RecipeForm from "@/components/admin/RecipeForm.tsx";
 import { createStore } from "@/lib/content-store.ts";
 const LOCALES = ["en", "de"] as const;
@@ -17,12 +17,10 @@ const localeOrder = LOCALES.includes(localeParam as (typeof LOCALES)[number])
 
 let item = null;
 let metaItem = null;
-let itemLocale: string | null = null;
 for (const loc of localeOrder) {
   const candidate = await store.get("recipes", `${loc}/${slug}`);
   if (candidate) {
     item = candidate;
-    itemLocale = loc;
     metaItem = await store.get("meta", `recipes/${loc}/${slug}`);
     break;
   }
@@ -30,25 +28,15 @@ for (const loc of localeOrder) {
 
 if (!item) return Astro.redirect("/admin/recipes");
 
-const currentPath = Astro.url.pathname;
+const title = `${String((item.data as Record<string, unknown>).name ?? slug)} · Edit · Admin`;
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{String((item.data as Record<string, unknown>).name ?? slug)} · Edit · Admin</title>
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
-      <RecipeForm
-        collection="recipes"
-        slug={slug}
-        initialRecipe={item.data as never}
-        initialMeta={metaItem?.data as never}
-        client:load
-      />
-    </AdminShell>
-  </body>
-</html>
+<AdminLayout title={title}>
+  <RecipeForm
+    collection="recipes"
+    slug={slug}
+    initialRecipe={item.data as never}
+    initialMeta={metaItem?.data as never}
+    client:load
+  />
+</AdminLayout>

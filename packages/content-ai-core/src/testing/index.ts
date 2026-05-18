@@ -1,6 +1,8 @@
 import type { AiEvent, AiEventLog, EntityRef } from "../events.ts";
 import type { TraceEvent, TraceSink } from "../trace.ts";
 
+export { createMockLanguageModel, synthesizeFromJsonSchema } from "./mock-model.ts";
+
 function refKey(ref: EntityRef): string {
   return `${ref.kind}:${ref.id}`;
 }

@@ -28,3 +28,8 @@ export { createProvider, PROVIDER_OPTIONS } from "./provider.ts";
 export type { AiConfig } from "./provider.ts";
 
 export { isSuppressed, filterSuggestions, buildRejectedContext } from "./suppression.ts";
+
+// Note: testing utilities (createMockLanguageModel, MockLanguageModelV3) live
+// at `@pixelmord/content-ai-core/testing` and are intentionally NOT re-exported
+// here — they pull `ai/test` which transitively imports `node:async_hooks`,
+// poisoning client bundles when components reach this barrel.

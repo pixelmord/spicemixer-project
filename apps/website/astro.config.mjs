@@ -96,6 +96,10 @@ export default defineConfig({
           __dirname,
           "../../packages/content-ai-refine/src/index.ts",
         ),
+        "@pixelmord/content-ai-core/testing": join(
+          __dirname,
+          "../../packages/content-ai-core/src/testing/index.ts",
+        ),
       },
     },
   },

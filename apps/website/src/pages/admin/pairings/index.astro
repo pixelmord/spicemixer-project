@@ -1,6 +1,6 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import ContentTable from "@/components/admin/ContentTable.tsx";
 import { createStore } from "@/lib/content-store.ts";
 import { scorePairing } from "@/lib/completeness.ts";
@@ -47,16 +47,8 @@ const rows = Array.from(slugMap.entries()).map(([slug, localeItems]) => {
   };
 });
 
-const currentPath = Astro.url.pathname;
 ---
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <title>Pairings · Admin · SpiceMixer</title>
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
+<AdminLayout title="Pairings · Admin · SpiceMixer">
       <div class="space-y-4">
         <div class="flex items-center justify-between">
           <h1 class="text-2xl font-bold">Pairings</h1>
@@ -66,6 +58,4 @@ const currentPath = Astro.url.pathname;
         </div>
         <ContentTable initialRows={rows} client:load />
       </div>
-    </AdminShell>
-  </body>
-</html>
+</AdminLayout>

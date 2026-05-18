@@ -448,12 +448,12 @@ export default function IngredientForm({
         existingMeta: {},
         missingFields: missingKeys,
       });
-      const parsed = parseApiResult(result as Record<string, unknown>);
+      const parsed = parseApiResult(result as unknown as Record<string, unknown>);
       setDetectedLanguage(parsed.detectedLanguage);
       setLanguageMismatch(parsed.languageMismatch ?? false);
       if (parsed.pairings.length > 0) {
         setPairingProposals(parsed.pairings);
-        const autoLinked = (result as Record<string, unknown>)?.autoLinked as number;
+        const autoLinked = (result as unknown as Record<string, unknown>)?.autoLinked as number;
         if (autoLinked > 0) {
           toast.success(`Auto-paired ${autoLinked} ingredient${autoLinked !== 1 ? "s" : ""}`);
           void actions.listPairingsFor({ slug }).then((pr: { data?: unknown }) => {

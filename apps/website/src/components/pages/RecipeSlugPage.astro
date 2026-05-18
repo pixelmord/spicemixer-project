@@ -14,7 +14,6 @@ import {
   getIngredient,
   linkIngredients,
   annotateTextHtml,
-  resolveRefs,
   resolveFeaturedPairings,
 } from "../../lib/recipe-augment.ts";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
@@ -50,7 +49,6 @@ const pagefindFilters = withPagefindFilters({
 });
 
 const linkedIngredients = linkIngredients(data.recipeIngredient, meta.ingredientLinks);
-const goesWellWithItems = await resolveRefs(meta.goesWellWith, prefix);
 const lightboxSteps = steps.map((step) => ({
   ...step,
   html: annotateTextHtml(step.text, meta.ingredientLinks, ingredientBase),
@@ -270,7 +268,6 @@ const hreflang = await hreflangTags(slug, "recipes", Astro.site?.toString().repl
             </ul>
           </section>
         )}
-        <RelatedList heading={t("section.goesWellWith")} items={goesWellWithItems} />
         <ExternalSourceList heading={t("section.externalRecipes")} sources={meta.externalSources} />
 
         {

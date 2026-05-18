@@ -14,8 +14,6 @@ export async function getIngredient(slug: string, locale: string) {
 
 export type RecipeKind = "recipes" | "mixtures";
 
-/** Cross-collection relation reference stored in meta (goesWellWith, usesBase). No locale — links by slug only. */
-export type RelationRef = { collection: RecipeKind | "ingredients"; slug: string };
 export type IngredientLink = {
   pattern: string;
   slug: string;
@@ -32,10 +30,7 @@ export type Meta = {
   locale?: string;
   translationOf?: string;
   translations?: Record<string, string>;
-  variantOf?: string;
   variants: string[];
-  goesWellWith: RelationRef[];
-  usesBase: RelationRef[];
   ingredientLinks: IngredientLink[];
   externalSources: ExternalSource[];
   tags: string[];
@@ -51,8 +46,6 @@ type PairingData = {
 
 const EMPTY_META: Meta = {
   variants: [],
-  goesWellWith: [],
-  usesBase: [],
   ingredientLinks: [],
   externalSources: [],
   tags: [],
@@ -340,23 +333,6 @@ async function getRecipeUsedIn(
     localePrefix,
     (l) => l.kind === "recipe" && l.slug === recipeSlug && l.collection === recipeCollection,
   );
-}
-
-export async function resolveRefs(
-  refs: RelationRef[],
-  localePrefix: string,
-  locale = "en",
-): Promise<Array<{ name: string; href: string }>> {
-  const results = await Promise.all(
-    refs.map(async ({ collection, slug }) => {
-      const e =
-        (await getEntry(collection, `${locale}/${slug}`)) ??
-        (await getEntry(collection, `en/${slug}`));
-      if (!e) return null;
-      return { name: e.data.name, href: localePrefix + "/" + collection + "/" + slug + "/" };
-    }),
-  );
-  return results.filter((x): x is NonNullable<typeof x> => x !== null);
 }
 
 export async function resolveVariants(

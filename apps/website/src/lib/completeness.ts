@@ -59,7 +59,7 @@ export const INGREDIENT_RECOMMENDED = [
   "images[0]",
 ] as const;
 
-function scoreRecipe(recipe: AnyRecord, meta: AnyRecord): CompletenessResult {
+export function scoreRecipe(recipe: AnyRecord, meta: AnyRecord): CompletenessResult {
   // Required — missing any → score 0
   for (const field of RECIPE_REQUIRED) {
     const v = recipe[field];
@@ -101,13 +101,13 @@ export function resolvePairingDescription(
   return { description, locale, isFallback: false };
 }
 
-function scorePairing(pairing: AnyRecord): CompletenessResult {
+export function scorePairing(pairing: AnyRecord): CompletenessResult {
   if (!has(pairing, "description")) return { score: 0, missing: ["description"], color: "red" };
   if (!has(pairing, "endpoints")) return { score: 0, missing: ["endpoints"], color: "red" };
   return { score: 100, missing: [], color: "green" };
 }
 
-function scoreIngredient(ingredient: AnyRecord): CompletenessResult {
+export function scoreIngredient(ingredient: AnyRecord): CompletenessResult {
   for (const field of INGREDIENT_REQUIRED) {
     if (!has(ingredient, field)) {
       return { score: 0, missing: [field], color: "red" };

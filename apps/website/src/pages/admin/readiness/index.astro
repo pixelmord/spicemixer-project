@@ -1,6 +1,6 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import { createStore } from "@/lib/content-store.ts";
 import {
   computeContentGates,
@@ -23,19 +23,30 @@ if (Astro.request.method === "POST") {
   return Astro.redirect("/admin/readiness/");
 }
 
-const [mixtureItems, metaItems, ingredientItems, ingredientMetaItems, pairingItems, recipeItems] =
-  await Promise.all([
-    store.list("mixtures"),
-    store.list("meta"),
-    store.list("ingredients"),
-    store.list("ingredientMeta"),
-    store.list("pairings"),
-    store.list("recipes"),
-  ]);
+const [
+  mixtureItems,
+  metaItems,
+  ingredientItems,
+  ingredientMetaItems,
+  pairingItems,
+  pairingMetaItems,
+  recipeItems,
+] = await Promise.all([
+  store.list("mixtures"),
+  store.list("meta"),
+  store.list("ingredients"),
+  store.list("ingredientMeta"),
+  store.list("pairings"),
+  store.list("pairingMeta"),
+  store.list("recipes"),
+]);
 
 const metaMap = new Map(metaItems.map((m) => [m.id, m.data as Record<string, unknown>]));
 const ingredientMetaMap = new Map(
   ingredientMetaItems.map((m) => [m.id, m.data as Record<string, unknown>]),
+);
+const pairingMetaMap = new Map(
+  pairingMetaItems.map((m) => [m.id, m.data as Record<string, unknown>]),
 );
 
 const publishedMixtures: CorpusMixture[] = [];
@@ -66,10 +77,20 @@ for (const i of ingredientItems) {
 }
 
 const publishedPairings: CorpusPairing[] = [];
+const seenPairingIds = new Set<string>();
 for (const p of pairingItems) {
-  const data = p.data as Record<string, unknown>;
-  if (data.draft) continue;
-  publishedPairings.push({ slugs: data.ingredients as [string, string] });
+  const meta = pairingMetaMap.get(p.id) ?? {};
+  if (meta.draft) continue;
+  // Pairings are stored per-locale (e.g. "en/caraway--cumin", "de/caraway--cumin");
+  // dedupe by trailing compound slug so corpus counts the pair once.
+  const compoundSlug = p.id.replace(/^[a-z]{2}\//, "");
+  if (seenPairingIds.has(compoundSlug)) continue;
+  seenPairingIds.add(compoundSlug);
+  const endpoints = (p.data as Record<string, unknown>).endpoints as
+    | Array<{ slug: string }>
+    | undefined;
+  if (!endpoints || endpoints.length < 2) continue;
+  publishedPairings.push({ slugs: [endpoints[0]!.slug, endpoints[1]!.slug] });
 }
 
 const publishedRecipes: CorpusRecipe[] = [];
@@ -77,9 +98,6 @@ for (const r of recipeItems) {
   const meta = metaMap.get(`recipes/${r.id}`) ?? {};
   if (meta.draft) continue;
   const mixtureRefs: string[] = [];
-  for (const ref of (meta.usesBase as { collection: string; slug: string }[]) ?? []) {
-    if (ref.collection === "mixtures") mixtureRefs.push(ref.slug);
-  }
   for (const link of (meta.ingredientLinks as {
     slug: string;
     collection?: string;
@@ -98,7 +116,6 @@ const corpus: Corpus = {
 
 const gates = computeContentGates(corpus);
 const flags = await loadFlags(store);
-const currentPath = Astro.url.pathname;
 
 const statusColor = {
   pass: "text-emerald-600 bg-emerald-50 border-emerald-200",
@@ -109,16 +126,7 @@ const statusColor = {
 const statusLabel = { pass: "Pass", warn: "Warn", fail: "Fail" };
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Phase 2 Readiness · Admin · SpiceMixer</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
+<AdminLayout title="Phase 2 Readiness · Admin · SpiceMixer">
       <div class="space-y-8">
         <div>
           <h1 class="text-2xl font-bold">Phase 2 Readiness</h1>
@@ -233,6 +241,4 @@ const statusLabel = { pass: "Pass", warn: "Warn", fail: "Fail" };
           </div>
         </div>
       </div>
-    </AdminShell>
-  </body>
-</html>
+</AdminLayout>

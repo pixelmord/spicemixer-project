@@ -1,6 +1,6 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import ContentTable from "@/components/admin/ContentTable.tsx";
 import { createStore } from "@/lib/content-store.ts";
 import { scoreIngredient } from "@/lib/completeness.ts";
@@ -8,7 +8,6 @@ import { scoreIngredient } from "@/lib/completeness.ts";
 const store = await createStore();
 const allItems = await store.list("ingredients");
 
-// Group by slug, deduplicate to one row per ingredient
 const slugMap = new Map<string, typeof allItems[number][]>();
 for (const item of allItems) {
   const slash = item.id.indexOf("/");
@@ -19,7 +18,6 @@ for (const item of allItems) {
 }
 
 const rows = Array.from(slugMap.entries()).map(([slug, localeItems]) => {
-  // Primary: EN version, fall back to first available
   const primary =
     localeItems.find((i) => i.id.startsWith("en/")) ?? localeItems[0]!;
   const completeness = scoreIngredient(primary.data as never);
@@ -30,7 +28,7 @@ const rows = Array.from(slugMap.entries()).map(([slug, localeItems]) => {
   return {
     type: "ingredient" as const,
     collection: "ingredients",
-    id: primary.id, // e.g. "en/cardamom" — editHref strips locale correctly
+    id: primary.id,
     name: String((primary.data as Record<string, unknown>).name ?? slug),
     draft: false,
     completeness,
@@ -38,21 +36,13 @@ const rows = Array.from(slugMap.entries()).map(([slug, localeItems]) => {
     translations,
   };
 });
-
-const currentPath = Astro.url.pathname;
 ---
-<html lang="en">
-  <head><meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" /><title>Ingredients · Admin · SpiceMixer</title></head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h1 class="text-2xl font-bold">Ingredients</h1>
-          <a href="/admin/ingredients/new" class="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-2.5 h-8 text-sm font-medium hover:opacity-90 transition-colors">+ New ingredient</a>
-        </div>
-        <ContentTable initialRows={rows} client:load />
-      </div>
-    </AdminShell>
-  </body>
-</html>
+<AdminLayout title="Ingredients · Admin · SpiceMixer">
+  <div class="space-y-4">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Ingredients</h1>
+      <a href="/admin/ingredients/new" class="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-2.5 h-8 text-sm font-medium hover:opacity-90 transition-colors">+ New ingredient</a>
+    </div>
+    <ContentTable initialRows={rows} client:load />
+  </div>
+</AdminLayout>

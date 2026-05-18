@@ -12,14 +12,17 @@ export default defineConfig({
       "@pixelmord/content-ai-refine": fileURLToPath(
         new URL("./packages/content-ai-refine/src/index.ts", import.meta.url),
       ),
-      "@pixelmord/content-ai-core": fileURLToPath(
-        new URL("./packages/content-ai-core/src/index.ts", import.meta.url),
-      ),
+      // Subpath aliases must come BEFORE base aliases — Vite matches keys in
+      // insertion order, so listing `@pixelmord/content-ai-core` first would
+      // shadow `@pixelmord/content-ai-core/testing` etc.
       "@pixelmord/content-ai-core/presentation": fileURLToPath(
         new URL("./packages/content-ai-core/src/presentation/index.ts", import.meta.url),
       ),
       "@pixelmord/content-ai-core/testing": fileURLToPath(
         new URL("./packages/content-ai-core/src/testing/index.ts", import.meta.url),
+      ),
+      "@pixelmord/content-ai-core": fileURLToPath(
+        new URL("./packages/content-ai-core/src/index.ts", import.meta.url),
       ),
       "entity-kind": fileURLToPath(new URL("./packages/entity-kind/src/index.ts", import.meta.url)),
       "recipe-ingestion": fileURLToPath(
@@ -47,6 +50,7 @@ export default defineConfig({
       "**/dist/**",
       "**/.{idea,git,cache,output,temp}/**",
       "**/.sandcastle/worktrees/**",
+      "**/e2e/**",
     ],
   },
 });

@@ -1,21 +1,9 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import ImportFromUrl from "@/components/admin/ImportFromUrl.tsx";
-
-const currentPath = Astro.url.pathname;
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Import recipe · Admin · SpiceMixer</title>
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
-      <ImportFromUrl client:load />
-    </AdminShell>
-  </body>
-</html>
+<AdminLayout title="Import recipe · Admin · SpiceMixer">
+  <ImportFromUrl client:load />
+</AdminLayout>

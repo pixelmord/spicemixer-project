@@ -2,7 +2,6 @@
 export const prerender = false;
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import RecipeMeta from "../../../components/RecipeMeta.astro";
-import RelatedList from "../../../components/RelatedList.astro";
 import ExternalSourceList from "../../../components/ExternalSourceList.astro";
 import { firstImage, keywordList, normalizeInstructions } from "../../../lib/instructions.ts";
 import StepImage from "../../../components/StepImage.astro";
@@ -11,7 +10,6 @@ import {
   getMeta,
   linkIngredients,
   annotateTextHtml,
-  resolveRefs,
 } from "../../../lib/recipe-augment.ts";
 import { createStore } from "@/lib/content-store.ts";
 import type { RecipeCollection } from "@/lib/content-store.ts";
@@ -39,7 +37,6 @@ const linkedIngredients = linkIngredients(
   data.recipeIngredient as string[],
   meta.ingredientLinks,
 );
-const goesWellWithItems = await resolveRefs(meta.goesWellWith, "");
 const lightboxSteps = steps.map((step) => ({
   ...step,
   html: annotateTextHtml(step.text, meta.ingredientLinks, "/ingredients"),
@@ -157,7 +154,6 @@ const lightboxSteps = steps.map((step) => ({
         </ol>
       </section>
 
-      <RelatedList heading="Goes well with" items={goesWellWithItems} />
       <ExternalSourceList heading="External recipes" sources={meta.externalSources} />
 
       {

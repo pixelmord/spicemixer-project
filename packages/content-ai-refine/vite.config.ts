@@ -1,6 +1,12 @@
 import { defineConfig } from "vite-plus";
+import path from "path";
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      "@pixelmord/content-ai-core/testing": path.resolve("../content-ai-core/src/testing/index.ts"),
+    },
+  },
   pack: {
     dts: {
       tsgo: true,

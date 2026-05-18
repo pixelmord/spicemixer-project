@@ -148,12 +148,14 @@ export default function EnhanceModal(props: Props) {
     } else {
       const descriptions = (proposed["descriptions"] as Record<string, string>) ?? {};
       const newDesc = descriptions[props.locale] ?? "";
-      const rawIngredients = existing["ingredients"] as [string, string];
+      const rawEndpoints =
+        (existing["endpoints"] as [string, string] | undefined) ??
+        (existing["ingredients"] as [string, string]);
       const { error } = await actions.savePairing({
         id: props.pairingId,
-        ingredients: [
-          { collection: "ingredients" as const, slug: rawIngredients[0] },
-          { collection: "ingredients" as const, slug: rawIngredients[1] },
+        endpoints: [
+          { collection: "ingredients" as const, slug: rawEndpoints[0] },
+          { collection: "ingredients" as const, slug: rawEndpoints[1] },
         ],
         description: newDesc,
         locale: props.locale,

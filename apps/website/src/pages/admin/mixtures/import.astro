@@ -1,15 +1,8 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import ImportFromUrl from "@/components/admin/ImportFromUrl.tsx";
-const currentPath = Astro.url.pathname;
 ---
-<html lang="en">
-  <head><meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" /><title>Import mixture · Admin</title></head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
-      <ImportFromUrl client:load />
-    </AdminShell>
-  </body>
-</html>
+<AdminLayout title="Import mixture · Admin">
+  <ImportFromUrl client:load />
+</AdminLayout>

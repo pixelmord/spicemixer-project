@@ -46,6 +46,7 @@ catalog:
   vite-plus: ^0.1.20
   vitest: npm:@voidzero-dev/vite-plus-test@latest
   zod: "^4.4.3"
+  "@playwright/test": ^1.60.0
 
 catalogMode: prefer
 overrides:

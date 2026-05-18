@@ -123,7 +123,9 @@ export default function PairingForm({
           locale,
           draft,
           image: value.image || "",
-          imageAttribution: value.imageAttribution ?? undefined,
+          imageAttribution: (value.imageAttribution ?? undefined) as
+            | Record<string, unknown>
+            | undefined,
         });
         if (error) throw new Error(error.message);
         toast.success("Saved");

@@ -1,27 +1,16 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import ContentTable from "@/components/admin/ContentTable.tsx";
 import { actions } from "astro:actions";
 
 const { data: rows = [], error } = await Astro.callAction(actions.listAll, undefined as never);
-const currentPath = Astro.url.pathname;
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>All content · Admin · SpiceMixer</title>
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
-      <div class="space-y-4">
-        <h1 class="text-2xl font-bold">All content</h1>
-        {error && <p class="text-destructive text-sm">{error.message}</p>}
-        <ContentTable initialRows={rows} client:load />
-      </div>
-    </AdminShell>
-  </body>
-</html>
+<AdminLayout title="All content · Admin · SpiceMixer">
+  <div class="space-y-4">
+    <h1 class="text-2xl font-bold">All content</h1>
+    {error && <p class="text-destructive text-sm">{error.message}</p>}
+    <ContentTable initialRows={rows} client:load />
+  </div>
+</AdminLayout>

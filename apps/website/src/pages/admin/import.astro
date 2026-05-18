@@ -1,21 +1,9 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import AiComposeForm from "@/components/admin/AiComposeForm.tsx";
-
-const currentPath = Astro.url.pathname;
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AI compose · Admin · SpiceMixer</title>
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
-      <AiComposeForm client:load />
-    </AdminShell>
-  </body>
-</html>
+<AdminLayout title="AI compose · Admin · SpiceMixer">
+  <AiComposeForm client:load />
+</AdminLayout>

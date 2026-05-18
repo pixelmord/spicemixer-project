@@ -1,10 +1,9 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import ContentTable from "@/components/admin/ContentTable.tsx";
 import { createStore } from "@/lib/content-store.ts";
 import { scoreRecipe } from "@/lib/completeness.ts";
-import { Button } from "@/components/ui/button.tsx";
 
 const store = await createStore();
 const [items, metas] = await Promise.all([store.list("recipes"), store.list("meta")]);
@@ -25,29 +24,17 @@ const rows = items.map((item) => {
     language,
   };
 });
-
-const currentPath = Astro.url.pathname;
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Recipes · Admin · SpiceMixer</title>
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h1 class="text-2xl font-bold">Recipes</h1>
-          <div class="flex gap-2">
-            <a href="/admin/recipes/import" class="inline-flex items-center justify-center rounded-lg border border-border bg-background px-2.5 h-8 text-sm font-medium hover:bg-muted transition-colors">Import from URL</a>
-            <a href="/admin/recipes/new" class="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-2.5 h-8 text-sm font-medium hover:opacity-90 transition-colors">+ New recipe</a>
-          </div>
-        </div>
-        <ContentTable initialRows={rows} client:load />
+<AdminLayout title="Recipes · Admin · SpiceMixer">
+  <div class="space-y-4">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Recipes</h1>
+      <div class="flex gap-2">
+        <a href="/admin/recipes/import" class="inline-flex items-center justify-center rounded-lg border border-border bg-background px-2.5 h-8 text-sm font-medium hover:bg-muted transition-colors">Import from URL</a>
+        <a href="/admin/recipes/new" class="inline-flex items-center justify-center rounded-lg bg-primary text-primary-foreground px-2.5 h-8 text-sm font-medium hover:opacity-90 transition-colors">+ New recipe</a>
       </div>
-    </AdminShell>
-  </body>
-</html>
+    </div>
+    <ContentTable initialRows={rows} client:load />
+  </div>
+</AdminLayout>

@@ -1,6 +1,6 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import RecipeEnhancePage from "@/components/admin/RecipeEnhancePage.tsx";
 import { createStore } from "@/lib/content-store.ts";
 
@@ -22,25 +22,15 @@ for (const loc of LOCALES) {
 }
 if (!item) return Astro.redirect("/admin/recipes");
 
-const currentPath = Astro.url.pathname;
+const title = `Enhance · ${String((item.data as Record<string, unknown>).name ?? slug)} · Admin`;
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Enhance · {String((item.data as Record<string, unknown>).name ?? slug)} · Admin</title>
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
-      <RecipeEnhancePage
-        collection="recipes"
-        slug={slug}
-        locale={itemLocale}
-        existingRecipe={item.data as never}
-        client:load
-      />
-    </AdminShell>
-  </body>
-</html>
+<AdminLayout title={title}>
+  <RecipeEnhancePage
+    collection="recipes"
+    slug={slug}
+    locale={itemLocale}
+    existingRecipe={item.data as never}
+    client:load
+  />
+</AdminLayout>

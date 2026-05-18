@@ -1,6 +1,6 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import IngredientForm from "@/components/admin/IngredientForm.tsx";
 import { createStore } from "@/lib/content-store.ts";
 
@@ -15,34 +15,22 @@ const store = await createStore();
 const item = await store.get("ingredients", `${locale}/${slug}`);
 if (!item) return Astro.redirect("/admin/ingredients");
 
-// Load ingredient meta (AI suggestions cache)
 const metaItem = await store.get("ingredientMeta", `${locale}/${slug}`);
 
-// Check which other locales already have a translation of this ingredient
 const otherLocale = locale === "en" ? "de" : "en";
 const otherItem = await store.get("ingredients", `${otherLocale}/${slug}`);
 const existingTranslationLocales = otherItem ? [otherLocale] : [];
 
-const currentPath = Astro.url.pathname;
+const title = `${String((item.data as Record<string, unknown>).name ?? slug)} [${locale}] · Edit · Admin`;
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{String((item.data as Record<string, unknown>).name ?? slug)} [{locale}] · Edit · Admin</title>
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
-      <IngredientForm
-        locale={locale}
-        slug={slug}
-        initialData={item.data as never}
-        initialMeta={metaItem?.data as never ?? {}}
-        existingTranslationLocales={existingTranslationLocales}
-        client:load
-      />
-    </AdminShell>
-  </body>
-</html>
+<AdminLayout title={title}>
+  <IngredientForm
+    locale={locale}
+    slug={slug}
+    initialData={item.data as never}
+    initialMeta={metaItem?.data as never ?? {}}
+    existingTranslationLocales={existingTranslationLocales}
+    client:load
+  />
+</AdminLayout>

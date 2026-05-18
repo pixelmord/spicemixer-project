@@ -947,7 +947,9 @@ export default function RecipeForm({
       // Filter out already-linked
       const existing = new Set(ingredientLinks.map((l) => l.pattern));
       const newLinks = (data ?? []).filter((l: { pattern: string }) => !existing.has(l.pattern));
-      setPendingLinks(newLinks);
+      setPendingLinks(
+        newLinks as { pattern: string; slug: string; confidence: "high" | "low" | "medium" }[],
+      );
     } catch (e) {
       toast.error(String(e instanceof Error ? e.message : e));
     } finally {

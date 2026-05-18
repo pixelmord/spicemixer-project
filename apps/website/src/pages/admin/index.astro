@@ -1,6 +1,6 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import { createStore } from "@/lib/content-store.ts";
 import { scoreRecipe, scoreIngredient } from "@/lib/completeness.ts";
 
@@ -31,20 +31,9 @@ const scores = allRecipes.map((r) => {
 });
 const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
 const complete = scores.filter((s) => s >= 80).length;
-
-const currentPath = Astro.url.pathname;
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Admin · SpiceMixer</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
+<AdminLayout title="Admin · SpiceMixer">
       <div class="space-y-6">
         <div>
           <h1 class="text-2xl font-bold">Dashboard</h1>
@@ -106,6 +95,4 @@ const currentPath = Astro.url.pathname;
           </div>
         </div>
       </div>
-    </AdminShell>
-  </body>
-</html>
+</AdminLayout>

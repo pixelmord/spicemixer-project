@@ -1,11 +1,17 @@
 import { readdir, readFile, writeFile, unlink, stat } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { isAbsolute, join, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import type { Collection, ContentItem, ContentStore } from "../content-store.ts";
 
 // process.cwd() is the Astro project root in both dev and SSR contexts.
-const CONTENT_ROOT = join(process.cwd(), "src/content");
+// E2E tests redirect writes to a tmp dir by setting CONTENT_ROOT.
+// Read lazily so tests can swap the env var per case.
+function contentRoot(): string {
+  const override = process.env.CONTENT_ROOT;
+  if (!override) return join(process.cwd(), "src/content");
+  return isAbsolute(override) ? override : join(process.cwd(), override);
+}
 
 const META_KIND_DIRS = ["recipes", "mixtures"] as const;
 
@@ -14,15 +20,15 @@ function idToPath(collection: Collection, id: string): string {
   switch (collection) {
     case "meta":
       // id "recipes/miso-butter-ramen" → recipes/miso-butter-ramen.meta.json
-      return join(CONTENT_ROOT, ...id.split("/")) + ".meta.json";
+      return join(contentRoot(), ...id.split("/")) + ".meta.json";
     case "ingredientMeta":
       // id "en/cardamom" → ingredients/en/cardamom.meta.json
-      return join(CONTENT_ROOT, "ingredients", ...id.split("/")) + ".meta.json";
+      return join(contentRoot(), "ingredients", ...id.split("/")) + ".meta.json";
     case "pairingMeta":
       // id "caraway--cumin" → pairings/caraway--cumin.meta.json
-      return join(CONTENT_ROOT, "pairings", ...id.split("/")) + ".meta.json";
+      return join(contentRoot(), "pairings", ...id.split("/")) + ".meta.json";
     default:
-      return join(CONTENT_ROOT, collection, ...id.split("/")) + ".json";
+      return join(contentRoot(), collection, ...id.split("/")) + ".json";
   }
 }
 
@@ -31,7 +37,7 @@ export class LocalFsStore implements ContentStore {
     if (collection === "meta") {
       const items: ContentItem[] = [];
       for (const kind of META_KIND_DIRS) {
-        const dir = join(CONTENT_ROOT, kind);
+        const dir = join(contentRoot(), kind);
         await this.#walkDir(dir, collection, items, dir, {
           suffix: ".meta.json",
           idPrefix: `${kind}/`,
@@ -41,20 +47,20 @@ export class LocalFsStore implements ContentStore {
     }
 
     if (collection === "ingredientMeta") {
-      const dir = join(CONTENT_ROOT, "ingredients");
+      const dir = join(contentRoot(), "ingredients");
       const items: ContentItem[] = [];
       await this.#walkDir(dir, collection, items, dir, { suffix: ".meta.json" });
       return items;
     }
 
     if (collection === "pairingMeta") {
-      const dir = join(CONTENT_ROOT, "pairings");
+      const dir = join(contentRoot(), "pairings");
       const items: ContentItem[] = [];
       await this.#walkDir(dir, collection, items, dir, { suffix: ".meta.json" });
       return items;
     }
 
-    const dir = join(CONTENT_ROOT, collection);
+    const dir = join(contentRoot(), collection);
     const items: ContentItem[] = [];
     await this.#walkDir(dir, collection, items, dir, { suffix: ".json", excludeMeta: true });
 

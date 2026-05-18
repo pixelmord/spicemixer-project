@@ -85,7 +85,7 @@ export default function PairingEditor({
     try {
       await actions.savePairing({
         id: pairing.id,
-        ingredients: [
+        endpoints: [
           { collection: "ingredients" as const, slug: pairing.ingredients[0] },
           { collection: "ingredients" as const, slug: pairing.ingredients[1] },
         ],
@@ -128,7 +128,7 @@ export default function PairingEditor({
     try {
       await actions.savePairing({
         id,
-        ingredients: [
+        endpoints: [
           { collection: "ingredients" as const, slug: currentSlug },
           { collection: "ingredients" as const, slug: newSlug },
         ],

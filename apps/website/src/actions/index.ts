@@ -1710,8 +1710,6 @@ export const server = {
           tags: [],
           ingredientLinks: [],
           externalSources: [],
-          goesWellWith: [],
-          usesBase: [],
           variants: [],
         },
       );

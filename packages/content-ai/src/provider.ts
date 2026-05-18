@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
+import { createMockLanguageModel } from "@pixelmord/content-ai-core/testing";
 import { wrapLanguageModel } from "ai";
 import { AiError } from "./errors.ts";
 import { tracingMiddleware } from "./trace/index.ts";
@@ -26,6 +27,12 @@ const sentrySink = new SentrySpanSink();
 const pubSubSink = new PubSubTraceSink();
 
 export function createProvider(config: AiConfig): LanguageModelV3 {
+  if (process.env["AI_PROVIDER"] === "mock") {
+    return wrapLanguageModel({
+      model: createMockLanguageModel(),
+      middleware: tracingMiddleware([fileSink, sentrySink, pubSubSink]),
+    });
+  }
   if (!config.apiKey) {
     throw new AiError(
       "NOT_CONFIGURED",

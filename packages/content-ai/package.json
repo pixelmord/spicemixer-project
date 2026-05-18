@@ -7,6 +7,7 @@
     "dist"
   ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./dist/index.mjs",
     "./package.json": "./package.json"
@@ -25,6 +26,7 @@
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider": "catalog:",
     "@noble/hashes": "^1.7.0",
+    "@pixelmord/content-ai-core": "workspace:*",
     "@pixelmord/content-ai-ingest": "workspace:*",
     "@sentry/node": "catalog:",
     "ai": "catalog:",

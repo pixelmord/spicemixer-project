@@ -1,6 +1,6 @@
 ---
 export const prerender = false;
-import AdminShell from "@/components/admin/AdminShell.tsx";
+import AdminLayout from "@/layouts/AdminLayout.astro";
 import PairingForm from "@/components/admin/PairingForm.tsx";
 import type { ImageAttribution } from "@/components/admin/ImageSearchModal.tsx";
 import { createStore } from "@/lib/content-store.ts";
@@ -38,17 +38,8 @@ const otherLocale = locale === "en" ? "de" : "en";
 const otherItem = await store.get("pairings", `${otherLocale}/${pairingId}`);
 const existingTranslationLocales = otherItem ? [otherLocale] : [];
 
-const currentPath = Astro.url.pathname;
 ---
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{endpoints.map(e => e.slug).join(" ↔ ")} [{locale}] · Pairing · Admin</title>
-  </head>
-  <body>
-    <AdminShell currentPath={currentPath} client:load>
+<AdminLayout title={`${endpoints.map(e => e.slug).join(" ↔ ")} [${locale}] · Pairing · Admin`}>
       <PairingForm
         pairingId={pairingId}
         locale={locale}
@@ -60,6 +51,4 @@ const currentPath = Astro.url.pathname;
         existingTranslationLocales={existingTranslationLocales}
         client:load
       />
-    </AdminShell>
-  </body>
-</html>
+</AdminLayout>
