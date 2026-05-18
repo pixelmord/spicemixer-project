@@ -125,8 +125,6 @@ Text: "${text}"`;
     },
 
     // outputSchema differs from entity schema; rationale becomes the new Pairing's description.
-    // autoApply is "never" here; high-confidence auto-creation of pairing entities
-    // is handled by the caller (runAiRefresh / action handlers).
     pairings: {
       systemPrompt: ({ currentData, sourceContext }) => {
         const ctx = buildIngredientCtx(currentData);

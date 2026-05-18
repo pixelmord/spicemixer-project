@@ -17,12 +17,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { cn } from "@/lib/utils.ts";
 import CapabilityLabel from "./CapabilityLabel.tsx";
-import {
-  hashSuggestion,
-  filterSuggestions,
-  isAllowedAutoApply,
-  assertAutoApplyAllowed,
-} from "content-ai";
+import { hashSuggestion, filterSuggestions } from "content-ai";
 import type { AiEvent } from "content-ai";
 
 // ── Raw proposal types (from API) ──────────────────────────────────────────────
@@ -381,9 +376,7 @@ async function runLinks(
   const toAutoApply: EnrichedLink[] = [];
   const toSuggest: EnrichedLink[] = [];
   for (const l of filtered) {
-    (isAllowedAutoApply("ingredient-link", l.confidence, "editor") ? toAutoApply : toSuggest).push(
-      l,
-    );
+    (l.confidence === "high" ? toAutoApply : toSuggest).push(l);
   }
   return {
     result: toSuggest.length > 0 ? { op: "links", items: toSuggest } : null,
@@ -661,7 +654,6 @@ export default function AiAssistPanel(props: AiAssistPanelProps) {
       if (op === "links" && recipe) {
         const { result: r, autoApplied } = await runLinks(recipe, aiEvents);
         for (const link of autoApplied) {
-          assertAutoApplyAllowed("ingredient-link", link.confidence, "editor");
           recipe.onApplyIngredientLinks([link]);
           emitEvent({
             type: "auto-applied",

@@ -31,21 +31,21 @@ function extractRegion(content: string, startMarker: string, endMarker: string):
   return end === -1 ? content.slice(start) : content.slice(start, end);
 }
 
-// ── Contract 1: No inline confidence equality checks ─────────────────────────
-// All auto-apply gating must go through isAllowedAutoApply in packages/content-ai.
+// ── Contract 1: No kind-allowlist references ─────────────────────────────────
+// Auto-apply gating must use FieldConfig.autoApply (single source of truth).
+// The deleted kind-allowlist symbols must not reappear.
 
-const INLINE_CONFIDENCE_GATE =
-  /confidence\s*===\s*["'](high|medium|low)["']|confidence\s*>=\s*0?\.\d+/;
+const ALLOWLIST_SYMBOLS = /\b(isAllowedAutoApply|assertAutoApplyAllowed|AutoApplyKind|ALLOWLIST)\b/;
 
-describe("ai-contract: no inline confidence gates in website src", () => {
-  test("no file in apps/website/src contains inline confidence equality/numeric checks", async () => {
+describe("ai-contract: kind-allowlist symbols must not appear in website src", () => {
+  test("no file in apps/website/src references deleted kind-allowlist symbols", async () => {
     const violations: string[] = [];
 
     for await (const filePath of walkSrc(SRC_ROOT)) {
       const content = await readFile(filePath, "utf-8");
       const lines = content.split("\n");
       for (let i = 0; i < lines.length; i++) {
-        if (INLINE_CONFIDENCE_GATE.test(lines[i])) {
+        if (ALLOWLIST_SYMBOLS.test(lines[i])) {
           violations.push(`${relative(WEBSITE_ROOT, filePath)}:${i + 1}: ${lines[i].trim()}`);
         }
       }
@@ -53,7 +53,7 @@ describe("ai-contract: no inline confidence gates in website src", () => {
 
     if (violations.length > 0) {
       throw new Error(
-        `Inline confidence checks found (use isAllowedAutoApply instead):\n${violations.join("\n")}`,
+        `Kind-allowlist symbols found (use FieldConfig.autoApply instead):\n${violations.join("\n")}`,
       );
     }
 

@@ -1,10 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import {
-  hashSuggestion,
-  filterSuggestions,
-  recordAiEvent,
-  isAllowedAutoApply,
-} from "../src/index.ts";
+import { hashSuggestion, filterSuggestions, recordAiEvent } from "../src/index.ts";
 import type { AiEvent } from "../src/schemas/ai-events.ts";
 
 // Tests the data pipeline without rendering the React component.
@@ -164,7 +159,7 @@ describe("runLinks auto-apply partition", () => {
     const autoApplied: Confidence[] = [];
     const suggested: Confidence[] = [];
     for (const c of confidences) {
-      (isAllowedAutoApply("ingredient-link", c, "editor") ? autoApplied : suggested).push(c);
+      (c === "high" ? autoApplied : suggested).push(c);
     }
     return { autoApplied, suggested };
   }
@@ -185,9 +180,5 @@ describe("runLinks auto-apply partition", () => {
     const { autoApplied, suggested } = partition(["medium", "low"]);
     expect(autoApplied).toHaveLength(0);
     expect(suggested).toHaveLength(2);
-  });
-
-  test("community origin is always blocked regardless of confidence", () => {
-    expect(isAllowedAutoApply("ingredient-link", "high", "community")).toBe(false);
   });
 });

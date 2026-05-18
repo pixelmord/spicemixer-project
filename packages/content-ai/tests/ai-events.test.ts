@@ -1,12 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 import { normalizePayload, hashSuggestion, hashContent } from "../src/hash.ts";
 import {
-  ALLOWLIST,
-  isAllowedAutoApply,
-  assertAutoApplyAllowed,
-  type AutoApplyKind,
-} from "../src/auto-apply.ts";
-import {
   prune,
   isSuppressed,
   filterSuggestions,
@@ -90,86 +84,6 @@ describe("hashContent", () => {
     const payload = { b: "x", a: "y" };
     const full = hashContent(payload);
     expect(full.slice(0, 12)).toBe(hashSuggestion(payload));
-  });
-});
-
-// ── auto-apply ────────────────────────────────────────────────────────────────
-
-describe("ALLOWLIST", () => {
-  test("contains the five allowed kinds", () => {
-    const expected: AutoApplyKind[] = [
-      "ingredient-link",
-      "pairing-slug",
-      "language-detection",
-      "tag",
-      "image-attribution",
-    ];
-    for (const kind of expected) {
-      expect(ALLOWLIST.has(kind)).toBe(true);
-    }
-  });
-});
-
-describe("isAllowedAutoApply", () => {
-  test("returns false for community origin regardless of kind/confidence", () => {
-    expect(isAllowedAutoApply("tag", "high", "community")).toBe(false);
-    expect(isAllowedAutoApply("ingredient-link", "high", "community")).toBe(false);
-  });
-
-  test("returns false for kinds not in allowlist", () => {
-    // These kinds should never be auto-applied
-    const forbidden = [
-      "translation",
-      "encyclopedia-text",
-      "medicinal",
-      "health",
-      "safety",
-      "slug-rename",
-      "variant-fork",
-      "pairing-creation",
-    ] as unknown as AutoApplyKind[];
-    for (const kind of forbidden) {
-      expect(isAllowedAutoApply(kind, "high", "editor")).toBe(false);
-    }
-  });
-
-  test("returns false when confidence is below high", () => {
-    expect(isAllowedAutoApply("tag", "medium", "editor")).toBe(false);
-    expect(isAllowedAutoApply("tag", "low", "editor")).toBe(false);
-  });
-
-  test("returns false for numeric confidence below 0.85", () => {
-    expect(isAllowedAutoApply("tag", 0.84, "editor")).toBe(false);
-    expect(isAllowedAutoApply("tag", 0.0, "editor")).toBe(false);
-  });
-
-  test("returns true for allowed kind + high confidence + editor", () => {
-    expect(isAllowedAutoApply("tag", "high", "editor")).toBe(true);
-    expect(isAllowedAutoApply("ingredient-link", "high", "editor")).toBe(true);
-    expect(isAllowedAutoApply("language-detection", "high", "editor")).toBe(true);
-    expect(isAllowedAutoApply("pairing-slug", "high", "editor")).toBe(true);
-    expect(isAllowedAutoApply("image-attribution", "high", "editor")).toBe(true);
-  });
-
-  test("returns true for numeric confidence >= 0.85 with editor", () => {
-    expect(isAllowedAutoApply("tag", 0.85, "editor")).toBe(true);
-    expect(isAllowedAutoApply("tag", 1.0, "editor")).toBe(true);
-  });
-});
-
-describe("assertAutoApplyAllowed", () => {
-  test("throws for community origin", () => {
-    expect(() => assertAutoApplyAllowed("tag", "high", "community")).toThrow();
-  });
-
-  test("throws for non-allowlisted kind", () => {
-    expect(() =>
-      assertAutoApplyAllowed("translation" as AutoApplyKind, "high", "editor"),
-    ).toThrow();
-  });
-
-  test("does not throw for allowed combination", () => {
-    expect(() => assertAutoApplyAllowed("tag", "high", "editor")).not.toThrow();
   });
 });
 
