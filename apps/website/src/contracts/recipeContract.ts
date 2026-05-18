@@ -129,7 +129,6 @@ ${tagHints}`;
     },
 
     // Ingredient links (replaces proposeIngredientLinks)
-    // autoApply "never" — caller handles high-confidence auto-apply to meta.ingredientLinks
     ingredientLinks: {
       systemPrompt: ({ currentData, sourceContext }) => {
         const inventory = sourceContext?.inventory ?? [];
@@ -203,7 +202,6 @@ Recipe name: "${currentData?.name ?? ""}"`;
     },
 
     // rationale becomes the new Pairing's description on accept.
-    // autoApply "never" — caller presents proposals for editor approval.
     pairings: {
       systemPrompt: ({ currentData, sourceContext }) => {
         const inventory = sourceContext?.inventory ?? [];

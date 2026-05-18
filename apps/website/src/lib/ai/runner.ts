@@ -1,11 +1,4 @@
-import {
-  isAllowedAutoApply,
-  assertAutoApplyAllowed,
-  hashSuggestion,
-  hashContent,
-  getCurrentOrigin,
-  publish,
-} from "content-ai";
+import { hashSuggestion, hashContent, getCurrentOrigin, publish } from "content-ai";
 import type { AiConfig, AiEventSidecar, MetaRef, SidecarEventLog, Confidence } from "content-ai";
 import type { EndpointRef } from "entity-kind";
 import { runRefine } from "@pixelmord/content-ai-refine";
@@ -16,6 +9,11 @@ import { pairingContract } from "@/contracts/pairingContract.ts";
 import type { EntityKind } from "entity-kind";
 import type { ContentStore } from "@/lib/content-store.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
+
+function isHighConfidence(confidence: Confidence | number): boolean {
+  if (typeof confidence === "number") return confidence >= 0.85;
+  return confidence === "high";
+}
 
 function slugFromLocaleId(id: string): string {
   const slash = id.indexOf("/");
@@ -169,9 +167,7 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
     languageMismatch,
   };
 
-  const toAutoApply = proposedPairings.filter((p) =>
-    isAllowedAutoApply("pairing-slug", p.confidence, "editor"),
-  );
+  const toAutoApply = proposedPairings.filter((p) => isHighConfidence(p.confidence));
   let autoLinked = 0;
 
   if (toAutoApply.length > 0) {
@@ -181,7 +177,6 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
     for (const pairing of toAutoApply) {
       const id = [metaRef.slug, pairing.otherSlug].sort().join("--");
       if (!existingIds.has(id)) {
-        assertAutoApplyAllowed("pairing-slug", pairing.confidence, "editor");
         const ref1: EndpointRef = { collection: "ingredients", slug: metaRef.slug };
         const ref2: EndpointRef = { collection: pairing.otherCollection, slug: pairing.otherSlug };
         const sortedRefs = [ref1, ref2].sort((a, b) => a.slug.localeCompare(b.slug)) as [
@@ -367,9 +362,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     existingLinks.map((l) => (typeof l["pattern"] === "string" ? l["pattern"] : "")),
   );
   const toAutoApply = ingredientLinks.filter(
-    (l) =>
-      isAllowedAutoApply("ingredient-link", l.confidence, "editor") &&
-      !existingPatterns.has(l.pattern),
+    (l) => isHighConfidence(l.confidence) && !existingPatterns.has(l.pattern),
   );
 
   const updatedMeta: Record<string, unknown> = { ...meta };
@@ -381,7 +374,6 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
       ...toAutoApply.map((l) => ({ pattern: l.pattern, slug: l.slug, kind: "ingredient" })),
     ];
     for (const link of toAutoApply) {
-      assertAutoApplyAllowed("ingredient-link", link.confidence, "editor");
       await eventLog.append(metaRef, {
         type: "auto-applied",
         field: "ingredientLinks",
@@ -397,7 +389,6 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
   }
 
   if (!meta["language"] && detectedLanguage) {
-    assertAutoApplyAllowed("language-detection", "high", "editor");
     updatedMeta["language"] = detectedLanguage;
     updatedMeta["locale"] = detectedLanguage;
     await eventLog.append(metaRef, {

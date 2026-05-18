@@ -60,8 +60,7 @@ export type { AiEvent } from "./schemas/ai-events.ts";
 
 export { normalizePayload, hashSuggestion, hashContent } from "./hash.ts";
 
-export { ALLOWLIST, isAllowedAutoApply, assertAutoApplyAllowed } from "./auto-apply.ts";
-export type { AutoApplyKind, Confidence } from "./auto-apply.ts";
+export type { Confidence } from "./auto-apply.ts";
 
 export {
   isPrunable,

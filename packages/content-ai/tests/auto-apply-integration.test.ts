@@ -1,84 +1,12 @@
 import { describe, expect, test } from "vite-plus/test";
-import {
-  assertAutoApplyAllowed,
-  isAllowedAutoApply,
-  hashSuggestion,
-  recordAiEvent,
-  hasAutoApplied,
-} from "../src/index.ts";
-import type { AiEvent, AutoApplyKind } from "../src/index.ts";
-
-// ── Gate enforcement ──────────────────────────────────────────────────────────
-
-describe("auto-apply gate: allowlisted high-confidence passes", () => {
-  test("ingredient-link high-confidence editor origin passes", () => {
-    expect(() => assertAutoApplyAllowed("ingredient-link", "high", "editor")).not.toThrow();
-  });
-
-  test("pairing-slug high-confidence editor origin passes", () => {
-    expect(() => assertAutoApplyAllowed("pairing-slug", "high", "editor")).not.toThrow();
-  });
-
-  test("language-detection high-confidence editor origin passes", () => {
-    expect(() => assertAutoApplyAllowed("language-detection", "high", "editor")).not.toThrow();
-  });
-
-  test("tag high-confidence editor origin passes", () => {
-    expect(() => assertAutoApplyAllowed("tag", "high", "editor")).not.toThrow();
-  });
-
-  test("image-attribution high-confidence editor origin passes", () => {
-    expect(() => assertAutoApplyAllowed("image-attribution", "high", "editor")).not.toThrow();
-  });
-});
-
-describe("auto-apply gate: blocked cases", () => {
-  test("medium-confidence ingredient-link does NOT auto-apply", () => {
-    expect(isAllowedAutoApply("ingredient-link", "medium", "editor")).toBe(false);
-    expect(() => assertAutoApplyAllowed("ingredient-link", "medium", "editor")).toThrow();
-  });
-
-  test("low-confidence ingredient-link does NOT auto-apply", () => {
-    expect(isAllowedAutoApply("ingredient-link", "low", "editor")).toBe(false);
-  });
-
-  test("high-confidence medicinal kind never auto-applies (not in allowlist)", () => {
-    expect(isAllowedAutoApply("medicinal" as AutoApplyKind, "high", "editor")).toBe(false);
-    expect(() => assertAutoApplyAllowed("medicinal" as AutoApplyKind, "high", "editor")).toThrow();
-  });
-
-  test("high-confidence health kind never auto-applies (not in allowlist)", () => {
-    expect(isAllowedAutoApply("health" as AutoApplyKind, "high", "editor")).toBe(false);
-  });
-
-  test("high-confidence safety kind never auto-applies (not in allowlist)", () => {
-    expect(isAllowedAutoApply("safety" as AutoApplyKind, "high", "editor")).toBe(false);
-  });
-
-  test("high-confidence translation never auto-applies (not in allowlist)", () => {
-    expect(isAllowedAutoApply("translation" as AutoApplyKind, "high", "editor")).toBe(false);
-  });
-
-  test("high-confidence slug-rename never auto-applies (not in allowlist)", () => {
-    expect(isAllowedAutoApply("slug-rename" as AutoApplyKind, "high", "editor")).toBe(false);
-  });
-
-  test("high-confidence pairing-creation never auto-applies (not in allowlist)", () => {
-    expect(isAllowedAutoApply("pairing-creation" as AutoApplyKind, "high", "editor")).toBe(false);
-  });
-
-  test("community origin blocks all auto-apply regardless of kind and confidence", () => {
-    expect(isAllowedAutoApply("ingredient-link", "high", "community")).toBe(false);
-    expect(isAllowedAutoApply("tag", "high", "community")).toBe(false);
-  });
-});
+import { hashSuggestion, recordAiEvent, hasAutoApplied } from "../src/index.ts";
+import type { AiEvent } from "../src/index.ts";
 
 // ── Auto-apply flow ────────────────────────────────────────────────────────────
 
 describe("auto-apply flow: ingredient-link detection", () => {
   test("high-confidence link auto-applies and records auto-applied event", () => {
     const events: AiEvent[] = [];
-    assertAutoApplyAllowed("ingredient-link", "high", "editor");
 
     const hash = hashSuggestion({ pattern: "cumin", slug: "cumin" });
     const updated = recordAiEvent(events, {
@@ -94,12 +22,6 @@ describe("auto-apply flow: ingredient-link detection", () => {
     expect(updated[0].field).toBe("ingredientLinks");
     expect(updated[0].confidence).toBe("high");
     expect(updated[0].suggestion.hash).toBe(hash);
-  });
-
-  test("medium-confidence link gate throws — does not auto-apply", () => {
-    expect(() => assertAutoApplyAllowed("ingredient-link", "medium", "editor")).toThrow(
-      'Auto-apply not allowed: kind="ingredient-link" confidence="medium" origin="editor"',
-    );
   });
 });
 
