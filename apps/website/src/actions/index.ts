@@ -30,7 +30,14 @@ import {
 import { saveEntity as libSaveEntity } from "@/lib/save-entity.ts";
 import { applyVariantsClosure } from "@/lib/variants-closure.ts";
 import { NotFoundError } from "@/lib/errors.ts";
-import { AiError, withOrigin, entityMeta, SidecarEventLog, hashSuggestion } from "content-ai";
+import {
+  AiError,
+  withOrigin,
+  entityMeta,
+  SidecarEventLog,
+  hashSuggestion,
+  metaRefToEntityRef,
+} from "content-ai";
 import { createSourceStore } from "@/lib/stores/source-store.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -373,15 +380,12 @@ export const server = {
       });
       if (aiMergeModel) {
         const eventLog = new SidecarEventLog(sidecar);
-        await eventLog.append(
-          { collection, locale, slug },
-          {
-            type: "accepted",
-            suggestion: { hash: hashSuggestion(recipe), summary: "AI-merged recipe accepted" },
-            model: aiMergeModel,
-            traceId,
-          },
-        );
+        await eventLog.append(metaRefToEntityRef({ collection, locale, slug }), {
+          type: "accepted",
+          suggestion: { hash: hashSuggestion(recipe), summary: "AI-merged recipe accepted" },
+          model: aiMergeModel,
+          traceId,
+        });
       }
       return { ok: true, slug };
     },
@@ -408,18 +412,15 @@ export const server = {
       });
       if (aiMergeModel) {
         const eventLog = new SidecarEventLog(sidecar);
-        await eventLog.append(
-          { collection: "ingredients", locale, slug },
-          {
-            type: "accepted",
-            suggestion: {
-              hash: hashSuggestion(ingredient),
-              summary: "AI-merged ingredient accepted",
-            },
-            model: aiMergeModel,
-            traceId,
+        await eventLog.append(metaRefToEntityRef({ collection: "ingredients", locale, slug }), {
+          type: "accepted",
+          suggestion: {
+            hash: hashSuggestion(ingredient),
+            summary: "AI-merged ingredient accepted",
           },
-        );
+          model: aiMergeModel,
+          traceId,
+        });
       }
       return { ok: true, slug };
     },
@@ -467,19 +468,16 @@ export const server = {
       });
       if (aiMergeModel) {
         const eventLog = new SidecarEventLog(sidecar);
-        await eventLog.append(
-          { collection: "pairings", slug: id },
-          {
-            type: "accepted",
-            field: "description",
-            suggestion: {
-              hash: hashSuggestion({ description, locale }),
-              summary: `AI-enhanced pairing description (${locale}) accepted`,
-            },
-            model: aiMergeModel,
-            traceId,
+        await eventLog.append(metaRefToEntityRef({ collection: "pairings", locale, slug: id }), {
+          type: "accepted",
+          field: "description",
+          suggestion: {
+            hash: hashSuggestion({ description, locale }),
+            summary: `AI-enhanced pairing description (${locale}) accepted`,
           },
-        );
+          model: aiMergeModel,
+          traceId,
+        });
       }
       return { ok: true, id };
     },
@@ -1450,7 +1448,7 @@ export const server = {
       const sidecar = createMetaSidecar(store);
       const eventLog = new SidecarEventLog(sidecar);
       await eventLog.append(
-        { collection, locale, slug },
+        metaRefToEntityRef({ collection, locale, slug }),
         event as Parameters<typeof eventLog.append>[1],
       );
       return { ok: true };

@@ -37,6 +37,7 @@ export function normalizeSourceField(
 }
 
 export const aiEventSchema = z.object({
+  id: z.string(),
   type: z.enum(["auto-applied", "accepted", "rejected", "ingested"]),
   field: z.string().optional(),
   suggestion: z.object({
@@ -53,12 +54,20 @@ export const aiEventSchema = z.object({
 
 export type AiEvent = z.infer<typeof aiEventSchema>;
 
-// Append must be serialisable per entityRef — documented contract.
-// Adapters with size pressure call planPrune before write; adapters without
-// (Convex tables) just append.
+/**
+ * Per-entity AI event log (ADR 0004).
+ *
+ * Locking contract: `append` must be serialisable per `entityRef`. Concurrent
+ * appends to the same ref must not interleave read-prune-write cycles. Each
+ * adapter implements its own serialisation (e.g. Spicemixer via a
+ * `pendingAppends` promise-chain map, Convex via its native ordering).
+ *
+ * Core stamps `at` (ISO timestamp) and `id` (`crypto.randomUUID()`) on every
+ * persisted event — callers of `append` never supply these fields.
+ */
 export interface AiEventLog {
   read(ref: EntityRef): Promise<AiEvent[]>;
-  append(ref: EntityRef, event: AiEvent): Promise<void>;
+  append(ref: EntityRef, event: Omit<AiEvent, "at" | "id">): Promise<void>;
 }
 
 // ADR 0004: rejected and ingested events are NEVER prunable — they form the

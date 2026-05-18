@@ -50,8 +50,8 @@ export function appendEvent<M extends { aiEvents?: AiEvent[] }>(
 }
 
 // Caller is responsible for persisting the returned array.
-export function recordAiEvent(events: AiEvent[], params: Omit<AiEvent, "at">): AiEvent[] {
-  return prune([...events, { ...params, at: new Date().toISOString() }]);
+export function recordAiEvent(events: AiEvent[], params: Omit<AiEvent, "at" | "id">): AiEvent[] {
+  return prune([...events, { ...params, id: crypto.randomUUID(), at: new Date().toISOString() }]);
 }
 
 export function hasAutoApplied(events: AiEvent[], field: string): boolean {

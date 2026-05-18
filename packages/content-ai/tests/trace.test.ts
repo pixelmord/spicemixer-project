@@ -410,6 +410,7 @@ import { aiEventSchema } from "../src/schemas/ai-events.ts";
 
 describe("aiEventSchema backward compatibility", () => {
   const base = {
+    id: "test-event-id",
     type: "accepted" as const,
     suggestion: { hash: "abc", summary: "test" },
     at: "2024-01-01T00:00:00Z",

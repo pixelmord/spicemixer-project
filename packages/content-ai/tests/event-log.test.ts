@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vite-plus/test";
-import { createAiEventLog, SidecarEventLog } from "../src/event-log.ts";
+import { createAiEventLog, SidecarEventLog, entityRefToMetaRef } from "../src/event-log.ts";
 import type { AiEventSidecar, MetaRef } from "../src/event-log.ts";
 import type { AiEvent } from "../src/schemas/ai-events.ts";
+import type { EntityRef } from "@pixelmord/content-ai-core";
 import { hashContent, hashSuggestion } from "../src/hash.ts";
 import { isPrunable, planPrune } from "../src/events.ts";
 
@@ -33,10 +34,11 @@ function makeSidecar(
   };
 }
 
-const REF: MetaRef = { collection: "ingredients", locale: "en", slug: "cardamom" };
+const REF: EntityRef = { kind: "ingredients", id: "en/cardamom" };
 
 function makeEvent(type: AiEvent["type"], field: string, hash: string): AiEvent {
   return {
+    id: "seed-id",
     type,
     field,
     suggestion: { hash, summary: `${field} ${hash}` },
@@ -62,6 +64,7 @@ describe("isPrunable", () => {
 
   test("returns false for ingested events", () => {
     const ev: AiEvent = {
+      id: "seed-id",
       type: "ingested",
       source: "https://example.com",
       suggestion: { hash: "abc", summary: "imported" },
@@ -97,13 +100,13 @@ describe("planPrune", () => {
       makeEvent("auto-applied", "pairings", `auto${i}`),
     );
     const result = planPrune([...rejected, ...autoApplied], 5);
-    // All 5 rejected survive; auto-applied are pruned to reach cap of 5
     expect(result.filter((e) => e.type === "rejected")).toHaveLength(5);
     expect(result).toHaveLength(5);
   });
 
   test("ingested events survive planPrune", () => {
     const ingested: AiEvent = {
+      id: "seed-id",
       type: "ingested",
       source: "https://example.com",
       suggestion: { hash: "src", summary: "imported" },
@@ -133,7 +136,7 @@ describe("AiEventLog.read", () => {
 
   test("returns [] when meta has no aiEvents field", async () => {
     const sidecar = makeSidecar();
-    await sidecar.write(REF, { name: "Cardamom" });
+    await sidecar.write(entityRefToMetaRef(REF), { name: "Cardamom" });
     const log = createAiEventLog(sidecar);
     expect(await log.read(REF)).toEqual([]);
   });
@@ -141,7 +144,7 @@ describe("AiEventLog.read", () => {
   test("returns the stored aiEvents array", async () => {
     const event = makeEvent("accepted", "name", "abc");
     const sidecar = makeSidecar();
-    await sidecar.write(REF, { aiEvents: [event] });
+    await sidecar.write(entityRefToMetaRef(REF), { aiEvents: [event] });
     const log = createAiEventLog(sidecar);
     expect(await log.read(REF)).toEqual([event]);
   });
@@ -166,7 +169,7 @@ describe("AiEventLog.append", () => {
   test("appends event to existing events without losing other meta fields", async () => {
     const existing = makeEvent("accepted", "name", "abc");
     const sidecar = makeSidecar();
-    await sidecar.write(REF, { name: "Cardamom", aiEvents: [existing] });
+    await sidecar.write(entityRefToMetaRef(REF), { name: "Cardamom", aiEvents: [existing] });
     const log = createAiEventLog(sidecar);
     await log.append(REF, {
       type: "auto-applied",
@@ -174,7 +177,7 @@ describe("AiEventLog.append", () => {
       suggestion: { hash: "def456", summary: "Pairing auto-applied" },
       model: "test-model",
     });
-    const meta = (await sidecar.read(REF))!.data as Record<string, unknown>;
+    const meta = (await sidecar.read(entityRefToMetaRef(REF)))!.data as Record<string, unknown>;
     expect(meta["name"]).toBe("Cardamom");
     const events = meta["aiEvents"] as AiEvent[];
     expect(events).toHaveLength(2);
@@ -191,9 +194,24 @@ describe("AiEventLog.append", () => {
       suggestion: { hash: "abc", summary: "x" },
       model: "m",
     });
-    const meta = (await sidecar.read(REF))!.data as Record<string, unknown>;
+    const meta = (await sidecar.read(entityRefToMetaRef(REF)))!.data as Record<string, unknown>;
     const events = meta["aiEvents"] as AiEvent[];
     expect(events[0].at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  test("stamps a UUID id automatically", async () => {
+    const sidecar = makeSidecar();
+    const log = createAiEventLog(sidecar);
+    await log.append(REF, {
+      type: "accepted",
+      field: "name",
+      suggestion: { hash: "abc", summary: "x" },
+      model: "m",
+    });
+    const meta = (await sidecar.read(entityRefToMetaRef(REF)))!.data as Record<string, unknown>;
+    const events = meta["aiEvents"] as AiEvent[];
+    expect(typeof events[0].id).toBe("string");
+    expect(events[0].id.length).toBeGreaterThan(0);
   });
 
   test("creates meta from scratch when entity has no prior meta", async () => {
@@ -205,7 +223,7 @@ describe("AiEventLog.append", () => {
       suggestion: { hash: "abc", summary: "test" },
       model: "m",
     });
-    const meta = (await sidecar.read(REF))!.data as Record<string, unknown>;
+    const meta = (await sidecar.read(entityRefToMetaRef(REF)))!.data as Record<string, unknown>;
     const events = meta["aiEvents"] as AiEvent[];
     expect(events).toHaveLength(1);
   });
@@ -232,7 +250,6 @@ describe("AiEventLog per-entity locking", () => {
     const sidecar = makeSidecar();
     const log = createAiEventLog(sidecar);
 
-    // Fire 5 concurrent appends for the same ref
     await Promise.all(
       Array.from({ length: 5 }, (_, i) =>
         log.append(REF, {
@@ -251,7 +268,7 @@ describe("AiEventLog per-entity locking", () => {
   test("concurrent appends for different refs do not block each other", async () => {
     const sidecar = makeSidecar();
     const log = createAiEventLog(sidecar);
-    const ref2: MetaRef = { collection: "recipes", locale: "en", slug: "soup" };
+    const ref2: EntityRef = { kind: "recipes", id: "en/soup" };
 
     await Promise.all([
       log.append(REF, {
@@ -273,33 +290,41 @@ describe("AiEventLog per-entity locking", () => {
   });
 });
 
-// ── shouldSkip (suppression) ──────────────────────────────────────────────────
+// ── shouldSkip (suppression) — concrete SidecarEventLog method ────────────────
 
-describe("AiEventLog.shouldSkip (suppression)", () => {
+describe("SidecarEventLog.shouldSkip (suppression)", () => {
   test("returns false when no rejected events", async () => {
     const sidecar = makeSidecar();
-    await sidecar.write(REF, { aiEvents: [makeEvent("accepted", "name", "abc")] });
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [makeEvent("accepted", "name", "abc")],
+    });
     const log = createAiEventLog(sidecar);
     expect(await log.shouldSkip(REF, { fieldPath: "name", hash: "abc" })).toBe(false);
   });
 
   test("returns true when a rejected event matches (fieldPath, hash)", async () => {
     const sidecar = makeSidecar();
-    await sidecar.write(REF, { aiEvents: [makeEvent("rejected", "summary", "xyz")] });
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [makeEvent("rejected", "summary", "xyz")],
+    });
     const log = createAiEventLog(sidecar);
     expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "xyz" })).toBe(true);
   });
 
   test("returns false when field matches but hash differs", async () => {
     const sidecar = makeSidecar();
-    await sidecar.write(REF, { aiEvents: [makeEvent("rejected", "summary", "xyz")] });
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [makeEvent("rejected", "summary", "xyz")],
+    });
     const log = createAiEventLog(sidecar);
     expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "aaa" })).toBe(false);
   });
 
   test("returns false when hash matches but fieldPath differs", async () => {
     const sidecar = makeSidecar();
-    await sidecar.write(REF, { aiEvents: [makeEvent("rejected", "name", "xyz")] });
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [makeEvent("rejected", "name", "xyz")],
+    });
     const log = createAiEventLog(sidecar);
     expect(await log.shouldSkip(REF, { fieldPath: "summary", hash: "xyz" })).toBe(false);
   });
@@ -307,15 +332,17 @@ describe("AiEventLog.shouldSkip (suppression)", () => {
   test("suppression filter blocks fingerprint-matched inputs", async () => {
     const sidecar = makeSidecar();
     const hash = hashSuggestion({ slug: "cumin", pairingSlug: "caraway" });
-    await sidecar.write(REF, { aiEvents: [makeEvent("rejected", "pairings", hash)] });
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [makeEvent("rejected", "pairings", hash)],
+    });
     const log = createAiEventLog(sidecar);
     expect(await log.shouldSkip(REF, { fieldPath: "pairings", hash })).toBe(true);
   });
 });
 
-// ── buildRejectedContext (ref-based) ──────────────────────────────────────────
+// ── buildRejectedContext — concrete SidecarEventLog method ────────────────────
 
-describe("AiEventLog.buildRejectedContext (ref-based)", () => {
+describe("SidecarEventLog.buildRejectedContext (ref-based)", () => {
   test("returns empty array when no rejected events", async () => {
     const log = createAiEventLog(makeSidecar());
     const result = await log.buildRejectedContext(REF);
@@ -324,7 +351,9 @@ describe("AiEventLog.buildRejectedContext (ref-based)", () => {
 
   test("returns structured items for rejected events", async () => {
     const sidecar = makeSidecar();
-    await sidecar.write(REF, { aiEvents: [makeEvent("rejected", "description", "h1")] });
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiEvents: [makeEvent("rejected", "description", "h1")],
+    });
     const log = createAiEventLog(sidecar);
     const result = await log.buildRejectedContext(REF);
     expect(result).toHaveLength(1);
@@ -335,7 +364,7 @@ describe("AiEventLog.buildRejectedContext (ref-based)", () => {
 
   test("excludes non-rejected events", async () => {
     const sidecar = makeSidecar();
-    await sidecar.write(REF, {
+    await sidecar.write(entityRefToMetaRef(REF), {
       aiEvents: [
         makeEvent("accepted", "name", "h1"),
         makeEvent("rejected", "tags", "h2"),
@@ -408,7 +437,7 @@ describe("SidecarEventLog.checkFingerprint", () => {
   test("returns existingEvents when skip:false", async () => {
     const event = makeEvent("accepted", "name", "abc");
     const sidecar = makeSidecar();
-    await sidecar.write(REF, { aiEvents: [event] });
+    await sidecar.write(entityRefToMetaRef(REF), { aiEvents: [event] });
     const log = createAiEventLog(sidecar);
     const result = await log.checkFingerprint(REF, INPUTS);
     if (result.skip) throw new Error("unexpected skip");
@@ -419,7 +448,7 @@ describe("SidecarEventLog.checkFingerprint", () => {
     const sidecar = makeSidecar();
     const fingerprint = expectedFingerprint();
     const cachedData = { improvements: [], tags: [] };
-    await sidecar.write(REF, {
+    await sidecar.write(entityRefToMetaRef(REF), {
       aiSuggestions: { fingerprint, data: cachedData },
     });
     const log = createAiEventLog(sidecar);
@@ -433,7 +462,7 @@ describe("SidecarEventLog.checkFingerprint", () => {
   test("force=true bypasses cache even with matching fingerprint", async () => {
     const sidecar = makeSidecar();
     const fingerprint = expectedFingerprint();
-    await sidecar.write(REF, {
+    await sidecar.write(entityRefToMetaRef(REF), {
       aiSuggestions: { fingerprint, data: { improvements: [] } },
     });
     const log = createAiEventLog(sidecar);
@@ -445,7 +474,7 @@ describe("SidecarEventLog.checkFingerprint", () => {
     const sidecar = makeSidecar();
     const fingerprintBefore = expectedFingerprint();
 
-    await sidecar.write(REF, {
+    await sidecar.write(entityRefToMetaRef(REF), {
       aiSuggestions: { fingerprint: fingerprintBefore, data: { improvements: [] } },
     });
 
@@ -454,7 +483,7 @@ describe("SidecarEventLog.checkFingerprint", () => {
     expect(resultBefore.skip).toBe(true);
 
     const rejectedEvent = makeEvent("rejected", "summary", "def789");
-    await sidecar.write(REF, {
+    await sidecar.write(entityRefToMetaRef(REF), {
       aiEvents: [rejectedEvent],
       aiSuggestions: { fingerprint: fingerprintBefore, data: { improvements: [] } },
     });
@@ -496,7 +525,9 @@ describe("SidecarEventLog integration: append then checkFingerprint", () => {
       model: "m",
       rejectedHashes: [],
     });
-    await sidecar.write(REF, { aiSuggestions: { fingerprint, data: { tags: [] } } });
+    await sidecar.write(entityRefToMetaRef(REF), {
+      aiSuggestions: { fingerprint, data: { tags: [] } },
+    });
 
     await log.append(REF, {
       type: "auto-applied",

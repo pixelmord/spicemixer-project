@@ -3,10 +3,9 @@ import { InMemoryAiEventLog, InMemoryTraceSink } from "../src/testing/index.ts";
 import type { AiEvent, EntityRef } from "../src/events.ts";
 import type { TraceEvent } from "../src/trace.ts";
 
-function makeEvent(type: AiEvent["type"]): AiEvent {
+function makeEvent(type: AiEvent["type"]): Omit<AiEvent, "at" | "id"> {
   return {
     type,
-    at: new Date().toISOString(),
     model: "gpt-test",
     suggestion: { hash: "abc123def456", summary: "test" },
   };
@@ -31,7 +30,15 @@ describe("InMemoryAiEventLog", () => {
     await log.append(REF, event);
     const events = await log.read(REF);
     expect(events).toHaveLength(1);
-    expect(events[0]).toEqual(event);
+    expect(events[0].type).toBe("accepted");
+  });
+
+  test("append stamps id and at — callers never supply them", async () => {
+    await log.append(REF, makeEvent("accepted"));
+    const [stored] = await log.read(REF);
+    expect(typeof stored.id).toBe("string");
+    expect(stored.id.length).toBeGreaterThan(0);
+    expect(stored.at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
   test("append is serialisable per ref — does not cross-contaminate refs", async () => {

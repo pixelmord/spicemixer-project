@@ -140,6 +140,7 @@ describe("entityMeta.read", () => {
   test("resolves aiEvents array from stored data", async () => {
     const sidecar = makeSidecar();
     const event = {
+      id: "test-event-id",
       type: "accepted" as const,
       field: "name",
       suggestion: { hash: "abc", summary: "A name" },
