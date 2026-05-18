@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@pixelmord/content-ai-core/testing": path.resolve("../content-ai-core/src/testing/index.ts"),
+      "@pixelmord/content-ai-core": path.resolve("../content-ai-core/src/index.ts"),
     },
   },
   pack: {
