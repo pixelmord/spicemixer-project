@@ -75,11 +75,11 @@ describe("AiImportPage uses CapabilityLabel", () => {
   });
 });
 
-describe("AiAssistPanel uses CapabilityLabel", () => {
+describe("PairingSuggestionPanel uses CapabilityLabel", () => {
   let src: string;
 
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "AiAssistPanel.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "PairingSuggestionPanel.tsx"), "utf-8");
   });
 
   test("imports CapabilityLabel", () => {

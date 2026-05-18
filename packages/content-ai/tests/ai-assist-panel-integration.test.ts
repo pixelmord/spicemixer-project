@@ -19,7 +19,7 @@ function rejectedEvent(field: string, hash: string): AiEvent {
 
 // ── suppression filter ────────────────────────────────────────────────────────
 
-describe("AiAssistPanel suppression filter", () => {
+describe("PairingSuggestionPanel suppression filter", () => {
   test("seeded rejected event suppresses matching improvement suggestion", () => {
     const text = "Consider adding heat level notes.";
     const hash = hashSuggestion(text);
@@ -78,7 +78,7 @@ describe("AiAssistPanel suppression filter", () => {
 
 // ── event recording ───────────────────────────────────────────────────────────
 
-describe("AiAssistPanel event recording", () => {
+describe("PairingSuggestionPanel event recording", () => {
   test("Accept appends an accepted event to aiEvents", () => {
     const text = "Consider adding heat level notes.";
     const hash = hashSuggestion(text);
@@ -145,41 +145,5 @@ describe("AiAssistPanel event recording", () => {
     const visible = filterSuggestions(events, suggestions);
     expect(visible).toHaveLength(1);
     expect(visible[0].summary).toBe("different text");
-  });
-});
-
-// ── auto-apply partition (used in AiAssistPanel runLinks) ─────────────────────
-
-describe("runLinks auto-apply partition", () => {
-  type Confidence = "high" | "medium" | "low";
-
-  function partition(confidences: Confidence[]): {
-    autoApplied: Confidence[];
-    suggested: Confidence[];
-  } {
-    const autoApplied: Confidence[] = [];
-    const suggested: Confidence[] = [];
-    for (const c of confidences) {
-      (c === "high" ? autoApplied : suggested).push(c);
-    }
-    return { autoApplied, suggested };
-  }
-
-  test("high-confidence links are auto-applied, others suggested", () => {
-    const { autoApplied, suggested } = partition(["high", "medium", "low"]);
-    expect(autoApplied).toEqual(["high"]);
-    expect(suggested).toEqual(["medium", "low"]);
-  });
-
-  test("all high-confidence → everything auto-applied, nothing suggested", () => {
-    const { autoApplied, suggested } = partition(["high", "high"]);
-    expect(autoApplied).toHaveLength(2);
-    expect(suggested).toHaveLength(0);
-  });
-
-  test("no high-confidence → nothing auto-applied, everything suggested", () => {
-    const { autoApplied, suggested } = partition(["medium", "low"]);
-    expect(autoApplied).toHaveLength(0);
-    expect(suggested).toHaveLength(2);
   });
 });
