@@ -271,3 +271,77 @@ describe("AiSuggestionsIndicator — Options opens SuggestionsOptions", () => {
     expect(screen.queryByRole("button", { name: /run/i })).toBeNull();
   });
 });
+
+// ── AiSuggestionsIndicator: acceptAll button ──────────────────────────────────
+
+describe("AiSuggestionsIndicator — Accept all button", () => {
+  test("does not render Accept all when no pending suggestions", () => {
+    const flow = makeFlow();
+    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    expect(screen.queryByRole("button", { name: /accept all/i })).toBeNull();
+  });
+
+  test("does not render Accept all when only auto-applied, no pending", () => {
+    const flow = makeFlowWithSuggestions({}, { title: autoAppliedEntry });
+    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    expect(screen.queryByRole("button", { name: /accept all/i })).toBeNull();
+  });
+
+  test("renders Accept all button when pending suggestions exist", () => {
+    const flow = makeFlowWithSuggestions({ description: textSuggestion });
+    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    expect(screen.getByRole("button", { name: /accept all/i })).toBeDefined();
+  });
+
+  test("clicking Accept all calls flow.acceptAll", async () => {
+    const flow = makeFlowWithSuggestions({ description: textSuggestion });
+    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await userEvent.click(screen.getByRole("button", { name: /accept all/i }));
+    expect(flow.acceptAll).toHaveBeenCalled();
+  });
+
+  test("no inline notice when acceptAll returns void (all fields viewed)", async () => {
+    const flow = makeFlow({
+      suggestions: new Map([["description", textSuggestion]]),
+      acceptAll: vi.fn().mockReturnValue(undefined),
+    });
+    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await userEvent.click(screen.getByRole("button", { name: /accept all/i }));
+    expect(screen.queryByRole("button", { name: /review remaining first/i })).toBeNull();
+  });
+
+  test("inline notice appears when acceptAll returns requiresReview fields", async () => {
+    const flow = makeFlow({
+      suggestions: new Map([
+        ["description", textSuggestion],
+        ["title", { ...textSuggestion, hash: "yyy" }],
+      ]),
+      acceptAll: vi.fn().mockReturnValue({ requiresReview: ["description", "title"] }),
+    });
+    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await userEvent.click(screen.getByRole("button", { name: /accept all/i }));
+    expect(screen.getByRole("button", { name: /review remaining first/i })).toBeDefined();
+  });
+
+  test("inline notice lists unviewed field labels", async () => {
+    const flow = makeFlow({
+      suggestions: new Map([["myField", textSuggestion]]),
+      acceptAll: vi.fn().mockReturnValue({ requiresReview: ["myField"] }),
+    });
+    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await userEvent.click(screen.getByRole("button", { name: /accept all/i }));
+    expect(screen.getByText(/my field/i)).toBeDefined();
+  });
+
+  test("clicking Review remaining first CTA dismisses the notice", async () => {
+    const flow = makeFlow({
+      suggestions: new Map([["description", textSuggestion]]),
+      acceptAll: vi.fn().mockReturnValue({ requiresReview: ["description"] }),
+    });
+    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await userEvent.click(screen.getByRole("button", { name: /accept all/i }));
+    expect(screen.getByRole("button", { name: /review remaining first/i })).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: /review remaining first/i }));
+    expect(screen.queryByRole("button", { name: /review remaining first/i })).toBeNull();
+  });
+});
