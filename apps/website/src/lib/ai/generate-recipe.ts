@@ -1,11 +1,9 @@
 import { streamObject } from "ai";
-import { createProvider, getCurrentOrigin } from "@pixelmord/content-ai-core";
+import { createProvider, getCurrentOrigin, PROVIDER_OPTIONS } from "@pixelmord/content-ai-core";
 import { toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts";
 import { publish } from "@/lib/pubsub.ts";
 import { recipeExtractSchema, type RecipeExtract } from "@/contracts/schemas/recipe-extract.ts";
 import type { AiConfig } from "@pixelmord/content-ai-ingest";
-
-const PROVIDER_OPTIONS = { openai: { strictJsonSchema: false } } as const;
 
 export interface GenerateRecipeInput {
   prompt: string;

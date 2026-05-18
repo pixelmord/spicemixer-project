@@ -7,9 +7,9 @@ import {
   type MetaRef,
   type SidecarEventLog,
 } from "@/lib/sidecar-event-log.ts";
+import type { EndpointRef } from "entity-kind";
 
 type Confidence = "high" | "medium" | "low";
-import type { EndpointRef } from "entity-kind";
 import { runRefine } from "@pixelmord/content-ai-refine";
 import type { AiEvent as RefineAiEvent } from "@pixelmord/content-ai-refine";
 import { ingredientContract } from "@/contracts/ingredientContract.ts";
