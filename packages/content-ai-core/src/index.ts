@@ -7,8 +7,14 @@ export type {
   TranslationBehavior,
 } from "./contract.ts";
 
-export { aiEventSchema, isPrunable, planPrune } from "./events.ts";
-export type { AiEvent, AiEventLog, EntityRef } from "./events.ts";
+export {
+  aiEventSchema,
+  isPrunable,
+  planPrune,
+  sourceDescriptorSchema,
+  normalizeSourceField,
+} from "./events.ts";
+export type { AiEvent, AiEventLog, EntityRef, SourceDescriptor } from "./events.ts";
 
 export type {
   FieldWritePolicy,

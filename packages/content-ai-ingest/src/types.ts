@@ -1,5 +1,6 @@
 import type { ZodSchema, z } from "zod";
 import type { ModelMessage } from "ai";
+import type { SourceDescriptor } from "@pixelmord/content-ai-core";
 
 // ── AiConfig ─────────────────────────────────────────────────────────────────
 
@@ -113,6 +114,7 @@ export interface IngestAiEvent {
   model: string;
   suggestion: { hash: string; summary: string };
   traceId?: string;
+  source?: string | SourceDescriptor;
 }
 
 // ── RunFill params/result ─────────────────────────────────────────────────────
