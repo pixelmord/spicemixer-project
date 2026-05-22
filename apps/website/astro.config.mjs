@@ -85,6 +85,13 @@ export default defineConfig({
 
   vite: {
     plugins: [tailwindcss(), dropAstroToolbarEsbuildPlugin()],
+    server: {
+      watch: {
+        // .meta.json files are written at runtime by the admin API; watching
+        // them causes Vite to reload the page after every AI refresh write.
+        ignored: ["**/src/content/**/*.meta.json"],
+      },
+    },
     resolve: {
       alias: {
         "@": "/src",
