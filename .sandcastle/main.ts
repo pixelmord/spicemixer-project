@@ -48,7 +48,7 @@ import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
 
 // Maximum number of plan→execute→merge cycles before stopping.
 // Raise this if your backlog is large; lower it for a quick smoke-test run.
-const MAX_ITERATIONS = 5;
+const MAX_ITERATIONS = 10;
 
 // Files that need to land in every worktree before the install hook runs.
 // `git worktree add` checks out HEAD, so uncommitted edits in the host
@@ -91,7 +91,14 @@ const hooks = {
 
 // Stable timestamp used as the prefix for every log file in this run, so
 // the four phases of one outer iteration sort together on disk.
-const RUN_STARTED_AT = new Date().toISOString().replace(/[:.]/g, "-");
+const RUN_STARTED_AT = (() => {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T` +
+    `${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`
+  );
+})();
 
 // ---------------------------------------------------------------------------
 // Progress + summary logging
@@ -292,21 +299,33 @@ async function cleanupOrphanWorktrees() {
   // git canonicalises paths via realpath; do the same on our side so set
   // membership works when the repo lives under a symlinked path.
   const realWorktreesDir = realpathSync(WORKTREES_DIR);
-  const listing = execFileSync("git", ["worktree", "list", "--porcelain"], {
+
+  // The orchestrator owns .sandcastle/worktrees/ entirely. Anything still
+  // registered with git under that prefix at boot is stale by definition —
+  // either sandcastle's close() swallowed a WorktreeError mid-teardown, or
+  // a prior run died before close ran. Force-remove the git registry entry
+  // first so the on-disk sweep below isn't fooled into skipping it.
+  const listingBefore = execFileSync("git", ["worktree", "list", "--porcelain"], {
     encoding: "utf8",
   });
-  const activePaths = new Set(
-    listing
-      .split("\n")
-      .filter((line) => line.startsWith("worktree "))
-      .map((line) => line.slice("worktree ".length).trim()),
-  );
+  const registeredUnderOurDir = listingBefore
+    .split("\n")
+    .filter((line) => line.startsWith("worktree "))
+    .map((line) => line.slice("worktree ".length).trim())
+    .filter((p) => p.startsWith(realWorktreesDir + "/"));
+
+  for (const path of registeredUnderOurDir) {
+    try {
+      execFileSync("git", ["worktree", "remove", "--force", path], { stdio: "ignore" });
+    } catch {
+      // best-effort; the disk sweep below will still clean the directory.
+    }
+  }
 
   for (const entry of readdirSync(realWorktreesDir)) {
     if (entry.startsWith(".")) continue;
     const path = join(realWorktreesDir, entry);
     if (!statSync(path).isDirectory()) continue;
-    if (activePaths.has(path)) continue;
 
     let removed = false;
     for (let attempt = 0; attempt < 8; attempt++) {

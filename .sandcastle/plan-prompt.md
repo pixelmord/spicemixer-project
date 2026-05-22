@@ -22,6 +22,18 @@ An issue B is **blocked by** issue A if:
 
 An issue is **unblocked** if it has zero blocking dependencies on other open issues.
 
+## Parent / epic / tracker issues
+
+Some issues in `<issues-json>` are **trackers**, not implementable units. Detect them and exclude them from the unblocked set even if they look dependency-free.
+
+An issue P is a tracker if **any** of the following holds:
+
+- Another open issue C in `<issues-json>` declares P as its parent — e.g. C's body contains `## Parent` followed by `#P`, or `Parent: #P`, or `Epic: #P`, or `Tracks: #P`.
+- P's body describes itself as an epic/PRD/parent that decomposes into other issues (e.g. lists `#125, #126, #127 …` as sub-issues, says "this issue tracks", "parent issue for", or links to a multi-issue plan).
+- P's title contains markers like "Epic:", "Parent:", "Tracker:", "[EPIC]".
+
+When P is a tracker, the actual work lives in its children. Pick the unblocked child(ren) instead. If every child of P is closed and P is still open, it is residual tracker state — still skip P; a human will close it. Never select a tracker as a work item.
+
 For each unblocked issue, assign a branch name. **Reuse existing branches when possible**:
 
 1. Run `git branch --list 'sandcastle/issue-{id}-*'` for each issue.
