@@ -135,16 +135,56 @@ describe("TagsSuggestionRow", () => {
     }
   });
 
-  test("read-only mode hides accept/reject buttons", () => {
+  test("read-only mode hides interactive controls", () => {
     render(<TagsSuggestionRow tags={tags} readOnly onApply={vi.fn()} onReject={vi.fn()} />);
-    expect(screen.queryByRole("button", { name: /accept/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /add all/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /dismiss/i })).toBeNull();
   });
 
-  test("interactive mode calls onApply with tags", async () => {
+  test("interactive 'Add all' calls onApply with full tag list", async () => {
     const onApply = vi.fn();
     render(<TagsSuggestionRow tags={tags} onApply={onApply} onReject={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: /accept/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add all/i }));
     expect(onApply).toHaveBeenCalledWith(tags);
+  });
+
+  test("per-chip click applies one tag (partial pick)", async () => {
+    const onApply = vi.fn();
+    const onApplyPartial = vi.fn();
+    render(
+      <TagsSuggestionRow
+        tags={tags}
+        onApply={onApply}
+        onApplyPartial={onApplyPartial}
+        onReject={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /\+ spicy/ }));
+    expect(onApplyPartial).toHaveBeenCalledWith(["spicy"]);
+    expect(onApply).not.toHaveBeenCalled();
+  });
+
+  test("accepting the last remaining chip finalizes via onApply", async () => {
+    const onApply = vi.fn();
+    const onApplyPartial = vi.fn();
+    render(
+      <TagsSuggestionRow
+        tags={["a", "b"]}
+        onApply={onApply}
+        onApplyPartial={onApplyPartial}
+        onReject={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /\+ a/ }));
+    await userEvent.click(screen.getByRole("button", { name: /\+ b/ }));
+    expect(onApply).toHaveBeenCalledWith(["a", "b"]);
+  });
+
+  test("Dismiss calls onReject", async () => {
+    const onReject = vi.fn();
+    render(<TagsSuggestionRow tags={tags} onApply={vi.fn()} onReject={onReject} />);
+    await userEvent.click(screen.getByRole("button", { name: /dismiss/i }));
+    expect(onReject).toHaveBeenCalled();
   });
 });
 

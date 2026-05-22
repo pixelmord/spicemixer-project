@@ -1833,37 +1833,46 @@ export default function RecipeForm({
                         kind="array"
                       />
                       {pendingKeywords && pendingKeywords.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {pendingKeywords
-                            .filter((t) => !keywords.includes(t))
-                            .map((t) => (
-                              <button
-                                key={t}
-                                type="button"
-                                onClick={() => setKeywords((prev) => [...prev, t])}
-                                className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
-                              >
-                                + {t}
-                              </button>
-                            ))}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const toAdd = pendingKeywords.filter((t) => !keywords.includes(t));
-                              setKeywords((prev) => [...new Set([...prev, ...toAdd])]);
-                              setPendingKeywords(null);
-                            }}
-                            className="text-xs text-muted-foreground hover:text-foreground px-1"
-                          >
-                            Add all
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPendingKeywords(null)}
-                            className="text-xs text-muted-foreground hover:text-foreground px-1"
-                          >
-                            Dismiss
-                          </button>
+                        <div className="rounded-md border p-2 text-sm mt-1.5">
+                          <div className="flex flex-wrap gap-1">
+                            {pendingKeywords
+                              .filter((t) => !keywords.includes(t))
+                              .map((t) => (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() => {
+                                    setKeywords((prev) => [...new Set([...prev, t])]);
+                                    setPendingKeywords((prev) =>
+                                      prev ? prev.filter((x) => x !== t) : prev,
+                                    );
+                                  }}
+                                  className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
+                                >
+                                  + {t}
+                                </button>
+                              ))}
+                          </div>
+                          <div className="mt-1.5 flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const toAdd = pendingKeywords.filter((t) => !keywords.includes(t));
+                                setKeywords((prev) => [...new Set([...prev, ...toAdd])]);
+                                setPendingKeywords(null);
+                              }}
+                              className="text-xs text-muted-foreground hover:text-foreground px-1"
+                            >
+                              Add all
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPendingKeywords(null)}
+                              className="text-xs text-muted-foreground hover:text-foreground px-1"
+                            >
+                              Dismiss
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1954,37 +1963,46 @@ export default function RecipeForm({
                         kind="array"
                       />
                       {pendingTags && pendingTags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {pendingTags
-                            .filter((t) => !tags.includes(t))
-                            .map((t) => (
-                              <button
-                                key={t}
-                                type="button"
-                                onClick={() => setTags((prev) => [...prev, t])}
-                                className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
-                              >
-                                + {t}
-                              </button>
-                            ))}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const toAdd = pendingTags.filter((t) => !tags.includes(t));
-                              setTags((prev) => [...new Set([...prev, ...toAdd])]);
-                              setPendingTags(null);
-                            }}
-                            className="text-xs text-muted-foreground hover:text-foreground px-1"
-                          >
-                            Add all
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPendingTags(null)}
-                            className="text-xs text-muted-foreground hover:text-foreground px-1"
-                          >
-                            Dismiss
-                          </button>
+                        <div className="rounded-md border p-2 text-sm mt-1.5">
+                          <div className="flex flex-wrap gap-1">
+                            {pendingTags
+                              .filter((t) => !tags.includes(t))
+                              .map((t) => (
+                                <button
+                                  key={t}
+                                  type="button"
+                                  onClick={() => {
+                                    setTags((prev) => [...new Set([...prev, t])]);
+                                    setPendingTags((prev) =>
+                                      prev ? prev.filter((x) => x !== t) : prev,
+                                    );
+                                  }}
+                                  className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
+                                >
+                                  + {t}
+                                </button>
+                              ))}
+                          </div>
+                          <div className="mt-1.5 flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const toAdd = pendingTags.filter((t) => !tags.includes(t));
+                                setTags((prev) => [...new Set([...prev, ...toAdd])]);
+                                setPendingTags(null);
+                              }}
+                              className="text-xs text-muted-foreground hover:text-foreground px-1"
+                            >
+                              Add all
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPendingTags(null)}
+                              className="text-xs text-muted-foreground hover:text-foreground px-1"
+                            >
+                              Dismiss
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

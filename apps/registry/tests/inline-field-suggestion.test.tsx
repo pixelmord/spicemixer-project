@@ -201,7 +201,8 @@ describe("array suggestion", () => {
       flow,
     );
     for (const tag of arraySuggestion.value as string[]) {
-      expect(screen.getByText(tag)).toBeDefined();
+      // Chips render as "+ {tag}" buttons in interactive mode
+      expect(screen.getByRole("button", { name: new RegExp(`\\+ ${tag}`) })).toBeDefined();
     }
   });
 
@@ -211,20 +212,19 @@ describe("array suggestion", () => {
       <InlineFieldSuggestion fieldPath="tags" currentValue={[]} onApply={vi.fn()} />,
       flow,
     );
-    // TagsSuggestionRow renders each tag as a chip
     for (const tag of arraySuggestion.value as string[]) {
-      expect(screen.getByText(tag)).toBeDefined();
+      expect(screen.getByRole("button", { name: new RegExp(`\\+ ${tag}`) })).toBeDefined();
     }
   });
 
-  test("calls onApply with array when accepted", async () => {
+  test("'Add all' calls onApply with the full array", async () => {
     const onApply = vi.fn();
     const flow = makeFlow({ tags: arraySuggestion });
     renderWithFlow(
       <InlineFieldSuggestion fieldPath="tags" currentValue={[]} onApply={onApply} kind="array" />,
       flow,
     );
-    await userEvent.click(screen.getByRole("button", { name: /accept/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add all/i }));
     expect(onApply).toHaveBeenCalledWith(arraySuggestion.value);
   });
 });

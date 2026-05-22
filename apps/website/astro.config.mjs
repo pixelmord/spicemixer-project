@@ -88,6 +88,7 @@ export default defineConfig({
     resolve: {
       alias: {
         "@": "/src",
+        "@registry": join(__dirname, "../registry/src"),
         "@pixelmord/content-ai-ingest": join(
           __dirname,
           "../../packages/content-ai-ingest/src/index.ts",

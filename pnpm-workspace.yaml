@@ -47,6 +47,8 @@ catalog:
   vitest: npm:@voidzero-dev/vite-plus-test@latest
   zod: "^4.4.3"
   "@playwright/test": ^1.60.0
+  clsx: ^2.1.1
+  tailwind-merge: ^3.5.0
 
 catalogMode: prefer
 overrides:

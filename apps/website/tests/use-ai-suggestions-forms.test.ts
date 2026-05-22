@@ -8,7 +8,9 @@ import { describe, expect, test, beforeAll } from "vite-plus/test";
 
 const WEBSITE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const COMPONENTS = join(WEBSITE_ROOT, "src", "components", "admin");
-const HOOKS = join(WEBSITE_ROOT, "src", "hooks");
+// useAiSuggestions now lives in the shared registry; the website hook file is a
+// one-line re-export shim, so structural assertions must read the canonical source.
+const REGISTRY_COMPONENTS = join(WEBSITE_ROOT, "..", "registry", "src", "components");
 
 describe("IngredientForm — useAiSuggestions orchestration", () => {
   let src: string;
@@ -179,7 +181,7 @@ describe("useAiSuggestions hook — module contract", () => {
   let hookSrc: string;
 
   beforeAll(async () => {
-    hookSrc = await readFile(join(HOOKS, "use-ai-suggestions.tsx"), "utf-8");
+    hookSrc = await readFile(join(REGISTRY_COMPONENTS, "use-ai-suggestions.tsx"), "utf-8");
   });
 
   test("exports useAiSuggestions function", () => {

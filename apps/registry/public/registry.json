@@ -57,8 +57,8 @@
       "name": "tags-suggestion-row",
       "type": "registry:ui",
       "title": "TagsSuggestionRow",
-      "description": "Tag chips AI suggestion row with read-only and interactive modes.",
-      "registryDependencies": ["confidence-badge", "accept-reject-buttons"],
+      "description": "Tag chips AI suggestion row. Individual + chips apply one at a time; Add all / Dismiss provide bulk actions. Supports read-only display mode.",
+      "registryDependencies": ["confidence-badge"],
       "files": [
         {
           "path": "components/ui/tags-suggestion-row.tsx",

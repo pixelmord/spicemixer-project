@@ -16,8 +16,11 @@ export interface RendererProps {
   value: unknown;
   confidence?: "high" | "medium" | "low";
   summary?: string;
+  /** Applies value and finalizes the suggestion (records accept, removes from flow). */
   onApply: (value: unknown) => void;
   onReject: () => void;
+  /** Applies value without finalizing — keeps suggestion live for further partial picks. */
+  onApplyPartial?: (value: unknown) => void;
 }
 
 export type SuggestionRenderer = (props: RendererProps) => React.ReactNode;
@@ -35,12 +38,13 @@ export const defaultRenderers: RenderersMap = {
       onReject={onReject}
     />
   ),
-  array: ({ value, confidence, summary, onApply, onReject }) => (
+  array: ({ value, confidence, summary, onApply, onReject, onApplyPartial }) => (
     <TagsSuggestionRow
       tags={Array.isArray(value) ? value.map(String) : []}
       confidence={confidence}
       summary={summary}
       onApply={(tags) => onApply(tags)}
+      onApplyPartial={onApplyPartial ? (tags) => onApplyPartial(tags) : undefined}
       onReject={onReject}
     />
   ),
@@ -295,6 +299,11 @@ export function InlineFieldSuggestion({
     },
     onReject: () => {
       accessor.recordReject(suggestion.hash);
+    },
+    onApplyPartial: (v) => {
+      // Apply value to the field without finalizing; the renderer keeps state and
+      // calls onApply once the user has finished picking (last chip or "Add all").
+      onApply(v);
     },
   });
 

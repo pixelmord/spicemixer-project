@@ -5,6 +5,7 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"],
+      "@registry/*": ["../registry/src/*"],
       "recipe-ingestion": ["../../packages/recipe-ingestion/src/index.ts"],
       "@pixelmord/content-ai-ingest": ["../../packages/content-ai-ingest/src/index.ts"],
       "@pixelmord/content-ai-refine": ["../../packages/content-ai-refine/src/index.ts"],

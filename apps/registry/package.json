@@ -13,9 +13,11 @@
     "@base-ui/react": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "astro": "catalog:",
+    "clsx": "catalog:",
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "tailwind-merge": "catalog:",
     "tailwindcss": "catalog:"
   },
   "devDependencies": {
