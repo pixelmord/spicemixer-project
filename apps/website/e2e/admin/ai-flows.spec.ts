@@ -27,7 +27,7 @@ test.describe("IngredientForm enhance flow (IngestDialog)", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
 
     // Switch to text tab and enter content
-    await page.getByRole("tab", { name: /text/i }).click();
+    await page.getByRole("button", { name: /from text/i }).click();
     await page.getByPlaceholder(/paste.*text/i).fill("Caraway is a biennial plant.");
 
     await page.getByRole("button", { name: /generate enhanced version/i }).click();
@@ -49,7 +49,7 @@ test.describe("IngredientForm enhance flow (IngestDialog)", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
 
     // Switch to prompt tab
-    await page.getByRole("tab", { name: /prompt/i }).click();
+    await page.getByRole("button", { name: /from prompt/i }).click();
     await page.getByPlaceholder(/describe/i).fill("Enhance caraway description");
 
     await page.getByRole("button", { name: /generate enhanced version/i }).click();
@@ -66,7 +66,7 @@ test.describe("IngredientForm enhance flow (IngestDialog)", () => {
     await visitWithoutErrors(page, "/admin/ingredients/caraway/edit");
     await page.getByRole("button", { name: /enhance/i }).click();
 
-    await page.getByRole("tab", { name: /text/i }).click();
+    await page.getByRole("button", { name: /from text/i }).click();
     await page.getByPlaceholder(/paste.*text/i).fill("Some caraway facts.");
     await page.getByRole("button", { name: /generate enhanced version/i }).click();
 
