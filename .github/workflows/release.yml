@@ -22,10 +22,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      # pnpm version read from package.json's `packageManager` field — do not
+      # also pass `version:` (action-setup errors with "Multiple versions of
+      # pnpm specified").
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 11
 
       - name: Setup Node
         uses: actions/setup-node@v4

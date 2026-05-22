@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, test, vi } from "vite-plus/test";
+// @ts-nocheck — vite-plus-test does not surface @vitest/browser type augmentations
+import { render } from "vitest-browser-react";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import {
   FileTextPromptSourcePicker,
@@ -14,11 +13,6 @@ import type {
   PerFieldAccessor,
   FieldSuggestion,
 } from "../src/components/use-ai-suggestions";
-
-afterEach(() => {
-  cleanup();
-  document.body.innerHTML = "";
-});
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -68,31 +62,31 @@ const samplePresets: AiPreset[] = [
 // ── FileTextPromptSourcePicker ────────────────────────────────────────────────
 
 describe("FileTextPromptSourcePicker — tab rendering", () => {
-  test("renders three source tabs", () => {
-    render(<FileTextPromptSourcePicker onChange={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /from file/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /from text/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /from prompt/i })).toBeDefined();
+  test("renders three source tabs", async () => {
+    const screen = await render(<FileTextPromptSourcePicker onChange={vi.fn()} />);
+    await expect.element(screen.getByRole("button", { name: /from file/i })).toBeVisible();
+    await expect.element(screen.getByRole("button", { name: /from text/i })).toBeVisible();
+    await expect.element(screen.getByRole("button", { name: /from prompt/i })).toBeVisible();
   });
 
-  test("shows file input by default (first tab active)", () => {
-    render(<FileTextPromptSourcePicker onChange={vi.fn()} />);
-    expect(screen.getByText(/upload file/i)).toBeDefined();
+  test("shows file input by default (first tab active)", async () => {
+    const screen = await render(<FileTextPromptSourcePicker onChange={vi.fn()} />);
+    await expect.element(screen.getByText(/upload file/i)).toBeVisible();
   });
 });
 
 describe("FileTextPromptSourcePicker — text source", () => {
   test("switching to From text tab shows textarea", async () => {
-    render(<FileTextPromptSourcePicker onChange={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
-    expect(screen.getByRole("textbox")).toBeDefined();
+    const screen = await render(<FileTextPromptSourcePicker onChange={vi.fn()} />);
+    await screen.getByRole("button", { name: /from text/i }).click();
+    await expect.element(screen.getByRole("textbox")).toBeVisible();
   });
 
   test("typing in text tab emits { kind: text, content } shape", async () => {
     const onChange = vi.fn();
-    render(<FileTextPromptSourcePicker onChange={onChange} />);
-    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
-    await userEvent.type(screen.getByRole("textbox"), "hello world");
+    const screen = await render(<FileTextPromptSourcePicker onChange={onChange} />);
+    await screen.getByRole("button", { name: /from text/i }).click();
+    await screen.getByRole("textbox").fill("hello world");
     const lastCall = onChange.mock.calls.at(-1)?.[0] as SourceShape | null;
     expect(lastCall).not.toBeNull();
     expect(lastCall?.kind).toBe("text");
@@ -103,11 +97,11 @@ describe("FileTextPromptSourcePicker — text source", () => {
 
   test("clearing text tab emits null", async () => {
     const onChange = vi.fn();
-    render(<FileTextPromptSourcePicker onChange={onChange} />);
-    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
+    const screen = await render(<FileTextPromptSourcePicker onChange={onChange} />);
+    await screen.getByRole("button", { name: /from text/i }).click();
     const textarea = screen.getByRole("textbox");
-    await userEvent.type(textarea, "something");
-    await userEvent.clear(textarea);
+    await textarea.fill("something");
+    await textarea.clear();
     const lastCall = onChange.mock.calls.at(-1)?.[0];
     expect(lastCall).toBeNull();
   });
@@ -115,16 +109,16 @@ describe("FileTextPromptSourcePicker — text source", () => {
 
 describe("FileTextPromptSourcePicker — prompt source", () => {
   test("switching to From prompt tab shows textarea", async () => {
-    render(<FileTextPromptSourcePicker onChange={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: /from prompt/i }));
-    expect(screen.getByRole("textbox")).toBeDefined();
+    const screen = await render(<FileTextPromptSourcePicker onChange={vi.fn()} />);
+    await screen.getByRole("button", { name: /from prompt/i }).click();
+    await expect.element(screen.getByRole("textbox")).toBeVisible();
   });
 
   test("typing in prompt tab emits { kind: prompt, prompt } shape", async () => {
     const onChange = vi.fn();
-    render(<FileTextPromptSourcePicker onChange={onChange} />);
-    await userEvent.click(screen.getByRole("button", { name: /from prompt/i }));
-    await userEvent.type(screen.getByRole("textbox"), "quick vegan curry");
+    const screen = await render(<FileTextPromptSourcePicker onChange={onChange} />);
+    await screen.getByRole("button", { name: /from prompt/i }).click();
+    await screen.getByRole("textbox").fill("quick vegan curry");
     const lastCall = onChange.mock.calls.at(-1)?.[0] as SourceShape | null;
     expect(lastCall).not.toBeNull();
     expect(lastCall?.kind).toBe("prompt");
@@ -137,11 +131,11 @@ describe("FileTextPromptSourcePicker — prompt source", () => {
 describe("FileTextPromptSourcePicker — tab switching clears source", () => {
   test("switching tabs emits null", async () => {
     const onChange = vi.fn();
-    render(<FileTextPromptSourcePicker onChange={onChange} />);
-    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
-    await userEvent.type(screen.getByRole("textbox"), "some text");
+    const screen = await render(<FileTextPromptSourcePicker onChange={onChange} />);
+    await screen.getByRole("button", { name: /from text/i }).click();
+    await screen.getByRole("textbox").fill("some text");
     onChange.mockClear();
-    await userEvent.click(screen.getByRole("button", { name: /from prompt/i }));
+    await screen.getByRole("button", { name: /from prompt/i }).click();
     expect(onChange).toHaveBeenCalledWith(null);
   });
 });
@@ -149,50 +143,71 @@ describe("FileTextPromptSourcePicker — tab switching clears source", () => {
 // ── IngestDialog — rendering ──────────────────────────────────────────────────
 
 describe("IngestDialog — source phase rendering", () => {
-  test("renders dialog title when open", () => {
-    render(<IngestDialog open onOpenChange={vi.fn()} title="Test ingest" onRun={vi.fn()} />);
-    expect(screen.getByText(/test ingest/i)).toBeDefined();
+  test("renders dialog title when open", async () => {
+    const screen = await render(
+      <IngestDialog
+        modal={false}
+        open
+        onOpenChange={vi.fn()}
+        title="Test ingest"
+        onRun={vi.fn()}
+      />,
+    );
+    await expect.element(screen.getByText(/test ingest/i)).toBeVisible();
   });
 
-  test("renders source picker tabs", () => {
-    render(<IngestDialog open onOpenChange={vi.fn()} onRun={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /from file/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /from text/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /from prompt/i })).toBeDefined();
+  test("renders source picker tabs", async () => {
+    const screen = await render(
+      <IngestDialog modal={false} open onOpenChange={vi.fn()} onRun={vi.fn()} />,
+    );
+    await expect.element(screen.getByRole("button", { name: /from file/i })).toBeVisible();
+    await expect.element(screen.getByRole("button", { name: /from text/i })).toBeVisible();
+    await expect.element(screen.getByRole("button", { name: /from prompt/i })).toBeVisible();
   });
 
-  test("renders Generate button", () => {
-    render(<IngestDialog open onOpenChange={vi.fn()} onRun={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /generate/i })).toBeDefined();
+  test("renders Generate button", async () => {
+    const screen = await render(
+      <IngestDialog modal={false} open onOpenChange={vi.fn()} onRun={vi.fn()} />,
+    );
+    await expect.element(screen.getByRole("button", { name: /generate/i })).toBeVisible();
   });
 
-  test("Generate button is disabled when no source selected", () => {
-    render(<IngestDialog open onOpenChange={vi.fn()} onRun={vi.fn()} />);
-    const btn = screen.getByRole("button", { name: /generate/i }) as HTMLButtonElement;
-    expect(btn.disabled).toBe(true);
+  test("Generate button is disabled when no source selected", async () => {
+    const screen = await render(
+      <IngestDialog modal={false} open onOpenChange={vi.fn()} onRun={vi.fn()} />,
+    );
+    await expect.element(screen.getByRole("button", { name: /generate/i })).toBeDisabled();
   });
 
   test("Generate button becomes enabled after selecting text source", async () => {
-    render(<IngestDialog open onOpenChange={vi.fn()} onRun={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
-    await userEvent.type(screen.getByRole("textbox"), "some content here");
-    const btn = screen.getByRole("button", { name: /generate/i }) as HTMLButtonElement;
-    expect(btn.disabled).toBe(false);
+    const screen = await render(
+      <IngestDialog modal={false} open onOpenChange={vi.fn()} onRun={vi.fn()} />,
+    );
+    await screen.getByRole("button", { name: /from text/i }).click();
+    await screen.getByRole("textbox").fill("some content here");
+    await expect.element(screen.getByRole("button", { name: /generate/i })).toBeEnabled();
   });
 
-  test("uses custom generateLabel prop", () => {
-    render(
-      <IngestDialog open onOpenChange={vi.fn()} onRun={vi.fn()} generateLabel="Create recipe" />,
+  test("uses custom generateLabel prop", async () => {
+    const screen = await render(
+      <IngestDialog
+        modal={false}
+        open
+        onOpenChange={vi.fn()}
+        onRun={vi.fn()}
+        generateLabel="Create recipe"
+      />,
     );
-    expect(screen.getByRole("button", { name: /create recipe/i })).toBeDefined();
+    await expect.element(screen.getByRole("button", { name: /create recipe/i })).toBeVisible();
   });
 });
 
 describe("IngestDialog — SuggestionsOptions integration", () => {
   test("shows options when flow and presets provided", async () => {
     const flow = makeFlow();
-    render(
+    const screen = await render(
       <IngestDialog
+        modal={false}
         open
         onOpenChange={vi.fn()}
         onRun={vi.fn()}
@@ -200,13 +215,14 @@ describe("IngestDialog — SuggestionsOptions integration", () => {
         presets={samplePresets}
       />,
     );
-    expect(screen.getByText(/^Preset$/i)).toBeDefined();
+    await expect.element(screen.getByText(/^Preset$/i)).toBeVisible();
   });
 
-  test("SuggestionsOptions Run button is not shown (only Generate button)", () => {
+  test("SuggestionsOptions Run button is not shown (only Generate button)", async () => {
     const flow = makeFlow();
-    render(
+    const screen = await render(
       <IngestDialog
+        modal={false}
         open
         onOpenChange={vi.fn()}
         onRun={vi.fn()}
@@ -214,15 +230,21 @@ describe("IngestDialog — SuggestionsOptions integration", () => {
         presets={samplePresets}
       />,
     );
-    // Only one run-type button: Generate
-    const runButtons = screen.queryAllByRole("button", { name: /^run$/i });
-    expect(runButtons.length).toBe(0);
-    expect(screen.getByRole("button", { name: /generate/i })).toBeDefined();
+    await expect.element(screen.getByRole("button", { name: /^run$/i })).not.toBeInTheDocument();
+    await expect.element(screen.getByRole("button", { name: /generate/i })).toBeVisible();
   });
 
-  test("does not show SuggestionsOptions when no flow provided", () => {
-    render(<IngestDialog open onOpenChange={vi.fn()} onRun={vi.fn()} presets={samplePresets} />);
-    expect(screen.queryByText(/^Preset$/i)).toBeNull();
+  test("does not show SuggestionsOptions when no flow provided", async () => {
+    const screen = await render(
+      <IngestDialog
+        modal={false}
+        open
+        onOpenChange={vi.fn()}
+        onRun={vi.fn()}
+        presets={samplePresets}
+      />,
+    );
+    await expect.element(screen.getByText(/^Preset$/i)).not.toBeInTheDocument();
   });
 });
 
@@ -231,11 +253,13 @@ describe("IngestDialog — SuggestionsOptions integration", () => {
 describe("IngestDialog — generate button calls onRun with source", () => {
   test("calls onRun with text source when Generate is clicked", async () => {
     const onRun = vi.fn().mockResolvedValue(undefined);
-    render(<IngestDialog open onOpenChange={vi.fn()} onRun={onRun} />);
-    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
-    await userEvent.type(screen.getByRole("textbox"), "pasta recipe");
-    await userEvent.click(screen.getByRole("button", { name: /generate/i }));
-    await waitFor(() => expect(onRun).toHaveBeenCalledOnce());
+    const screen = await render(
+      <IngestDialog modal={false} open onOpenChange={vi.fn()} onRun={onRun} />,
+    );
+    await screen.getByRole("button", { name: /from text/i }).click();
+    await screen.getByRole("textbox").fill("pasta recipe");
+    await screen.getByRole("button", { name: /generate/i }).click();
+    await vi.waitFor(() => expect(onRun).toHaveBeenCalledOnce());
     const [source] = onRun.mock.calls[0] as [SourceShape];
     expect(source.kind).toBe("text");
     if (source.kind === "text") {
@@ -245,11 +269,13 @@ describe("IngestDialog — generate button calls onRun with source", () => {
 
   test("calls onRun with prompt source shape", async () => {
     const onRun = vi.fn().mockResolvedValue(undefined);
-    render(<IngestDialog open onOpenChange={vi.fn()} onRun={onRun} />);
-    await userEvent.click(screen.getByRole("button", { name: /from prompt/i }));
-    await userEvent.type(screen.getByRole("textbox"), "quick Thai curry");
-    await userEvent.click(screen.getByRole("button", { name: /generate/i }));
-    await waitFor(() => expect(onRun).toHaveBeenCalledOnce());
+    const screen = await render(
+      <IngestDialog modal={false} open onOpenChange={vi.fn()} onRun={onRun} />,
+    );
+    await screen.getByRole("button", { name: /from prompt/i }).click();
+    await screen.getByRole("textbox").fill("quick Thai curry");
+    await screen.getByRole("button", { name: /generate/i }).click();
+    await vi.waitFor(() => expect(onRun).toHaveBeenCalledOnce());
     const [source] = onRun.mock.calls[0] as [SourceShape];
     expect(source.kind).toBe("prompt");
     if (source.kind === "prompt") {
@@ -263,55 +289,67 @@ describe("IngestDialog — generate button calls onRun with source", () => {
 describe("IngestDialog — review phase", () => {
   test("transitions to review phase after onRun resolves when reviewChildren provided", async () => {
     const onRun = vi.fn().mockResolvedValue(undefined);
-    render(
+    const screen = await render(
       <IngestDialog
+        modal={false}
         open
         onOpenChange={vi.fn()}
         onRun={onRun}
         reviewChildren={<div data-testid="review-body">Review content</div>}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
-    await userEvent.type(screen.getByRole("textbox"), "content here");
-    await userEvent.click(screen.getByRole("button", { name: /generate/i }));
-    await waitFor(() => screen.getByTestId("review-body"));
-    expect(screen.getByText("Review content")).toBeDefined();
+    await screen.getByRole("button", { name: /from text/i }).click();
+    await screen.getByRole("textbox").fill("content here");
+    await screen.getByRole("button", { name: /generate/i }).click();
+    await expect.element(screen.getByTestId("review-body")).toBeVisible();
+    await expect.element(screen.getByText("Review content")).toBeVisible();
   });
 
   test("shows Try different source back button in review phase", async () => {
     const onRun = vi.fn().mockResolvedValue(undefined);
-    render(
-      <IngestDialog open onOpenChange={vi.fn()} onRun={onRun} reviewChildren={<div>Review</div>} />,
+    const screen = await render(
+      <IngestDialog
+        modal={false}
+        open
+        onOpenChange={vi.fn()}
+        onRun={onRun}
+        reviewChildren={<div>Review</div>}
+      />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
-    await userEvent.type(screen.getByRole("textbox"), "content");
-    await userEvent.click(screen.getByRole("button", { name: /generate/i }));
-    await waitFor(() => screen.getByText(/try different source/i));
-    expect(screen.getByText(/try different source/i)).toBeDefined();
+    await screen.getByRole("button", { name: /from text/i }).click();
+    await screen.getByRole("textbox").fill("content");
+    await screen.getByRole("button", { name: /generate/i }).click();
+    await expect.element(screen.getByText(/try different source/i)).toBeVisible();
   });
 
   test("clicking back returns to source phase", async () => {
     const onRun = vi.fn().mockResolvedValue(undefined);
-    render(
-      <IngestDialog open onOpenChange={vi.fn()} onRun={onRun} reviewChildren={<div>Review</div>} />,
+    const screen = await render(
+      <IngestDialog
+        modal={false}
+        open
+        onOpenChange={vi.fn()}
+        onRun={onRun}
+        reviewChildren={<div>Review</div>}
+      />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
-    await userEvent.type(screen.getByRole("textbox"), "content");
-    await userEvent.click(screen.getByRole("button", { name: /generate/i }));
-    await waitFor(() => screen.getByText(/try different source/i));
-    await userEvent.click(screen.getByText(/try different source/i));
-    // Source picker should be visible again
-    expect(screen.getByRole("button", { name: /from file/i })).toBeDefined();
+    await screen.getByRole("button", { name: /from text/i }).click();
+    await screen.getByRole("textbox").fill("content");
+    await screen.getByRole("button", { name: /generate/i }).click();
+    await screen.getByText(/try different source/i).click();
+    await expect.element(screen.getByRole("button", { name: /from file/i })).toBeVisible();
   });
 
   test("closes dialog instead of entering review phase when no reviewChildren", async () => {
     const onRun = vi.fn().mockResolvedValue(undefined);
     const onOpenChange = vi.fn();
-    render(<IngestDialog open onOpenChange={onOpenChange} onRun={onRun} />);
-    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
-    await userEvent.type(screen.getByRole("textbox"), "content");
-    await userEvent.click(screen.getByRole("button", { name: /generate/i }));
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    const screen = await render(
+      <IngestDialog modal={false} open onOpenChange={onOpenChange} onRun={onRun} />,
+    );
+    await screen.getByRole("button", { name: /from text/i }).click();
+    await screen.getByRole("textbox").fill("content");
+    await screen.getByRole("button", { name: /generate/i }).click();
+    await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 });
 
@@ -324,8 +362,9 @@ describe("IngestDialog — end-to-end ingest (prompt source)", () => {
       receivedSources.push(source);
     });
 
-    render(
+    const screen = await render(
       <IngestDialog
+        modal={false}
         open
         onOpenChange={vi.fn()}
         title="Enhance recipe"
@@ -334,20 +373,13 @@ describe("IngestDialog — end-to-end ingest (prompt source)", () => {
       />,
     );
 
-    // Step 1: switch to prompt tab
-    await userEvent.click(screen.getByRole("button", { name: /from prompt/i }));
+    await screen.getByRole("button", { name: /from prompt/i }).click();
+    await screen.getByRole("textbox").fill("spicy vegetarian ramen");
+    await screen.getByRole("button", { name: /generate/i }).click();
 
-    // Step 2: enter prompt
-    await userEvent.type(screen.getByRole("textbox"), "spicy vegetarian ramen");
+    await expect.element(screen.getByTestId("suggestions")).toBeVisible();
+    await expect.element(screen.getByText("3 suggestions")).toBeVisible();
 
-    // Step 3: click Generate
-    await userEvent.click(screen.getByRole("button", { name: /generate/i }));
-
-    // Step 4: review phase renders
-    await waitFor(() => screen.getByTestId("suggestions"));
-    expect(screen.getByText("3 suggestions")).toBeDefined();
-
-    // Step 5: source was passed correctly
     expect(receivedSources).toHaveLength(1);
     expect(receivedSources[0].kind).toBe("prompt");
   });
@@ -355,8 +387,9 @@ describe("IngestDialog — end-to-end ingest (prompt source)", () => {
   test("full ingest: select text source → generate → view review body", async () => {
     const onRun = vi.fn().mockResolvedValue(undefined);
 
-    render(
+    const screen = await render(
       <IngestDialog
+        modal={false}
         open
         onOpenChange={vi.fn()}
         title="Enhance ingredient"
@@ -365,11 +398,11 @@ describe("IngestDialog — end-to-end ingest (prompt source)", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: /from text/i }));
-    await userEvent.type(screen.getByRole("textbox"), "# Cardamom\n\nAromatic spice from India.");
-    await userEvent.click(screen.getByRole("button", { name: /generate/i }));
+    await screen.getByRole("button", { name: /from text/i }).click();
+    await screen.getByRole("textbox").fill("# Cardamom\n\nAromatic spice from India.");
+    await screen.getByRole("button", { name: /generate/i }).click();
 
-    await waitFor(() => screen.getByTestId("review"));
+    await expect.element(screen.getByTestId("review")).toBeVisible();
     const [source] = onRun.mock.calls[0] as [SourceShape];
     expect(source.kind).toBe("text");
   });

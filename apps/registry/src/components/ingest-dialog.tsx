@@ -43,6 +43,12 @@ export interface IngestDialogProps {
   /** Label for the generate button. Defaults to "Generate". */
   generateLabel?: string;
   className?: string;
+  /**
+   * Forwarded to the underlying base-ui Dialog. Defaults to `true` (modal).
+   * Tests can opt into `false` or `'trap-focus'` to disable the inert scrim
+   * that base-ui paints over the page (which interferes with simulated clicks).
+   */
+  modal?: boolean | "trap-focus";
 }
 
 type Phase = "source" | "review";
@@ -145,10 +151,10 @@ function IngestDialogContent({
 }
 
 export function IngestDialog(props: IngestDialogProps) {
-  const { open, onOpenChange, flow, ...rest } = props;
+  const { open, onOpenChange, flow, modal, ...rest } = props;
 
   const dialog = (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} modal={modal}>
       <IngestDialogContent onOpenChange={onOpenChange} flow={flow} {...rest} />
     </Dialog>
   );

@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, test, vi } from "vite-plus/test";
+// @ts-nocheck — vite-plus-test does not surface @vitest/browser type augmentations
+import { render } from "vitest-browser-react";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import {
   CreatePairingDialog,
@@ -14,11 +13,6 @@ import type {
   Origin,
   AiContract,
 } from "../src/components/use-ai-suggestions";
-
-afterEach(() => {
-  cleanup();
-  document.body.innerHTML = "";
-});
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -79,82 +73,71 @@ function makeProps(overrides: Partial<CreatePairingDialogProps> = {}): CreatePai
 // ── Preflight rendering ────────────────────────────────────────────────────────
 
 describe("preflight — renders endpoints and fields", () => {
-  test("renders a heading for adding a pairing", () => {
-    render(<CreatePairingDialog {...makeProps()} />);
-    expect(screen.getByRole("heading", { name: /add pairing/i })).toBeDefined();
+  test("renders a heading for adding a pairing", async () => {
+    const screen = await render(<CreatePairingDialog {...makeProps()} />);
+    await expect.element(screen.getByRole("heading", { name: /add pairing/i })).toBeVisible();
   });
 
-  test("renders source endpoint collection and slug", () => {
-    render(<CreatePairingDialog {...makeProps()} />);
-    expect(screen.getByText(/recipes.*cardamom-cake|cardamom-cake.*recipes/i)).toBeDefined();
+  test("renders source endpoint collection and slug", async () => {
+    const screen = await render(<CreatePairingDialog {...makeProps()} />);
+    await expect
+      .element(screen.getByText(/recipes.*cardamom-cake|cardamom-cake.*recipes/i))
+      .toBeVisible();
   });
 
-  test("renders other endpoint collection and slug", () => {
-    render(<CreatePairingDialog {...makeProps()} />);
-    expect(screen.getByText(/ingredients.*cumin|cumin.*ingredients/i)).toBeDefined();
+  test("renders other endpoint collection and slug", async () => {
+    const screen = await render(<CreatePairingDialog {...makeProps()} />);
+    await expect.element(screen.getByText(/ingredients.*cumin|cumin.*ingredients/i)).toBeVisible();
   });
 
-  test("renders description textarea seeded from rationale", () => {
-    render(<CreatePairingDialog {...makeProps()} />);
-    const textarea = screen.getByRole("textbox");
-    expect((textarea as HTMLTextAreaElement).value).toBe(ingredientSuggestion.rationale);
+  test("renders description textarea seeded from rationale", async () => {
+    const screen = await render(<CreatePairingDialog {...makeProps()} />);
+    await expect.element(screen.getByRole("textbox")).toHaveValue(ingredientSuggestion.rationale);
   });
 
-  test("renders featured checkbox", () => {
-    render(<CreatePairingDialog {...makeProps()} />);
-    expect(screen.getByRole("checkbox")).toBeDefined();
+  test("renders featured checkbox", async () => {
+    const screen = await render(<CreatePairingDialog {...makeProps()} />);
+    await expect.element(screen.getByRole("checkbox")).toBeVisible();
   });
 
-  test("renders Save pairing button", () => {
-    render(<CreatePairingDialog {...makeProps()} />);
-    expect(screen.getByRole("button", { name: /save pairing/i })).toBeDefined();
+  test("renders Save pairing button", async () => {
+    const screen = await render(<CreatePairingDialog {...makeProps()} />);
+    await expect.element(screen.getByRole("button", { name: /save pairing/i })).toBeVisible();
   });
 });
 
 // ── Featured seeding rule ─────────────────────────────────────────────────────
 
 describe("featured seeding rule", () => {
-  test("featured defaults to false for recipe-bearing source", () => {
-    render(
+  test("featured defaults to false for recipe-bearing source", async () => {
+    const screen = await render(
       <CreatePairingDialog
-        {...makeProps({
-          sourceRef: recipeSourceRef,
-          aiSuggestion: ingredientSuggestion,
-        })}
+        {...makeProps({ sourceRef: recipeSourceRef, aiSuggestion: ingredientSuggestion })}
       />,
     );
-    const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
+    await expect.element(screen.getByRole("checkbox")).not.toBeChecked();
   });
 
-  test("featured defaults to false for recipe as other endpoint", () => {
-    render(
+  test("featured defaults to false for recipe as other endpoint", async () => {
+    const screen = await render(
       <CreatePairingDialog
-        {...makeProps({
-          sourceRef: ingredientSourceRef,
-          aiSuggestion: recipeSuggestion,
-        })}
+        {...makeProps({ sourceRef: ingredientSourceRef, aiSuggestion: recipeSuggestion })}
       />,
     );
-    const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
+    await expect.element(screen.getByRole("checkbox")).not.toBeChecked();
   });
 
-  test("featured defaults to true for ingredient-only pair", () => {
-    render(
+  test("featured defaults to true for ingredient-only pair", async () => {
+    const screen = await render(
       <CreatePairingDialog
-        {...makeProps({
-          sourceRef: ingredientSourceRef,
-          aiSuggestion: ingredientSuggestion,
-        })}
+        {...makeProps({ sourceRef: ingredientSourceRef, aiSuggestion: ingredientSuggestion })}
       />,
     );
-    const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
-    expect(checkbox.checked).toBe(true);
+    await expect.element(screen.getByRole("checkbox")).toBeChecked();
   });
 
-  test("featured defaults to false for mixture source", () => {
-    render(
+  test("featured defaults to false for mixture source", async () => {
+    const screen = await render(
       <CreatePairingDialog
         {...makeProps({
           sourceRef: { kind: "mixture", id: "harissa" },
@@ -162,8 +145,7 @@ describe("featured seeding rule", () => {
         })}
       />,
     );
-    const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
+    await expect.element(screen.getByRole("checkbox")).not.toBeChecked();
   });
 });
 
@@ -171,9 +153,9 @@ describe("featured seeding rule", () => {
 
 describe("integration: save flow", () => {
   async function runSaveFlow(props: CreatePairingDialogProps = makeProps()) {
-    render(<CreatePairingDialog {...props} />);
-    await userEvent.click(screen.getByRole("button", { name: /save pairing/i }));
-    await waitFor(() =>
+    const screen = await render(<CreatePairingDialog {...props} />);
+    await screen.getByRole("button", { name: /save pairing/i }).click();
+    await vi.waitFor(() =>
       expect((props.onCreate as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0),
     );
     return props;
@@ -285,7 +267,7 @@ describe("integration: save flow", () => {
     };
     const onCreate = vi.fn().mockResolvedValue(newPairingRef);
     await runSaveFlow(makeProps({ onCreate, aiEventLog: aiEventLogMock }));
-    await waitFor(() =>
+    await vi.waitFor(() =>
       expect(aiEventLogMock.append).toHaveBeenCalledWith(
         newPairingRef,
         expect.objectContaining({ type: "ingested" }),
@@ -299,14 +281,14 @@ describe("integration: save flow", () => {
 describe("editor can override description and featured", () => {
   test("save uses edited description", async () => {
     const onCreate = vi.fn().mockResolvedValue(newPairingRef);
-    render(<CreatePairingDialog {...makeProps({ onCreate })} />);
+    const screen = await render(<CreatePairingDialog {...makeProps({ onCreate })} />);
 
     const textarea = screen.getByRole("textbox");
-    await userEvent.clear(textarea);
-    await userEvent.type(textarea, "My custom description");
+    await textarea.clear();
+    await textarea.fill("My custom description");
 
-    await userEvent.click(screen.getByRole("button", { name: /save pairing/i }));
-    await waitFor(() => expect(onCreate).toHaveBeenCalled());
+    await screen.getByRole("button", { name: /save pairing/i }).click();
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalled());
 
     const [, fields] = onCreate.mock.calls[0] as [
       string,
@@ -317,15 +299,14 @@ describe("editor can override description and featured", () => {
   });
 
   test("save uses toggled featured value", async () => {
-    // Start with recipe source (featured=false), then toggle to true
     const onCreate = vi.fn().mockResolvedValue(newPairingRef);
-    render(<CreatePairingDialog {...makeProps({ sourceRef: recipeSourceRef, onCreate })} />);
+    const screen = await render(
+      <CreatePairingDialog {...makeProps({ sourceRef: recipeSourceRef, onCreate })} />,
+    );
 
-    const checkbox = screen.getByRole("checkbox");
-    await userEvent.click(checkbox);
-
-    await userEvent.click(screen.getByRole("button", { name: /save pairing/i }));
-    await waitFor(() => expect(onCreate).toHaveBeenCalled());
+    await screen.getByRole("checkbox").click();
+    await screen.getByRole("button", { name: /save pairing/i }).click();
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalled());
 
     const [, fields] = onCreate.mock.calls[0] as [
       string,
@@ -341,13 +322,12 @@ describe("editor can override description and featured", () => {
 describe("error handling", () => {
   test("shows error message when onCreate rejects", async () => {
     const onCreate = vi.fn().mockRejectedValue(new Error("Network error"));
-    render(<CreatePairingDialog {...makeProps({ onCreate })} />);
+    const screen = await render(<CreatePairingDialog {...makeProps({ onCreate })} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /save pairing/i }));
+    await screen.getByRole("button", { name: /save pairing/i }).click();
 
-    await waitFor(() => screen.getByText(/network error/i));
-    // Returns to review step so user can retry
-    expect(screen.getByRole("button", { name: /save pairing/i })).toBeDefined();
+    await expect.element(screen.getByText(/network error/i)).toBeVisible();
+    await expect.element(screen.getByRole("button", { name: /save pairing/i })).toBeVisible();
   });
 });
 
@@ -356,7 +336,7 @@ describe("error handling", () => {
 describe("endpoint collection derived from sourceRef.kind", () => {
   test("ingredient source maps to 'ingredients' collection", async () => {
     const onCreate = vi.fn().mockResolvedValue(newPairingRef);
-    render(
+    const screen = await render(
       <CreatePairingDialog
         {...makeProps({
           sourceRef: ingredientSourceRef,
@@ -365,8 +345,8 @@ describe("endpoint collection derived from sourceRef.kind", () => {
         })}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /save pairing/i }));
-    await waitFor(() => expect(onCreate).toHaveBeenCalled());
+    await screen.getByRole("button", { name: /save pairing/i }).click();
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalled());
     const [, fields] = onCreate.mock.calls[0] as [
       string,
       Record<string, unknown>,
@@ -378,7 +358,7 @@ describe("endpoint collection derived from sourceRef.kind", () => {
 
   test("mixture source maps to 'mixtures' collection", async () => {
     const onCreate = vi.fn().mockResolvedValue(newPairingRef);
-    render(
+    const screen = await render(
       <CreatePairingDialog
         {...makeProps({
           sourceRef: { kind: "mixture", id: "harissa" },
@@ -387,8 +367,8 @@ describe("endpoint collection derived from sourceRef.kind", () => {
         })}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /save pairing/i }));
-    await waitFor(() => expect(onCreate).toHaveBeenCalled());
+    await screen.getByRole("button", { name: /save pairing/i }).click();
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalled());
     const [, fields] = onCreate.mock.calls[0] as [
       string,
       Record<string, unknown>,

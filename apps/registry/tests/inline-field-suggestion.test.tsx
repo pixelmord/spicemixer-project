@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
-import { cleanup, render, screen, act } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, test, vi } from "vite-plus/test";
+// @ts-nocheck — vite-plus-test does not surface @vitest/browser type augmentations
+import { render } from "vitest-browser-react";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import {
   InlineFieldSuggestion,
@@ -14,10 +13,6 @@ import type {
   PerFieldAccessor,
   FieldSuggestion,
 } from "../src/components/use-ai-suggestions";
-
-afterEach(cleanup);
-
-// ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const textSuggestion: FieldSuggestion = {
   kind: "single",
@@ -114,22 +109,22 @@ function renderWithFlow(ui: React.ReactNode, flow: UseAiSuggestionsReturn) {
 // ── Renders nothing when no suggestion ────────────────────────────────────────
 
 describe("renders nothing when no suggestion", () => {
-  test("returns null when suggestion is undefined", () => {
+  test("returns null when suggestion is undefined", async () => {
     const flow = makeFlow({});
-    const { container } = renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="description" currentValue="" onApply={vi.fn()} />,
       flow,
     );
-    expect(container.firstChild).toBeNull();
+    expect(screen.container.firstChild).toBeNull();
   });
 });
 
 // ── Single text suggestion ────────────────────────────────────────────────────
 
 describe("single text suggestion", () => {
-  test("renders the suggestion value", () => {
+  test("renders the suggestion value", async () => {
     const flow = makeFlow({ description: textSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -138,13 +133,13 @@ describe("single text suggestion", () => {
       />,
       flow,
     );
-    expect(screen.getByText(String(textSuggestion.value))).toBeDefined();
+    await expect.element(screen.getByText(String(textSuggestion.value))).toBeVisible();
   });
 
   test("calls onApply and recordAccept when accepted", async () => {
     const onApply = vi.fn();
     const flow = makeFlow({ description: textSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -153,7 +148,7 @@ describe("single text suggestion", () => {
       />,
       flow,
     );
-    await userEvent.click(screen.getByRole("button", { name: /accept/i }));
+    await screen.getByRole("button", { name: /accept/i }).click();
     expect(onApply).toHaveBeenCalledWith(textSuggestion.value);
     expect(flow.accessors["description"].recordAccept).toHaveBeenCalledWith(
       textSuggestion.hash,
@@ -163,7 +158,7 @@ describe("single text suggestion", () => {
 
   test("calls recordReject when rejected", async () => {
     const flow = makeFlow({ description: textSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -172,11 +167,11 @@ describe("single text suggestion", () => {
       />,
       flow,
     );
-    await userEvent.click(screen.getByRole("button", { name: /reject/i }));
+    await screen.getByRole("button", { name: /reject/i }).click();
     expect(flow.accessors["description"].recordReject).toHaveBeenCalledWith(textSuggestion.hash);
   });
 
-  test("calls markViewed on mount when suggestion is present", () => {
+  test("calls markViewed on mount when suggestion is present", async () => {
     const flow = makeFlow({ description: textSuggestion });
     renderWithFlow(
       <InlineFieldSuggestion
@@ -187,44 +182,47 @@ describe("single text suggestion", () => {
       />,
       flow,
     );
-    expect(flow.accessors["description"].markViewed).toHaveBeenCalled();
+    await vi.waitFor(() => expect(flow.accessors["description"].markViewed).toHaveBeenCalled());
   });
 });
 
 // ── Array suggestion ──────────────────────────────────────────────────────────
 
 describe("array suggestion", () => {
-  test("renders all tag values from array suggestion", () => {
+  test("renders all tag values from array suggestion", async () => {
     const flow = makeFlow({ tags: arraySuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="tags" currentValue={[]} onApply={vi.fn()} kind="array" />,
       flow,
     );
     for (const tag of arraySuggestion.value as string[]) {
-      // Chips render as "+ {tag}" buttons in interactive mode
-      expect(screen.getByRole("button", { name: new RegExp(`\\+ ${tag}`) })).toBeDefined();
+      await expect
+        .element(screen.getByRole("button", { name: new RegExp(`\\+ ${tag}`) }))
+        .toBeVisible();
     }
   });
 
-  test("infers array kind from suggestion value type", () => {
+  test("infers array kind from suggestion value type", async () => {
     const flow = makeFlow({ tags: arraySuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="tags" currentValue={[]} onApply={vi.fn()} />,
       flow,
     );
     for (const tag of arraySuggestion.value as string[]) {
-      expect(screen.getByRole("button", { name: new RegExp(`\\+ ${tag}`) })).toBeDefined();
+      await expect
+        .element(screen.getByRole("button", { name: new RegExp(`\\+ ${tag}`) }))
+        .toBeVisible();
     }
   });
 
   test("'Add all' calls onApply with the full array", async () => {
     const onApply = vi.fn();
     const flow = makeFlow({ tags: arraySuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="tags" currentValue={[]} onApply={onApply} kind="array" />,
       flow,
     );
-    await userEvent.click(screen.getByRole("button", { name: /add all/i }));
+    await screen.getByRole("button", { name: /add all/i }).click();
     expect(onApply).toHaveBeenCalledWith(arraySuggestion.value);
   });
 });
@@ -245,7 +243,7 @@ describe("defaultRenderers", () => {
     const customRenderer = vi.fn().mockReturnValue(<span>custom-renderer</span>);
     const renderers: RenderersMap = { text: customRenderer };
     const flow = makeFlow({ description: textSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -255,7 +253,7 @@ describe("defaultRenderers", () => {
       />,
       flow,
     );
-    expect(screen.getByText("custom-renderer")).toBeDefined();
+    await expect.element(screen.getByText("custom-renderer")).toBeVisible();
     expect(customRenderer).toHaveBeenCalled();
   });
 });
@@ -263,46 +261,50 @@ describe("defaultRenderers", () => {
 // ── Choice variant: single-pick ───────────────────────────────────────────────
 
 describe("choice variant — single-pick", () => {
-  test("renders all candidates", () => {
+  test("renders all candidates", async () => {
     const flow = makeFlow({ category: choiceSingleSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="category" currentValue="" onApply={vi.fn()} />,
       flow,
     );
-    expect(screen.getByText("Option A")).toBeDefined();
-    expect(screen.getByText("Option B")).toBeDefined();
+    await expect.element(screen.getByText("Option A")).toBeVisible();
+    await expect.element(screen.getByText("Option B")).toBeVisible();
   });
 
-  test("renders 'Choose one' label", () => {
+  test("renders 'Choose one' label", async () => {
     const flow = makeFlow({ category: choiceSingleSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="category" currentValue="" onApply={vi.fn()} />,
       flow,
     );
-    expect(screen.getByText(/choose one/i)).toBeDefined();
+    await expect.element(screen.getByText(/choose one/i)).toBeVisible();
   });
 
   test("accept on candidate calls onApply and recordAccept", async () => {
     const onApply = vi.fn();
     const flow = makeFlow({ category: choiceSingleSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="category" currentValue="" onApply={onApply} />,
       flow,
     );
-    const acceptButtons = screen.getAllByRole("button", { name: /accept/i });
-    await userEvent.click(acceptButtons[0]);
+    await screen
+      .getByRole("button", { name: /accept/i })
+      .first()
+      .click();
     expect(onApply).toHaveBeenCalledWith("Option A");
     expect(flow.accessors["category"].recordAccept).toHaveBeenCalledWith("hash-a", "Option A");
   });
 
   test("reject on candidate calls recordReject with candidate hash", async () => {
     const flow = makeFlow({ category: choiceSingleSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="category" currentValue="" onApply={vi.fn()} />,
       flow,
     );
-    const rejectButtons = screen.getAllByRole("button", { name: /reject/i });
-    await userEvent.click(rejectButtons[0]);
+    await screen
+      .getByRole("button", { name: /reject/i })
+      .first()
+      .click();
     expect(flow.accessors["category"].recordReject).toHaveBeenCalledWith("hash-a");
   });
 });
@@ -310,69 +312,64 @@ describe("choice variant — single-pick", () => {
 // ── Choice variant: multi-pick ────────────────────────────────────────────────
 
 describe("choice variant — multi-pick", () => {
-  test("renders checkboxes for each candidate", () => {
+  test("renders checkboxes for each candidate", async () => {
     const flow = makeFlow({ tags: choiceMultiSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="tags" currentValue={[]} onApply={vi.fn()} />,
       flow,
     );
-    const checkboxes = screen.getAllByRole("checkbox");
-    expect(checkboxes).toHaveLength(3);
+    await vi.waitFor(() => expect(screen.getByRole("checkbox").elements()).toHaveLength(3));
   });
 
-  test("Apply selected button is disabled when no candidates selected", () => {
+  test("Apply selected button is disabled when no candidates selected", async () => {
     const flow = makeFlow({ tags: choiceMultiSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="tags" currentValue={[]} onApply={vi.fn()} />,
       flow,
     );
-    const applyBtn = screen.getByRole("button", { name: /apply selected/i });
-    expect((applyBtn as HTMLButtonElement).disabled).toBe(true);
+    await expect.element(screen.getByRole("button", { name: /apply selected/i })).toBeDisabled();
   });
 
   test("Apply selected calls onApply with selected values and recordAccept for each", async () => {
     const onApply = vi.fn();
     const flow = makeFlow({ tags: choiceMultiSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="tags" currentValue={[]} onApply={onApply} />,
       flow,
     );
-    const checkboxes = screen.getAllByRole("checkbox");
-    await userEvent.click(checkboxes[0]); // select Tag A
-    const applyBtn = screen.getByRole("button", { name: /apply selected/i });
-    await userEvent.click(applyBtn);
+    await screen.getByRole("checkbox").first().click();
+    await screen.getByRole("button", { name: /apply selected/i }).click();
     expect(onApply).toHaveBeenCalledWith(["Tag A"]);
     expect(flow.accessors["tags"].recordAccept).toHaveBeenCalledWith("hash-ta", "Tag A");
   });
 
   test("Reject all button calls recordReject", async () => {
     const flow = makeFlow({ tags: choiceMultiSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="tags" currentValue={[]} onApply={vi.fn()} />,
       flow,
     );
-    await userEvent.click(screen.getByRole("button", { name: /reject all/i }));
+    await screen.getByRole("button", { name: /reject all/i }).click();
     expect(flow.accessors["tags"].recordReject).toHaveBeenCalled();
   });
 });
 
-// ── markViewed is not called when no suggestion ───────────────────────────────
+// ── markViewed gating ─────────────────────────────────────────────────────────
 
 describe("markViewed gating", () => {
-  test("does not call markViewed when no suggestion exists", () => {
+  test("does not call markViewed when no suggestion exists", async () => {
     const flow = makeFlow({});
-    renderWithFlow(
+    await renderWithFlow(
       <InlineFieldSuggestion fieldPath="description" currentValue="" onApply={vi.fn()} />,
       flow,
     );
-    // forField is called but suggestion is undefined → markViewed should not fire
     const accessor = flow.accessors["description"] ?? makeAccessor(undefined);
     expect(accessor.markViewed).not.toHaveBeenCalled();
   });
 
   test("calls markViewed once when suggestion is present", async () => {
     const flow = makeFlow({ description: textSuggestion });
-    renderWithFlow(
+    await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -381,17 +378,16 @@ describe("markViewed gating", () => {
       />,
       flow,
     );
-    await act(async () => {}); // flush effects
-    expect(flow.accessors["description"].markViewed).toHaveBeenCalled();
+    await vi.waitFor(() => expect(flow.accessors["description"].markViewed).toHaveBeenCalled());
   });
 });
 
-// ── sourceSlot: 3-column layout ────────────────────────────────────────────────
+// ── sourceSlot layout ─────────────────────────────────────────────────────────
 
 describe("sourceSlot layout", () => {
-  test("renders sourceSlot content when provided", () => {
+  test("renders sourceSlot content when provided", async () => {
     const flow = makeFlow({ description: textSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -400,21 +396,21 @@ describe("sourceSlot layout", () => {
       />,
       flow,
     );
-    expect(screen.getByText("source-content")).toBeDefined();
+    await expect.element(screen.getByText("source-content")).toBeVisible();
   });
 
-  test("does not render source column when sourceSlot not provided", () => {
+  test("does not render source column when sourceSlot not provided", async () => {
     const flow = makeFlow({ description: textSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion fieldPath="description" currentValue="" onApply={vi.fn()} />,
       flow,
     );
-    expect(screen.queryByText("source-content")).toBeNull();
+    await expect.element(screen.getByText("source-content")).not.toBeInTheDocument();
   });
 
-  test("sourceSlot renders alongside the suggestion", () => {
+  test("sourceSlot renders alongside the suggestion", async () => {
     const flow = makeFlow({ description: textSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -424,15 +420,15 @@ describe("sourceSlot layout", () => {
       />,
       flow,
     );
-    expect(screen.getByText("original english text")).toBeDefined();
-    expect(screen.getByText(String(textSuggestion.value))).toBeDefined();
+    await expect.element(screen.getByText("original english text")).toBeVisible();
+    await expect.element(screen.getByText(String(textSuggestion.value))).toBeVisible();
   });
 });
 
 // ── retranslate menu ───────────────────────────────────────────────────────────
 
 describe("retranslate menu", () => {
-  test("shows Retranslate button when sourceLocale and translate mode", () => {
+  test("shows Retranslate button when sourceLocale and translate mode", async () => {
     const flow = makeFlow(
       { description: textSuggestion },
       {
@@ -443,7 +439,7 @@ describe("retranslate menu", () => {
         }),
       },
     );
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -452,10 +448,12 @@ describe("retranslate menu", () => {
       />,
       flow,
     );
-    expect(screen.getByRole("button", { name: /retranslate from en/i })).toBeDefined();
+    await expect
+      .element(screen.getByRole("button", { name: /retranslate from en/i }))
+      .toBeVisible();
   });
 
-  test("shows Retranslate button when sourceLocale and localize mode", () => {
+  test("shows Retranslate button when sourceLocale and localize mode", async () => {
     const flow = makeFlow(
       { description: textSuggestion },
       {
@@ -466,7 +464,7 @@ describe("retranslate menu", () => {
         }),
       },
     );
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -475,12 +473,14 @@ describe("retranslate menu", () => {
       />,
       flow,
     );
-    expect(screen.getByRole("button", { name: /retranslate from en/i })).toBeDefined();
+    await expect
+      .element(screen.getByRole("button", { name: /retranslate from en/i }))
+      .toBeVisible();
   });
 
-  test("does not show Retranslate button when no sourceLocale", () => {
+  test("does not show Retranslate button when no sourceLocale", async () => {
     const flow = makeFlow({ description: textSuggestion });
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -489,10 +489,12 @@ describe("retranslate menu", () => {
       />,
       flow,
     );
-    expect(screen.queryByRole("button", { name: /retranslate/i })).toBeNull();
+    await expect
+      .element(screen.getByRole("button", { name: /retranslate/i }))
+      .not.toBeInTheDocument();
   });
 
-  test("does not show Retranslate button for copy-mode fields", () => {
+  test("does not show Retranslate button for copy-mode fields", async () => {
     const flow = makeFlow(
       { description: textSuggestion },
       {
@@ -502,7 +504,7 @@ describe("retranslate menu", () => {
         }),
       },
     );
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -511,7 +513,9 @@ describe("retranslate menu", () => {
       />,
       flow,
     );
-    expect(screen.queryByRole("button", { name: /retranslate/i })).toBeNull();
+    await expect
+      .element(screen.getByRole("button", { name: /retranslate/i }))
+      .not.toBeInTheDocument();
   });
 
   test("Retranslate button calls retranslate on accessor", async () => {
@@ -526,7 +530,7 @@ describe("retranslate menu", () => {
         }),
       },
     );
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -535,15 +539,15 @@ describe("retranslate menu", () => {
       />,
       flow,
     );
-    await userEvent.click(screen.getByRole("button", { name: /retranslate from en/i }));
+    await screen.getByRole("button", { name: /retranslate from en/i }).click();
     expect(retranslate).toHaveBeenCalled();
   });
 });
 
-// ── isStale promotes retranslate to inline button ─────────────────────────────
+// ── stale retranslate promotion ──────────────────────────────────────────────
 
 describe("stale retranslate promotion", () => {
-  test("retranslate button has stale indicator when isStale is true", () => {
+  test("retranslate button has stale indicator when isStale is true", async () => {
     const flow = makeFlow(
       { description: textSuggestion },
       {
@@ -554,7 +558,7 @@ describe("stale retranslate promotion", () => {
         }),
       },
     );
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -563,14 +567,12 @@ describe("stale retranslate promotion", () => {
       />,
       flow,
     );
-    // Stale promotion: button should be more prominent (aria-label still matches)
-    const btn = screen.getByRole("button", { name: /retranslate from en/i });
-    expect(btn).toBeDefined();
-    // Stale button has a data-stale attribute or specific class
-    expect(btn.getAttribute("data-stale")).toBe("true");
+    await expect
+      .element(screen.getByRole("button", { name: /retranslate from en/i }))
+      .toHaveAttribute("data-stale", "true");
   });
 
-  test("retranslate button does not have stale indicator when isStale is false", () => {
+  test("retranslate button does not have stale indicator when isStale is false", async () => {
     const flow = makeFlow(
       { description: textSuggestion },
       {
@@ -581,7 +583,7 @@ describe("stale retranslate promotion", () => {
         }),
       },
     );
-    renderWithFlow(
+    const screen = await renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
@@ -590,7 +592,8 @@ describe("stale retranslate promotion", () => {
       />,
       flow,
     );
-    const btn = screen.getByRole("button", { name: /retranslate from en/i });
-    expect(btn.getAttribute("data-stale")).not.toBe("true");
+    await expect
+      .element(screen.getByRole("button", { name: /retranslate from en/i }))
+      .not.toHaveAttribute("data-stale", "true");
   });
 });

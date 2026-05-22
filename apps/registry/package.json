@@ -7,7 +7,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "test": "NODE_OPTIONS=\"--import $(pwd)/jsdom-register.mjs\" vp test"
+    "test": "vp test"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
@@ -21,12 +21,11 @@
     "tailwindcss": "catalog:"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.0.0",
-    "@testing-library/user-event": "^14.5.0",
+    "@playwright/test": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "^5.2.0",
-    "jsdom": "^26.0.0"
+    "vitest-browser-react": "^2.2.0"
   },
   "engines": {
     "node": ">=22.12.0"

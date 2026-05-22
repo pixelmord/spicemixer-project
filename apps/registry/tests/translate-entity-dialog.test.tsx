@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, test, vi } from "vite-plus/test";
+// @ts-nocheck — vite-plus-test does not surface @vitest/browser type augmentations
+import { render } from "vitest-browser-react";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import {
   TranslateEntityDialog,
@@ -16,13 +15,6 @@ import type {
   RunParams,
   RunResult,
 } from "../src/components/use-ai-suggestions";
-
-afterEach(() => {
-  cleanup();
-  document.body.innerHTML = "";
-});
-
-// ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const sourceRef: EntityRef = { kind: "recipe", id: "cardamom-cake" };
 const sourceLocale = "en";
@@ -45,7 +37,6 @@ const mockAiEventLog: AiEventLog = {
   append: vi.fn().mockResolvedValue(undefined),
 };
 
-// Contract with slug (recipe/mixture — two-call mode)
 const recipeContract: AiContract = {
   presets: [],
   fields: {
@@ -55,7 +46,6 @@ const recipeContract: AiContract = {
   },
 };
 
-// Contract without slug (ingredient — one-call mode)
 const ingredientContract: AiContract = {
   presets: [],
   fields: {
@@ -158,32 +148,29 @@ function makeProps(
 // ── Setup step ─────────────────────────────────────────────────────────────────
 
 describe("setup step — locale picker", () => {
-  test("renders locale dropdown with available locales", () => {
-    render(<TranslateEntityDialog {...makeProps()} />);
-    const select = screen.getByRole("combobox");
-    expect(select).toBeDefined();
+  test("renders locale dropdown with available locales", async () => {
+    const screen = await render(<TranslateEntityDialog {...makeProps()} />);
+    await expect.element(screen.getByRole("combobox")).toBeVisible();
   });
 
-  test("renders 'Start translation' button", () => {
-    render(<TranslateEntityDialog {...makeProps()} />);
-    expect(screen.getByRole("button", { name: /start translation/i })).toBeDefined();
+  test("renders 'Start translation' button", async () => {
+    const screen = await render(<TranslateEntityDialog {...makeProps()} />);
+    await expect.element(screen.getByRole("button", { name: /start translation/i })).toBeVisible();
   });
 
-  test("shows all available locales as options", () => {
-    render(<TranslateEntityDialog {...makeProps()} />);
-    expect(screen.getByRole("option", { name: "de" })).toBeDefined();
-    expect(screen.getByRole("option", { name: "fr" })).toBeDefined();
+  test("shows all available locales as options", async () => {
+    const screen = await render(<TranslateEntityDialog {...makeProps()} />);
+    await expect.element(screen.getByRole("option", { name: "de" })).toBeInTheDocument();
+    await expect.element(screen.getByRole("option", { name: "fr" })).toBeInTheDocument();
   });
 });
 
-// ── Two-call flow (recipe/mixture) ─────────────────────────────────────────────
+// ── Two-call flow ─────────────────────────────────────────────────────────────
 
 describe("two-call flow — recipe with slug + onCheckSlugAvailable", () => {
   function makeRecipeProps() {
     const onFill = vi.fn();
-    onFill
-      .mockResolvedValueOnce(makeSlugResult()) // first call: slug fill
-      .mockResolvedValueOnce(makeBulkResult()); // second call: bulk fill
+    onFill.mockResolvedValueOnce(makeSlugResult()).mockResolvedValueOnce(makeBulkResult());
     const onCheckSlugAvailable = vi.fn().mockResolvedValue(true);
     return {
       props: makeProps({ onFill, onCheckSlugAvailable }),
@@ -194,11 +181,11 @@ describe("two-call flow — recipe with slug + onCheckSlugAvailable", () => {
 
   test("calls onFill for slug first when onCheckSlugAvailable is provided", async () => {
     const { props, onFill } = makeRecipeProps();
-    render(<TranslateEntityDialog {...props} />);
+    const screen = await render(<TranslateEntityDialog {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
+    await screen.getByRole("button", { name: /start translation/i }).click();
 
-    expect(onFill).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(onFill).toHaveBeenCalledTimes(1));
     const firstCall = onFill.mock.calls[0][0] as RunParams;
     expect(firstCall.target).toEqual(["slug"]);
     expect(firstCall.sourceContext).toMatchObject({ kind: "sibling-locale" });
@@ -206,56 +193,54 @@ describe("two-call flow — recipe with slug + onCheckSlugAvailable", () => {
 
   test("shows slug suggestion after slug fill", async () => {
     const { props } = makeRecipeProps();
-    render(<TranslateEntityDialog {...props} />);
+    const screen = await render(<TranslateEntityDialog {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
-    await waitFor(() => screen.getByDisplayValue("kardamom-kuchen-de"));
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    await expect.element(screen.getByRole("textbox")).toHaveValue("kardamom-kuchen-de");
   });
 
   test("checks slug availability automatically after slug fill", async () => {
     const { props, onCheckSlugAvailable } = makeRecipeProps();
-    render(<TranslateEntityDialog {...props} />);
+    const screen = await render(<TranslateEntityDialog {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
-    await waitFor(() =>
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    await vi.waitFor(() =>
       expect(onCheckSlugAvailable).toHaveBeenCalledWith("recipe", "kardamom-kuchen-de"),
     );
   });
 
   test("shows availability indicator when slug is available", async () => {
     const { props } = makeRecipeProps();
-    render(<TranslateEntityDialog {...props} />);
+    const screen = await render(<TranslateEntityDialog {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
-    await waitFor(() => screen.getByText(/available/i));
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    await expect.element(screen.getByText(/available/i)).toBeVisible();
   });
 
   test("allows manual slug override", async () => {
     const { props, onCheckSlugAvailable } = makeRecipeProps();
-    render(<TranslateEntityDialog {...props} />);
+    const screen = await render(<TranslateEntityDialog {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
-    await waitFor(() => screen.getByDisplayValue("kardamom-kuchen-de"));
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    const input = screen.getByRole("textbox");
+    await expect.element(input).toHaveValue("kardamom-kuchen-de");
+    await input.clear();
+    await input.fill("custom-slug-de");
 
-    const input = screen.getByDisplayValue("kardamom-kuchen-de");
-    await userEvent.clear(input);
-    await userEvent.type(input, "custom-slug-de");
-
-    await waitFor(() =>
+    await vi.waitFor(() =>
       expect(onCheckSlugAvailable).toHaveBeenCalledWith("recipe", "custom-slug-de"),
     );
   });
 
   test("calls bulk onFill after slug confirmation", async () => {
     const { props, onFill } = makeRecipeProps();
-    render(<TranslateEntityDialog {...props} />);
+    const screen = await render(<TranslateEntityDialog {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
-    await waitFor(() => screen.getByRole("button", { name: /continue/i }));
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    await expect.element(screen.getByRole("button", { name: /continue/i })).toBeVisible();
+    await screen.getByRole("button", { name: /continue/i }).click();
 
-    await userEvent.click(screen.getByRole("button", { name: /continue/i }));
-
-    await waitFor(() => expect(onFill).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(onFill).toHaveBeenCalledTimes(2));
     const secondCall = onFill.mock.calls[1][0] as RunParams;
     expect(secondCall.target).not.toContain("slug");
     expect(secondCall.sourceContext).toMatchObject({ kind: "sibling-locale" });
@@ -263,17 +248,19 @@ describe("two-call flow — recipe with slug + onCheckSlugAvailable", () => {
 
   test("shows review step after bulk fill", async () => {
     const { props } = makeRecipeProps();
-    render(<TranslateEntityDialog {...props} />);
+    const screen = await render(<TranslateEntityDialog {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
-    await waitFor(() => screen.getByRole("button", { name: /continue/i }));
-    await userEvent.click(screen.getByRole("button", { name: /continue/i }));
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    await expect.element(screen.getByRole("button", { name: /continue/i })).toBeVisible();
+    await screen.getByRole("button", { name: /continue/i }).click();
 
-    await waitFor(() => screen.getByRole("button", { name: /accept all & save draft/i }));
+    await expect
+      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
+      .toBeVisible();
   });
 });
 
-// ── One-call flow (ingredient/pairing) ────────────────────────────────────────
+// ── One-call flow ─────────────────────────────────────────────────────────────
 
 describe("one-call flow — ingredient without onCheckSlugAvailable", () => {
   function makeIngredientProps() {
@@ -288,7 +275,6 @@ describe("one-call flow — ingredient without onCheckSlugAvailable", () => {
           botanicalName: "Elettaria cardamomum",
         },
         onFill,
-        // No onCheckSlugAvailable — single-call mode
       }),
       onFill,
     };
@@ -296,37 +282,41 @@ describe("one-call flow — ingredient without onCheckSlugAvailable", () => {
 
   test("calls onFill once for all fields (no slug step)", async () => {
     const { props, onFill } = makeIngredientProps();
-    render(<TranslateEntityDialog {...props} />);
+    const screen = await render(<TranslateEntityDialog {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
+    await screen.getByRole("button", { name: /start translation/i }).click();
 
-    await waitFor(() => expect(onFill).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(onFill).toHaveBeenCalledTimes(1));
     const call = onFill.mock.calls[0][0] as RunParams;
-    expect(call.target).toBeUndefined(); // fill all fields
+    expect(call.target).toBeUndefined();
     expect(call.sourceContext).toMatchObject({ kind: "sibling-locale" });
   });
 
   test("does not show slug input step", async () => {
     const { props } = makeIngredientProps();
-    render(<TranslateEntityDialog {...props} />);
+    const screen = await render(<TranslateEntityDialog {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
+    await screen.getByRole("button", { name: /start translation/i }).click();
 
-    await waitFor(() => screen.getByRole("button", { name: /accept all & save draft/i }));
-    expect(screen.queryByText(/confirm slug/i)).toBeNull();
+    await expect
+      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
+      .toBeVisible();
+    await expect.element(screen.getByText(/confirm slug/i)).not.toBeInTheDocument();
   });
 
   test("goes directly to review after single fill", async () => {
     const { props } = makeIngredientProps();
-    render(<TranslateEntityDialog {...props} />);
+    const screen = await render(<TranslateEntityDialog {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
+    await screen.getByRole("button", { name: /start translation/i }).click();
 
-    await waitFor(() => screen.getByRole("button", { name: /accept all & save draft/i }));
+    await expect
+      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
+      .toBeVisible();
   });
 });
 
-// ── Review step ────────────────────────────────────────────────────────────────
+// ── Review step ───────────────────────────────────────────────────────────────
 
 describe("review step", () => {
   async function renderAtReview(onFill?: (params: RunParams) => Promise<RunResult>) {
@@ -345,34 +335,36 @@ describe("review step", () => {
       onFill: mockOnFill,
       onCreate,
     });
-    render(<TranslateEntityDialog {...props} />);
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
-    await waitFor(() => screen.getByRole("button", { name: /accept all & save draft/i }));
-    return { onCreate, onFill: mockOnFill };
+    const screen = await render(<TranslateEntityDialog {...props} />);
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    await expect
+      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
+      .toBeVisible();
+    return { onCreate, onFill: mockOnFill, screen };
   }
 
   test("shows 'Accept all & save draft' as primary CTA", async () => {
-    await renderAtReview();
-    expect(screen.getByRole("button", { name: /accept all & save draft/i })).toBeDefined();
+    const { screen } = await renderAtReview();
+    await expect
+      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
+      .toBeVisible();
   });
 
   test("shows 'Review N fields' disclosure button", async () => {
-    await renderAtReview();
-    expect(screen.getByRole("button", { name: /review \d+ fields/i })).toBeDefined();
+    const { screen } = await renderAtReview();
+    await expect.element(screen.getByRole("button", { name: /review \d+ fields/i })).toBeVisible();
   });
 
   test("expands per-field review when disclosure is clicked", async () => {
-    await renderAtReview();
-    await userEvent.click(screen.getByRole("button", { name: /review \d+ fields/i }));
-    // Per-field suggestions should be visible
-    expect(screen.getByText("Kardamom")).toBeDefined();
+    const { screen } = await renderAtReview();
+    await screen.getByRole("button", { name: /review \d+ fields/i }).click();
+    await expect.element(screen.getByText("Kardamom")).toBeVisible();
   });
 
   test("shows source-locale content in sourceSlot when review is expanded", async () => {
-    await renderAtReview();
-    await userEvent.click(screen.getByRole("button", { name: /review \d+ fields/i }));
-    // Source text for name field should appear
-    expect(screen.getByText("Cardamom")).toBeDefined();
+    const { screen } = await renderAtReview();
+    await screen.getByRole("button", { name: /review \d+ fields/i }).click();
+    await expect.element(screen.getByText("Cardamom")).toBeVisible();
   });
 });
 
@@ -400,13 +392,15 @@ describe("integration: accept all & save draft", () => {
       onComplete,
       aiEventLog: aiEventLogMock,
     });
-    render(<TranslateEntityDialog {...props} />);
+    const screen = await render(<TranslateEntityDialog {...props} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
-    await waitFor(() => screen.getByRole("button", { name: /accept all & save draft/i }));
-    await userEvent.click(screen.getByRole("button", { name: /accept all & save draft/i }));
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    await expect
+      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
+      .toBeVisible();
+    await screen.getByRole("button", { name: /accept all & save draft/i }).click();
 
-    await waitFor(() => expect(onCreate).toHaveBeenCalled());
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalled());
     return { onCreate, onComplete, aiEventLog: aiEventLogMock };
   }
 
@@ -509,7 +503,7 @@ describe("integration: accept all & save draft", () => {
 
   test("appends ingested event to aiEventLog for new entity ref", async () => {
     const { aiEventLog } = await runFullFlow();
-    await waitFor(() =>
+    await vi.waitFor(() =>
       expect(aiEventLog.append).toHaveBeenCalledWith(
         newEntityRef,
         expect.objectContaining({ type: "ingested" }),
@@ -518,7 +512,7 @@ describe("integration: accept all & save draft", () => {
   });
 });
 
-// ── Integration: recipe two-call, accept all → correct slug in onCreate ────────
+// ── Integration: recipe two-call ──────────────────────────────────────────────
 
 describe("integration: recipe two-call — slug passed to onCreate", () => {
   test("calls onCreate with confirmed slug as second argument", async () => {
@@ -529,20 +523,19 @@ describe("integration: recipe two-call — slug passed to onCreate", () => {
     const onCheckSlugAvailable = vi.fn().mockResolvedValue(true);
     const onCreate = vi.fn().mockResolvedValue(newEntityRef);
 
-    render(<TranslateEntityDialog {...makeProps({ onFill, onCheckSlugAvailable, onCreate })} />);
+    const screen = await render(
+      <TranslateEntityDialog {...makeProps({ onFill, onCheckSlugAvailable, onCreate })} />,
+    );
 
-    // Start
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
-    // Wait for slug review step
-    await waitFor(() => screen.getByRole("button", { name: /continue/i }));
-    // Proceed
-    await userEvent.click(screen.getByRole("button", { name: /continue/i }));
-    // Wait for review
-    await waitFor(() => screen.getByRole("button", { name: /accept all & save draft/i }));
-    // Accept all
-    await userEvent.click(screen.getByRole("button", { name: /accept all & save draft/i }));
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    await expect.element(screen.getByRole("button", { name: /continue/i })).toBeVisible();
+    await screen.getByRole("button", { name: /continue/i }).click();
+    await expect
+      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
+      .toBeVisible();
+    await screen.getByRole("button", { name: /accept all & save draft/i }).click();
 
-    await waitFor(() => expect(onCreate).toHaveBeenCalled());
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalled());
     const [, slug] = onCreate.mock.calls[0] as [
       string,
       string,
@@ -553,12 +546,12 @@ describe("integration: recipe two-call — slug passed to onCreate", () => {
   });
 });
 
-// ── sourceContext shape ────────────────────────────────────────────────────────
+// ── sourceContext shape ───────────────────────────────────────────────────────
 
 describe("sourceContext passed to onFill", () => {
   test("sourceContext includes sourceRef, sourceData, sourceLocale, targetLocale", async () => {
     const onFill = vi.fn().mockResolvedValue(makeIngredientBulkResult());
-    render(
+    const screen = await render(
       <TranslateEntityDialog
         {...makeProps({
           contract: ingredientContract,
@@ -573,9 +566,9 @@ describe("sourceContext passed to onFill", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: /start translation/i }));
+    await screen.getByRole("button", { name: /start translation/i }).click();
 
-    await waitFor(() => expect(onFill).toHaveBeenCalled());
+    await vi.waitFor(() => expect(onFill).toHaveBeenCalled());
     const params = onFill.mock.calls[0][0] as RunParams;
     const ctx = params.sourceContext as {
       kind: string;

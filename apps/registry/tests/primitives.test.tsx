@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, test, vi } from "vite-plus/test";
+// @ts-nocheck — vite-plus-test does not surface @vitest/browser type augmentations
+import { render } from "vitest-browser-react";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import { ConfidenceBadge } from "../src/components/confidence-badge";
 import { AcceptRejectButtons } from "../src/components/accept-reject-buttons";
@@ -12,46 +11,40 @@ import { MultiEnumSuggestionRow } from "../src/components/multi-enum-suggestion-
 import { DateSuggestionRow } from "../src/components/date-suggestion-row";
 import { SuggestionTraceInfo } from "../src/components/suggestion-trace-info";
 
-afterEach(cleanup);
-
 // ── ConfidenceBadge ──────────────────────────────────────────────────────────
 
 describe("ConfidenceBadge", () => {
-  test("renders 'high' variant with correct text and aria-label", () => {
-    render(<ConfidenceBadge confidence="high" />);
-    const badge = screen.getByText("high");
-    expect(badge).toBeDefined();
-    expect(badge.getAttribute("aria-label")).toBe("high confidence");
+  test("renders 'high' variant with correct text and aria-label", async () => {
+    const screen = await render(<ConfidenceBadge confidence="high" />);
+    await expect.element(screen.getByText("high")).toBeVisible();
+    await expect.element(screen.getByText("high")).toHaveAttribute("aria-label", "high confidence");
   });
 
-  test("renders 'medium' variant", () => {
-    render(<ConfidenceBadge confidence="medium" />);
-    expect(screen.getByText("medium")).toBeDefined();
-    expect(screen.getByLabelText("medium confidence")).toBeDefined();
+  test("renders 'medium' variant", async () => {
+    const screen = await render(<ConfidenceBadge confidence="medium" />);
+    await expect.element(screen.getByText("medium")).toBeVisible();
+    await expect.element(screen.getByLabelText("medium confidence")).toBeVisible();
   });
 
-  test("renders 'low' variant", () => {
-    render(<ConfidenceBadge confidence="low" />);
-    expect(screen.getByText("low")).toBeDefined();
-    expect(screen.getByLabelText("low confidence")).toBeDefined();
+  test("renders 'low' variant", async () => {
+    const screen = await render(<ConfidenceBadge confidence="low" />);
+    await expect.element(screen.getByText("low")).toBeVisible();
+    await expect.element(screen.getByLabelText("low confidence")).toBeVisible();
   });
 
-  test("applies high variant classes", () => {
-    render(<ConfidenceBadge confidence="high" />);
-    const badge = screen.getByText("high");
-    expect(badge.className).toContain("green");
+  test("applies high variant classes", async () => {
+    const screen = await render(<ConfidenceBadge confidence="high" />);
+    await expect.element(screen.getByText("high")).toHaveClass(/green/);
   });
 
-  test("applies medium variant classes", () => {
-    render(<ConfidenceBadge confidence="medium" />);
-    const badge = screen.getByText("medium");
-    expect(badge.className).toContain("yellow");
+  test("applies medium variant classes", async () => {
+    const screen = await render(<ConfidenceBadge confidence="medium" />);
+    await expect.element(screen.getByText("medium")).toHaveClass(/yellow/);
   });
 
-  test("applies low variant classes", () => {
-    render(<ConfidenceBadge confidence="low" />);
-    const badge = screen.getByText("low");
-    expect(badge.className).toContain("red");
+  test("applies low variant classes", async () => {
+    const screen = await render(<ConfidenceBadge confidence="low" />);
+    await expect.element(screen.getByText("low")).toHaveClass(/red/);
   });
 });
 
@@ -61,8 +54,8 @@ describe("AcceptRejectButtons", () => {
   test("calls onAccept when accept button is clicked", async () => {
     const onAccept = vi.fn();
     const onReject = vi.fn();
-    render(<AcceptRejectButtons onAccept={onAccept} onReject={onReject} />);
-    await userEvent.click(screen.getByRole("button", { name: /accept/i }));
+    const screen = await render(<AcceptRejectButtons onAccept={onAccept} onReject={onReject} />);
+    await screen.getByRole("button", { name: /accept/i }).click();
     expect(onAccept).toHaveBeenCalledTimes(1);
     expect(onReject).not.toHaveBeenCalled();
   });
@@ -70,56 +63,62 @@ describe("AcceptRejectButtons", () => {
   test("calls onReject when reject button is clicked", async () => {
     const onAccept = vi.fn();
     const onReject = vi.fn();
-    render(<AcceptRejectButtons onAccept={onAccept} onReject={onReject} />);
-    await userEvent.click(screen.getByRole("button", { name: /reject/i }));
+    const screen = await render(<AcceptRejectButtons onAccept={onAccept} onReject={onReject} />);
+    await screen.getByRole("button", { name: /reject/i }).click();
     expect(onReject).toHaveBeenCalledTimes(1);
     expect(onAccept).not.toHaveBeenCalled();
   });
 
-  test("both buttons are disabled when disabled prop is true", () => {
-    render(<AcceptRejectButtons onAccept={vi.fn()} onReject={vi.fn()} disabled />);
-    const buttons = screen.getAllByRole("button");
-    for (const btn of buttons) {
-      expect((btn as HTMLButtonElement).disabled).toBe(true);
-    }
+  test("both buttons are disabled when disabled prop is true", async () => {
+    const screen = await render(
+      <AcceptRejectButtons onAccept={vi.fn()} onReject={vi.fn()} disabled />,
+    );
+    await expect.element(screen.getByRole("button", { name: /accept/i })).toBeDisabled();
+    await expect.element(screen.getByRole("button", { name: /reject/i })).toBeDisabled();
   });
 });
 
 // ── TextSuggestionRow ────────────────────────────────────────────────────────
 
 describe("TextSuggestionRow", () => {
-  test("renders the value text", () => {
-    render(<TextSuggestionRow value="Suggested text" />);
-    expect(screen.getByText("Suggested text")).toBeDefined();
+  test("renders the value text", async () => {
+    const screen = await render(<TextSuggestionRow value="Suggested text" />);
+    await expect.element(screen.getByText("Suggested text")).toBeVisible();
   });
 
-  test("read-only mode hides accept/reject buttons", () => {
-    render(<TextSuggestionRow value="hello" readOnly onApply={vi.fn()} onReject={vi.fn()} />);
-    expect(screen.queryByRole("button", { name: /accept/i })).toBeNull();
-    expect(screen.queryByRole("button", { name: /reject/i })).toBeNull();
+  test("read-only mode hides accept/reject buttons", async () => {
+    const screen = await render(
+      <TextSuggestionRow value="hello" readOnly onApply={vi.fn()} onReject={vi.fn()} />,
+    );
+    await expect.element(screen.getByRole("button", { name: /accept/i })).not.toBeInTheDocument();
+    await expect.element(screen.getByRole("button", { name: /reject/i })).not.toBeInTheDocument();
   });
 
-  test("interactive mode shows accept/reject buttons", () => {
-    render(<TextSuggestionRow value="hello" onApply={vi.fn()} onReject={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /accept/i })).toBeDefined();
-    expect(screen.getByRole("button", { name: /reject/i })).toBeDefined();
+  test("interactive mode shows accept/reject buttons", async () => {
+    const screen = await render(
+      <TextSuggestionRow value="hello" onApply={vi.fn()} onReject={vi.fn()} />,
+    );
+    await expect.element(screen.getByRole("button", { name: /accept/i })).toBeVisible();
+    await expect.element(screen.getByRole("button", { name: /reject/i })).toBeVisible();
   });
 
   test("calls onApply with value when accept is clicked", async () => {
     const onApply = vi.fn();
-    render(<TextSuggestionRow value="hello" onApply={onApply} onReject={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: /accept/i }));
+    const screen = await render(
+      <TextSuggestionRow value="hello" onApply={onApply} onReject={vi.fn()} />,
+    );
+    await screen.getByRole("button", { name: /accept/i }).click();
     expect(onApply).toHaveBeenCalledWith("hello");
   });
 
-  test("renders confidence badge when provided", () => {
-    render(<TextSuggestionRow value="x" confidence="high" />);
-    expect(screen.getByLabelText("high confidence")).toBeDefined();
+  test("renders confidence badge when provided", async () => {
+    const screen = await render(<TextSuggestionRow value="x" confidence="high" />);
+    await expect.element(screen.getByLabelText("high confidence")).toBeVisible();
   });
 
-  test("renders summary when provided", () => {
-    render(<TextSuggestionRow value="x" summary="AI summary here" />);
-    expect(screen.getByText("AI summary here")).toBeDefined();
+  test("renders summary when provided", async () => {
+    const screen = await render(<TextSuggestionRow value="x" summary="AI summary here" />);
+    await expect.element(screen.getByText("AI summary here")).toBeVisible();
   });
 });
 
@@ -128,30 +127,34 @@ describe("TextSuggestionRow", () => {
 describe("TagsSuggestionRow", () => {
   const tags = ["spicy", "savory", "umami"];
 
-  test("renders all tags", () => {
-    render(<TagsSuggestionRow tags={tags} />);
+  test("renders all tags", async () => {
+    const screen = await render(<TagsSuggestionRow tags={tags} />);
     for (const tag of tags) {
-      expect(screen.getByText(tag)).toBeDefined();
+      await expect.element(screen.getByText(tag)).toBeVisible();
     }
   });
 
-  test("read-only mode hides interactive controls", () => {
-    render(<TagsSuggestionRow tags={tags} readOnly onApply={vi.fn()} onReject={vi.fn()} />);
-    expect(screen.queryByRole("button", { name: /add all/i })).toBeNull();
-    expect(screen.queryByRole("button", { name: /dismiss/i })).toBeNull();
+  test("read-only mode hides interactive controls", async () => {
+    const screen = await render(
+      <TagsSuggestionRow tags={tags} readOnly onApply={vi.fn()} onReject={vi.fn()} />,
+    );
+    await expect.element(screen.getByRole("button", { name: /add all/i })).not.toBeInTheDocument();
+    await expect.element(screen.getByRole("button", { name: /dismiss/i })).not.toBeInTheDocument();
   });
 
   test("interactive 'Add all' calls onApply with full tag list", async () => {
     const onApply = vi.fn();
-    render(<TagsSuggestionRow tags={tags} onApply={onApply} onReject={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: /add all/i }));
+    const screen = await render(
+      <TagsSuggestionRow tags={tags} onApply={onApply} onReject={vi.fn()} />,
+    );
+    await screen.getByRole("button", { name: /add all/i }).click();
     expect(onApply).toHaveBeenCalledWith(tags);
   });
 
   test("per-chip click applies one tag (partial pick)", async () => {
     const onApply = vi.fn();
     const onApplyPartial = vi.fn();
-    render(
+    const screen = await render(
       <TagsSuggestionRow
         tags={tags}
         onApply={onApply}
@@ -159,7 +162,7 @@ describe("TagsSuggestionRow", () => {
         onReject={vi.fn()}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /\+ spicy/ }));
+    await screen.getByRole("button", { name: /\+ spicy/ }).click();
     expect(onApplyPartial).toHaveBeenCalledWith(["spicy"]);
     expect(onApply).not.toHaveBeenCalled();
   });
@@ -167,7 +170,7 @@ describe("TagsSuggestionRow", () => {
   test("accepting the last remaining chip finalizes via onApply", async () => {
     const onApply = vi.fn();
     const onApplyPartial = vi.fn();
-    render(
+    const screen = await render(
       <TagsSuggestionRow
         tags={["a", "b"]}
         onApply={onApply}
@@ -175,15 +178,17 @@ describe("TagsSuggestionRow", () => {
         onReject={vi.fn()}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /\+ a/ }));
-    await userEvent.click(screen.getByRole("button", { name: /\+ b/ }));
+    await screen.getByRole("button", { name: /\+ a/ }).click();
+    await screen.getByRole("button", { name: /\+ b/ }).click();
     expect(onApply).toHaveBeenCalledWith(["a", "b"]);
   });
 
   test("Dismiss calls onReject", async () => {
     const onReject = vi.fn();
-    render(<TagsSuggestionRow tags={tags} onApply={vi.fn()} onReject={onReject} />);
-    await userEvent.click(screen.getByRole("button", { name: /dismiss/i }));
+    const screen = await render(
+      <TagsSuggestionRow tags={tags} onApply={vi.fn()} onReject={onReject} />,
+    );
+    await screen.getByRole("button", { name: /dismiss/i }).click();
     expect(onReject).toHaveBeenCalled();
   });
 });
@@ -191,13 +196,15 @@ describe("TagsSuggestionRow", () => {
 // ── EnumSuggestionRow ────────────────────────────────────────────────────────
 
 describe("EnumSuggestionRow", () => {
-  test("renders the enum value", () => {
-    render(<EnumSuggestionRow value="Italian" options={["Italian", "Mexican", "Thai"]} />);
-    expect(screen.getByText("Italian")).toBeDefined();
+  test("renders the enum value", async () => {
+    const screen = await render(
+      <EnumSuggestionRow value="Italian" options={["Italian", "Mexican", "Thai"]} />,
+    );
+    await expect.element(screen.getByText("Italian")).toBeVisible();
   });
 
-  test("read-only mode hides accept/reject buttons", () => {
-    render(
+  test("read-only mode hides accept/reject buttons", async () => {
+    const screen = await render(
       <EnumSuggestionRow
         value="Italian"
         options={["Italian"]}
@@ -206,11 +213,11 @@ describe("EnumSuggestionRow", () => {
         onReject={vi.fn()}
       />,
     );
-    expect(screen.queryByRole("button", { name: /accept/i })).toBeNull();
+    await expect.element(screen.getByRole("button", { name: /accept/i })).not.toBeInTheDocument();
   });
 
-  test("interactive mode shows accept/reject buttons", () => {
-    render(
+  test("interactive mode shows accept/reject buttons", async () => {
+    const screen = await render(
       <EnumSuggestionRow
         value="Italian"
         options={["Italian"]}
@@ -218,7 +225,7 @@ describe("EnumSuggestionRow", () => {
         onReject={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: /accept/i })).toBeDefined();
+    await expect.element(screen.getByRole("button", { name: /accept/i })).toBeVisible();
   });
 });
 
@@ -227,15 +234,15 @@ describe("EnumSuggestionRow", () => {
 describe("MultiEnumSuggestionRow", () => {
   const values = ["Vegan", "Gluten-free"];
 
-  test("renders all selected values", () => {
-    render(<MultiEnumSuggestionRow values={values} options={values} />);
+  test("renders all selected values", async () => {
+    const screen = await render(<MultiEnumSuggestionRow values={values} options={values} />);
     for (const v of values) {
-      expect(screen.getByText(v)).toBeDefined();
+      await expect.element(screen.getByText(v)).toBeVisible();
     }
   });
 
-  test("read-only mode hides accept/reject buttons", () => {
-    render(
+  test("read-only mode hides accept/reject buttons", async () => {
+    const screen = await render(
       <MultiEnumSuggestionRow
         values={values}
         options={values}
@@ -244,12 +251,12 @@ describe("MultiEnumSuggestionRow", () => {
         onReject={vi.fn()}
       />,
     );
-    expect(screen.queryByRole("button", { name: /accept/i })).toBeNull();
+    await expect.element(screen.getByRole("button", { name: /accept/i })).not.toBeInTheDocument();
   });
 
   test("interactive mode calls onApply with values array", async () => {
     const onApply = vi.fn();
-    render(
+    const screen = await render(
       <MultiEnumSuggestionRow
         values={values}
         options={values}
@@ -257,7 +264,7 @@ describe("MultiEnumSuggestionRow", () => {
         onReject={vi.fn()}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: /accept/i }));
+    await screen.getByRole("button", { name: /accept/i }).click();
     expect(onApply).toHaveBeenCalledWith(values);
   });
 });
@@ -265,21 +272,25 @@ describe("MultiEnumSuggestionRow", () => {
 // ── DateSuggestionRow ────────────────────────────────────────────────────────
 
 describe("DateSuggestionRow", () => {
-  test("renders formatted date", () => {
-    const { container } = render(<DateSuggestionRow value="2024-03-15" />);
-    // The date is formatted so just check something is rendered
-    expect(container.textContent).toBeTruthy();
+  test("renders formatted date", async () => {
+    const screen = await render(<DateSuggestionRow value="2024-03-15" />);
+    // Date is formatted; container should have non-empty text
+    expect(screen.container.textContent ?? "").not.toBe("");
   });
 
-  test("read-only mode hides accept/reject buttons", () => {
-    render(<DateSuggestionRow value="2024-03-15" readOnly onApply={vi.fn()} onReject={vi.fn()} />);
-    expect(screen.queryByRole("button", { name: /accept/i })).toBeNull();
+  test("read-only mode hides accept/reject buttons", async () => {
+    const screen = await render(
+      <DateSuggestionRow value="2024-03-15" readOnly onApply={vi.fn()} onReject={vi.fn()} />,
+    );
+    await expect.element(screen.getByRole("button", { name: /accept/i })).not.toBeInTheDocument();
   });
 
   test("interactive mode calls onApply with ISO string", async () => {
     const onApply = vi.fn();
-    render(<DateSuggestionRow value="2024-03-15" onApply={onApply} onReject={vi.fn()} />);
-    await userEvent.click(screen.getByRole("button", { name: /accept/i }));
+    const screen = await render(
+      <DateSuggestionRow value="2024-03-15" onApply={onApply} onReject={vi.fn()} />,
+    );
+    await screen.getByRole("button", { name: /accept/i }).click();
     expect(onApply).toHaveBeenCalledWith("2024-03-15");
   });
 });
@@ -296,52 +307,51 @@ describe("SuggestionTraceInfo", () => {
     confidence: "high" as const,
   };
 
-  test("renders info trigger button", () => {
-    render(<SuggestionTraceInfo trace={trace} />);
-    expect(screen.getByRole("button", { name: /trace info/i })).toBeDefined();
+  test("renders info trigger button", async () => {
+    const screen = await render(<SuggestionTraceInfo trace={trace} />);
+    await expect.element(screen.getByLabelText(/show trace info/i)).toBeVisible();
   });
 
-  test("renders trace scalars: model, runtime, preset, userPrompt, confidence, traceId", () => {
-    render(<SuggestionTraceInfo trace={trace} />);
-    expect(screen.getByText(trace.model)).toBeDefined();
-    expect(screen.getByText(`${trace.runtimeMs}ms`)).toBeDefined();
-    expect(screen.getByText(trace.preset!)).toBeDefined();
-    expect(screen.getByText(trace.userPrompt!)).toBeDefined();
-    expect(screen.getByText(trace.confidence!)).toBeDefined();
-    expect(screen.getByText(trace.traceId)).toBeDefined();
+  test("renders trace scalars: model, runtime, preset, userPrompt, confidence, traceId", async () => {
+    const screen = await render(<SuggestionTraceInfo trace={trace} />);
+    await expect.element(screen.getByText(trace.model)).toBeInTheDocument();
+    await expect.element(screen.getByText(`${trace.runtimeMs}ms`)).toBeInTheDocument();
+    await expect.element(screen.getByText(trace.preset!)).toBeInTheDocument();
+    await expect.element(screen.getByText(trace.userPrompt!)).toBeInTheDocument();
+    await expect.element(screen.getByText(trace.confidence!)).toBeInTheDocument();
+    await expect.element(screen.getByText(trace.traceId)).toBeInTheDocument();
   });
 
-  test("does not render token counts", () => {
-    const { container } = render(<SuggestionTraceInfo trace={trace} />);
-    expect(container.textContent).not.toMatch(/token/i);
-    expect(container.textContent).not.toMatch(/input token|output token/i);
+  test("does not render token counts", async () => {
+    const screen = await render(<SuggestionTraceInfo trace={trace} />);
+    expect(screen.container.textContent ?? "").not.toMatch(/token/i);
   });
 
-  test("does not render cost information", () => {
-    const { container } = render(<SuggestionTraceInfo trace={trace} />);
-    expect(container.textContent).not.toMatch(/cost/i);
-    expect(container.textContent).not.toMatch(/\$/);
+  test("does not render cost information", async () => {
+    const screen = await render(<SuggestionTraceInfo trace={trace} />);
+    expect(screen.container.textContent ?? "").not.toMatch(/cost/i);
+    expect(screen.container.textContent ?? "").not.toMatch(/\$/);
   });
 
-  test("does not render system prompt", () => {
-    const { container } = render(<SuggestionTraceInfo trace={trace} />);
-    expect(container.textContent).not.toMatch(/system prompt/i);
+  test("does not render system prompt", async () => {
+    const screen = await render(<SuggestionTraceInfo trace={trace} />);
+    expect(screen.container.textContent ?? "").not.toMatch(/system prompt/i);
   });
 
-  test("does not render response body", () => {
-    const { container } = render(<SuggestionTraceInfo trace={trace} />);
-    expect(container.textContent).not.toMatch(/response body/i);
+  test("does not render response body", async () => {
+    const screen = await render(<SuggestionTraceInfo trace={trace} />);
+    expect(screen.container.textContent ?? "").not.toMatch(/response body/i);
   });
 
-  test("renders without optional fields", () => {
+  test("renders without optional fields", async () => {
     const minimalTrace = {
       traceId: "xyz-999",
       model: "claude-haiku-4-5",
       runtimeMs: 500,
     };
-    render(<SuggestionTraceInfo trace={minimalTrace} />);
-    expect(screen.getByText(minimalTrace.model)).toBeDefined();
-    expect(screen.getByText("500ms")).toBeDefined();
-    expect(screen.getByText(minimalTrace.traceId)).toBeDefined();
+    const screen = await render(<SuggestionTraceInfo trace={minimalTrace} />);
+    await expect.element(screen.getByText(minimalTrace.model)).toBeInTheDocument();
+    await expect.element(screen.getByText("500ms")).toBeInTheDocument();
+    await expect.element(screen.getByText(minimalTrace.traceId)).toBeInTheDocument();
   });
 });

@@ -1,0 +1,129 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm version is read from package.json's `packageManager` field;
+      # do not also pass `version:` or action-setup errors with
+      # "Multiple versions of pnpm specified".
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Cache Playwright browsers by resolved @playwright/test version, not by
+      # lockfile hash — otherwise any unrelated dep change invalidates the
+      # (~150MB) browser download. Version is read after install so it
+      # reflects the actual resolved version in the pnpm store.
+      - name: Resolve Playwright version
+        id: pw-version
+        run: |
+          version=$(node -p "require('@playwright/test/package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+        working-directory: apps/website
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.pw-version.outputs.version }}
+
+      - name: Install Playwright chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter website exec playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter website exec playwright install-deps chromium
+
+      - name: Run unit tests (all packages + apps)
+        # `vp run -r test` invokes vp test in every workspace (vp auto-detects
+        # vitest in workspaces without a `test` script, e.g. apps/website).
+        run: pnpm exec vp run -r test
+
+      - name: Upload registry browser screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: registry-browser-screenshots
+          path: |
+            apps/registry/tests/__screenshots__/
+            apps/registry/.vitest-attachments/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e:
+    name: E2E (Playwright, website)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      AI_PROVIDER: mock
+      AI_API_KEY: mock
+      AI_BASE_URL: http://mock.invalid
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter website exec playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter website exec playwright install-deps chromium
+
+      - name: Run Playwright tests
+        run: pnpm --filter website e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/website/playwright-report/
+          retention-days: 14

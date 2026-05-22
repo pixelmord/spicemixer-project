@@ -1,7 +1,6 @@
-// @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, test, vi } from "vite-plus/test";
+// @ts-nocheck — vite-plus-test does not surface @vitest/browser type augmentations
+import { render } from "vitest-browser-react";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import { AiSuggestionsIndicator } from "../src/components/ai-suggestions-indicator";
 import { SuggestionsOptions } from "../src/components/suggestions-options";
@@ -13,10 +12,6 @@ import type {
   AppliedSuggestion,
   AiPreset,
 } from "../src/components/use-ai-suggestions";
-
-afterEach(cleanup);
-
-// ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const samplePresets: AiPreset[] = [
   { id: "default", label: "Default" },
@@ -94,16 +89,16 @@ const autoAppliedEntry: AppliedSuggestion = {
 // ── AiSuggestionsIndicator: idle state ───────────────────────────────────────
 
 describe("AiSuggestionsIndicator — idle state", () => {
-  test("renders Get AI suggestions button when idle", () => {
+  test("renders Get AI suggestions button when idle", async () => {
     const flow = makeFlow();
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.getByRole("button", { name: /get ai suggestions/i })).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect.element(screen.getByRole("button", { name: /get ai suggestions/i })).toBeVisible();
   });
 
   test("clicking Get AI suggestions calls flow.run", async () => {
     const flow = makeFlow();
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    await userEvent.click(screen.getByRole("button", { name: /get ai suggestions/i }));
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await screen.getByRole("button", { name: /get ai suggestions/i }).click();
     expect(flow.run).toHaveBeenCalled();
   });
 });
@@ -111,145 +106,144 @@ describe("AiSuggestionsIndicator — idle state", () => {
 // ── AiSuggestionsIndicator: running state ────────────────────────────────────
 
 describe("AiSuggestionsIndicator — running state", () => {
-  test("renders Running text when isRunning is true", () => {
+  test("renders Running text when isRunning is true", async () => {
     const flow = makeFlow({ isRunning: true });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.getByText(/running/i)).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect.element(screen.getByText(/running/i)).toBeVisible();
   });
 
-  test("does not render Get AI suggestions button when running", () => {
+  test("does not render Get AI suggestions button when running", async () => {
     const flow = makeFlow({ isRunning: true });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.queryByRole("button", { name: /get ai suggestions/i })).toBeNull();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect
+      .element(screen.getByRole("button", { name: /get ai suggestions/i }))
+      .not.toBeInTheDocument();
   });
 });
 
 // ── AiSuggestionsIndicator: has-suggestions state ────────────────────────────
 
 describe("AiSuggestionsIndicator — has-suggestions state", () => {
-  test("renders field count when suggestions exist", () => {
+  test("renders field count when suggestions exist", async () => {
     const flow = makeFlowWithSuggestions({ description: textSuggestion });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.getByText(/1.*field|field.*1/i)).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect.element(screen.getByText(/1.*field|field.*1/i)).toBeVisible();
   });
 
-  test("renders review-in-place text when only pending suggestions", () => {
+  test("renders review-in-place text when only pending suggestions", async () => {
     const flow = makeFlowWithSuggestions({
       description: textSuggestion,
       title: { ...textSuggestion, hash: "xyz999" },
     });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.getByText(/review in place/i)).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect.element(screen.getByText(/review in place/i)).toBeVisible();
   });
 
-  test("renders to review counter", () => {
+  test("renders to review counter", async () => {
     const flow = makeFlowWithSuggestions({
       description: textSuggestion,
       title: { ...textSuggestion, hash: "xyz999" },
       tags: { ...textSuggestion, hash: "zzz000" },
     });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.getByText(/3.*to review|to review.*3/i)).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect.element(screen.getByText(/3.*to review|to review.*3/i)).toBeVisible();
   });
 });
 
-// ── AiSuggestionsIndicator: mixed state (auto-applied + to-review) ───────────
+// ── AiSuggestionsIndicator: mixed state ─────────────────────────────────────
 
 describe("AiSuggestionsIndicator — mixed state", () => {
-  test("renders auto-applied count", () => {
+  test("renders auto-applied count", async () => {
     const flow = makeFlowWithSuggestions(
       { description: textSuggestion },
       { title: autoAppliedEntry },
     );
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.getByText(/1.*auto-applied|auto-applied.*1/i)).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect.element(screen.getByText(/1.*auto-applied|auto-applied.*1/i)).toBeVisible();
   });
 
-  test("renders both auto-applied and to-review counters", () => {
+  test("renders both auto-applied and to-review counters", async () => {
     const flow = makeFlowWithSuggestions(
       { description: textSuggestion, tags: { ...textSuggestion, hash: "other" } },
       { title: autoAppliedEntry, category: { ...autoAppliedEntry, hash: "cat1" } },
     );
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.getByText(/2.*auto-applied|auto-applied.*2/i)).toBeDefined();
-    expect(screen.getByText(/2.*to review|to review.*2/i)).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect.element(screen.getByText(/2.*auto-applied|auto-applied.*2/i)).toBeVisible();
+    await expect.element(screen.getByText(/2.*to review|to review.*2/i)).toBeVisible();
   });
 
-  test("renders only auto-applied when no pending suggestions", () => {
+  test("renders only auto-applied when no pending suggestions", async () => {
     const flow = makeFlowWithSuggestions(
       {},
       { title: autoAppliedEntry, category: { ...autoAppliedEntry, hash: "cat2" } },
     );
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.getByText(/2.*auto-applied|auto-applied.*2/i)).toBeDefined();
-    expect(screen.queryByText(/to review/i)).toBeNull();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect.element(screen.getByText(/2.*auto-applied|auto-applied.*2/i)).toBeVisible();
+    await expect.element(screen.getByText(/to review/i)).not.toBeInTheDocument();
   });
 });
 
 // ── AiSuggestionsIndicator: Options affordance ───────────────────────────────
 
 describe("AiSuggestionsIndicator — Options affordance", () => {
-  test("renders an Options button", () => {
+  test("renders an Options button", async () => {
     const flow = makeFlow();
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.getByRole("button", { name: /options/i })).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect.element(screen.getByRole("button", { name: /options/i })).toBeVisible();
   });
 });
 
 // ── SuggestionsOptions ────────────────────────────────────────────────────────
 
 describe("SuggestionsOptions", () => {
-  test("renders PresetPicker when presets are provided", () => {
+  test("renders PresetPicker when presets are provided", async () => {
     const flow = makeFlow();
-    renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
-    expect(screen.getByText(/^Preset$/i)).toBeDefined();
+    const screen = await renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
+    await expect.element(screen.getByText(/^Preset$/i)).toBeVisible();
   });
 
-  test("renders UserPromptField", () => {
+  test("renders UserPromptField", async () => {
     const flow = makeFlow();
-    renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
-    expect(screen.getByLabelText(/custom instructions/i)).toBeDefined();
+    const screen = await renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
+    await expect.element(screen.getByLabelText(/custom instructions/i)).toBeVisible();
   });
 
-  test("renders WritePolicyPicker", () => {
+  test("renders WritePolicyPicker", async () => {
     const flow = makeFlow();
-    renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
-    expect(screen.getByText(/write policy/i)).toBeDefined();
+    const screen = await renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
+    await expect.element(screen.getByText(/write policy/i)).toBeVisible();
   });
 
-  test("renders Run button", () => {
+  test("renders Run button", async () => {
     const flow = makeFlow();
-    renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
-    expect(screen.getByRole("button", { name: /run/i })).toBeDefined();
+    const screen = await renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
+    await expect.element(screen.getByRole("button", { name: /run/i })).toBeVisible();
   });
 
   test("clicking Run calls flow.run", async () => {
     const flow = makeFlow();
-    renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
-    await userEvent.click(screen.getByRole("button", { name: /run/i }));
+    const screen = await renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
+    await screen.getByRole("button", { name: /run/i }).click();
     expect(flow.run).toHaveBeenCalled();
   });
 
-  test("Run button is disabled while running", () => {
+  test("Run button is disabled while running", async () => {
     const flow = makeFlow({ isRunning: true });
-    renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
-    const btn = screen.getByRole("button", { name: /run/i });
-    expect((btn as HTMLButtonElement).disabled).toBe(true);
+    const screen = await renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
+    await expect.element(screen.getByRole("button", { name: /run/i })).toBeDisabled();
   });
 
   test("preset change calls flow.setPreset", async () => {
     const flow = makeFlow();
-    renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
-    const option = screen.getByRole("option", { name: /detailed/i });
-    await userEvent.click(option);
+    const screen = await renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
+    await screen.getByRole("option", { name: /detailed/i }).click();
     expect(flow.setPreset).toHaveBeenCalledWith("detailed");
   });
 
   test("userPrompt change calls flow.setUserPrompt", async () => {
     const flow = makeFlow();
-    renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
-    const textarea = screen.getByLabelText(/custom instructions/i);
-    await userEvent.type(textarea, "be concise");
+    const screen = await renderWithFlow(<SuggestionsOptions presets={samplePresets} />, flow);
+    await screen.getByLabelText(/custom instructions/i).fill("be concise");
     expect(flow.setUserPrompt).toHaveBeenCalled();
   });
 });
@@ -259,44 +253,47 @@ describe("SuggestionsOptions", () => {
 describe("AiSuggestionsIndicator — Options opens SuggestionsOptions", () => {
   test("SuggestionsOptions content is visible after clicking Options", async () => {
     const flow = makeFlow();
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    const optionsBtn = screen.getByRole("button", { name: /options/i });
-    await userEvent.click(optionsBtn);
-    expect(screen.getByRole("button", { name: /run/i })).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await screen.getByRole("button", { name: /options/i }).click();
+    await expect.element(screen.getByRole("button", { name: /run/i })).toBeVisible();
   });
 
-  test("SuggestionsOptions content is hidden before clicking Options", () => {
+  test("SuggestionsOptions content is hidden before clicking Options", async () => {
     const flow = makeFlow();
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.queryByRole("button", { name: /run/i })).toBeNull();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect.element(screen.getByRole("button", { name: /run/i })).not.toBeInTheDocument();
   });
 });
 
 // ── AiSuggestionsIndicator: acceptAll button ──────────────────────────────────
 
 describe("AiSuggestionsIndicator — Accept all button", () => {
-  test("does not render Accept all when no pending suggestions", () => {
+  test("does not render Accept all when no pending suggestions", async () => {
     const flow = makeFlow();
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.queryByRole("button", { name: /accept all/i })).toBeNull();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect
+      .element(screen.getByRole("button", { name: /accept all/i }))
+      .not.toBeInTheDocument();
   });
 
-  test("does not render Accept all when only auto-applied, no pending", () => {
+  test("does not render Accept all when only auto-applied, no pending", async () => {
     const flow = makeFlowWithSuggestions({}, { title: autoAppliedEntry });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.queryByRole("button", { name: /accept all/i })).toBeNull();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect
+      .element(screen.getByRole("button", { name: /accept all/i }))
+      .not.toBeInTheDocument();
   });
 
-  test("renders Accept all button when pending suggestions exist", () => {
+  test("renders Accept all button when pending suggestions exist", async () => {
     const flow = makeFlowWithSuggestions({ description: textSuggestion });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    expect(screen.getByRole("button", { name: /accept all/i })).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await expect.element(screen.getByRole("button", { name: /accept all/i })).toBeVisible();
   });
 
   test("clicking Accept all calls flow.acceptAll", async () => {
     const flow = makeFlowWithSuggestions({ description: textSuggestion });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    await userEvent.click(screen.getByRole("button", { name: /accept all/i }));
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await screen.getByRole("button", { name: /accept all/i }).click();
     expect(flow.acceptAll).toHaveBeenCalled();
   });
 
@@ -305,9 +302,11 @@ describe("AiSuggestionsIndicator — Accept all button", () => {
       suggestions: new Map([["description", textSuggestion]]),
       acceptAll: vi.fn().mockReturnValue(undefined),
     });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    await userEvent.click(screen.getByRole("button", { name: /accept all/i }));
-    expect(screen.queryByRole("button", { name: /review remaining first/i })).toBeNull();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await screen.getByRole("button", { name: /accept all/i }).click();
+    await expect
+      .element(screen.getByRole("button", { name: /review remaining first/i }))
+      .not.toBeInTheDocument();
   });
 
   test("inline notice appears when acceptAll returns requiresReview fields", async () => {
@@ -318,9 +317,11 @@ describe("AiSuggestionsIndicator — Accept all button", () => {
       ]),
       acceptAll: vi.fn().mockReturnValue({ requiresReview: ["description", "title"] }),
     });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    await userEvent.click(screen.getByRole("button", { name: /accept all/i }));
-    expect(screen.getByRole("button", { name: /review remaining first/i })).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await screen.getByRole("button", { name: /accept all/i }).click();
+    await expect
+      .element(screen.getByRole("button", { name: /review remaining first/i }))
+      .toBeVisible();
   });
 
   test("inline notice lists unviewed field labels", async () => {
@@ -328,9 +329,9 @@ describe("AiSuggestionsIndicator — Accept all button", () => {
       suggestions: new Map([["myField", textSuggestion]]),
       acceptAll: vi.fn().mockReturnValue({ requiresReview: ["myField"] }),
     });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    await userEvent.click(screen.getByRole("button", { name: /accept all/i }));
-    expect(screen.getByText(/my field/i)).toBeDefined();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await screen.getByRole("button", { name: /accept all/i }).click();
+    await expect.element(screen.getByText(/my field/i)).toBeVisible();
   });
 
   test("clicking Review remaining first CTA dismisses the notice", async () => {
@@ -338,10 +339,14 @@ describe("AiSuggestionsIndicator — Accept all button", () => {
       suggestions: new Map([["description", textSuggestion]]),
       acceptAll: vi.fn().mockReturnValue({ requiresReview: ["description"] }),
     });
-    renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
-    await userEvent.click(screen.getByRole("button", { name: /accept all/i }));
-    expect(screen.getByRole("button", { name: /review remaining first/i })).toBeDefined();
-    await userEvent.click(screen.getByRole("button", { name: /review remaining first/i }));
-    expect(screen.queryByRole("button", { name: /review remaining first/i })).toBeNull();
+    const screen = await renderWithFlow(<AiSuggestionsIndicator presets={samplePresets} />, flow);
+    await screen.getByRole("button", { name: /accept all/i }).click();
+    await expect
+      .element(screen.getByRole("button", { name: /review remaining first/i }))
+      .toBeVisible();
+    await screen.getByRole("button", { name: /review remaining first/i }).click();
+    await expect
+      .element(screen.getByRole("button", { name: /review remaining first/i }))
+      .not.toBeInTheDocument();
   });
 });

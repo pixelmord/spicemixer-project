@@ -1,5 +1,4 @@
-// @vitest-environment jsdom
-import { renderHook, act } from "@testing-library/react";
+import { renderHook } from "vitest-browser-react";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
 import {
@@ -86,10 +85,8 @@ function makeInput(extra: Partial<UseAiSuggestionsInput> = {}): UseAiSuggestions
 // ── Run-state transitions ─────────────────────────────────────────────────────
 
 describe("run-state transitions", () => {
-  test("isRunning starts as false", () => {
-    const { result } = renderHook((input) => useAiSuggestions(input), {
-      initialProps: makeInput(),
-    });
+  test("isRunning starts as false", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput()));
     expect(result.current.isRunning).toBe(false);
   });
 
@@ -99,9 +96,11 @@ describe("run-state transitions", () => {
       resolve = r;
     });
     const onRefine = vi.fn().mockReturnValue(blocking);
-    const { result } = renderHook(() => useAiSuggestions(makeInput({ onRefine })));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput({ onRefine })));
 
-    act(() => void result.current.run());
+    await act(() => {
+      void result.current.run();
+    });
     expect(result.current.isRunning).toBe(true);
 
     await act(async () => {
@@ -111,7 +110,7 @@ describe("run-state transitions", () => {
   });
 
   test("suggestions are populated after run()", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
@@ -120,7 +119,7 @@ describe("run-state transitions", () => {
   });
 
   test("traces are populated after run()", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
@@ -129,14 +128,17 @@ describe("run-state transitions", () => {
   });
 
   test("viewedFields and rejectedHidden reset on each run()", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
-    act(() => result.current.forField("description").markViewed());
-    act(() => result.current.forField("tags").recordReject());
+    await act(() => {
+      result.current.forField("description").markViewed();
+    });
+    await act(() => {
+      result.current.forField("tags").recordReject();
+    });
 
-    // Second run resets these
     await act(async () => {
       await result.current.run();
     });
@@ -146,7 +148,7 @@ describe("run-state transitions", () => {
 
   test("run() calls onRefine", async () => {
     const onRefine = makeMockOnRefine();
-    const { result } = renderHook(() => useAiSuggestions(makeInput({ onRefine })));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput({ onRefine })));
     await act(async () => {
       await result.current.run();
     });
@@ -155,7 +157,7 @@ describe("run-state transitions", () => {
 
   test("isRunning resets to false even when onRefine throws", async () => {
     const onRefine = vi.fn().mockRejectedValue(new Error("network error"));
-    const { result } = renderHook(() => useAiSuggestions(makeInput({ onRefine })));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput({ onRefine })));
     await act(async () => {
       await result.current.run().catch(() => void 0);
     });
@@ -166,13 +168,13 @@ describe("run-state transitions", () => {
 // ── Per-field forField flows ──────────────────────────────────────────────────
 
 describe("forField", () => {
-  test("suggestion is undefined before run()", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+  test("suggestion is undefined before run()", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput()));
     expect(result.current.forField("description").suggestion).toBeUndefined();
   });
 
   test("suggestion is populated after run()", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
@@ -183,25 +185,26 @@ describe("forField", () => {
   });
 
   test("trace is populated after run()", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
     expect(result.current.forField("description").trace?.traceId).toBe("trace-001");
   });
 
-  // recordAccept
   test("recordAccept removes suggestion from state", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
-    act(() => result.current.forField("description").recordAccept("abc123", "Rich cardamom cake"));
+    await act(() => {
+      result.current.forField("description").recordAccept("abc123", "Rich cardamom cake");
+    });
     expect(result.current.suggestions.has("description")).toBe(false);
   });
 
   test("recordAccept calls aiEventLog.append with accepted event", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
@@ -214,27 +217,30 @@ describe("forField", () => {
     );
   });
 
-  // recordReject
   test("recordReject removes suggestion from state", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
-    act(() => result.current.forField("tags").recordReject());
+    await act(() => {
+      result.current.forField("tags").recordReject();
+    });
     expect(result.current.suggestions.has("tags")).toBe(false);
   });
 
   test("recordReject adds field to rejectedHidden", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
-    act(() => result.current.forField("tags").recordReject());
+    await act(() => {
+      result.current.forField("tags").recordReject();
+    });
     expect(result.current.rejectedHidden.has("tags")).toBe(true);
   });
 
   test("recordReject calls aiEventLog.append with rejected event", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
@@ -247,7 +253,6 @@ describe("forField", () => {
     );
   });
 
-  // revertAutoApply
   test("revertAutoApply removes field from autoApplied", async () => {
     const onRefine = vi.fn().mockResolvedValue({
       suggestions: {},
@@ -261,31 +266,36 @@ describe("forField", () => {
       },
       traces: {},
     });
-    const { result } = renderHook(() => useAiSuggestions(makeInput({ onRefine })));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput({ onRefine })));
     await act(async () => {
       await result.current.run();
     });
     expect(result.current.autoApplied.has("description")).toBe(true);
-    act(() => result.current.forField("description").revertAutoApply());
+    await act(() => {
+      result.current.forField("description").revertAutoApply();
+    });
     expect(result.current.autoApplied.has("description")).toBe(false);
   });
 
-  // markViewed
   test("markViewed adds field to viewedFields", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
-    act(() => result.current.forField("description").markViewed());
+    await act(() => {
+      result.current.forField("description").markViewed();
+    });
     expect(result.current.viewedFields.has("description")).toBe(true);
   });
 
   test("markViewed does not add other fields", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
-    act(() => result.current.forField("description").markViewed());
+    await act(() => {
+      result.current.forField("description").markViewed();
+    });
     expect(result.current.viewedFields.has("tags")).toBe(false);
   });
 });
@@ -294,12 +304,12 @@ describe("forField", () => {
 
 describe("acceptAll", () => {
   test("returns requiresReview with all unviewed fields when none are viewed", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
     let outcome: ReturnType<typeof result.current.acceptAll> = undefined;
-    act(() => {
+    await act(() => {
       outcome = result.current.acceptAll();
     });
     expect(outcome).toMatchObject({
@@ -308,13 +318,15 @@ describe("acceptAll", () => {
   });
 
   test("returns requiresReview with only unviewed fields when some are viewed", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
-    act(() => result.current.forField("description").markViewed());
+    await act(() => {
+      result.current.forField("description").markViewed();
+    });
     let outcome: ReturnType<typeof result.current.acceptAll> = undefined;
-    act(() => {
+    await act(() => {
       outcome = result.current.acceptAll();
     });
     expect(outcome).toMatchObject({ requiresReview: ["tags"] });
@@ -324,14 +336,18 @@ describe("acceptAll", () => {
   });
 
   test("returns void and clears suggestions when all fields are viewed", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
-    act(() => result.current.forField("description").markViewed());
-    act(() => result.current.forField("tags").markViewed());
+    await act(() => {
+      result.current.forField("description").markViewed();
+    });
+    await act(() => {
+      result.current.forField("tags").markViewed();
+    });
     let outcome: ReturnType<typeof result.current.acceptAll> = undefined;
-    act(() => {
+    await act(() => {
       outcome = result.current.acceptAll();
     });
     expect(outcome).toBeUndefined();
@@ -339,12 +355,16 @@ describe("acceptAll", () => {
   });
 
   test("acceptAll appends accepted events to aiEventLog", async () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     await act(async () => {
       await result.current.run();
     });
-    act(() => result.current.forField("description").markViewed());
-    act(() => result.current.forField("tags").markViewed());
+    await act(() => {
+      result.current.forField("description").markViewed();
+    });
+    await act(() => {
+      result.current.forField("tags").markViewed();
+    });
     await act(async () => {
       result.current.acceptAll();
     });
@@ -354,11 +374,10 @@ describe("acceptAll", () => {
     );
   });
 
-  test("acceptAll is a no-op (returns void) when no suggestions exist", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
-    // no run() called — suggestions empty
+  test("acceptAll is a no-op (returns void) when no suggestions exist", async () => {
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
     let outcome: ReturnType<typeof result.current.acceptAll> = undefined;
-    act(() => {
+    await act(() => {
       outcome = result.current.acceptAll();
     });
     expect(outcome).toBeUndefined();
@@ -368,61 +387,71 @@ describe("acceptAll", () => {
 // ── Controlled-with-default options ──────────────────────────────────────────
 
 describe("controlled-with-default options", () => {
-  test("preset defaults to undefined", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+  test("preset defaults to undefined", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput()));
     expect(result.current.preset).toBeUndefined();
   });
 
-  test("setPreset updates preset in uncontrolled mode", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
-    act(() => result.current.setPreset("expand"));
+  test("setPreset updates preset in uncontrolled mode", async () => {
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
+    await act(() => {
+      result.current.setPreset("expand");
+    });
     expect(result.current.preset).toBe("expand");
   });
 
-  test("preset is controlled when presetProp is provided", () => {
-    const { result } = renderHook(() =>
+  test("preset is controlled when presetProp is provided", async () => {
+    const { result } = await renderHook(() =>
       useAiSuggestions(makeInput({ presetProp: "translate-de" })),
     );
     expect(result.current.preset).toBe("translate-de");
   });
 
-  test("setPreset calls onPresetChange in controlled mode", () => {
+  test("setPreset calls onPresetChange in controlled mode", async () => {
     const onPresetChange = vi.fn();
-    const { result } = renderHook(() =>
+    const { result, act } = await renderHook(() =>
       useAiSuggestions(makeInput({ presetProp: "expand", onPresetChange })),
     );
-    act(() => result.current.setPreset("refine"));
+    await act(() => {
+      result.current.setPreset("refine");
+    });
     expect(onPresetChange).toHaveBeenCalledWith("refine");
   });
 
-  test("userPrompt defaults to empty string", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+  test("userPrompt defaults to empty string", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput()));
     expect(result.current.userPrompt).toBe("");
   });
 
-  test("setUserPrompt updates userPrompt in uncontrolled mode", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
-    act(() => result.current.setUserPrompt("Make it shorter"));
+  test("setUserPrompt updates userPrompt in uncontrolled mode", async () => {
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
+    await act(() => {
+      result.current.setUserPrompt("Make it shorter");
+    });
     expect(result.current.userPrompt).toBe("Make it shorter");
   });
 
-  test("writePolicy defaults to fill-if-empty", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+  test("writePolicy defaults to fill-if-empty", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput()));
     expect(result.current.writePolicy).toBe("fill-if-empty");
   });
 
-  test("setWritePolicy updates writePolicy in uncontrolled mode", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
-    act(() => result.current.setWritePolicy("replace"));
+  test("setWritePolicy updates writePolicy in uncontrolled mode", async () => {
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput()));
+    await act(() => {
+      result.current.setWritePolicy("replace");
+    });
     expect(result.current.writePolicy).toBe("replace");
   });
 
-  test("setWritePolicy calls onWritePolicyChange in controlled mode", () => {
+  test("setWritePolicy calls onWritePolicyChange in controlled mode", async () => {
     const onWritePolicyChange = vi.fn();
-    const { result } = renderHook(() =>
+    const { result, act } = await renderHook(() =>
       useAiSuggestions(makeInput({ writePolicyProp: "preserve", onWritePolicyChange })),
     );
-    act(() => result.current.setWritePolicy("replace"));
+    await act(() => {
+      result.current.setWritePolicy("replace");
+    });
     expect(onWritePolicyChange).toHaveBeenCalledWith("replace");
   });
 });
@@ -441,49 +470,49 @@ describe("siblingLocale", () => {
     data: siblingData,
     locale: "en",
     fieldHashes: {
-      description: hashFieldValue(siblingData.description), // matches → not stale
-      name: hashFieldValue(siblingData.name), // matches → not stale
-      tags: "old-hash-that-differs", // different → stale
+      description: hashFieldValue(siblingData.description),
+      name: hashFieldValue(siblingData.name),
+      tags: "old-hash-that-differs",
     },
   };
 
-  test("forField returns source value from siblingLocale.data", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
+  test("forField returns source value from siblingLocale.data", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
     expect(result.current.forField("description").source).toBe(siblingData.description);
   });
 
-  test("forField returns sourceLocale from siblingLocale.locale", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
+  test("forField returns sourceLocale from siblingLocale.locale", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
     expect(result.current.forField("description").sourceLocale).toBe("en");
   });
 
-  test("forField source is undefined when no siblingLocale provided", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+  test("forField source is undefined when no siblingLocale provided", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput()));
     expect(result.current.forField("description").source).toBeUndefined();
   });
 
-  test("forField sourceLocale is undefined when no siblingLocale provided", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+  test("forField sourceLocale is undefined when no siblingLocale provided", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput()));
     expect(result.current.forField("description").sourceLocale).toBeUndefined();
   });
 
-  test("isStale is false when fieldHash matches current source value", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
+  test("isStale is false when fieldHash matches current source value", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
     expect(result.current.forField("description").isStale).toBe(false);
   });
 
-  test("isStale is true when fieldHash differs from current source value", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
+  test("isStale is true when fieldHash differs from current source value", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
     expect(result.current.forField("tags").isStale).toBe(true);
   });
 
-  test("isStale is false when no siblingLocale provided", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+  test("isStale is false when no siblingLocale provided", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput()));
     expect(result.current.forField("description").isStale).toBe(false);
   });
 
-  test("isStale is false when field not in fieldHashes", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
+  test("isStale is false when field not in fieldHashes", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
     expect(result.current.forField("unknownField").isStale).toBe(false);
   });
 });
@@ -501,13 +530,13 @@ describe("translationMode", () => {
     },
   };
 
-  test("translationMode is undefined when field has no translation config", () => {
-    const { result } = renderHook(() => useAiSuggestions(makeInput()));
+  test("translationMode is undefined when field has no translation config", async () => {
+    const { result } = await renderHook(() => useAiSuggestions(makeInput()));
     expect(result.current.forField("description").translationMode).toBeUndefined();
   });
 
-  test("translationMode returns mode from contract field config", () => {
-    const { result } = renderHook(() =>
+  test("translationMode returns mode from contract field config", async () => {
+    const { result } = await renderHook(() =>
       useAiSuggestions(makeInput({ contract: contractWithTranslation })),
     );
     expect(result.current.forField("description").translationMode).toBe("translate");
@@ -516,8 +545,8 @@ describe("translationMode", () => {
     expect(result.current.forField("slug").translationMode).toBe("skip");
   });
 
-  test("translationMode is undefined when field not in contract", () => {
-    const { result } = renderHook(() =>
+  test("translationMode is undefined when field not in contract", async () => {
+    const { result } = await renderHook(() =>
       useAiSuggestions(makeInput({ contract: contractWithTranslation })),
     );
     expect(result.current.forField("unknown").translationMode).toBeUndefined();
@@ -545,7 +574,7 @@ describe("retranslate", () => {
 
   test("retranslate calls onFill with target=[field] and sourceContext", async () => {
     const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
-    const { result } = renderHook(() =>
+    const { result, act } = await renderHook(() =>
       useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
     );
     await act(async () => {
@@ -561,7 +590,7 @@ describe("retranslate", () => {
 
   test("retranslate does not call onFill for copy-mode fields", async () => {
     const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
-    const { result } = renderHook(() =>
+    const { result, act } = await renderHook(() =>
       useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
     );
     await act(async () => {
@@ -572,7 +601,7 @@ describe("retranslate", () => {
 
   test("retranslate does nothing when no siblingLocale provided", async () => {
     const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
-    const { result } = renderHook(() => useAiSuggestions(makeInput({ onFill })));
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput({ onFill })));
     await act(async () => {
       await result.current.forField("description").retranslate();
     });
@@ -585,7 +614,7 @@ describe("retranslate", () => {
       autoApplied: {},
       traces: { description: traceDescription },
     });
-    const { result } = renderHook(() =>
+    const { result, act } = await renderHook(() =>
       useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
     );
     await act(async () => {
@@ -600,14 +629,12 @@ describe("retranslate", () => {
       autoApplied: {},
       traces: {},
     });
-    // First run() to populate tags suggestion
-    const { result } = renderHook(() =>
+    const { result, act } = await renderHook(() =>
       useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
     );
     await act(async () => {
       await result.current.run();
     });
-    // Now retranslate description only
     onFill.mockResolvedValue({
       suggestions: { description: descriptionSuggestion },
       autoApplied: {},
@@ -616,7 +643,6 @@ describe("retranslate", () => {
     await act(async () => {
       await result.current.forField("description").retranslate();
     });
-    // tags suggestion from run() still present
     expect(result.current.suggestions.has("tags")).toBe(true);
     expect(result.current.suggestions.has("description")).toBe(true);
   });
