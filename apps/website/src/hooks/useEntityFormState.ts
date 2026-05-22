@@ -56,7 +56,7 @@ export function useEntityFormState(opts: UseEntityFormStateOpts): UseEntityFormS
 
   // Pairings carry inline locale-keyed descriptions — no per-entity locale
   // is needed (ADR 0003).
-  const localeReady = kind === "pairing" || locale !== "";
+  const localeReady = locale !== "";
 
   useEffect(() => {
     if (!isNew || !slug || kind === "pairing") {

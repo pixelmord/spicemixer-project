@@ -54,9 +54,16 @@ const pagefindFilters = withPagefindFilters({ region: pairing.regions });
       <span data-pagefind-filter={`${key}:${value}`} hidden aria-hidden="true" />
     ))}
 
-    <nav class="mb-8 text-sm">
+    <nav class="mb-8 flex items-center justify-between text-sm">
       <a href={`${prefix}/pairings/`} class="text-stone-500 transition hover:text-stone-900">
         ← {t("nav.pairings")}
+      </a>
+      <a
+        href={`/admin/pairings/${pairing.id}/edit?locale=${locale}`}
+        data-admin-link
+        class="hidden text-xs text-stone-400 transition hover:text-stone-700"
+      >
+        Edit
       </a>
     </nav>
 

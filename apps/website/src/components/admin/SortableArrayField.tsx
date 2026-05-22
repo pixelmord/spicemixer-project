@@ -7,6 +7,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
+import { useId } from "react";
 import {
   SortableContext,
   sortableKeyboardCoordinates,
@@ -84,6 +85,7 @@ export default function SortableArrayField<T>({
   addLabel = "Add item",
   className,
 }: Props<T>) {
+  const dndId = useId();
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -102,7 +104,12 @@ export default function SortableArrayField<T>({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        id={dndId}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
             {items.map((item, i) => (
