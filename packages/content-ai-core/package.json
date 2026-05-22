@@ -10,18 +10,10 @@
   "sideEffects": false,
   "types": "./dist/index.d.mts",
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./dist/index.mjs"
-    },
-    "./presentation": {
-      "types": "./src/presentation/index.ts",
-      "default": "./dist/presentation/index.mjs"
-    },
-    "./testing": {
-      "types": "./src/testing/index.ts",
-      "default": "./dist/testing/index.mjs"
-    },
+    ".": "./dist/index.mjs",
+    "./presentation": "./dist/presentation/index.mjs",
+    "./server": "./dist/server.mjs",
+    "./testing": "./dist/testing/index.mjs",
     "./package.json": "./package.json"
   },
   "publishConfig": {

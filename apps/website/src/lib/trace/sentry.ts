@@ -1,4 +1,4 @@
-import type { TraceSink, TraceEvent, TraceFinishReason } from "@pixelmord/content-ai-core";
+import type { TraceSink, TraceEvent, TraceFinishReason } from "@pixelmord/content-ai-core/server";
 
 // The `never` sentinels make it a compile-time error to assign an object
 // carrying banned body fields (prompts, responses) to SpanScalars.

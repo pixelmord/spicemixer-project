@@ -1,6 +1,6 @@
 import { describe, expect, test, vi, beforeEach, afterEach } from "vite-plus/test";
 import { generateText } from "ai";
-import { generateTraceId, tracingMiddleware, withOrigin, createProvider } from "../src/index.ts";
+import { createProvider, generateTraceId, tracingMiddleware, withOrigin } from "../src/server.ts";
 import type { TraceSink, TraceEvent } from "../src/trace.ts";
 import type { Origin } from "../src/origin.ts";
 import type {

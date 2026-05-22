@@ -1,5 +1,5 @@
 import { publish } from "../pubsub.ts";
-import type { TraceSink, TraceEvent } from "@pixelmord/content-ai-core";
+import type { TraceSink, TraceEvent } from "@pixelmord/content-ai-core/server";
 
 export class PubSubTraceSink implements TraceSink {
   async emit(event: TraceEvent): Promise<void> {

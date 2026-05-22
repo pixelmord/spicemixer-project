@@ -1,6 +1,6 @@
 import { generateText, Output } from "ai";
 import type { ZodSchema } from "zod";
-import type { TraceSink } from "@pixelmord/content-ai-core";
+import type { TraceSink } from "@pixelmord/content-ai-core/server";
 import { hashSuggestion } from "./hash.ts";
 import { createProvider, PROVIDER_OPTIONS } from "./provider.ts";
 import type {

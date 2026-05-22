@@ -1,5 +1,5 @@
 import type { ZodSchema, z } from "zod";
-import type { TraceSink } from "@pixelmord/content-ai-core";
+import type { TraceSink } from "@pixelmord/content-ai-core/server";
 import type { AiConfig } from "./provider.ts";
 
 // ── Re-export core types inline to avoid dist dependency ─────────────────────

@@ -10,6 +10,13 @@ vi.mock("@pixelmord/content-ai-core", async (importOriginal) => {
   return {
     ...actual,
     createProvider: vi.fn().mockReturnValue({}),
+  };
+});
+
+vi.mock("@pixelmord/content-ai-core/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@pixelmord/content-ai-core/server")>();
+  return {
+    ...actual,
     getCurrentOrigin: vi.fn().mockReturnValue(null),
   };
 });
@@ -19,7 +26,7 @@ vi.mock("@/lib/pubsub.ts", () => ({
 }));
 
 const { streamObject } = await import("ai");
-const { getCurrentOrigin } = await import("@pixelmord/content-ai-core");
+const { getCurrentOrigin } = await import("@pixelmord/content-ai-core/server");
 const { publish } = await import("@/lib/pubsub.ts");
 const { generateRecipeFromPrompt } = await import("@/lib/ai/generate-recipe.ts");
 

@@ -30,7 +30,8 @@ import {
 import { saveEntity as libSaveEntity } from "@/lib/save-entity.ts";
 import { applyVariantsClosure } from "@/lib/variants-closure.ts";
 import { NotFoundError } from "@/lib/errors.ts";
-import { AiError, wrapWithOrigin, hashSuggestion } from "@pixelmord/content-ai-core";
+import { AiError, hashSuggestion } from "@pixelmord/content-ai-core";
+import { wrapWithOrigin } from "@pixelmord/content-ai-core/server";
 import { entityMeta } from "@/lib/entity-meta.ts";
 import { SidecarEventLog, metaRefToEntityRef, createAiEventLog } from "@/lib/sidecar-event-log.ts";
 import { createSourceStore } from "@/lib/stores/source-store.ts";

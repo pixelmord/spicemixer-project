@@ -4,6 +4,7 @@ export default defineConfig({
   pack: {
     entry: {
       index: "src/index.ts",
+      server: "src/server.ts",
       "presentation/index": "src/presentation/index.ts",
       "testing/index": "src/testing/index.ts",
     },
@@ -26,7 +27,12 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
-      exclude: ["src/index.ts", "src/presentation/index.ts", "src/testing/index.ts"],
+      exclude: [
+        "src/index.ts",
+        "src/server.ts",
+        "src/presentation/index.ts",
+        "src/testing/index.ts",
+      ],
       reporter: ["text", "html"],
     },
     globals: false,

@@ -1,6 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { createMockLanguageModel } from "@pixelmord/content-ai-core/testing";
-import { tracingMiddleware, type ProviderOptions } from "@pixelmord/content-ai-core";
+import type { ProviderOptions } from "@pixelmord/content-ai-core";
+import { tracingMiddleware } from "@pixelmord/content-ai-core/server";
 import type { LanguageModelV3 } from "@ai-sdk/provider";
 import type { LanguageModel } from "ai";
 import { wrapLanguageModel } from "ai";

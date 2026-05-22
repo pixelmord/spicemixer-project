@@ -30,15 +30,8 @@ export type {
   TraceSummary,
 } from "./suggestions.ts";
 
-export { originContext, withOrigin, wrapWithOrigin, getCurrentOrigin } from "./origin.ts";
-export type { Origin, OriginConfig } from "./origin.ts";
-
-export { generateTraceId, tracingMiddleware } from "./trace.ts";
-export type { TraceSink, TraceEvent, TraceFinishReason } from "./trace.ts";
-
 export { normalizePayload, fingerprintHash, hashSuggestion, hashContent } from "./hash.ts";
 
-export { createProvider, resolveConfig, PROVIDER_OPTIONS } from "./provider.ts";
 export type { AiConfig, ProviderOptions } from "./provider.ts";
 
 export { isSuppressed, filterSuggestions, buildRejectedContext } from "./suppression.ts";
@@ -51,7 +44,7 @@ export { translationBehaviorSchema, resolveTranslation } from "./translation.ts"
 export { diffFieldHashes, classifyRefreshKind } from "./field-diff.ts";
 export type { RefreshKind } from "./field-diff.ts";
 
-// Note: testing utilities (createMockLanguageModel, MockLanguageModelV3) live
-// at `@pixelmord/content-ai-core/testing` and are intentionally NOT re-exported
-// here — they pull `ai/test` which transitively imports `node:async_hooks`,
-// poisoning client bundles when components reach this barrel.
+// Note: server-only exports (origin/ALS, tracing middleware) live at
+// `@pixelmord/content-ai-core/server` — they use `node:async_hooks` which
+// cannot be bundled for the browser.
+// Testing utilities live at `@pixelmord/content-ai-core/testing` for the same reason.

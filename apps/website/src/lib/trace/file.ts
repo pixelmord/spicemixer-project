@@ -1,6 +1,6 @@
 import { mkdir, appendFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { TraceSink, TraceEvent } from "@pixelmord/content-ai-core";
+import type { TraceSink, TraceEvent } from "@pixelmord/content-ai-core/server";
 
 export class FileTraceSink implements TraceSink {
   private readonly dir: string;

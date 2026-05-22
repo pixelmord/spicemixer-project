@@ -1,4 +1,5 @@
-import { hashSuggestion, hashContent, getCurrentOrigin } from "@pixelmord/content-ai-core";
+import { hashSuggestion, hashContent } from "@pixelmord/content-ai-core";
+import { getCurrentOrigin } from "@pixelmord/content-ai-core/server";
 import type { AiConfig } from "@pixelmord/content-ai-core";
 import { publish } from "@/lib/pubsub.ts";
 import {

@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { withOrigin, resolveConfig } from "@pixelmord/content-ai-core";
+import { resolveConfig, withOrigin } from "@pixelmord/content-ai-core/server";
 import { subscribe } from "@/lib/pubsub.ts";
 import { createAiEventLog } from "@/lib/sidecar-event-log.ts";
 import { createStore } from "@/lib/content-store.ts";
@@ -34,7 +34,13 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response("Bad request: collection, slug, and recipe are required", { status: 400 });
   }
 
-  const config = resolveConfig();
+  const apiKey =
+    process.env["AI_API_KEY"] ??
+    process.env["OPENAI_API_KEY"] ??
+    import.meta.env["AI_API_KEY"] ??
+    import.meta.env["OPENAI_API_KEY"] ??
+    "";
+  const config = { ...resolveConfig(), apiKey };
   if (!config.apiKey) {
     return new Response("AI_API_KEY is not configured", { status: 503 });
   }

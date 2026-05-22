@@ -1,5 +1,9 @@
 import { streamObject } from "ai";
-import { createProvider, getCurrentOrigin, PROVIDER_OPTIONS } from "@pixelmord/content-ai-core";
+import {
+  createProvider,
+  PROVIDER_OPTIONS,
+  getCurrentOrigin,
+} from "@pixelmord/content-ai-core/server";
 import { toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts";
 import { publish } from "@/lib/pubsub.ts";
 import { recipeExtractSchema, type RecipeExtract } from "@/contracts/schemas/recipe-extract.ts";

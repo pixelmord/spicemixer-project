@@ -1,6 +1,7 @@
 import type { ZodSchema, z } from "zod";
 import type { ModelMessage } from "ai";
-import type { SourceDescriptor, TraceSink } from "@pixelmord/content-ai-core";
+import type { SourceDescriptor } from "@pixelmord/content-ai-core";
+import type { TraceSink } from "@pixelmord/content-ai-core/server";
 
 // ── AiConfig ─────────────────────────────────────────────────────────────────
 
