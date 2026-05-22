@@ -1,5 +1,5 @@
 {
-  "draft": true,
+  "draft": false,
   "region": [],
   "tags": [],
   "ingredientLinks": [
@@ -22,7 +22,7 @@
   "locale": "de",
   "kind": "spicemix",
   "canonicalLocale": "de",
-  "canonicalContentHash": "3deec6a1942dd6c6",
+  "canonicalContentHash": "a5392181fbe866f7",
   "aiSuggestions": {
     "fingerprint": "fd4f597ea7ce5e65db6d8e937d4164d670de590fcefe5087c9cb5d572688b8c4",
     "at": "2026-05-08T08:18:35.723Z",
@@ -73,5 +73,14 @@
       ],
       "pairings": []
     }
+  },
+  "imageAttribution": {
+    "source": "flickr",
+    "sourceUrl": "https://www.flickr.com/photos/28691409@N05/11475166614",
+    "creator": "planningqueen",
+    "creatorUrl": "https://www.flickr.com/photos/28691409@N05",
+    "license": "by-nc",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc/2.0/",
+    "attribution": "\"dukkah and avocado\" by planningqueen is licensed under CC BY-NC 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/2.0/."
   }
 }

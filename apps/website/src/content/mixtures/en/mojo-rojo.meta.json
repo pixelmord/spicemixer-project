@@ -11,5 +11,69 @@
   ],
   "variants": [],
   "kind": "sauce",
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "aiEvents": [
+    {
+      "type": "auto-applied",
+      "field": "language",
+      "suggestion": {
+        "hash": "72006d81d8e2",
+        "summary": "Language detected: de"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "9d6a96cb-3a11-49cc-a60d-30c517cba42e",
+      "id": "9ea159d6-700f-4b91-9d47-a9764e5cb8b4",
+      "at": "2026-05-21T18:43:11.009Z"
+    }
+  ],
+  "language": "de",
+  "locale": "de",
+  "aiSuggestions": {
+    "fingerprint": "c4fe3d54932cfb207e04bad1ecdaa1f6187b44664f1940d9fa7e82fa327296e6",
+    "at": "2026-05-21T18:43:11.011Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [
+        "mojo-rojo",
+        "kartoffelspalten",
+        "spanische-küche",
+        "paprika-dip",
+        "vegan",
+        "schnell-und-einfach",
+        "ofenrezepte",
+        "appetizer"
+      ],
+      "ingredientLinks": [],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "harissa",
+          "rationale": "Harissa's spicy and smoky notes pair beautifully with the robust flavors of mojo rojo, enhancing the chili undertones and complementing the roasted potato texture.",
+          "traceId": "b7299412-9453-417e-b966-f3469624ce23"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "mojo-verde",
+          "rationale": "Mojo verde’s herbal brightness can contrast nicely with the rich, smoky flavors of mojo rojo, providing a refreshing balance when served alongside the spiced potatoes.",
+          "traceId": "b7299412-9453-417e-b966-f3469624ce23"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "preserved-lemon-couscous",
+          "rationale": "The zesty, tangy flavors of preserved lemon couscous create a bright counterpoint to the rich, spicy mojo rojo, making it an excellent side for the roasted potatoes.",
+          "traceId": "b7299412-9453-417e-b966-f3469624ce23"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "vegetable-beef-skillet",
+          "rationale": "The hearty and savory elements of a vegetable and beef skillet complement the crunchy potatoes and the deep flavor of mojo rojo, creating a wholesome and satisfying meal.",
+          "traceId": "b7299412-9453-417e-b966-f3469624ce23"
+        }
+      ],
+      "detectedLanguage": "de"
+    }
+  }
 }

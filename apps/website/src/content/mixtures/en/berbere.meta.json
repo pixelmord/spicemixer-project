@@ -40,5 +40,65 @@
   "language": "en",
   "locale": "en",
   "canonicalLocale": "en",
-  "aiEvents": []
+  "aiEvents": [
+    {
+      "type": "accepted",
+      "field": "tags",
+      "suggestion": {
+        "hash": "tags-0",
+        "summary": "8 AI-suggested tags"
+      },
+      "at": "2026-05-21T19:04:10.431Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "bf67e5c2-d146-4686-922a-73d284c3dff8"
+    }
+  ],
+  "aiSuggestions": {
+    "fingerprint": "63e2d90e030f13320a800f81e7938e0f7148c514309c8a7eae52df26e1d88b83",
+    "at": "2026-05-21T19:03:39.086Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [
+        "ethiopian",
+        "spice-blend",
+        "berbere",
+        "fiery",
+        "aromatic",
+        "complex-flavors",
+        "curry",
+        "marinades"
+      ],
+      "ingredientLinks": [],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cumin",
+          "rationale": "Cumin has warm, earthy notes that complement the complexity of berbere, enhancing its depth in dishes like stews and marinades.",
+          "traceId": "860e7871-ef56-4abb-814d-cf9bdfbf6dcb"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "fenugreek",
+          "rationale": "Fenugreek is already a key ingredient in berbere, making it a natural pairing; its slightly sweet and nutty flavor enhances the overall profile of Ethiopian dishes.",
+          "traceId": "860e7871-ef56-4abb-814d-cf9bdfbf6dcb"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "ras-el-hanout",
+          "rationale": "Both berbere and ras-el-hanout are aromatic spice blends that bring depth and warmth to dishes, ideal for showcasing in robust meat and vegetable preparations.",
+          "traceId": "860e7871-ef56-4abb-814d-cf9bdfbf6dcb"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "vegetable-beef-skillet",
+          "rationale": "A vegetable and beef skillet can be elevated using berbere, as the spice's heat and complexity enhance the savory elements of the meat and veggies.",
+          "traceId": "860e7871-ef56-4abb-814d-cf9bdfbf6dcb"
+        }
+      ]
+    }
+  }
 }

@@ -20,24 +20,65 @@
   "kind": "recipe",
   "canonicalLocale": "en",
   "aiSuggestions": {
-    "fingerprint": "b473b553924e95dd14632a6903d4da802991c8ab8460c5695df81a25799cb874",
-    "at": "2026-05-08T08:28:39.119Z",
+    "fingerprint": "b231f92fa723a472607ea3ff2e29a6bef225fddf57b56ffdaca9c08cbcaedf92",
+    "at": "2026-05-21T18:52:52.609Z",
     "model": "gpt-4o-mini",
     "data": {
       "improvements": [],
       "tags": [
         "dark-chocolate",
-        "rye-flour",
-        "chewy-cookies",
+        "rye-cookies",
         "scandinavian-dessert",
+        "chewy-cookies",
         "baking",
-        "rich-flavors",
-        "malt",
-        "quick-bake"
+        "gourmet-treats",
+        "sweet-treats",
+        "muscovado-sugar"
       ],
       "ingredientLinks": [],
-      "pairings": []
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "caraway",
+          "rationale": "Caraway seeds have a warm, slightly sweet and anise-like flavor that complements the deep chocolate and malty notes of the rye cookies, enhancing their complexity.",
+          "traceId": "10e2390b-72f9-4228-aaaf-05eea50d6d8d"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cardamom",
+          "rationale": "Cardamom brings a floral and spicy note that pairs well with the richness of chocolate and adds an aromatic element to the cookies, echoing Scandinavian flavor profiles.",
+          "traceId": "10e2390b-72f9-4228-aaaf-05eea50d6d8d"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "dukka",
+          "rationale": "Dukkah's mixture of nuts, seeds, and spices adds a crunchy contrast and earthy flavor that enhances the deep chocolate in the cookies, making for an intriguing flavor experience.",
+          "traceId": "10e2390b-72f9-4228-aaaf-05eea50d6d8d"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "preserved-lemon-couscous",
+          "rationale": "The bright acidity of preserved lemon couscous can create a refreshing contrast to the rich, chewy cookies, offering a balanced dessert experience.",
+          "traceId": "10e2390b-72f9-4228-aaaf-05eea50d6d8d"
+        }
+      ]
     }
   },
-  "canonicalContentHash": "2655fdce375514b2"
+  "canonicalContentHash": "2655fdce375514b2",
+  "aiEvents": [
+    {
+      "type": "accepted",
+      "field": "tags",
+      "suggestion": {
+        "hash": "tags-0",
+        "summary": "8 AI-suggested tags"
+      },
+      "at": "2026-05-21T18:58:58.766Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "45acb5ea-873b-4e18-a84f-22892471d3e9"
+    }
+  ]
 }
