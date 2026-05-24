@@ -879,7 +879,24 @@ export default function IngredientForm({
                               fieldKey="summary"
                               context={companion}
                             >
-                              <Label htmlFor={field.name}>Summary *</Label>
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor={field.name}>Summary *</Label>
+                                {!aiFlow.forField("summary").suggestion && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void aiFlow.run()}
+                                    disabled={aiFlow.isRunning}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                                  >
+                                    {aiFlow.isRunning ? (
+                                      <Loader2 size={11} className="animate-spin" />
+                                    ) : (
+                                      <Sparkles size={11} />
+                                    )}
+                                    AI suggest
+                                  </button>
+                                )}
+                              </div>
                               <Input
                                 id={field.name}
                                 value={field.state.value}
@@ -903,10 +920,27 @@ export default function IngredientForm({
                               fieldKey="description"
                               context={companion}
                             >
-                              <Label htmlFor={field.name}>
-                                Description
-                                <RecommendedHint show={!field.state.value} />
-                              </Label>
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor={field.name}>
+                                  Description
+                                  <RecommendedHint show={!field.state.value} />
+                                </Label>
+                                {!aiFlow.forField("description").suggestion && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void aiFlow.run()}
+                                    disabled={aiFlow.isRunning}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                                  >
+                                    {aiFlow.isRunning ? (
+                                      <Loader2 size={11} className="animate-spin" />
+                                    ) : (
+                                      <Sparkles size={11} />
+                                    )}
+                                    AI suggest
+                                  </button>
+                                )}
+                              </div>
                               <Textarea
                                 id={field.name}
                                 value={field.state.value}
@@ -1061,7 +1095,24 @@ export default function IngredientForm({
                         <form.Field name="seasonality">
                           {(field) => (
                             <div className="space-y-1.5">
-                              <Label htmlFor={field.name}>Seasonality</Label>
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor={field.name}>Seasonality</Label>
+                                {!aiFlow.forField("seasonality").suggestion && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void aiFlow.run()}
+                                    disabled={aiFlow.isRunning}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                                  >
+                                    {aiFlow.isRunning ? (
+                                      <Loader2 size={11} className="animate-spin" />
+                                    ) : (
+                                      <Sparkles size={11} />
+                                    )}
+                                    AI suggest
+                                  </button>
+                                )}
+                              </div>
                               <Input
                                 id={field.name}
                                 value={field.state.value}
@@ -1270,7 +1321,24 @@ export default function IngredientForm({
                         {(field) => (
                           <Card>
                             <CardHeader>
-                              <CardTitle>{label}</CardTitle>
+                              <div className="flex items-center justify-between">
+                                <CardTitle>{label}</CardTitle>
+                                {!aiFlow.forField(key).suggestion && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void aiFlow.run()}
+                                    disabled={aiFlow.isRunning}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                                  >
+                                    {aiFlow.isRunning ? (
+                                      <Loader2 size={11} className="animate-spin" />
+                                    ) : (
+                                      <Sparkles size={11} />
+                                    )}
+                                    AI suggest
+                                  </button>
+                                )}
+                              </div>
                             </CardHeader>
                             <CardContent>
                               <Textarea
