@@ -23,7 +23,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog.tsx";
 import { cn } from "@/lib/utils.ts";
-import SourcePicker, { type Source, type SourceMode } from "./SourcePicker.tsx";
+import SourcePicker, { type Source } from "./SourcePicker.tsx";
 import { slugify } from "@/lib/slugify.ts";
 import type { EntityOption } from "./EntityCombobox.tsx";
 import type { RecipeCollection } from "@/lib/content-store.ts";
@@ -183,7 +183,7 @@ function IngredientLinkContent({
   aiSuggestion,
   ingredientOptions,
   locale = "en",
-  collection,
+  collection: _collection,
   onLinked,
   onClose,
 }: {

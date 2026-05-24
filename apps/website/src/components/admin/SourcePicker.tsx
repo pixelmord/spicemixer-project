@@ -26,7 +26,6 @@ export type Source = FileSource | TextSource | PromptSource;
 interface Props {
   mode: SourceMode;
   onChange: (source: Source | null) => void;
-  showPrompt?: boolean;
 }
 
 const ACCEPTED_TYPES = [
@@ -39,7 +38,7 @@ const ACCEPTED_TYPES = [
   "text/markdown",
 ];
 
-export default function SourcePicker({ mode, onChange, showPrompt = true }: Props) {
+export default function SourcePicker({ mode, onChange }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState("");
   const [prompt, setPrompt] = useState("");

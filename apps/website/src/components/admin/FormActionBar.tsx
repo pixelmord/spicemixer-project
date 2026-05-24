@@ -157,7 +157,7 @@ export default function FormActionBar({
             <iframe
               src={previewHref}
               className="flex-1 w-full rounded-b-xl border-0"
-              title="Recipe preview"
+              title="Preview"
             />
           </DialogContent>
         </Dialog>

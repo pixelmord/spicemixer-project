@@ -205,6 +205,7 @@ function parseApiResult(result: Record<string, unknown>): {
   pairings: PairingProposal[];
   detectedLanguage?: string;
   languageMismatch?: boolean;
+  errors: Array<{ field: string; message: string }>;
 } {
   const ai = (result["aiSuggestions"] ?? result) as Record<string, unknown>;
   return {
@@ -213,6 +214,7 @@ function parseApiResult(result: Record<string, unknown>): {
     pairings: (ai["pairings"] as PairingProposal[]) ?? [],
     detectedLanguage: ai["detectedLanguage"] as string | undefined,
     languageMismatch: (ai["languageMismatch"] as boolean) ?? false,
+    errors: (result["errors"] as Array<{ field: string; message: string }>) ?? [],
   };
 }
 
@@ -451,14 +453,41 @@ export default function IngredientForm({
           const v = formValues[k as keyof typeof formValues];
           return !v;
         });
-      const { data: result } = await actions.aiRefreshIngredientSuggestions({
-        locale,
-        slug,
-        ingredient: snap as never,
-        existingMeta: {},
-        missingFields: missingKeys,
-      });
-      const parsed = parseApiResult(result as unknown as Record<string, unknown>);
+
+      let result: unknown;
+      try {
+        const response = await actions.aiRefreshIngredientSuggestions({
+          locale,
+          slug,
+          ingredient: snap as never,
+          existingMeta: {},
+          missingFields: missingKeys,
+        });
+        if (response.error) throw response.error;
+        result = response.data;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error(`AI suggest failed: ${msg}`);
+        return { suggestions: {}, autoApplied: {}, traces: {} };
+      }
+
+      const parsed = parseApiResult(result as Record<string, unknown>);
+
+      // Surface any per-field errors that affected the user's targeted fields.
+      const targetedFields = params.target ?? [];
+      const fulfilledFields = new Set(parsed.improvements.map((i) => i.field));
+      const failedTargets = targetedFields.filter(
+        (f) => !fulfilledFields.has(f) || parsed.errors.some((e) => e.field === f),
+      );
+      if (failedTargets.length > 0) {
+        const detail =
+          parsed.errors.find((e) => failedTargets.includes(e.field))?.message ??
+          "the model returned no value";
+        toast.error(
+          `AI suggest could not generate a value for ${failedTargets.join(", ")}: ${detail}`,
+        );
+      }
+
       // Side-effects (language detection, pairing proposals) only on full refreshes —
       // a per-field run won't include those and would incorrectly clear existing state.
       if (!params.target) {
@@ -466,7 +495,7 @@ export default function IngredientForm({
         setLanguageMismatch(parsed.languageMismatch ?? false);
         if (parsed.pairings.length > 0) {
           setPairingProposals(parsed.pairings);
-          const autoLinked = (result as unknown as Record<string, unknown>)?.autoLinked as number;
+          const autoLinked = (result as Record<string, unknown>)?.autoLinked as number;
           if (autoLinked > 0) {
             toast.success(`Auto-paired ${autoLinked} ingredient${autoLinked !== 1 ? "s" : ""}`);
             void actions.listPairingsFor({ slug }).then((pr: { data?: unknown }) => {

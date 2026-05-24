@@ -7,10 +7,10 @@ import {
   Link2,
   Import,
   Sparkles,
-  Menu,
-  X,
   Clock,
   BarChart2,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils.ts";
 import { Toaster } from "@/components/ui/sonner.tsx";
@@ -42,6 +42,24 @@ interface Props {
 export default function AdminShell({ children, currentPath = "" }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // Build breadcrumbs starting with Admin
+  const breadcrumbs = [{ label: "Admin", href: "/admin" }];
+  const segments = currentPath
+    .replace(/^\/admin/, "")
+    .split("/")
+    .filter(Boolean);
+
+  const isDashboard = segments.length === 0;
+  const isList = segments.length === 1 && segments[0] !== "import";
+  const isMaxWidePage = isDashboard || isList;
+
+  let currentLink = "/admin";
+  for (const segment of segments) {
+    currentLink += `/${segment}`;
+    const label = segment.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+    breadcrumbs.push({ label, href: currentLink });
+  }
+
   return (
     <div
       className="flex h-screen bg-background text-foreground overflow-hidden"
@@ -54,8 +72,21 @@ export default function AdminShell({ children, currentPath = "" }: Props) {
           sidebarOpen ? "w-56" : "w-0 overflow-hidden",
         )}
       >
-        <div className="flex items-center gap-2 px-4 py-4 border-b border-border">
-          <span className="text-lg font-bold tracking-tight">🌶 SpiceMixer</span>
+        <div className="flex h-14 items-center justify-between gap-2 px-4 border-b border-border">
+          <a
+            href="/"
+            className="text-lg font-bold tracking-tight hover:text-muted-foreground transition-colors"
+          >
+            🌶 SpiceMixer
+          </a>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-accent transition-colors shrink-0"
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
+          >
+            <PanelLeftClose size={18} />
+          </button>
         </div>
         <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-3 mb-1 px-4">
           Admin
@@ -95,20 +126,45 @@ export default function AdminShell({ children, currentPath = "" }: Props) {
       {/* Main */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Top bar */}
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0">
-          <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            className="text-muted-foreground hover:text-foreground p-1 rounded"
-          >
-            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
-          <span className="text-sm font-medium text-muted-foreground">
-            {currentPath.replace("/admin", "").replace(/^\//, "") || "Dashboard"}
-          </span>
+        <header className="flex h-14 items-center gap-3 px-4 border-b border-border bg-card shrink-0">
+          {!sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-accent transition-colors shrink-0"
+              title="Expand sidebar"
+              aria-label="Expand sidebar"
+            >
+              <PanelLeftOpen size={18} />
+            </button>
+          )}
+
+          <nav aria-label="Breadcrumb" className="flex items-center text-sm font-medium">
+            <ol className="flex items-center gap-1.5 text-muted-foreground">
+              {breadcrumbs.map((item, index) => {
+                const isLast = index === breadcrumbs.length - 1;
+                return (
+                  <li key={item.href} className="flex items-center gap-1.5">
+                    {index > 0 && <span className="text-muted-foreground/30 select-none">/</span>}
+                    {isLast ? (
+                      <span className="text-foreground font-semibold" aria-current="page">
+                        {item.label}
+                      </span>
+                    ) : (
+                      <a href={item.href} className="hover:text-foreground transition-colors">
+                        {item.label}
+                      </a>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-6">
+          <div className={cn("mx-auto w-full", isMaxWidePage && "max-w-7xl")}>{children}</div>
+        </main>
       </div>
 
       <Toaster richColors position="top-right" />
