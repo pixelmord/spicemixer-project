@@ -396,8 +396,9 @@ export const server = {
       meta: z.record(z.string(), z.unknown()).optional(),
       aiMergeModel: z.string().optional(),
       traceId: z.string().optional(),
+      pendingAiEvents: z.array(z.record(z.string(), z.unknown())).optional(),
     }),
-    handler: async ({ locale, slug, ingredient, meta, aiMergeModel, traceId }) => {
+    handler: async ({ locale, slug, ingredient, meta, aiMergeModel, traceId, pendingAiEvents }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
       await libSaveEntity(store, sidecar, {
@@ -405,9 +406,15 @@ export const server = {
         content: ingredient,
         meta,
       });
+      const eventLog = new SidecarEventLog(sidecar);
+      const entityRef = metaRefToEntityRef({ collection: "ingredients", locale, slug });
+      if (pendingAiEvents && pendingAiEvents.length > 0) {
+        for (const event of pendingAiEvents) {
+          await eventLog.append(entityRef, event as Parameters<typeof eventLog.append>[1]);
+        }
+      }
       if (aiMergeModel) {
-        const eventLog = new SidecarEventLog(sidecar);
-        await eventLog.append(metaRefToEntityRef({ collection: "ingredients", locale, slug }), {
+        await eventLog.append(entityRef, {
           type: "accepted",
           suggestion: {
             hash: hashSuggestion(ingredient),
@@ -434,6 +441,7 @@ export const server = {
       imageAttribution: z.record(z.string(), z.unknown()).optional(),
       aiMergeModel: z.string().optional(),
       traceId: z.string().optional(),
+      pendingAiEvents: z.array(z.record(z.string(), z.unknown())).optional(),
     }),
     handler: async ({
       id,
@@ -445,6 +453,7 @@ export const server = {
       imageAttribution,
       aiMergeModel,
       traceId,
+      pendingAiEvents,
     }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
@@ -461,9 +470,15 @@ export const server = {
         content: pairingData,
         meta: draft !== undefined ? { draft } : undefined,
       });
+      const eventLog = new SidecarEventLog(sidecar);
+      const entityRef = metaRefToEntityRef({ collection: "pairings", slug: id });
+      if (pendingAiEvents && pendingAiEvents.length > 0) {
+        for (const event of pendingAiEvents) {
+          await eventLog.append(entityRef, event as Parameters<typeof eventLog.append>[1]);
+        }
+      }
       if (aiMergeModel) {
-        const eventLog = new SidecarEventLog(sidecar);
-        await eventLog.append(metaRefToEntityRef({ collection: "pairings", slug: id }), {
+        await eventLog.append(entityRef, {
           type: "accepted",
           field: "description",
           suggestion: {

@@ -115,6 +115,7 @@ export default function PairingForm({
       setSaving(true);
       try {
         const id = [value.endpoint1Slug, value.endpoint2Slug].sort().join("--");
+        const pendingAiEvents = pendingAiEventsRef.current;
         const { error } = await actions.savePairing({
           id,
           endpoints: [
@@ -128,8 +129,11 @@ export default function PairingForm({
           imageAttribution: (value.imageAttribution ?? undefined) as
             | Record<string, unknown>
             | undefined,
+          ...(pendingAiEvents.length > 0 ? { pendingAiEvents } : {}),
         });
         if (error) throw new Error(error.message);
+        // Events were persisted with the save — clear the buffer.
+        pendingAiEventsRef.current = [];
         toast.success("Saved");
         if (isNew) {
           window.location.href = `/admin/pairings/${encodeURIComponent(id)}/edit?locale=${locale}`;
@@ -155,21 +159,20 @@ export default function PairingForm({
       });
   }, []);
 
+  // Per-field accept/reject events are buffered client-side and flushed only
+  // when the form is saved. Persisting them on every click writes a meta sidecar
+  // file inside the watched content collection, which triggers Astro's
+  // dev-mode HMR full-reload and wipes unsaved form state. Flushing on save
+  // bundles all events into the same write the user already expects.
+  const pendingAiEventsRef = useRef<Record<string, unknown>[]>([]);
   const aiEventLog = useMemo(
     () => ({
       read: async () => [],
       append: async (_ref: unknown, event: unknown) => {
-        if (initialId) {
-          await actions.aiRecordEvent({
-            collection: "pairings",
-            locale,
-            slug: initialId,
-            event: event as Record<string, unknown>,
-          });
-        }
+        pendingAiEventsRef.current.push(event as Record<string, unknown>);
       },
     }),
-    [initialId, locale],
+    [],
   );
 
   const aiEntityRef = useMemo(() => ({ kind: "pairing", id: initialId ?? "" }), [initialId]);

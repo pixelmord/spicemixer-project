@@ -381,11 +381,13 @@ export default function IngredientForm({
       if (regions.length > 0) payload.region = regions;
       if (imageAttribution) payload.imageAttribution = imageAttribution;
 
+      const pendingAiEvents = pendingAiEventsRef.current;
       const { error } = await actions.saveIngredient({
         locale,
         slug,
         ingredient: payload as never,
         meta: { draft },
+        ...(pendingAiEvents.length > 0 ? { pendingAiEvents } : {}),
       });
 
       if (error) {
@@ -394,6 +396,8 @@ export default function IngredientForm({
         return;
       }
 
+      // Events were persisted with the save — clear the buffer.
+      pendingAiEventsRef.current = [];
       setSaving(false);
 
       setCompleteness(computeCompletenessFromBlob("ingredient", payload as never, {}));
@@ -413,21 +417,20 @@ export default function IngredientForm({
 
   const formValues = useStore(form.store, (s) => s.values);
 
+  // Per-field accept/reject events are buffered client-side and flushed only
+  // when the form is saved. Persisting them on every click writes a meta sidecar
+  // file inside the watched content collection, which triggers Astro's
+  // dev-mode HMR full-reload and wipes unsaved form state. Flushing on save
+  // bundles all events into the same write the user already expects.
+  const pendingAiEventsRef = useRef<Record<string, unknown>[]>([]);
   const aiEventLog = useMemo(
     () => ({
       read: async () => [],
       append: async (_ref: unknown, event: unknown) => {
-        if (slug) {
-          await actions.aiRecordEvent({
-            collection: "ingredients",
-            locale: locale as "en" | "de",
-            slug,
-            event: event as Record<string, unknown>,
-          });
-        }
+        pendingAiEventsRef.current.push(event as Record<string, unknown>);
       },
     }),
-    [slug, locale],
+    [],
   );
 
   const aiEntityRef = useMemo(() => ({ kind: "ingredient", id: slug ?? "" }), [slug]);
