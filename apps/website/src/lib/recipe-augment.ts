@@ -324,17 +324,6 @@ async function findByIngredientLinks(
     .filter((x): x is NonNullable<typeof x> => x !== null);
 }
 
-async function getRecipeUsedIn(
-  recipeSlug: string,
-  recipeCollection: RecipeKind,
-  localePrefix: string,
-): Promise<Array<{ name: string; href: string; kind: RecipeKind }>> {
-  return findByIngredientLinks(
-    localePrefix,
-    (l) => l.kind === "recipe" && l.slug === recipeSlug && l.collection === recipeCollection,
-  );
-}
-
 export async function resolveVariants(
   kind: RecipeKind,
   slugs: string[],

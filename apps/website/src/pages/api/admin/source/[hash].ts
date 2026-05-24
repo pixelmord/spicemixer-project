@@ -20,6 +20,7 @@ export const GET: APIRoute = async ({ params }) => {
   const meta = await store.getBinaryMeta(hash);
   const mime = meta?.mime ?? "application/octet-stream";
   const rawFilename = meta?.filename ?? `source-${hash.slice(0, 12)}`;
+  // eslint-disable-next-line no-control-regex
   const filename = rawFilename.replace(/[\x00-\x1f"]/g, "");
 
   return new Response(Buffer.from(bytes), {

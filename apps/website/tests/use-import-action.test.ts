@@ -25,7 +25,7 @@ import {
   parseActionError,
 } from "../src/lib/ai/use-import-action.ts";
 
-const mockActions = actions as {
+const mockActions = actions as unknown as {
   aiExtractRecipe: ReturnType<typeof vi.fn>;
   aiExtractIngredient: ReturnType<typeof vi.fn>;
   aiExtractPairing: ReturnType<typeof vi.fn>;
@@ -172,7 +172,7 @@ describe("generateRecipe", () => {
       { type: "complete", result: { recipe: { name: "Thai Curry" }, warnings: [] } },
     ]);
     global.fetch = vi.fn().mockResolvedValue({ ok: true, body: stream, statusText: "OK" });
-    mockReadSSE.mockImplementation(async function* (body: ReadableStream) {
+    mockReadSSE.mockImplementation(async function* (_body: ReadableStream) {
       yield { type: "complete", result: { recipe: { name: "Thai Curry" }, warnings: [] } };
     });
 
