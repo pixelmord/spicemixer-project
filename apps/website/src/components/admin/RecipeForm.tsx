@@ -373,9 +373,8 @@ export default function RecipeForm({
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestions | undefined>(
     () => initialMeta?.aiSuggestions?.data,
   );
-  const [aiRefreshing, setAiRefreshing] = useState(false);
-  const [activeProposers, setActiveProposers] = useState<string[]>([]);
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const [, setAiRefreshing] = useState(false);
+  const [, setActiveProposers] = useState<string[]>([]);
 
   // Image attribution
   const [imageAttribution, setImageAttribution] = useState<ImageAttribution | undefined>(
@@ -614,12 +613,14 @@ export default function RecipeForm({
           recipeInstructionsAttribution.length > 0 ? recipeInstructionsAttribution : undefined,
       };
 
+      const pendingAiEvents = pendingAiEventsRef.current;
       const { error } = await actions.saveRecipe({
         collection,
         slug,
         locale: (language || "en") as "en" | "de",
         recipe: recipePayload as never,
         meta: metaPayload as never,
+        ...(pendingAiEvents.length > 0 ? { pendingAiEvents } : {}),
       });
 
       setSaving(false);
@@ -628,6 +629,9 @@ export default function RecipeForm({
         toast.error("Save failed: " + error.message);
         return;
       }
+
+      // Events were persisted with the save — clear the buffer.
+      pendingAiEventsRef.current = [];
 
       setCompleteness(
         computeCompletenessFromBlob("recipe", recipePayload as never, metaPayload as never),
@@ -757,28 +761,21 @@ export default function RecipeForm({
     },
   ];
 
-  // Visible AI improvement suggestions (filtered by dismissed)
-  const visibleImprovements: AiSuggestion[] = (aiSuggestions?.improvements ?? []).filter(
-    (s) => !dismissedSuggestions.has(s.field),
-  );
-
   // ── useAiSuggestions hook ────────────────────────────────────────────────────
+  // Per-field accept/reject events are buffered client-side and flushed only
+  // when the form is saved. Persisting them on every click writes a meta sidecar
+  // file inside the watched content collection, which triggers Astro's
+  // dev-mode HMR full-reload and wipes unsaved form state. Flushing on save
+  // bundles all events into the same write the user already expects.
+  const pendingAiEventsRef = useRef<Record<string, unknown>[]>([]);
   const aiEventLog = useMemo(
     () => ({
       read: async () => [],
       append: async (_ref: unknown, event: unknown) => {
-        if (slug && collection) {
-          await actions.aiRecordEvent({
-            collection,
-            locale: (language || "en") as "en" | "de",
-            slug,
-            event: event as Record<string, unknown>,
-          });
-        }
+        pendingAiEventsRef.current.push(event as Record<string, unknown>);
       },
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [slug, collection, language],
+    [],
   );
 
   const aiEntityRef = useMemo(() => ({ kind: "recipe", id: slug ?? "" }), [slug]);
@@ -824,6 +821,8 @@ export default function RecipeForm({
     },
   });
 
+  const handleManualRefresh = () => void aiFlow.run();
+
   const {
     onRun: ingestOnRun,
     proposed: ingestProposed,
@@ -836,41 +835,6 @@ export default function RecipeForm({
     collection,
     existing: buildRecipeSnapshot(),
   });
-
-  function handleApplySuggestion(field: string, value: string) {
-    const coerced = TIME_FIELDS.has(field) ? toIsoDuration(value) : value;
-    if (field === "tags") setTags((prev) => [...new Set([...prev, coerced])]);
-    else if (field === "keywords") setKeywords((prev) => [...new Set([...prev, coerced])]);
-    else {
-      // Clamp totalTime suggestions to at least prep+cook
-      if (field === "totalTime") {
-        const sumMin =
-          parseDurationMinutes(formValues.prepTime ?? "") +
-          parseDurationMinutes(formValues.cookTime ?? "");
-        const clamped =
-          sumMin > 0 && parseDurationMinutes(coerced) < sumMin
-            ? minutesToIsoDuration(sumMin)
-            : coerced;
-        form.setFieldValue("totalTime" as never, clamped as never);
-      } else {
-        form.setFieldValue(field as never, coerced as never);
-        // After applying prepTime/cookTime, cascade to totalTime if needed
-        if (field === "prepTime" || field === "cookTime") {
-          const prep = field === "prepTime" ? coerced : (formValues.prepTime ?? "");
-          const cook = field === "cookTime" ? coerced : (formValues.cookTime ?? "");
-          const sumMin = parseDurationMinutes(prep) + parseDurationMinutes(cook);
-          if (sumMin > 0 && parseDurationMinutes(formValues.totalTime ?? "") < sumMin) {
-            form.setFieldValue("totalTime" as never, minutesToIsoDuration(sumMin) as never);
-          }
-        }
-      }
-    }
-    setDismissedSuggestions((prev) => new Set([...prev, field]));
-  }
-
-  function handleDismissSuggestion(field: string) {
-    setDismissedSuggestions((prev) => new Set([...prev, field]));
-  }
 
   async function refreshViaSSE(
     params: {
@@ -915,15 +879,6 @@ export default function RecipeForm({
       }
     }
     setActiveProposers([]);
-  }
-
-  async function handleManualRefresh() {
-    setDismissedSuggestions(new Set());
-    try {
-      await aiFlow.run();
-    } catch {
-      toast.error("Could not refresh suggestions");
-    }
   }
 
   // Per-section AI helpers
@@ -1118,7 +1073,15 @@ export default function RecipeForm({
             {!isNew && <p className="text-sm text-muted-foreground">{slug}</p>}
           </div>
           {!isNew && slug && (
-            <Button type="button" variant="outline" size="sm" onClick={() => setEnhanceOpen(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                handleManualRefresh();
+                setEnhanceOpen(true);
+              }}
+            >
               <Sparkles size={14} className="mr-1.5" />
               Enhance with AI
             </Button>

@@ -351,8 +351,18 @@ export const server = {
       meta: z.record(z.string(), z.unknown()).optional(),
       aiMergeModel: z.string().optional(),
       traceId: z.string().optional(),
+      pendingAiEvents: z.array(z.record(z.string(), z.unknown())).optional(),
     }),
-    handler: async ({ collection, slug, locale, recipe, meta, aiMergeModel, traceId }) => {
+    handler: async ({
+      collection,
+      slug,
+      locale,
+      recipe,
+      meta,
+      aiMergeModel,
+      traceId,
+      pendingAiEvents,
+    }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
 
@@ -373,9 +383,15 @@ export const server = {
         content: recipe,
         meta: effectiveMeta,
       });
+      const eventLog = new SidecarEventLog(sidecar);
+      const entityRef = metaRefToEntityRef({ collection, locale, slug });
+      if (pendingAiEvents && pendingAiEvents.length > 0) {
+        for (const event of pendingAiEvents) {
+          await eventLog.append(entityRef, event as Parameters<typeof eventLog.append>[1]);
+        }
+      }
       if (aiMergeModel) {
-        const eventLog = new SidecarEventLog(sidecar);
-        await eventLog.append(metaRefToEntityRef({ collection, locale, slug }), {
+        await eventLog.append(entityRef, {
           type: "accepted",
           suggestion: { hash: hashSuggestion(recipe), summary: "AI-merged recipe accepted" },
           model: aiMergeModel,
