@@ -21,8 +21,24 @@ if (!collection || !slug || !VALID_COLLECTIONS.includes(collection as RecipeColl
   return Astro.redirect("/admin");
 }
 
+const LOCALES = ["en", "de"] as const;
+
 const store = await createStore();
-const item = await store.get(collection as RecipeCollection, slug);
+// Items are stored as "{locale}/{slug}" — try each locale in order.
+let item = null;
+let resolvedLocale: string | null = null;
+for (const loc of LOCALES) {
+  const candidate = await store.get(collection as RecipeCollection, `${loc}/${slug}`);
+  if (candidate) {
+    item = candidate;
+    resolvedLocale = loc;
+    break;
+  }
+}
+// Fallback: bare slug (legacy or locale-less items)
+if (!item) {
+  item = await store.get(collection as RecipeCollection, slug);
+}
 if (!item) return Astro.redirect("/admin");
 
 const data = item.data as Record<string, unknown>;
@@ -32,7 +48,8 @@ const steps = normalizeInstructions(
   data.recipeInstructions as (string | { "@type": "HowToStep"; text: string; name?: string })[],
 );
 
-const meta = await getMeta(collection as RecipeCollection, slug);
+const locale = resolvedLocale ?? "en";
+const meta = await getMeta(collection as RecipeCollection, locale, slug);
 const linkedIngredients = linkIngredients(
   data.recipeIngredient as string[],
   meta.ingredientLinks,
