@@ -106,8 +106,10 @@ describe("PairingForm — useAiSuggestions orchestration", () => {
     expect(src).toMatch(/SuggestionFlowProvider/);
   });
 
-  test("imports InlineFieldSuggestion", () => {
-    expect(src).toMatch(/InlineFieldSuggestion/);
+  test("uses composed field hook (useAdminForm)", () => {
+    // InlineFieldSuggestion is now encapsulated inside the composed TextareaField;
+    // PairingForm imports useAdminForm to get access to AppField + TextareaField.
+    expect(src).toMatch(/useAdminForm/);
   });
 
   test("calls useAiSuggestions hook", () => {
@@ -118,8 +120,10 @@ describe("PairingForm — useAiSuggestions orchestration", () => {
     expect(src).toMatch(/<SuggestionFlowProvider/);
   });
 
-  test("mounts InlineFieldSuggestion for description field", () => {
-    expect(src).toMatch(/InlineFieldSuggestion[^>]*fieldPath="description"/s);
+  test("wires AI suggestion for description via TextareaField", () => {
+    // The suggestion is now declared through the composed component's suggestionPath prop
+    // rather than an inline <InlineFieldSuggestion> JSX element.
+    expect(src).toMatch(/suggestionPath="description"/);
   });
 
   test("handleManualRefresh delegates to aiFlow.run()", () => {

@@ -478,6 +478,8 @@ export default function IngredientForm({
     },
   });
 
+  const handleManualRefresh = () => void aiFlow.run();
+
   useEffect(() => {
     setCompleteness(
       computeCompletenessFromBlob(
@@ -532,14 +534,6 @@ export default function IngredientForm({
       anchorId: RECOMMENDED_ANCHOR[key] ?? "section-basic",
     };
   });
-
-  async function handleManualRefresh() {
-    try {
-      await aiFlow.run();
-    } catch {
-      toast.error("Could not refresh suggestions");
-    }
-  }
 
   const pairingRunId = useMemo(() => `ingredient-pairing-${slug ?? "new"}`, [slug]);
 
@@ -737,7 +731,10 @@ export default function IngredientForm({
             <>
               <button
                 type="button"
-                onClick={() => setEnhanceOpen(true)}
+                onClick={() => {
+                  handleManualRefresh();
+                  setEnhanceOpen(true);
+                }}
                 className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
               >
                 <Sparkles size={13} />
@@ -1071,6 +1068,12 @@ export default function IngredientForm({
                                 onChange={(e) => field.handleChange(e.target.value)}
                                 placeholder="Spring, late summer…"
                               />
+                              <InlineFieldSuggestion
+                                fieldPath="seasonality"
+                                currentValue={field.state.value ?? ""}
+                                onApply={(v) => field.handleChange(String(v))}
+                                kind="text"
+                              />
                             </div>
                           )}
                         </form.Field>
@@ -1277,6 +1280,12 @@ export default function IngredientForm({
                                 rows={5}
                                 placeholder={placeholder}
                                 className="font-mono text-sm"
+                              />
+                              <InlineFieldSuggestion
+                                fieldPath={key}
+                                currentValue={(field.state.value as string) ?? ""}
+                                onApply={(v) => field.handleChange(String(v) as never)}
+                                kind="text"
                               />
                               <p className="mt-1 text-xs text-muted-foreground">
                                 Supports inline markdown links: <code>[text](url)</code>
@@ -1538,6 +1547,7 @@ export default function IngredientForm({
             saving={saving}
             isDraft={draft}
             backHref="/admin/ingredients"
+            previewHref={!isNew && slug ? `/ingredients/${slug}` : undefined}
             onSave={handleSave}
           />
         </form>

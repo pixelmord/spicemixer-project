@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useForm, useStore } from "@tanstack/react-form";
+import { useStore } from "@tanstack/react-form";
+import { useAdminForm } from "@/components/admin/fields/index.ts";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
 import { ArrowLeft, Sparkles, Languages, Loader2, Trash2, Eye, EyeOff, Check } from "lucide-react";
 import LinkButton from "@/components/admin/LinkButton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { cn } from "@/lib/utils.ts";
@@ -14,7 +14,6 @@ import { computeCompletenessFromBlob } from "@/lib/completeness.ts";
 import { useEntityFormState } from "@/hooks/useEntityFormState.ts";
 import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
-import { InlineFieldSuggestion } from "./InlineFieldSuggestion.tsx";
 import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
 import { IngestDialog } from "./IngestDialog.tsx";
 import PairingDiff from "./PairingDiff.tsx";
@@ -96,7 +95,7 @@ export default function PairingForm({
   const ep0 = initialEndpoints?.[0] ?? { collection: "ingredients" as const, slug: "" };
   const ep1 = initialEndpoints?.[1] ?? { collection: "ingredients" as const, slug: "" };
 
-  const form = useForm({
+  const form = useAdminForm({
     defaultValues: {
       endpoint1Slug: ep0.slug,
       endpoint2Slug: ep1.slug,
@@ -208,13 +207,7 @@ export default function PairingForm({
     },
   });
 
-  async function handleManualRefresh() {
-    try {
-      await aiFlow.run();
-    } catch {
-      toast.error("Could not refresh suggestions");
-    }
-  }
+  const handleManualRefresh = () => void aiFlow.run();
 
   const ingestAction = useIngestAction({
     kind: "pairing",
@@ -321,8 +314,6 @@ export default function PairingForm({
   const requiredFields = completenessFields;
   const recommendedFields: typeof completenessFields = [];
 
-  const currentDesc = formValues.description;
-
   const availableTranslationLocales = ALL_LOCALES.filter(
     (l) => l !== locale && !existingTranslationLocales.includes(l),
   );
@@ -381,7 +372,10 @@ export default function PairingForm({
               </button>
               <button
                 type="button"
-                onClick={() => setEnhanceOpen(true)}
+                onClick={() => {
+                  handleManualRefresh();
+                  setEnhanceOpen(true);
+                }}
                 className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
               >
                 <Sparkles size={13} />
@@ -513,24 +507,16 @@ export default function PairingForm({
                     <CardTitle>Description ({locale.toUpperCase()})</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Textarea
-                      value={currentDesc}
-                      onChange={(e) =>
-                        form.setFieldValue("description" as never, e.target.value as never)
-                      }
-                      rows={4}
-                      placeholder={`Why do ${formValues.endpoint1Slug || "these"} and ${formValues.endpoint2Slug || "these"} pair well? (${locale.toUpperCase()})`}
-                    />
-                  </div>
-
-                  <InlineFieldSuggestion
-                    fieldPath="description"
-                    currentValue={currentDesc}
-                    onApply={(v) => form.setFieldValue("description" as never, String(v) as never)}
-                    kind="text"
-                  />
+                <CardContent>
+                  <form.AppField name="description">
+                    {(field) => (
+                      <field.TextareaField
+                        rows={4}
+                        placeholder={`Why do ${formValues.endpoint1Slug || "these"} and ${formValues.endpoint2Slug || "these"} pair well? (${locale.toUpperCase()})`}
+                        suggestionPath="description"
+                      />
+                    )}
+                  </form.AppField>
                 </CardContent>
               </Card>
             </section>
