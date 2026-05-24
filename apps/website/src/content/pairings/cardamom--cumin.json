@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "cardamom"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "cumin"
+    }
+  ],
+  "description": "Cumin's earthy and warm notes complement cardamom's floral and citrusy profile, making them great partners in Indian cuisines, particularly in spice blends."
+}

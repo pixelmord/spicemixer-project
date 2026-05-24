@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "cardamom"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "koriander"
+    }
+  ],
+  "description": "Koriander's slightly sweet and citrusy flavor harmonizes with cardamom, enhancing the aromatic complexity in dishes like curries and baked goods."
+}

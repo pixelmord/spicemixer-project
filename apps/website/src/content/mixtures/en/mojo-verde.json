@@ -52,10 +52,16 @@
     }
   ],
   "description": "A fresh, zesty green sauce from the Canary Islands, perfect for drizzling over grilled meats and vegetables.",
+  "image": "https://live.staticflickr.com/7453/9542306236_29768dfb12_b.jpg",
+  "author": {
+    "@type": "Organization",
+    "name": "spicemixer"
+  },
   "recipeYield": "1 cup",
   "recipeCategory": "Sauce",
   "recipeCuisine": "Canarian",
   "keywords": ["mojo verde", "sauce", "Canary Islands", "green sauce", "vegan sauce"],
+  "suitableForDiet": ["VeganDiet"],
   "prepTime": "PT10M",
   "cookTime": "PT0M",
   "totalTime": "PT10M"

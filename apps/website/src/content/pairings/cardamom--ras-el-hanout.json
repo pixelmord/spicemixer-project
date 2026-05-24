@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "cardamom"
+    },
+    {
+      "collection": "mixtures",
+      "slug": "ras-el-hanout"
+    }
+  ],
+  "description": "Ras-el-hanout, a warm spice blend, pairs beautifully with cardamom, providing a perfect balance of sweet and savory, ideal for Moroccan tagines."
+}

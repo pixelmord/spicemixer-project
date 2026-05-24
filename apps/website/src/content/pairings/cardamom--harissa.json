@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "cardamom"
+    },
+    {
+      "collection": "mixtures",
+      "slug": "harissa"
+    }
+  ],
+  "description": "The citrusy undertones of cardamom add brightness to harissa's spicy and smoky layers, creating a well-rounded flavor profile."
+}

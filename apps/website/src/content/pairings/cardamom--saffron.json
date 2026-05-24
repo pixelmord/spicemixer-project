@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "cardamom"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "saffron"
+    }
+  ],
+  "description": "Both saffron and cardamom bring floral notes and warmth, making them a luxurious combination in rice dishes like biryani or desserts."
+}

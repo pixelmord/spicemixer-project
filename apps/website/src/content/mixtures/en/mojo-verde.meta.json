@@ -1,7 +1,14 @@
 {
   "draft": false,
   "region": ["western-europe"],
-  "tags": [],
+  "tags": [
+    "canarian-sauce",
+    "fresh-sauce",
+    "cilantro",
+    "herb-sauce",
+    "easy-recipe",
+    "grilling-sauce"
+  ],
   "ingredientLinks": [
     {
       "pattern": "cumin",
@@ -15,5 +22,61 @@
   "language": "en",
   "locale": "en",
   "kind": "sauce",
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "aiSuggestions": {
+    "fingerprint": "08a93ad2c9814e1c60a340b2ac965adc5123daf62948ca36ffc19fbd8c251213",
+    "at": "2026-05-23T10:03:33.992Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [
+        "mojo-verde",
+        "canarian-sauce",
+        "green-sauce",
+        "fresh-ingredients",
+        "cilantro",
+        "parsley",
+        "grilling-sauce",
+        "zesty-dressing"
+      ],
+      "ingredientLinks": [],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "mojo-rojo",
+          "rationale": "Mojo Rojo is another traditional Canarian sauce that complements the Original Mojo Verde beautifully, combining earthiness with its own spicy and smoky notes, enhancing grilled meats and vegetables.",
+          "traceId": "541f7194-f331-4b3e-8bbb-c7364a7276fe"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "vegetable-beef-skillet",
+          "rationale": "The Vegetable and Beef Skillet can be elevated by drizzling Original Mojo Verde over it, as the zesty freshness of the sauce enhances the savory flavors of the dish.",
+          "traceId": "541f7194-f331-4b3e-8bbb-c7364a7276fe"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "preserved-lemon-couscous",
+          "rationale": "Preserved Lemon Couscous offers a bright, citrusy contrast that pairs well with the fresh herbaceous notes of Original Mojo Verde, creating a vibrant and refreshing combination.",
+          "traceId": "541f7194-f331-4b3e-8bbb-c7364a7276fe"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cumin",
+          "rationale": "Cumin is a key ingredient in both Original Mojo Verde and many complex dishes, providing a warm, earthy base that complements the zesty profile of the sauce.",
+          "traceId": "541f7194-f331-4b3e-8bbb-c7364a7276fe"
+        }
+      ]
+    }
+  },
+  "canonicalContentHash": "cabf0ac813d0dbff",
+  "imageAttribution": {
+    "source": "flickr",
+    "sourceUrl": "https://www.flickr.com/photos/92168117@N07/9542306236",
+    "creator": "unpardehuevos",
+    "creatorUrl": "https://www.flickr.com/photos/92168117@N07",
+    "license": "by-nc-sa",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-sa/2.0/",
+    "attribution": "\"Mojo verde de cilantro\" by unpardehuevos is licensed under CC BY-NC-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/2.0/."
+  }
 }

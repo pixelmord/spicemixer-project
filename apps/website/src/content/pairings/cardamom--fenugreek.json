@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "cardamom"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "fenugreek"
+    }
+  ],
+  "description": "The slightly bitter and nutty flavor of fenugreek works well with the sweet and floral cardamom, enhancing the depth of curries and masalas."
+}

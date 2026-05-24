@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "mixtures",
+      "slug": "berbere"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "cardamom"
+    }
+  ],
+  "description": "Cardamom's floral and warm notes complement the fragrant spices in berbere, enhancing the depth of flavors in spicy dishes."
+}
