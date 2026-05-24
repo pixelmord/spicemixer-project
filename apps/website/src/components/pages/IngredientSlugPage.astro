@@ -87,13 +87,45 @@ const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().
     <DetailLayout>
       <section slot="hero">
         {
-          data.images[0] ? (
+          data.images?.[0] ? (
             <figure class="mb-8 overflow-hidden rounded-3xl">
               <img
                 src={data.images[0]}
                 alt={data.name}
                 class="aspect-[16/9] w-full object-cover"
               />
+              {data.imageAttribution && (
+                <figcaption class="mt-2 px-1 text-[11px] text-stone-500">
+                  {t("ingredient.imageCredit")}:{" "}
+                  <a
+                    href={data.imageAttribution.creatorUrl ?? data.imageAttribution.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline decoration-dotted underline-offset-2 hover:text-stone-800"
+                  >
+                    {data.imageAttribution.creator}
+                  </a>
+                  {" — "}
+                  <a
+                    href={data.imageAttribution.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline decoration-dotted underline-offset-2 hover:text-stone-800"
+                  >
+                    {data.imageAttribution.source}
+                  </a>
+                  {" ("}
+                  <a
+                    href={data.imageAttribution.licenseUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline decoration-dotted underline-offset-2 hover:text-stone-800"
+                  >
+                    {data.imageAttribution.license}
+                  </a>
+                  {")"}
+                </figcaption>
+              )}
             </figure>
           ) : (
             <div class="mb-8 rounded-3xl bg-gradient-to-br from-amber-50 via-stone-50 to-rose-50 p-10">
@@ -108,7 +140,7 @@ const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().
         }
 
         {
-          data.images[0] && (
+          data.images?.[0] && (
             <header class="mb-6">
               <p class="text-[10px] font-semibold uppercase tracking-[0.3em] text-stone-500">
                 {data.category}
@@ -131,6 +163,7 @@ const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().
         {
           data.description && (
             <section class="mb-10">
+              <h2 class="mb-3 font-serif text-2xl text-stone-900">{t("ingredient.section.description")}</h2>
               <p class="leading-relaxed text-stone-800" set:html={renderInlineMarkdown(data.description)} />
             </section>
           )
@@ -150,7 +183,7 @@ const hreflang = await hreflangTags(slug, "ingredients", Astro.site?.toString().
         }
 
         {
-          data.images.length > 1 && (
+          data.images && data.images.length > 1 && (
             <section class="mb-10">
               <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {data.images.slice(1).map((src) => (

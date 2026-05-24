@@ -1,16 +1,18 @@
 ---
-import type { TranslationKey } from "../i18n/translations.ts";
+import type { Lang, TranslationKey } from "../i18n/translations.ts";
+import { REGION_LABELS, type RegionCode } from "../lib/regions.ts";
 
 interface IngredientFields {
-  commonNames: string[];
+  commonNames?: string[];
   botanicalName?: string;
   family?: string;
   parts?: string[];
   seasonality?: string;
   flavorProfile?: string[];
-  origin: string[];
-  flavorNotes: string[];
+  origin?: string[];
+  flavorNotes?: string[];
   safetyFlags?: string[];
+  region?: string[];
 }
 
 interface Props {
@@ -19,9 +21,15 @@ interface Props {
 }
 
 const { data, t } = Astro.props;
+const locale = (Astro.currentLocale as Lang) ?? "en";
+
+function labelRegion(code: string): string {
+  const entry = REGION_LABELS[code as RegionCode];
+  return entry ? entry[locale] ?? entry.en : code;
+}
 
 const entries: Array<{ key: TranslationKey; value: string }> = [];
-if (data.commonNames.length > 0)
+if (data.commonNames && data.commonNames.length > 0)
   entries.push({ key: "meta.commonNames", value: data.commonNames.join(", ") });
 if (data.botanicalName)
   entries.push({ key: "meta.botanicalName", value: data.botanicalName });
@@ -33,9 +41,11 @@ if (data.seasonality)
   entries.push({ key: "meta.seasonality", value: data.seasonality });
 if (data.flavorProfile && data.flavorProfile.length > 0)
   entries.push({ key: "meta.flavorProfile", value: data.flavorProfile.join(", ") });
-if (data.origin.length > 0)
+if (data.origin && data.origin.length > 0)
   entries.push({ key: "meta.origin", value: data.origin.join(", ") });
-if (data.flavorNotes.length > 0)
+if (data.region && data.region.length > 0)
+  entries.push({ key: "meta.region", value: data.region.map(labelRegion).join(", ") });
+if (data.flavorNotes && data.flavorNotes.length > 0)
   entries.push({ key: "meta.flavour", value: data.flavorNotes.join(", ") });
 if (data.safetyFlags && data.safetyFlags.length > 0)
   entries.push({ key: "meta.safetyFlags", value: data.safetyFlags.join(", ") });
