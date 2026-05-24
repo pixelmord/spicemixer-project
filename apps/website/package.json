@@ -37,6 +37,8 @@
     "lucide-react": "catalog:",
     "next-themes": "catalog:",
     "pdfjs-dist": "catalog:",
+    "pino": "catalog:",
+    "pino-pretty": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "recipe-ingestion": "workspace:*",

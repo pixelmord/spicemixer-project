@@ -39,6 +39,9 @@ export { isSuppressed, filterSuggestions, buildRejectedContext } from "./suppres
 export { AiError } from "./errors.ts";
 export type { AiErrorCode, AiErrorDetails } from "./errors.ts";
 
+export { noopLogger, createConsoleLogger } from "./logger.ts";
+export type { Logger, LogFn, LogLevel } from "./logger.ts";
+
 export { translationBehaviorSchema, resolveTranslation } from "./translation.ts";
 
 export { diffFieldHashes, classifyRefreshKind } from "./field-diff.ts";
