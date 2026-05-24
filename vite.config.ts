@@ -18,6 +18,9 @@ export default defineConfig({
       "@pixelmord/content-ai-core/presentation": fileURLToPath(
         new URL("./packages/content-ai-core/src/presentation/index.ts", import.meta.url),
       ),
+      "@pixelmord/content-ai-core/server": fileURLToPath(
+        new URL("./packages/content-ai-core/src/server.ts", import.meta.url),
+      ),
       "@pixelmord/content-ai-core/testing": fileURLToPath(
         new URL("./packages/content-ai-core/src/testing/index.ts", import.meta.url),
       ),
@@ -33,7 +36,36 @@ export default defineConfig({
   staged: {
     "*": "vp check --fix",
   },
-  lint: { options: { typeAware: true, typeCheck: true } },
+  lint: {
+    options: { typeAware: true, typeCheck: true },
+    overrides: [
+      {
+        files: ["**/*.test.ts", "**/*.test.tsx", "**/tests/**/*.ts", "**/tests/**/*.tsx"],
+        rules: {
+          // Vitest pattern: expect(mock.method).toHaveBeenCalled() — safe, no `this` binding issue
+          "typescript/unbound-method": "off",
+          // Vitest assertion pattern: (item?.data as X)["key"] — intentional
+          "no-unsafe-optional-chaining": "off",
+        },
+      },
+      {
+        files: ["apps/registry/src/components/**"],
+        rules: {
+          // Methods from useCallback hooks passed as props — `this` never applies
+          "typescript/unbound-method": "off",
+          // Display components rendering unknown-typed field values via String()
+          "typescript/no-base-to-string": "off",
+        },
+      },
+      {
+        files: ["apps/website/src/components/admin/PairingForm.tsx", ".sandcastle/**"],
+        rules: {
+          // Form field values / error objects: String() cast is intentional
+          "typescript/no-base-to-string": "off",
+        },
+      },
+    ],
+  },
   run: {
     cache: true,
     tasks: {

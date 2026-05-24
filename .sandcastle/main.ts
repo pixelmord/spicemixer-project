@@ -192,7 +192,9 @@ function summarize(
   flushDots();
   const duration = formatDuration(Date.now() - startedAt);
   if (error) {
-    console.log(`fail ${label} | ${duration} | tools=${stats.toolCalls} | ${error}`);
+    console.log(
+      `fail ${label} | ${duration} | tools=${stats.toolCalls} | ${error instanceof Error ? error.message : String(error)}`,
+    );
     return;
   }
   if (!result) return;
@@ -336,7 +338,9 @@ async function cleanupOrphanWorktrees() {
       } catch (err) {
         // `.DS_Store` recreation race — wait and retry.
         if (attempt === 7) {
-          console.warn(`could not remove orphan worktree ${path}: ${err}`);
+          console.warn(
+            `could not remove orphan worktree ${path}: ${err instanceof Error ? err.message : String(err)}`,
+          );
           break;
         }
         await sleep(200);
