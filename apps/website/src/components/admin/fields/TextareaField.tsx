@@ -29,9 +29,10 @@ export function TextareaField({
 }: TextareaFieldProps) {
   const field = useFieldContext<string>();
   const flow = useSuggestionFlowContext();
+  const accessor = suggestionPath ? flow.forField(suggestionPath) : null;
 
-  const hasSuggestion = suggestionPath ? !!flow.forField(suggestionPath).suggestion : false;
-  const showButton = !!suggestionPath && !hasSuggestion;
+  const hasSuggestion = !!accessor?.suggestion;
+  const showButton = !!accessor && !hasSuggestion;
   const showLabelRow = !!label || showButton;
 
   return (
@@ -42,11 +43,11 @@ export function TextareaField({
           {showButton && (
             <button
               type="button"
-              onClick={() => void flow.run()}
-              disabled={flow.isRunning}
+              onClick={() => void accessor.run()}
+              disabled={accessor.isRunning}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
             >
-              {flow.isRunning ? (
+              {accessor.isRunning ? (
                 <Loader2 size={11} className="animate-spin" />
               ) : (
                 <Sparkles size={11} />

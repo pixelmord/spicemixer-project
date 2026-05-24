@@ -176,7 +176,7 @@ export default function PairingForm({
 
   const aiFlow = useAiSuggestions({
     contract: { presets: [], fields: {} },
-    onRefine: async () => {
+    onRefine: async (params) => {
       if (!initialId) return { suggestions: {}, autoApplied: {}, traces: {} };
       const { data } = await actions.aiRefreshPairingSuggestions({
         id: initialId,
@@ -185,6 +185,7 @@ export default function PairingForm({
           endpoints: initialEndpoints ?? [],
           description: formValues.description,
         },
+        ...(params.target?.length ? { missingFields: params.target } : {}),
       });
       const block = data?.aiSuggestions?.[locale] as Record<string, unknown> | undefined;
       const improvements =

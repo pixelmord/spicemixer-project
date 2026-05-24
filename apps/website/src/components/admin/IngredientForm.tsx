@@ -434,16 +434,20 @@ export default function IngredientForm({
 
   const aiFlow = useAiSuggestions({
     contract: { presets: [], fields: {} },
-    onRefine: async () => {
+    onRefine: async (params) => {
       const snap = buildIngredientSnapshot();
-      const missingKeys = INGREDIENT_RECOMMENDED.filter((k) => {
-        if (k === "origin") return origins.length === 0;
-        if (k === "images[0]") return !formValues.image;
-        if (k === "parts") return parts.length === 0;
-        if (k === "flavorProfile") return flavorProfile.length === 0;
-        const v = formValues[k as keyof typeof formValues];
-        return !v;
-      });
+      // Per-field run: use params.target directly.
+      // Full refresh: derive missing keys from recommended field completeness.
+      const missingKeys =
+        params.target ??
+        INGREDIENT_RECOMMENDED.filter((k) => {
+          if (k === "origin") return origins.length === 0;
+          if (k === "images[0]") return !formValues.image;
+          if (k === "parts") return parts.length === 0;
+          if (k === "flavorProfile") return flavorProfile.length === 0;
+          const v = formValues[k as keyof typeof formValues];
+          return !v;
+        });
       const { data: result } = await actions.aiRefreshIngredientSuggestions({
         locale,
         slug,
@@ -452,16 +456,20 @@ export default function IngredientForm({
         missingFields: missingKeys,
       });
       const parsed = parseApiResult(result as unknown as Record<string, unknown>);
-      setDetectedLanguage(parsed.detectedLanguage);
-      setLanguageMismatch(parsed.languageMismatch ?? false);
-      if (parsed.pairings.length > 0) {
-        setPairingProposals(parsed.pairings);
-        const autoLinked = (result as unknown as Record<string, unknown>)?.autoLinked as number;
-        if (autoLinked > 0) {
-          toast.success(`Auto-paired ${autoLinked} ingredient${autoLinked !== 1 ? "s" : ""}`);
-          void actions.listPairingsFor({ slug }).then((pr: { data?: unknown }) => {
-            if (pr.data) setFeaturedPairings(pr.data as PairingListItem[]);
-          });
+      // Side-effects (language detection, pairing proposals) only on full refreshes —
+      // a per-field run won't include those and would incorrectly clear existing state.
+      if (!params.target) {
+        setDetectedLanguage(parsed.detectedLanguage);
+        setLanguageMismatch(parsed.languageMismatch ?? false);
+        if (parsed.pairings.length > 0) {
+          setPairingProposals(parsed.pairings);
+          const autoLinked = (result as unknown as Record<string, unknown>)?.autoLinked as number;
+          if (autoLinked > 0) {
+            toast.success(`Auto-paired ${autoLinked} ingredient${autoLinked !== 1 ? "s" : ""}`);
+            void actions.listPairingsFor({ slug }).then((pr: { data?: unknown }) => {
+              if (pr.data) setFeaturedPairings(pr.data as PairingListItem[]);
+            });
+          }
         }
       }
       return adaptIngredientImprovementsToRunResult(parsed.improvements);
@@ -884,11 +892,11 @@ export default function IngredientForm({
                                 {!aiFlow.forField("summary").suggestion && (
                                   <button
                                     type="button"
-                                    onClick={() => void aiFlow.run()}
-                                    disabled={aiFlow.isRunning}
+                                    onClick={() => void aiFlow.forField("summary").run()}
+                                    disabled={aiFlow.forField("summary").isRunning}
                                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
                                   >
-                                    {aiFlow.isRunning ? (
+                                    {aiFlow.forField("summary").isRunning ? (
                                       <Loader2 size={11} className="animate-spin" />
                                     ) : (
                                       <Sparkles size={11} />
@@ -928,11 +936,11 @@ export default function IngredientForm({
                                 {!aiFlow.forField("description").suggestion && (
                                   <button
                                     type="button"
-                                    onClick={() => void aiFlow.run()}
-                                    disabled={aiFlow.isRunning}
+                                    onClick={() => void aiFlow.forField("description").run()}
+                                    disabled={aiFlow.forField("description").isRunning}
                                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
                                   >
-                                    {aiFlow.isRunning ? (
+                                    {aiFlow.forField("description").isRunning ? (
                                       <Loader2 size={11} className="animate-spin" />
                                     ) : (
                                       <Sparkles size={11} />
@@ -1100,11 +1108,11 @@ export default function IngredientForm({
                                 {!aiFlow.forField("seasonality").suggestion && (
                                   <button
                                     type="button"
-                                    onClick={() => void aiFlow.run()}
-                                    disabled={aiFlow.isRunning}
+                                    onClick={() => void aiFlow.forField("seasonality").run()}
+                                    disabled={aiFlow.forField("seasonality").isRunning}
                                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
                                   >
-                                    {aiFlow.isRunning ? (
+                                    {aiFlow.forField("seasonality").isRunning ? (
                                       <Loader2 size={11} className="animate-spin" />
                                     ) : (
                                       <Sparkles size={11} />
@@ -1326,11 +1334,11 @@ export default function IngredientForm({
                                 {!aiFlow.forField(key).suggestion && (
                                   <button
                                     type="button"
-                                    onClick={() => void aiFlow.run()}
-                                    disabled={aiFlow.isRunning}
+                                    onClick={() => void aiFlow.forField(key).run()}
+                                    disabled={aiFlow.forField(key).isRunning}
                                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
                                   >
-                                    {aiFlow.isRunning ? (
+                                    {aiFlow.forField(key).isRunning ? (
                                       <Loader2 size={11} className="animate-spin" />
                                     ) : (
                                       <Sparkles size={11} />

@@ -3,7 +3,6 @@ import { z } from "astro/zod";
 import { createStore } from "@/lib/content-store.ts";
 import { createMetaSidecar } from "@/lib/meta-sidecar.ts";
 import { slugFromLocaleId } from "@/lib/recipe-augment.ts";
-import { entityRefSchema } from "@/lib/entity-ref.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
 import { endpointRefSchema } from "entity-kind";
 import type { EndpointRef } from "entity-kind";
@@ -1353,6 +1352,7 @@ export const server = {
       id: z.string().min(1),
       locale: z.string().length(2).default("en"),
       pairing: z.record(z.string(), z.unknown()),
+      missingFields: z.array(z.string()).default([]),
     }),
     handler: wrapWithOrigin({
       surface: "admin",
@@ -1360,7 +1360,7 @@ export const server = {
       entityKind: "pairing",
       triggeredBy: "editor",
       userInitiated: true,
-    })(async ({ id, locale, pairing }) => {
+    })(async ({ id, locale, pairing, missingFields }) => {
       const config = resolveAiConfig();
       const { runAiRefresh } = await import("@/lib/ai/runner.ts");
       const store = await createStore();
@@ -1369,7 +1369,7 @@ export const server = {
         kind: "pairing",
         metaRef: { collection: "pairings", slug: id },
         payload: pairing,
-        missingFields: [],
+        missingFields,
         locale,
         store,
         sidecar,

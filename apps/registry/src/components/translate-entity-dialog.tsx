@@ -295,6 +295,8 @@ export function TranslateEntityDialog({
       markViewed() {
         setViewedFields((prev) => new Set([...prev, field]));
       },
+      isRunning: false,
+      run: async () => {},
     });
 
     return {

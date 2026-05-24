@@ -118,7 +118,7 @@ export interface PerFieldAccessor {
   revertAutoApply(): void;
   markViewed(): void;
   /** Current source-locale field value (undefined when no siblingLocale provided) */
-  source: unknown | undefined;
+  source: unknown;
   /** Source locale code (undefined when no siblingLocale provided) */
   sourceLocale: string | undefined;
   /** True when source field changed since translation was made */
@@ -127,6 +127,10 @@ export interface PerFieldAccessor {
   translationMode: TranslationBehavior["mode"] | undefined;
   /** Re-run fill for this field using the sibling-locale source */
   retranslate: () => Promise<void>;
+  /** True while a targeted run() call for this specific field is in progress */
+  isRunning: boolean;
+  /** Trigger onRefine scoped to this field (passes target: [fieldPath]) */
+  run: () => Promise<void>;
 }
 
 export interface UseAiSuggestionsReturn {
@@ -206,6 +210,7 @@ export function useAiSuggestions({
 }: UseAiSuggestionsInput): UseAiSuggestionsReturn {
   // Internal state
   const [isRunning, setIsRunning] = useState(false);
+  const [runningFields, setRunningFields] = useState<Set<FieldPath>>(new Set());
   const [suggestions, setSuggestions] = useState<Map<FieldPath, FieldSuggestion>>(new Map());
   const [autoApplied, setAutoApplied] = useState<Map<FieldPath, AppliedSuggestion>>(new Map());
   const [traces, setTraces] = useState<Map<FieldPath, TraceSummary>>(new Map());
@@ -324,6 +329,48 @@ export function useAiSuggestions({
         });
       };
 
+      const run = async (): Promise<void> => {
+        setRunningFields((prev) => new Set([...prev, field]));
+        try {
+          const result = await onRefine({
+            currentData,
+            preset,
+            userPrompt,
+            writePolicy,
+            entityRef,
+            origin,
+            target: [field],
+          });
+          setSuggestions((prev) => {
+            const next = new Map(prev);
+            for (const [f, s] of Object.entries(result.suggestions ?? {})) {
+              next.set(f, s);
+            }
+            return next;
+          });
+          setAutoApplied((prev) => {
+            const next = new Map(prev);
+            for (const [f, a] of Object.entries(result.autoApplied ?? {})) {
+              next.set(f, a);
+            }
+            return next;
+          });
+          setTraces((prev) => {
+            const next = new Map(prev);
+            for (const [f, t] of Object.entries(result.traces ?? {})) {
+              next.set(f, t);
+            }
+            return next;
+          });
+        } finally {
+          setRunningFields((prev) => {
+            const next = new Set(prev);
+            next.delete(field);
+            return next;
+          });
+        }
+      };
+
       return {
         suggestion,
         autoApplied: appliedSuggestion,
@@ -333,6 +380,8 @@ export function useAiSuggestions({
         isStale,
         translationMode,
         retranslate,
+        isRunning: runningFields.has(field),
+        run,
         recordAccept(hash: string, value: unknown) {
           setSuggestions((prev) => {
             const next = new Map(prev);
@@ -388,13 +437,18 @@ export function useAiSuggestions({
       suggestions,
       autoApplied,
       traces,
+      runningFields,
       aiEventLog,
       entityRef,
       origin,
       siblingLocale,
       contract,
+      onRefine,
       onFill,
       currentData,
+      preset,
+      userPrompt,
+      writePolicy,
     ],
   );
 
