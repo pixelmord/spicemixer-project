@@ -1,3 +1,358 @@
 {
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "aiEvents": [
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "24e5b3944337",
+        "summary": "Pairing auto-applied: cardamom ↔ cumin"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "c67a21b1-ba1d-437d-be80-c0f99e8b81a8",
+      "id": "d34edcc6-f2f1-43bd-af4e-80228b91f2eb",
+      "at": "2026-05-24T11:39:13.034Z"
+    },
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "b9a329a3d406",
+        "summary": "Pairing auto-applied: cardamom ↔ fenugreek"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "c67a21b1-ba1d-437d-be80-c0f99e8b81a8",
+      "id": "babea0b6-2c99-4c83-af35-fa9edf5e0341",
+      "at": "2026-05-24T11:39:13.037Z"
+    },
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "69ea733cf021",
+        "summary": "Pairing auto-applied: cardamom ↔ ras-el-hanout"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "c67a21b1-ba1d-437d-be80-c0f99e8b81a8",
+      "id": "74f45ab5-9908-4927-9e3b-691d437264cc",
+      "at": "2026-05-24T11:39:13.038Z"
+    },
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "2cc27ceff73d",
+        "summary": "Pairing auto-applied: cardamom ↔ saffron"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "c67a21b1-ba1d-437d-be80-c0f99e8b81a8",
+      "id": "c3f54bc3-4aec-4e7d-a830-e2411a9a5b94",
+      "at": "2026-05-24T11:39:13.041Z"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T12:12:10.448Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "51cce976-b7f8-4062-b884-0f3de5f357e0"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T12:13:03.088Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "7ab6feb1-4862-41fa-b1f9-b5eb3884f8ac"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T12:51:44.749Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "53c7a96d-38c9-48fd-a3a5-e3557fa74ab9"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T12:53:13.595Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "41db26c6-b77f-45be-8c97-4506d6b5eb13"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T12:54:28.954Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "c9a8d5bd-2337-4df4-abd5-e7d18c8d337b"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T12:56:58.294Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "acac6fa0-36bd-4ada-b82f-7df20ee1d20d"
+    },
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "de658b30355e",
+        "summary": "Pairing auto-applied: cardamom ↔ berbere"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "b9bce261-72e1-487e-8c1b-86e16f8b2b04",
+      "id": "0bad71b2-3975-41e0-9ace-3bd3a96700fc",
+      "at": "2026-05-24T12:57:32.691Z"
+    },
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "c8105d9b0043",
+        "summary": "Pairing auto-applied: cardamom ↔ harissa"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "b9bce261-72e1-487e-8c1b-86e16f8b2b04",
+      "id": "6b9658a9-fba3-4186-8f12-22390470e20f",
+      "at": "2026-05-24T12:57:32.692Z"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T13:02:36.155Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "0336e030-5f7e-4231-9c61-8c50940c4f51"
+    },
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "948ffc67d97d",
+        "summary": "Pairing auto-applied: cardamom ↔ koriander"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "1b884828-afd0-49b8-b0e4-f48c118f3a1e",
+      "id": "7defdd51-1033-4714-b7a4-e011c2376c28",
+      "at": "2026-05-24T13:03:59.308Z"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T13:10:41.675Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "9090a00a-a3ed-460f-aa3d-3995f40a0ad1"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T13:11:57.963Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "ac38d552-d1d3-4df8-88b5-1b4357c32213"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T13:13:35.494Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "a69c3b45-c221-455d-833a-b1ebced8b365"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T13:18:17.830Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "276a120b-dc8d-4e77-90b6-805218b91475"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T13:19:50.335Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "05acf472-f9f0-49a7-9c02-8e8d7973ba7d"
+    },
+    {
+      "type": "accepted",
+      "field": "summary",
+      "suggestion": {
+        "hash": "summary-0",
+        "summary": "Accepted: summary"
+      },
+      "at": "2026-05-24T13:24:26.183Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "f01d7ddc-7e78-45da-862a-067cafd98080"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "seasonality-0",
+        "summary": "Accepted: seasonality"
+      },
+      "at": "2026-05-24T15:13:43.837Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "0970982b-e9e1-49c4-bc49-b88a231078af"
+    },
+    {
+      "type": "accepted",
+      "field": "culinaryUse",
+      "suggestion": {
+        "hash": "culinaryUse-0",
+        "summary": "Accepted: culinaryUse"
+      },
+      "at": "2026-05-24T18:16:29.771Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "1e2a802f-d428-4b74-aaf5-7fed472aac56"
+    },
+    {
+      "type": "accepted",
+      "field": "medicinalUses",
+      "suggestion": {
+        "hash": "medicinalUses-0",
+        "summary": "Accepted: medicinalUses"
+      },
+      "at": "2026-05-24T18:17:16.594Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "789523ff-52ec-4b04-acce-d64b9ab7c356"
+    },
+    {
+      "type": "accepted",
+      "field": "healthBenefits",
+      "suggestion": {
+        "hash": "healthBenefits-0",
+        "summary": "Accepted: healthBenefits"
+      },
+      "at": "2026-05-24T18:17:16.595Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "ccab9677-bc7b-47e4-bab6-4b27e5e36e97"
+    },
+    {
+      "type": "accepted",
+      "field": "history",
+      "suggestion": {
+        "hash": "history-0",
+        "summary": "Accepted: history"
+      },
+      "at": "2026-05-24T18:18:14.122Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "c8e0d938-0b13-4fb3-9cab-2f3b87a33ea8"
+    },
+    {
+      "type": "accepted",
+      "field": "storage",
+      "suggestion": {
+        "hash": "storage-0",
+        "summary": "Accepted: storage"
+      },
+      "at": "2026-05-24T18:18:14.123Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "c1beed85-0827-44fc-aca2-f7fec5189087"
+    },
+    {
+      "type": "accepted",
+      "field": "sourcing",
+      "suggestion": {
+        "hash": "sourcing-0",
+        "summary": "Accepted: sourcing"
+      },
+      "at": "2026-05-24T18:18:14.124Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "c153c095-4e6d-4cd9-8ef5-c1c60d10520f"
+    }
+  ],
+  "draft": false,
+  "canonicalContentHash": "fcb6c84071825e96"
 }
