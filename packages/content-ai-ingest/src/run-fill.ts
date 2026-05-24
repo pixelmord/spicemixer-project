@@ -1,5 +1,6 @@
 import { generateText, Output } from "ai";
 import type { ZodSchema } from "zod";
+import { noopLogger, type Logger } from "@pixelmord/content-ai-core";
 import type { TraceSink } from "@pixelmord/content-ai-core/server";
 import { hashSuggestion } from "./hash.ts";
 import { createProvider, PROVIDER_OPTIONS } from "./provider.ts";
@@ -80,6 +81,7 @@ async function callLlm(
   messageSet: MessageSet,
   userPrompt?: string,
   sinks?: TraceSink[],
+  logger: Logger = noopLogger,
 ): Promise<Record<string, unknown>> {
   const model = createProvider(config, sinks?.length ? { sinks } : undefined);
   const effectivePrompt = userPrompt
@@ -91,16 +93,48 @@ async function callLlm(
     providerOptions: PROVIDER_OPTIONS,
     system: systemPrompt,
   } as const;
-  const result = await (messageSet.messages
-    ? generateText({ ...sharedArgs, messages: messageSet.messages })
-    : generateText({ ...sharedArgs, prompt: effectivePrompt ?? "" }));
-  return result.output as Record<string, unknown>;
+  const start = Date.now();
+  logger.debug(
+    { op: "fill.llm.start", model: config.model, hasMessages: Boolean(messageSet.messages) },
+    "runFill: llm call start",
+  );
+  try {
+    const result = await (messageSet.messages
+      ? generateText({ ...sharedArgs, messages: messageSet.messages })
+      : generateText({ ...sharedArgs, prompt: effectivePrompt ?? "" }));
+    logger.info(
+      { op: "fill.llm.success", model: config.model, runtimeMs: Date.now() - start },
+      `runFill: llm ok (${Date.now() - start}ms)`,
+    );
+    return result.output as Record<string, unknown>;
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    logger.error(
+      {
+        op: "fill.llm.error",
+        model: config.model,
+        runtimeMs: Date.now() - start,
+        err: { name: error.name, message: error.message, stack: error.stack },
+      },
+      `runFill: llm failed — ${error.message}`,
+    );
+    throw err;
+  }
 }
 
 export async function runFill<S extends ZodSchema, Source>(
   params: RunFillParams<S, Source>,
 ): Promise<RunFillResult> {
-  const { contract, sourceContext, config, userPrompt } = params;
+  const { contract, sourceContext, config, userPrompt, logger = noopLogger } = params;
+  logger.info(
+    {
+      op: "fill.start",
+      model: config.model,
+      hasUserPrompt: Boolean(userPrompt),
+      sourceKind: isSiblingLocaleSource(sourceContext) ? "sibling-locale" : "external",
+    },
+    "runFill: start",
+  );
 
   if (isSiblingLocaleSource(sourceContext)) {
     const schemaObj = contract.schema as { shape?: Record<string, unknown> };
@@ -155,6 +189,7 @@ export async function runFill<S extends ZodSchema, Source>(
         { messages, prompt },
         userPrompt,
         params.sinks,
+        logger,
       );
 
       for (const field of llmFields) {
@@ -192,6 +227,22 @@ export async function runFill<S extends ZodSchema, Source>(
       traceId,
     };
 
+    if (warnings.length > 0) {
+      logger.warn(
+        { op: "fill.warnings", warnings },
+        `runFill: ${warnings.length} warning(s) from buildMessages`,
+      );
+    }
+    logger.info(
+      {
+        op: "fill.end",
+        suggestions: suggestions.size,
+        autoApplied: autoApplied.size,
+        runtimeMs,
+      },
+      `runFill: end (${suggestions.size} suggestions, ${runtimeMs}ms)`,
+    );
+
     return { suggestions, autoApplied, traces, ingestedEvent, warnings };
   }
 
@@ -225,6 +276,7 @@ export async function runFill<S extends ZodSchema, Source>(
     { messages, prompt },
     userPrompt,
     params.sinks,
+    logger,
   );
 
   const runtimeMs = Date.now() - start;
@@ -266,6 +318,17 @@ export async function runFill<S extends ZodSchema, Source>(
     },
     traceId,
   };
+
+  if (warnings.length > 0) {
+    logger.warn(
+      { op: "fill.warnings", warnings },
+      `runFill: ${warnings.length} warning(s) from buildMessages`,
+    );
+  }
+  logger.info(
+    { op: "fill.end", suggestions: suggestions.size, runtimeMs },
+    `runFill: end (${suggestions.size} suggestions, ${runtimeMs}ms)`,
+  );
 
   return { suggestions, autoApplied, traces, ingestedEvent, warnings };
 }

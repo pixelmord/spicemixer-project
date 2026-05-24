@@ -1,6 +1,6 @@
 import type { ZodSchema, z } from "zod";
 import type { ModelMessage } from "ai";
-import type { SourceDescriptor } from "@pixelmord/content-ai-core";
+import type { Logger, SourceDescriptor } from "@pixelmord/content-ai-core";
 import type { TraceSink } from "@pixelmord/content-ai-core/server";
 
 // ── AiConfig ─────────────────────────────────────────────────────────────────
@@ -130,6 +130,11 @@ export interface RunFillParams<S extends ZodSchema, Source> {
   userPrompt?: string;
   writePolicy?: FieldWritePolicy;
   fieldPolicies?: Record<string, FieldWritePolicy>;
+  /**
+   * Optional structural logger (pino-compatible). When omitted, no-op.
+   * Logs LLM call lifecycle, message warnings, and errors.
+   */
+  logger?: Logger;
 }
 
 export interface RunFillResult {

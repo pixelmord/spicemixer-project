@@ -1,6 +1,7 @@
 import { hashSuggestion, hashContent } from "@pixelmord/content-ai-core";
 import { getCurrentOrigin } from "@pixelmord/content-ai-core/server";
 import type { AiConfig } from "@pixelmord/content-ai-core";
+import { aiLogger } from "@/lib/logger.ts";
 import { publish } from "@/lib/pubsub.ts";
 import {
   metaRefToEntityRef,
@@ -66,6 +67,8 @@ export interface AiRefreshResult {
   detectedLanguage?: string;
   skipped: boolean;
   cached?: boolean;
+  /** Per-field errors from runRefine — surfaces to UI for toast. */
+  errors?: Array<{ field: string; message: string }>;
 }
 
 const PLACEHOLDER_PATTERNS =
@@ -129,14 +132,32 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
     ...(!existingMeta["locale"] ? ["language"] : []),
   ];
 
-  const { suggestions, autoApplied } = await runRefine({
+  const {
+    suggestions,
+    autoApplied,
+    errors: errorsMap,
+  } = await runRefine({
     contract: ingredientContract,
     currentData: payload as never,
     sourceContext: { inventory, locale },
     target: targetFields,
     events: existingEvents as unknown as RefineAiEvent[],
     config,
+    logger: aiLogger.child({ kind: "ingredient", slug: metaRef.slug }),
   });
+
+  const ingredientErrors = errorsMap
+    ? Array.from(errorsMap.values()).map((e) => ({ field: e.field, message: e.message }))
+    : [];
+
+  if (ingredientErrors.length > 0 && suggestions.size === 0 && autoApplied.size === 0) {
+    // Total failure for this run — surface to caller. The action wrapper will
+    // turn this into an ActionError the UI can show.
+    const first = ingredientErrors[0];
+    throw new Error(
+      first ? `AI suggest failed for ${first.field}: ${first.message}` : "AI suggest failed",
+    );
+  }
 
   const rawImprovements = fieldsForAi
     .filter((f) => suggestions.has(f))
@@ -214,7 +235,7 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
     }
   }
 
-  return { aiSuggestions, autoLinked, skipped: false };
+  return { aiSuggestions, autoLinked, skipped: false, errors: ingredientErrors };
 }
 
 async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult> {
@@ -297,7 +318,11 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     ...(!meta["language"] ? ["language"] : []),
   ];
 
-  const { suggestions, autoApplied } = await withProgress("refine", () =>
+  const {
+    suggestions,
+    autoApplied,
+    errors: recipeErrorsMap,
+  } = await withProgress("refine", () =>
     runRefine({
       contract: recipeContract,
       currentData: payload as never,
@@ -305,8 +330,20 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
       target: targetFields,
       events: existingEvents as unknown as RefineAiEvent[],
       config,
+      logger: aiLogger.child({ kind: "recipe", slug: metaRef.slug }),
     }),
   );
+
+  const recipeErrors = recipeErrorsMap
+    ? Array.from(recipeErrorsMap.values()).map((e) => ({ field: e.field, message: e.message }))
+    : [];
+
+  if (recipeErrors.length > 0 && suggestions.size === 0 && autoApplied.size === 0) {
+    const first = recipeErrors[0];
+    throw new Error(
+      first ? `AI suggest failed for ${first.field}: ${first.message}` : "AI suggest failed",
+    );
+  }
 
   const rawImprovements = fieldsForAi
     .filter((f) => suggestions.has(f))
@@ -444,6 +481,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     detectedLanguage,
     skipped: false,
     cached: false,
+    errors: recipeErrors,
   };
 }
 
@@ -466,7 +504,7 @@ async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult
     descriptions["en"] ??
     (typeof payload["description"] === "string" ? payload["description"] : "");
 
-  const { suggestions } = await runRefine({
+  const { suggestions, errors: pairingErrorsMap } = await runRefine({
     contract: pairingContract,
     currentData: {
       description,
@@ -475,7 +513,19 @@ async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult
     sourceContext: { locale },
     events: existingEvents as unknown as RefineAiEvent[],
     config,
+    logger: aiLogger.child({ kind: "pairing", slug: metaRef.slug }),
   });
+
+  const pairingErrors = pairingErrorsMap
+    ? Array.from(pairingErrorsMap.values()).map((e) => ({ field: e.field, message: e.message }))
+    : [];
+
+  if (pairingErrors.length > 0 && suggestions.size === 0) {
+    const first = pairingErrors[0];
+    throw new Error(
+      first ? `AI suggest failed for ${first.field}: ${first.message}` : "AI suggest failed",
+    );
+  }
 
   const descSugg = suggestions.get("description");
   const improvements = descSugg
@@ -491,6 +541,7 @@ async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult
     aiSuggestions: { [locale]: { improvements } },
     autoLinked: 0,
     skipped: false,
+    errors: pairingErrors,
   };
 }
 

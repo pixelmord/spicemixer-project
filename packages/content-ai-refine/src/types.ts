@@ -1,4 +1,5 @@
 import type { ZodSchema, z } from "zod";
+import type { Logger } from "@pixelmord/content-ai-core";
 import type { TraceSink } from "@pixelmord/content-ai-core/server";
 import type { AiConfig } from "./provider.ts";
 
@@ -119,10 +120,36 @@ export interface RunRefineParams<S extends ZodSchema, Source = never> {
   config: AiConfig;
   sinks?: TraceSink[];
   events?: AiEvent[];
+  /**
+   * Optional structural logger (pino-compatible). When omitted, no-op.
+   * Used to log per-field LLM calls, latency, and errors that would
+   * otherwise be silently swallowed.
+   */
+  logger?: Logger;
+  /**
+   * How to handle per-field LLM errors.
+   * - "collect" (default): record into `errors`, continue with other fields.
+   * - "throw": re-throw the first per-field error so the caller can surface it
+   *   (recommended for single-field runs from the editor).
+   */
+  errorMode?: "collect" | "throw";
+}
+
+export interface FieldRunError {
+  field: string;
+  message: string;
+  name: string;
+  cause?: unknown;
 }
 
 export interface RunRefineResult {
   suggestions: Map<string, FieldSuggestion>;
   autoApplied: Map<string, AppliedSuggestion>;
   traces: Map<string, TraceSummary>;
+  /**
+   * Per-field errors that occurred during refinement. Always populated by
+   * runRefine (empty Map when no errors). Marked optional for back-compat
+   * with test mocks that pre-date the field.
+   */
+  errors?: Map<string, FieldRunError>;
 }

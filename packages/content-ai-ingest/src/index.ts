@@ -15,3 +15,5 @@ export type {
   RunFillParams,
   RunFillResult,
 } from "./types.ts";
+
+export type { Logger } from "@pixelmord/content-ai-core";

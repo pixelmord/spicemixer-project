@@ -13,6 +13,9 @@ export type {
   Preset,
   TranslationBehavior,
   AiEvent,
+  FieldRunError,
   RunRefineParams,
   RunRefineResult,
 } from "./types.ts";
+
+export type { Logger } from "@pixelmord/content-ai-core";

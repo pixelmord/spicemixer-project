@@ -1,12 +1,14 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import type { ZodObject, ZodRawShape, ZodSchema } from "zod";
+import { noopLogger } from "@pixelmord/content-ai-core";
 import { createProvider, PROVIDER_OPTIONS } from "./provider.ts";
 import { fingerprintHash } from "./hash.ts";
 import type {
   AiEvent,
   AppliedSuggestion,
   AutoApplyPolicy,
+  FieldRunError,
   FieldSuggestion,
   FieldWritePolicy,
   PromptContext,
@@ -72,6 +74,39 @@ function extractFieldSchema(entitySchema: ZodSchema, field: string): ZodSchema |
   return shape[field] as ZodSchema | undefined;
 }
 
+/**
+ * runRefine asks the model to produce a value for a single field. If the
+ * entity schema marks the field as `.optional()` / `.nullable()` / has a
+ * default, the wrapped output schema would let the model legally return
+ * nothing — which surfaces as "model returned no value" with no real cause.
+ *
+ * Strip those wrappers so the generated JSON schema requires a value.
+ */
+function requireValueSchema(schema: ZodSchema): ZodSchema {
+  let current: unknown = schema;
+  // Walk up to 8 layers to handle stacked wrappers (e.g. optional().nullable()).
+  for (let i = 0; i < 8; i++) {
+    const typeName =
+      (current as { _def?: { typeName?: string } })._def?.typeName ??
+      (current as { _zod?: { def?: { type?: string } } })._zod?.def?.type;
+    const unwrap = (current as { unwrap?: () => ZodSchema }).unwrap;
+    if (
+      typeof unwrap === "function" &&
+      (typeName === "optional" ||
+        typeName === "nullable" ||
+        typeName === "default" ||
+        typeName === "ZodOptional" ||
+        typeName === "ZodNullable" ||
+        typeName === "ZodDefault")
+    ) {
+      current = unwrap.call(current);
+      continue;
+    }
+    break;
+  }
+  return current as ZodSchema;
+}
+
 function isSiblingLocaleSource(ctx: unknown): boolean {
   return (
     typeof ctx === "object" &&
@@ -99,6 +134,8 @@ export async function runRefine<S extends ZodSchema, Source = never>(
     config,
     sinks,
     events = [],
+    logger = noopLogger,
+    errorMode = "collect",
   } = params;
 
   const allContractFields = Object.keys(contract.fields);
@@ -115,6 +152,19 @@ export async function runRefine<S extends ZodSchema, Source = never>(
   const suggestions = new Map<string, FieldSuggestion>();
   const autoApplied = new Map<string, AppliedSuggestion>();
   const traces = new Map<string, TraceSummary>();
+  const errors = new Map<string, FieldRunError>();
+
+  const runStart = Date.now();
+  logger.info(
+    {
+      op: "refine.start",
+      model: config.model,
+      target: targetFields,
+      preset,
+      hasUserPrompt: Boolean(userPrompt),
+    },
+    "runRefine: start",
+  );
 
   await Promise.all(
     targetFields.map(async (field) => {
@@ -129,9 +179,13 @@ export async function runRefine<S extends ZodSchema, Source = never>(
       // Write policy check: skip LLM if policy is preserve/fill-if-empty and field has value
       if (shouldSkipByPolicy(field, dataAsRecord, fieldConfig.writePolicy)) return;
 
-      // Resolve output schema: explicit outputSchema wins, then entity field schema
-      const outputSchema =
+      // Resolve output schema: explicit outputSchema wins, then entity field schema.
+      // Strip optional/nullable/default wrappers so the model is required to
+      // produce a value — otherwise OpenAI's structured-output mode will
+      // legally return `{ value: null }` and we surface that as "no value".
+      const rawSchema =
         fieldConfig.outputSchema ?? extractFieldSchema(contract.schema, field) ?? z.unknown();
+      const outputSchema = requireValueSchema(rawSchema);
 
       const ctx: PromptContext<S, Source> = {
         currentData: dataAsRecord as z.infer<S>,
@@ -154,26 +208,54 @@ export async function runRefine<S extends ZodSchema, Source = never>(
       const traceId = crypto.randomUUID();
       const start = Date.now();
 
+      logger.debug(
+        { op: "refine.field.start", field, model: config.model, traceId },
+        `runRefine[${field}]: start`,
+      );
+
       try {
         const model = createProvider(config, sinks?.length ? { sinks } : undefined);
         const wrappedSchema = z.object({ value: outputSchema });
 
+        // Reinforce the wrapper-key contract in the user prompt as
+        // defense-in-depth — the system prompt mentions the field name, so
+        // without this the model drifts to `{ <fieldName>: ... }`. We also
+        // override providerOptions to strict mode for OpenAI so the schema
+        // is enforced server-side.
+        const explicitPrompt =
+          userPrompt ??
+          `Generate the value for the "${field}" field. ` +
+            `You MUST return JSON of exactly this shape: { "value": <generated content> }. ` +
+            `Do not use "${field}" as the JSON key — always use "value".`;
+
         const { output } = await generateText({
           model,
           output: Output.object({ schema: wrappedSchema }),
-          providerOptions: PROVIDER_OPTIONS,
+          providerOptions: { ...PROVIDER_OPTIONS, openai: { strictJsonSchema: true } },
           system: systemPromptStr,
-          prompt: userPrompt ?? `Suggest a value for the "${field}" field.`,
+          prompt: explicitPrompt,
         });
 
         const value = (output as { value: unknown }).value;
-        if (value == null) return;
+        const runtimeMs = Date.now() - start;
+
+        if (value == null) {
+          logger.warn(
+            { op: "refine.field.empty", field, runtimeMs, traceId, rawOutput: output },
+            `runRefine[${field}]: model returned no value (rawOutput=${JSON.stringify(output)})`,
+          );
+          errors.set(field, {
+            field,
+            name: "EmptyResult",
+            message: "The model returned no value for this field.",
+          });
+          return;
+        }
 
         const hash = fingerprintHash({ field, value });
         const summary = summarizeValue(field, value);
         const confidence: "high" | "medium" | "low" = "medium";
 
-        const runtimeMs = Date.now() - start;
         const traceSummary: TraceSummary = {
           traceId,
           model: config.model,
@@ -184,7 +266,13 @@ export async function runRefine<S extends ZodSchema, Source = never>(
         traces.set(traceId, traceSummary);
 
         // Suppression check
-        if (isSuppressed(events, field, hash)) return;
+        if (isSuppressed(events, field, hash)) {
+          logger.debug(
+            { op: "refine.field.suppressed", field, traceId, hash },
+            `runRefine[${field}]: suppressed (previously rejected)`,
+          );
+          return;
+        }
 
         // Auto-apply decision
         const autoApplyPolicy = resolveAutoApply(
@@ -209,11 +297,56 @@ export async function runRefine<S extends ZodSchema, Source = never>(
           };
           suggestions.set(field, suggestion);
         }
-      } catch {
-        // Non-fatal: other fields still processed
+        logger.info(
+          { op: "refine.field.success", field, runtimeMs, traceId, summary },
+          `runRefine[${field}]: ok`,
+        );
+      } catch (err) {
+        const runtimeMs = Date.now() - start;
+        const error = err instanceof Error ? err : new Error(String(err));
+        // ai SDK's AI_NoObjectGeneratedError attaches the raw model response
+        // on `.text` and the diagnosed cause on `.cause` — surface both so
+        // schema-mismatch failures show what the model actually said.
+        const errDetails = err as {
+          text?: string;
+          cause?: unknown;
+          response?: { id?: string; modelId?: string };
+        };
+        logger.error(
+          {
+            op: "refine.field.error",
+            field,
+            runtimeMs,
+            traceId,
+            err: { name: error.name, message: error.message, stack: error.stack },
+            rawText: errDetails.text,
+            cause: errDetails.cause,
+            response: errDetails.response,
+          },
+          `runRefine[${field}]: failed — ${error.message}`,
+        );
+        errors.set(field, {
+          field,
+          name: error.name,
+          message: error.message,
+          cause: err,
+        });
+        if (errorMode === "throw") throw err;
       }
     }),
   );
 
-  return { suggestions, autoApplied, traces };
+  const totalMs = Date.now() - runStart;
+  logger.info(
+    {
+      op: "refine.end",
+      totalMs,
+      suggestions: suggestions.size,
+      autoApplied: autoApplied.size,
+      errors: errors.size,
+    },
+    `runRefine: end (${suggestions.size} suggestions, ${errors.size} errors, ${totalMs}ms)`,
+  );
+
+  return { suggestions, autoApplied, traces, errors };
 }
