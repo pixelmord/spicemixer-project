@@ -218,6 +218,14 @@ export default function PairingForm({
     },
   });
 
+  async function handleManualRefresh() {
+    try {
+      await aiFlow.run();
+    } catch {
+      toast.error("Could not refresh suggestions");
+    }
+  }
+
   async function handleToggleDraft() {
     if (!initialId) return;
     const newDraft = !draft;

@@ -288,8 +288,8 @@ cache answering "have we seen this exact AI input before," and writes
 the appended log back. Replaces today's scattered fetch-modify-write
 pattern in action handlers.
 
-`packages/content-ai/src/events.ts` (the current utility-bag of free
-functions over arrays) becomes the implementation behind this module's
+`@pixelmord/content-ai-core/events.ts` (the utility-bag of free
+functions over arrays) is the implementation behind this module's
 interface.
 
 `AiEventLog` is **editorial** — small, gitable, lives next to content,
