@@ -174,6 +174,83 @@ describe("saveEntity — canonicalContentHash (translatable kinds)", () => {
   });
 });
 
+describe("saveEntity — non-translatable field sync (copy-mode fields)", () => {
+  test("saving canonical ingredient propagates images to other-locale variant of same slug", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    // Pre-populate DE with stale image
+    await store.put("ingredients", "de/cardamom", {
+      name: "Kardamom",
+      category: "spice",
+      images: ["https://images.unsplash.com/stale.jpg"],
+    });
+    // Save EN (canonical) with updated image
+    await saveEntity(store, sidecar, {
+      ref: { collection: "ingredients", locale: "en", slug: "cardamom" },
+      content: {
+        name: "Cardamom",
+        category: "spice",
+        images: ["https://live.staticflickr.com/correct.jpg"],
+        imageAttribution: {
+          source: "flickr",
+          sourceUrl: "https://flickr.com/x",
+          creator: "A",
+          license: "by",
+          licenseUrl: "https://cc.org",
+          attribution: "A",
+        },
+      },
+      meta: { draft: false },
+    });
+    const de = await store.get("ingredients", "de/cardamom");
+    expect((de!.data as Record<string, unknown>)["images"]).toEqual([
+      "https://live.staticflickr.com/correct.jpg",
+    ]);
+    expect((de!.data as Record<string, unknown>)["imageAttribution"]).toMatchObject({
+      source: "flickr",
+    });
+  });
+
+  test("saving ingredient preserves translatable fields in sibling locale", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    await store.put("ingredients", "de/cardamom", {
+      name: "Kardamom",
+      category: "spice",
+      images: ["https://old.jpg"],
+      summary: "Deutsche Zusammenfassung",
+    });
+    await saveEntity(store, sidecar, {
+      ref: { collection: "ingredients", locale: "en", slug: "cardamom" },
+      content: {
+        name: "Cardamom",
+        category: "spice",
+        images: ["https://new.jpg"],
+        summary: "English summary",
+      },
+      meta: { draft: false },
+    });
+    const de = await store.get("ingredients", "de/cardamom");
+    // images synced, but DE's own name/summary NOT overwritten
+    expect((de!.data as Record<string, unknown>)["images"]).toEqual(["https://new.jpg"]);
+    expect((de!.data as Record<string, unknown>)["name"]).toBe("Kardamom");
+    expect((de!.data as Record<string, unknown>)["summary"]).toBe("Deutsche Zusammenfassung");
+  });
+
+  test("non-translatable sync does not run for pairings", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    // Pairings have no nonTranslatableFields — put should not throw or try to find siblings
+    await saveEntity(store, sidecar, {
+      ref: { collection: "pairings", slug: "anise--cardamom" },
+      content: { endpoints: [], description: "x", image: "https://img.jpg" },
+      meta: { draft: false },
+    });
+    const stored = await store.get("pairings", "anise--cardamom");
+    expect(stored?.data).toMatchObject({ description: "x" });
+  });
+});
+
 type KindCase = {
   kind: string;
   ref: SaveEntityRef;

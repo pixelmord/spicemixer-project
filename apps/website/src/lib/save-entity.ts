@@ -25,6 +25,31 @@ export async function saveEntity(
   const id = ref.locale ? `${ref.locale}/${ref.slug}` : ref.slug;
   await store.put(ref.collection, id, content);
 
+  // Sync copy-mode (non-translatable) fields to all other-locale variants of the same slug.
+  // Runs regardless of whether meta is provided so even bare content saves stay in sync.
+  if (ref.locale) {
+    const kind = collectionToKind[ref.collection];
+    const { nonTranslatableFields } = getConfig(kind);
+    if (nonTranslatableFields.length > 0) {
+      const allItems = await store.list(ref.collection);
+      const slugSuffix = `/${ref.slug}`;
+      for (const item of allItems) {
+        if (item.id === id) continue;
+        if (!item.id.endsWith(slugSuffix)) continue;
+        const sibling = item.data as Record<string, unknown>;
+        const updated: Record<string, unknown> = { ...sibling };
+        for (const field of nonTranslatableFields) {
+          if (field in content) {
+            updated[field] = content[field];
+          } else {
+            delete updated[field];
+          }
+        }
+        await store.put(ref.collection, item.id, updated);
+      }
+    }
+  }
+
   if (meta === undefined) return;
 
   const kind = collectionToKind[ref.collection];
