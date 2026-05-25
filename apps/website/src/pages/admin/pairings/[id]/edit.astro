@@ -30,6 +30,7 @@ const sidecar = createMetaSidecar(store);
 const metaRecord = await sidecar.read({ collection: "pairings", locale, slug: pairingId });
 const metaData = (metaRecord?.data as Record<string, unknown>) ?? {};
 const isDraft = !!(metaData["draft"] as boolean);
+const initialTranslationOf = typeof metaData["translationOf"] === "string" ? metaData["translationOf"] : undefined;
 const imageUrl = typeof d["image"] === "string" ? d["image"] : "";
 const imageAttribution = d["imageAttribution"] as ImageAttribution | undefined;
 
@@ -48,6 +49,7 @@ const existingTranslationLocales = otherItem ? [otherLocale] : [];
         initialDraft={isDraft}
         initialImage={imageUrl}
         initialImageAttribution={imageAttribution}
+        initialTranslationOf={initialTranslationOf}
         existingTranslationLocales={existingTranslationLocales}
         client:load
       />
