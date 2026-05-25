@@ -75,9 +75,10 @@ export default function AdminShell({ children, currentPath = "" }: Props) {
         <div className="flex h-14 items-center justify-between gap-2 px-4 border-b border-border">
           <a
             href="/"
-            className="text-lg font-bold tracking-tight hover:text-muted-foreground transition-colors"
+            className="flex items-center gap-1.5 text-lg font-bold tracking-tight hover:text-muted-foreground transition-colors"
           >
-            🌶 SpiceMixer
+            <img src="/favicon.svg" alt="" className="h-8 w-8 shrink-0" />
+            <span>SpiceMixer</span>
           </a>
           <button
             onClick={() => setSidebarOpen(false)}

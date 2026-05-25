@@ -1,9 +1,169 @@
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 128 128">
-    <path d="M50.4 78.5a75.1 75.1 0 0 0-28.5 6.9l24.2-65.7c.7-2 1.9-3.2 3.4-3.2h29c1.5 0 2.7 1.2 3.4 3.2l24.2 65.7s-11.6-7-28.5-7L67 45.5c-.4-1.7-1.6-2.8-2.9-2.8-1.3 0-2.5 1.1-2.9 2.7L50.4 78.5Zm-1.1 28.2Zm-4.2-20.2c-2 6.6-.6 15.8 4.2 20.2a17.5 17.5 0 0 1 .2-.7 5.5 5.5 0 0 1 5.7-4.5c2.8.1 4.3 1.5 4.7 4.7.2 1.1.2 2.3.2 3.5v.4c0 2.7.7 5.2 2.2 7.4a13 13 0 0 0 5.7 4.9v-.3l-.2-.3c-1.8-5.6-.5-9.5 4.4-12.8l1.5-1a73 73 0 0 0 3.2-2.2 16 16 0 0 0 6.8-11.4c.3-2 .1-4-.6-6l-.8.6-1.6 1a37 37 0 0 1-22.4 2.7c-5-.7-9.7-2-13.2-6.2Z" />
-    <style>
-        path { fill: #000; }
-        @media (prefers-color-scheme: dark) {
-            path { fill: #FFF; }
-        }
-    </style>
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 512 512">
+  <defs>
+    <!-- Glass & Outline Gold/Amber Gradient -->
+    <linearGradient id="flask-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E5C483" />
+      <stop offset="30%" stop-color="#B79457" />
+      <stop offset="70%" stop-color="#8D6E63" />
+      <stop offset="100%" stop-color="#4E342E" />
+    </linearGradient>
+
+    <!-- Pestle Gold/Amber Gradient (slanted direction for better light effect) -->
+    <linearGradient id="pestle-grad" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F5D79E" />
+      <stop offset="40%" stop-color="#B79457" />
+      <stop offset="80%" stop-color="#8D6E63" />
+      <stop offset="100%" stop-color="#3E2723" />
+    </linearGradient>
+
+    <!-- Red Spice Gradient -->
+    <linearGradient id="red-spice" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E53935" />
+      <stop offset="100%" stop-color="#8E1C19" />
+    </linearGradient>
+
+    <!-- Yellow Spice Gradient -->
+    <linearGradient id="yellow-spice" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFC107" />
+      <stop offset="100%" stop-color="#E65100" />
+    </linearGradient>
+
+    <!-- Green Spice Gradient -->
+    <linearGradient id="green-spice" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#81C784" />
+      <stop offset="100%" stop-color="#1B5E20" />
+    </linearGradient>
+
+    <!-- Star Anise Petal -->
+    <g id="anise-petal">
+      <path d="M 0 0 C -6 -10 -8 -20 0 -28 C 8 -20 6 -10 0 0 Z" fill="#A1887F" />
+      <path d="M 0 0 C -3 -8 -4 -16 0 -22 C 4 -16 3 -8 0 0 Z" fill="#795548" />
+      <ellipse cx="0" cy="-14" rx="2" ry="5" fill="#FFD54F" opacity="0.9" />
+    </g>
+
+    <!-- Sparkle Shape -->
+    <path id="sparkle" d="M 0 -10 Q 0 0 10 0 Q 0 0 0 10 Q 0 0 -10 0 Q 0 0 0 -10 Z" fill="#FFD54F" />
+
+    <!-- Inner Flask Cavity Clip Path -->
+    <clipPath id="flask-clip">
+      <path d="M 235 130 V 210 L 148 366 Q 133 398 168 398 H 344 Q 379 398 364 366 L 277 210 V 130 Z" />
+    </clipPath>
+  </defs>
+
+  <style>
+    @keyframes float-anise {
+      0% { transform: translateY(0px) rotate(0deg) scale(0.65); }
+      50% { transform: translateY(5px) rotate(8deg) scale(0.65); }
+      100% { transform: translateY(0px) rotate(0deg) scale(0.65); }
+    }
+    @keyframes pulse-sparkle {
+      0%, 100% { transform: scale(0.7); opacity: 0.4; }
+      50% { transform: scale(1.1); opacity: 1; }
+    }
+    .animated-anise {
+      animation: float-anise 6s ease-in-out infinite;
+      transform-origin: 0 0;
+    }
+    .sparkle-1 {
+      animation: pulse-sparkle 3s ease-in-out infinite;
+      transform-origin: 0 0;
+    }
+    .sparkle-2 {
+      animation: pulse-sparkle 4s ease-in-out infinite 1.5s;
+      transform-origin: 0 0;
+    }
+  </style>
+
+  <!-- 1. The Pestle (Drawn inside the flask but behind the spices) -->
+  <g transform="translate(210, 380) rotate(14) translate(-256, -380)">
+    <!-- Pestle Path -->
+    <path d="M 240 120 L 240 345 Q 220 355 220 368 Q 220 380 256 380 Q 292 380 292 368 Q 292 355 272 345 L 272 120 Q 290 105 290 85 Q 290 60 256 60 Q 222 60 222 85 Q 222 105 240 120 Z" fill="url(#pestle-grad)" />
+    <!-- Pestle Shadow highlight (adds 3D volume) -->
+    <path d="M 240 120 L 240 345 Q 220 355 220 368" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.15" />
+    <path d="M 272 120 L 272 345 Q 292 355 292 368" stroke="#000000" stroke-width="4" stroke-linecap="round" opacity="0.15" />
+  </g>
+
+  <!-- 2. Spice Mixtures (Clipped to the inner flask cavity) -->
+  <g clip-path="url(#flask-clip)">
+    <!-- Base Green Herb Layer -->
+    <path d="M 100 200 Q 180 180 256 200 T 420 200 V 420 H 100 Z" fill="url(#green-spice)" />
+    
+    <!-- Middle Yellow Turmeric/Saffron Layer -->
+    <path d="M 100 270 Q 180 290 256 270 T 420 270 V 420 H 100 Z" fill="url(#yellow-spice)" />
+    
+    <!-- Top Red Chili/Paprika Layer -->
+    <path d="M 100 340 Q 180 320 256 340 T 420 340 V 420 H 100 Z" fill="url(#red-spice)" />
+
+    <!-- Textures / Spice Grains (Red Layer) -->
+    <circle cx="200" cy="370" r="3" fill="#FFC107" opacity="0.6" />
+    <circle cx="220" cy="355" r="2.5" fill="#FF5722" opacity="0.8" />
+    <circle cx="280" cy="385" r="4" fill="#3E2723" opacity="0.5" />
+    <circle cx="320" cy="360" r="2" fill="#FFC107" opacity="0.7" />
+    <circle cx="260" cy="395" r="3.5" fill="#FF5722" opacity="0.6" />
+    <circle cx="170" cy="380" r="2" fill="#FFD54F" opacity="0.8" />
+
+    <!-- Textures / Spice Grains (Yellow Layer) -->
+    <circle cx="180" cy="310" r="2.5" fill="#D84315" opacity="0.7" />
+    <circle cx="210" cy="295" r="3.5" fill="#FFD54F" opacity="0.9" />
+    <circle cx="290" cy="320" r="2" fill="#E65100" opacity="0.8" />
+    <circle cx="330" cy="285" r="4" fill="#5D4037" opacity="0.5" />
+    <circle cx="250" cy="305" r="3" fill="#FFD54F" opacity="0.8" />
+
+    <!-- Textures / Spice Grains (Green Layer) -->
+    <circle cx="200" cy="230" r="3.5" fill="#1B5E20" opacity="0.6" />
+    <circle cx="230" cy="245" r="2" fill="#C8E6C9" opacity="0.8" />
+    <circle cx="270" cy="225" r="3" fill="#FFD54F" opacity="0.7" />
+    <circle cx="310" cy="240" r="2.5" fill="#1B5E20" opacity="0.8" />
+    <circle cx="280" cy="250" r="4" fill="#5D4037" opacity="0.5" />
+  </g>
+
+  <!-- 3. Flask Body & Outline (Drawn on top to define the container) -->
+  <!-- Main Glass Body Outline -->
+  <path d="M 232 120 V 210 L 140 370 Q 120 410 160 410 H 352 Q 392 410 372 370 L 280 210 V 120" stroke="url(#flask-grad)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Flask Lip (Collar rect at top of neck) -->
+  <rect x="218" y="104" width="76" height="18" rx="9" fill="url(#flask-grad)" />
+
+  <!-- 4. Glass Highlights & Reflections (Gives the flask a realistic, 3D shiny glass look) -->
+  <!-- Left Side Curved Body Highlight -->
+  <path d="M 152 355 L 222 215" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.25" />
+  <!-- Left Side Bottom Curved Highlight -->
+  <path d="M 158 375 A 20 20 0 0 0 178 395" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" opacity="0.2" />
+  <!-- Neck Reflection -->
+  <path d="M 240 135 V 190" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.2" />
+
+  <!-- 5. Floating Flavor & Aroma Elements (Star Anise and Sparkles) -->
+  <!-- Floating Star Anise (Left Side) -->
+  <g transform="translate(185, 160)">
+    <g class="animated-anise">
+      <use href="#anise-petal" />
+      <use href="#anise-petal" transform="rotate(45)" />
+      <use href="#anise-petal" transform="rotate(90)" />
+      <use href="#anise-petal" transform="rotate(135)" />
+      <use href="#anise-petal" transform="rotate(180)" />
+      <use href="#anise-petal" transform="rotate(225)" />
+      <use href="#anise-petal" transform="rotate(270)" />
+      <use href="#anise-petal" transform="rotate(315)" />
+      <circle cx="0" cy="0" r="4.5" fill="#4E342E" />
+    </g>
+  </g>
+
+  <!-- Floating Mustard/Coriander Seeds (Right Side) -->
+  <circle cx="318" cy="155" r="6" fill="#D7CCC8" stroke="#8D6E63" stroke-width="2" />
+  <circle cx="318" cy="155" r="2.5" fill="#8D6E63" opacity="0.7" />
+  <circle cx="304" cy="178" r="4.5" fill="#FFCC80" stroke="#E65100" stroke-width="1.5" />
+
+  <!-- Sparkles -->
+  <g transform="translate(325, 130)">
+    <use href="#sparkle" class="sparkle-1" />
+  </g>
+  <g transform="translate(155, 190) scale(0.7)">
+    <use href="#sparkle" class="sparkle-2" />
+  </g>
+  <g transform="translate(325, 80) scale(1.1)">
+    <use href="#sparkle" class="sparkle-2" />
+  </g>
+  <g transform="translate(150, 95) scale(0.8)">
+    <use href="#sparkle" class="sparkle-1" />
+  </g>
 </svg>
