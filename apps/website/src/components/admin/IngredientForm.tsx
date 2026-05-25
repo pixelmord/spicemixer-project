@@ -60,7 +60,7 @@ import { AiBulkSuggestButton } from "@registry/components/ai-bulk-suggest-button
 import { AiBulkTranslateButton } from "@registry/components/ai-bulk-translate-button";
 import { useSplitViewPreference } from "@/hooks/use-split-view-preference.ts";
 import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
-import { TextField, TextareaField } from "@/components/admin/fields/index.ts";
+import { TextField, TextareaField, TagInputField } from "@/components/admin/fields/index.ts";
 
 type Category = "spice" | "herb" | "seed" | "dried-fruit" | "salt" | "acid" | "allium" | "other";
 
@@ -276,10 +276,6 @@ export default function IngredientForm({
     initialDraft: isNew ? true : !!(initialMeta?.["draft"] as boolean | undefined),
     initialCompleteness: computeCompletenessFromBlob("ingredient", data as never, {}),
   });
-  const [origins, setOrigins] = useState<string[]>(data.origin.length > 0 ? data.origin : []);
-  const [flavorNotes, setFlavorNotes] = useState<string[]>(
-    data.flavorNotes.length > 0 ? data.flavorNotes : [],
-  );
   const [regions, setRegions] = useState<RegionCode[]>(
     (initialData?.["region"] as RegionCode[] | undefined) ?? [],
   );
@@ -388,6 +384,8 @@ export default function IngredientForm({
       botanicalName: data.botanicalName ?? "",
       family: data.family ?? "",
       seasonality: data.seasonality ?? "",
+      origin: data.origin,
+      flavorNotes: data.flavorNotes,
     },
     onSubmit: async ({ value }) => {
       const payloadCheck = buildPayload({
@@ -411,8 +409,8 @@ export default function IngredientForm({
       const payload: IngredientData = {
         name: value.name,
         category: value.category as Category,
-        origin: origins.filter(Boolean),
-        flavorNotes: flavorNotes.filter(Boolean),
+        origin: value.origin.filter(Boolean),
+        flavorNotes: value.flavorNotes.filter(Boolean),
       };
       if (value.summary) payload.summary = value.summary;
       if (value.description) payload.description = value.description;
@@ -498,7 +496,7 @@ export default function IngredientForm({
       const missingKeys =
         params.target ??
         INGREDIENT_RECOMMENDED.filter((k) => {
-          if (k === "origin") return origins.length === 0;
+          if (k === "origin") return formValues.origin.length === 0;
           if (k === "images[0]") return !formValues.image;
           if (k === "parts") return parts.length === 0;
           if (k === "flavorProfile") return flavorProfile.length === 0;
@@ -600,7 +598,7 @@ export default function IngredientForm({
           category: formValues.category,
           description: formValues.description,
           images: formValues.image ? [formValues.image] : [],
-          origin: origins.filter(Boolean),
+          origin: formValues.origin.filter(Boolean),
           botanicalName: formValues.botanicalName || undefined,
           family: formValues.family || undefined,
           parts: parts.length > 0 ? parts : undefined,
@@ -609,7 +607,7 @@ export default function IngredientForm({
         {},
       ),
     );
-  }, [formValues, origins, parts, flavorProfile]);
+  }, [formValues, parts, flavorProfile]);
 
   const requiredFields = INGREDIENT_REQUIRED.map((key) => {
     let filled: boolean;
@@ -632,7 +630,7 @@ export default function IngredientForm({
     if (key === "description") filled = !!formValues.description;
     else if (key === "botanicalName") filled = !!formValues.botanicalName;
     else if (key === "family") filled = !!formValues.family;
-    else if (key === "origin") filled = origins.filter(Boolean).length > 0;
+    else if (key === "origin") filled = formValues.origin.filter(Boolean).length > 0;
     else if (key === "parts") filled = parts.length > 0;
     else if (key === "flavorProfile") filled = flavorProfile.length > 0;
     else filled = !!formValues.image;
@@ -690,7 +688,7 @@ export default function IngredientForm({
         ingredient: {
           name: formValues.name,
           category: formValues.category,
-          flavorNotes: flavorNotes.filter(Boolean),
+          flavorNotes: formValues.flavorNotes.filter(Boolean),
         },
         missingFields: ["origin"],
       });
@@ -719,7 +717,7 @@ export default function IngredientForm({
         ingredient: {
           name: formValues.name,
           category: formValues.category,
-          origin: origins.filter(Boolean),
+          origin: formValues.origin.filter(Boolean),
         },
         missingFields: ["flavorNotes"],
       });
@@ -748,8 +746,8 @@ export default function IngredientForm({
       summary: formValues.summary,
       description: formValues.description,
       category: formValues.category,
-      origin: origins.filter(Boolean),
-      flavorNotes: flavorNotes.filter(Boolean),
+      origin: formValues.origin.filter(Boolean),
+      flavorNotes: formValues.flavorNotes.filter(Boolean),
       botanicalName: formValues.botanicalName || undefined,
       family: formValues.family || undefined,
       parts: parts.length > 0 ? parts : undefined,
@@ -796,8 +794,9 @@ export default function IngredientForm({
     if (p.category !== undefined) form.setFieldValue("category" as never, p.category as never);
     if (p.images?.[0] !== undefined)
       form.setFieldValue("image" as never, (p.images[0] ?? "") as never);
-    if (p.origin !== undefined) setOrigins(p.origin);
-    if (p.flavorNotes !== undefined) setFlavorNotes(p.flavorNotes);
+    if (p.origin !== undefined) form.setFieldValue("origin" as never, p.origin as never);
+    if (p.flavorNotes !== undefined)
+      form.setFieldValue("flavorNotes" as never, p.flavorNotes as never);
     if (p.commonNames !== undefined) setCommonNames(p.commonNames);
     if (p.parts !== undefined) setParts(p.parts);
     if (p.flavorProfile !== undefined) setFlavorProfile(p.flavorProfile);
@@ -934,9 +933,15 @@ export default function IngredientForm({
                 onApplyField={(field, value) => {
                   if (!Array.isArray(value)) {
                     if (field === "flavorNotes")
-                      setFlavorNotes((prev) => [...new Set([...prev, String(value)])]);
+                      form.setFieldValue(
+                        "flavorNotes" as never,
+                        [...new Set([...formValues.flavorNotes, String(value)])] as never,
+                      );
                     else if (field === "origin")
-                      setOrigins((prev) => [...new Set([...prev, String(value)])]);
+                      form.setFieldValue(
+                        "origin" as never,
+                        [...new Set([...formValues.origin, String(value)])] as never,
+                      );
                     else form.setFieldValue(field as never, String(value) as never);
                   }
                 }}
@@ -1296,41 +1301,19 @@ export default function IngredientForm({
                   </button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <TagInput value={origins} onChange={setOrigins} placeholder="Iran, Guatemala…" />
-                {pendingOrigins && pendingOrigins.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {pendingOrigins
-                      .filter((o) => !origins.includes(o))
-                      .map((o) => (
-                        <button
-                          key={o}
-                          type="button"
-                          onClick={() => setOrigins((prev) => [...prev, o])}
-                          className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
-                        >
-                          + {o}
-                        </button>
-                      ))}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOrigins((prev) => [...new Set([...prev, ...pendingOrigins])]);
-                        setPendingOrigins(null);
-                      }}
-                      className="text-xs text-muted-foreground hover:text-foreground px-1"
-                    >
-                      Add all
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPendingOrigins(null)}
-                      className="text-xs text-muted-foreground hover:text-foreground px-1"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                )}
+              <CardContent>
+                <form.Field name="origin">
+                  {(field) => (
+                    <TagInputField
+                      field={field}
+                      placeholder="Iran, Guatemala…"
+                      pendingItems={pendingOrigins}
+                      onAcceptItems={() => setPendingOrigins(null)}
+                      onDismissItems={() => setPendingOrigins(null)}
+                      hint={<RecommendedHint show={(field.state.value ?? []).length === 0} />}
+                    />
+                  )}
+                </form.Field>
               </CardContent>
             </Card>
 
@@ -1353,45 +1336,18 @@ export default function IngredientForm({
                   </button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <TagInput
-                  value={flavorNotes}
-                  onChange={setFlavorNotes}
-                  placeholder="floral, earthy, warm…"
-                />
-                {pendingFlavors && pendingFlavors.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {pendingFlavors
-                      .filter((f) => !flavorNotes.includes(f))
-                      .map((f) => (
-                        <button
-                          key={f}
-                          type="button"
-                          onClick={() => setFlavorNotes((prev) => [...prev, f])}
-                          className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
-                        >
-                          + {f}
-                        </button>
-                      ))}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFlavorNotes((prev) => [...new Set([...prev, ...pendingFlavors])]);
-                        setPendingFlavors(null);
-                      }}
-                      className="text-xs text-muted-foreground hover:text-foreground px-1"
-                    >
-                      Add all
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPendingFlavors(null)}
-                      className="text-xs text-muted-foreground hover:text-foreground px-1"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                )}
+              <CardContent>
+                <form.Field name="flavorNotes">
+                  {(field) => (
+                    <TagInputField
+                      field={field}
+                      placeholder="floral, earthy, warm…"
+                      pendingItems={pendingFlavors}
+                      onAcceptItems={() => setPendingFlavors(null)}
+                      onDismissItems={() => setPendingFlavors(null)}
+                    />
+                  )}
+                </form.Field>
               </CardContent>
             </Card>
           </section>
