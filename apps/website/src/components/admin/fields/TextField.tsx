@@ -1,59 +1,81 @@
-import { Sparkles, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { InlineFieldSuggestion } from "@/components/admin/InlineFieldSuggestion.tsx";
-import { useSuggestionFlowContext } from "@/components/admin/SuggestionFlowProvider.tsx";
-import { useFieldContext } from "./form-context.ts";
+import { AiFieldSuggestButton } from "@registry/components/ai-field-suggest-button";
+import { AiFieldTranslateButton } from "@registry/components/ai-field-translate-button";
+import { cn } from "@/lib/utils.ts";
+
+// Minimal duck-type matching the TanStack Form field render-prop object.
+// Usage: <form.Field name="x">{(field) => <TextField field={field} ... />}</form.Field>
+interface FieldApi {
+  name: string;
+  state: { value: string | undefined };
+  handleChange: (value: string) => void;
+  handleBlur: () => void;
+}
 
 interface TextFieldProps {
+  field: FieldApi;
   /** Rendered as a <Label>. Omit to skip the label element entirely. */
   label?: string;
   placeholder?: string;
   disabled?: boolean;
   type?: string;
-  /** AI contract field key. When set, renders InlineFieldSuggestion and an "AI suggest" button. */
+  /** AI contract field key. Enables suggest/translate buttons and InlineFieldSuggestion. */
   suggestionPath?: string;
-  /** Extra node rendered below the input (e.g. <RecommendedHint>). */
+  /**
+   * Controls which AI button to show.
+   * - undefined / false: AiFieldSuggestButton (single-locale edit mode)
+   * - true: AiFieldTranslateButton (side-by-side translate mode)
+   * Also activates the two-column sibling layout when true.
+   */
+  splitView?: boolean;
+  /** Read-only sibling locale value shown in the right column during split-view. */
+  siblingValue?: unknown;
+  /** Locale code for the sibling column header, e.g. "en" or "de". */
+  siblingLocale?: string;
+  /** Extra node rendered below the input, e.g. a <RecommendedHint>. */
   hint?: React.ReactNode;
   className?: string;
 }
 
+function formatSiblingValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return (value as unknown[])
+      .map((v) => (typeof v === "string" ? v : JSON.stringify(v)))
+      .join(", ");
+  }
+  if (typeof value === "string") return value;
+  if (value != null) return JSON.stringify(value);
+  return "";
+}
+
 export function TextField({
+  field,
   label,
   placeholder,
   disabled,
   type = "text",
   suggestionPath,
+  splitView,
+  siblingValue,
+  siblingLocale,
   hint,
   className,
 }: TextFieldProps) {
-  const field = useFieldContext<string>();
-  const flow = useSuggestionFlowContext();
-  const accessor = suggestionPath ? flow.forField(suggestionPath) : null;
+  const showAiButtons = !!suggestionPath;
+  const showLabelRow = !!label || showAiButtons;
 
-  const hasSuggestion = !!accessor?.suggestion;
-  const showButton = !!accessor && !hasSuggestion;
-  const showLabelRow = !!label || showButton;
-
-  return (
-    <div className="space-y-1.5">
+  const innerContent = (
+    <>
       {showLabelRow && (
         <div className={`flex items-center ${label ? "justify-between" : "justify-end"}`}>
           {label && <Label htmlFor={field.name}>{label}</Label>}
-          {showButton && (
-            <button
-              type="button"
-              onClick={() => void accessor.run()}
-              disabled={accessor.isRunning}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-            >
-              {accessor.isRunning ? (
-                <Loader2 size={11} className="animate-spin" />
-              ) : (
-                <Sparkles size={11} />
-              )}
-              AI suggest
-            </button>
+          {showAiButtons && (
+            <div className="flex items-center gap-1">
+              {!splitView && <AiFieldSuggestButton fieldPath={suggestionPath} />}
+              {splitView && <AiFieldTranslateButton fieldPath={suggestionPath} />}
+            </div>
           )}
         </div>
       )}
@@ -76,6 +98,31 @@ export function TextField({
         />
       )}
       {hint}
-    </div>
+    </>
   );
+
+  if (splitView) {
+    const siblingDisplay = formatSiblingValue(siblingValue);
+    return (
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">{innerContent}</div>
+        <div className="space-y-1.5">
+          <span className="block text-xs font-medium text-muted-foreground">
+            {label}
+            {siblingLocale ? ` (${siblingLocale.toUpperCase()})` : ""}
+          </span>
+          <div
+            className={cn(
+              "min-h-8 rounded-lg border border-dashed border-border bg-muted/30 px-2.5 py-1.5 text-sm text-muted-foreground",
+              !siblingDisplay && "italic",
+            )}
+          >
+            {siblingDisplay || <span className="text-xs opacity-60">—</span>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <div className="space-y-1.5">{innerContent}</div>;
 }

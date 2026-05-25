@@ -1,24 +1,13 @@
-import { createFormHook } from "@tanstack/react-form";
-import { fieldContext, formContext } from "./form-context.ts";
-import { TextField } from "./TextField.tsx";
-import { TextareaField } from "./TextareaField.tsx";
-
 /**
  * Shared form hook for all admin entity forms.
- * Extends the base TanStack Form useForm with composed field components
- * (TextField, TextareaField) that integrate Label, input primitive, and
- * InlineFieldSuggestion in one place.
+ * Re-exports useForm from TanStack Form so consumers get a consistently named
+ * import. Field components (TextField, TextareaField) receive the field API
+ * via the standard render-prop pattern:
  *
- * Usage:
  *   const form = useAdminForm({ defaultValues: { ... }, onSubmit: ... });
  *
- *   <form.AppField name="summary">
- *     {(field) => <field.TextField label="Summary" suggestionPath="summary" />}
- *   </form.AppField>
+ *   <form.Field name="summary">
+ *     {(field) => <TextField field={field} label="Summary" suggestionPath="summary" />}
+ *   </form.Field>
  */
-export const { useAppForm: useAdminForm } = createFormHook({
-  fieldContext,
-  formContext,
-  fieldComponents: { TextField, TextareaField },
-  formComponents: {},
-});
+export { useForm as useAdminForm } from "@tanstack/react-form";

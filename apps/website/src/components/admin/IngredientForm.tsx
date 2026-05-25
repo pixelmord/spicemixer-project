@@ -65,6 +65,7 @@ import { AiFieldSuggestButton } from "@registry/components/ai-field-suggest-butt
 import { AiFieldTranslateButton } from "@registry/components/ai-field-translate-button";
 import { useSplitViewPreference } from "@/hooks/use-split-view-preference.ts";
 import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
+import { TextField, TextareaField } from "@/components/admin/fields/index.ts";
 
 type Category = "spice" | "herb" | "seed" | "dried-fruit" | "salt" | "acid" | "allium" | "other";
 
@@ -1077,79 +1078,31 @@ export default function IngredientForm({
 
                 <form.Field name="summary">
                   {(field) => (
-                    <FieldWithSibling
-                      label="Summary"
-                      fieldKey="summary"
+                    <TextField
+                      field={field}
+                      label="Summary *"
+                      placeholder="One-sentence pitch"
+                      suggestionPath="summary"
+                      splitView={splitView}
                       siblingValue={siblingData?.data["summary"]}
                       siblingLocale={siblingLocaleCode}
-                      splitView={splitView}
-                    >
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor={field.name}>Summary *</Label>
-                        <div className="flex items-center gap-1.5">
-                          {splitView ? (
-                            <AiFieldTranslateButton fieldPath="summary" />
-                          ) : (
-                            !aiFlow.forField("summary").suggestion && (
-                              <AiFieldSuggestButton fieldPath="summary" />
-                            )
-                          )}
-                        </div>
-                      </div>
-                      <Input
-                        id={field.name}
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        placeholder="One-sentence pitch"
-                      />
-                      <InlineFieldSuggestion
-                        fieldPath="summary"
-                        currentValue={field.state.value}
-                        onApply={(v) => field.handleChange(String(v))}
-                        kind="text"
-                      />
-                    </FieldWithSibling>
+                    />
                   )}
                 </form.Field>
 
                 <form.Field name="description">
                   {(field) => (
-                    <FieldWithSibling
+                    <TextareaField
+                      field={field}
                       label="Description"
-                      fieldKey="description"
+                      rows={4}
+                      placeholder="Detailed description…"
+                      suggestionPath="description"
+                      splitView={splitView}
                       siblingValue={siblingData?.data["description"]}
                       siblingLocale={siblingLocaleCode}
-                      splitView={splitView}
-                    >
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor={field.name}>
-                          Description
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
-                        <div className="flex items-center gap-1.5">
-                          {splitView ? (
-                            <AiFieldTranslateButton fieldPath="description" />
-                          ) : (
-                            !aiFlow.forField("description").suggestion && (
-                              <AiFieldSuggestButton fieldPath="description" />
-                            )
-                          )}
-                        </div>
-                      </div>
-                      <Textarea
-                        id={field.name}
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        rows={4}
-                        placeholder="Detailed description…"
-                      />
-                      <InlineFieldSuggestion
-                        fieldPath="description"
-                        currentValue={field.state.value}
-                        onApply={(v) => field.handleChange(String(v))}
-                        kind="text"
-                      />
-                    </FieldWithSibling>
+                      hint={<RecommendedHint show={!field.state.value} />}
+                    />
                   )}
                 </form.Field>
 
@@ -1288,38 +1241,15 @@ export default function IngredientForm({
 
                 <form.Field name="seasonality">
                   {(field) => (
-                    <FieldWithSibling
+                    <TextField
+                      field={field}
                       label="Seasonality"
-                      fieldKey="seasonality"
+                      placeholder="Spring, late summer…"
+                      suggestionPath="seasonality"
+                      splitView={splitView}
                       siblingValue={siblingData?.data["seasonality"]}
                       siblingLocale={siblingLocaleCode}
-                      splitView={splitView}
-                    >
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor={field.name}>Seasonality</Label>
-                        <div className="flex items-center gap-1.5">
-                          {splitView ? (
-                            <AiFieldTranslateButton fieldPath="seasonality" />
-                          ) : (
-                            !aiFlow.forField("seasonality").suggestion && (
-                              <AiFieldSuggestButton fieldPath="seasonality" />
-                            )
-                          )}
-                        </div>
-                      </div>
-                      <Input
-                        id={field.name}
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        placeholder="Spring, late summer…"
-                      />
-                      <InlineFieldSuggestion
-                        fieldPath="seasonality"
-                        currentValue={field.state.value ?? ""}
-                        onApply={(v) => field.handleChange(String(v))}
-                        kind="text"
-                      />
-                    </FieldWithSibling>
+                    />
                   )}
                 </form.Field>
 

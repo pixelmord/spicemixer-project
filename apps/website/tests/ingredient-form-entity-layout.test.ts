@@ -99,16 +99,35 @@ describe("IngredientForm — EntityFormLayout migration", () => {
     expect(src).toMatch(/<AiFieldTranslateButton/);
   });
 
-  // ── All 11 translatable fields wrapped ──────────────────────────────────
+  // ── Direct translatable fields ───────────────────────────────────────────
 
-  // Direct-rendered fields have literal fieldKey="<name>" in source
-  const directTranslatableFields = ["name", "summary", "description", "seasonality"];
+  // "name" still uses FieldWithSibling (special layout: translate-only, no suggest)
+  test(`wraps "name" field in FieldWithSibling`, () => {
+    expect(src).toMatch(new RegExp(`<FieldWithSibling[^>]*fieldKey="name"`, "s"));
+  });
 
-  for (const field of directTranslatableFields) {
-    test(`wraps "${field}" field in FieldWithSibling`, () => {
-      expect(src).toMatch(new RegExp(`<FieldWithSibling[^>]*fieldKey="${field}"`, "s"));
-    });
-  }
+  // summary, description, seasonality now delegate to field components
+  test("uses TextField for summary (no longer raw FieldWithSibling)", () => {
+    expect(src).toMatch(
+      /<TextField[^>]*suggestionPath="summary"|suggestionPath="summary"[^>]*TextField/s,
+    );
+  });
+
+  test("uses TextareaField for description (no longer raw FieldWithSibling)", () => {
+    expect(src).toMatch(
+      /<TextareaField[^>]*suggestionPath="description"|suggestionPath="description"[^>]*TextareaField/s,
+    );
+  });
+
+  test("uses TextField for seasonality (no longer raw FieldWithSibling)", () => {
+    expect(src).toMatch(
+      /<TextField[^>]*suggestionPath="seasonality"|suggestionPath="seasonality"[^>]*TextField/s,
+    );
+  });
+
+  test("TextField/TextareaField receive splitView prop", () => {
+    expect(src).toMatch(/TextareaField[^/]*splitView|TextField[^/]*splitView/s);
+  });
 
   // Longform fields are rendered via LONGFORM_SECTIONS loop with fieldKey={key}
   const longformFields = [
@@ -134,6 +153,7 @@ describe("IngredientForm — EntityFormLayout migration", () => {
   });
 
   // All 11 combined for contract completeness
+  const directTranslatableFields = ["name", "summary", "description", "seasonality"];
   const translatableFields = [...directTranslatableFields, ...longformFields];
 
   // ── Contract fields declared on aiFlow ───────────────────────────────────

@@ -57,33 +57,41 @@ describe("RecipeForm — EntityFormLayout adoption", () => {
   });
 });
 
-describe("RecipeForm — FieldWithSibling wrapping", () => {
-  test("wraps name field in FieldWithSibling", () => {
+describe("RecipeForm — TextareaField / TextField for translatable text fields", () => {
+  test("imports TextareaField from fields", () => {
+    expect(src).toMatch(/TextareaField/);
+  });
+
+  test("imports TextField from fields", () => {
+    expect(src).toMatch(/TextField/);
+  });
+
+  test("uses TextareaField for description field", () => {
+    expect(src).toMatch(
+      /<TextareaField[^>]*suggestionPath="description"|suggestionPath="description"[^>]*TextareaField/s,
+    );
+  });
+
+  test("uses TextField for recipeCategory field", () => {
+    expect(src).toMatch(
+      /<TextField[^>]*suggestionPath="recipeCategory"|suggestionPath="recipeCategory"[^>]*TextField/s,
+    );
+  });
+
+  test("uses TextField for recipeCuisine field", () => {
+    expect(src).toMatch(
+      /<TextField[^>]*suggestionPath="recipeCuisine"|suggestionPath="recipeCuisine"[^>]*TextField/s,
+    );
+  });
+
+  test("TextareaField/TextField receive splitView prop for translatable fields", () => {
+    expect(src).toMatch(/TextareaField[^/]*splitView|TextField[^/]*splitView/s);
+  });
+
+  test("name field is still wrapped in FieldWithSibling (special layout, not yet migrated)", () => {
     expect(src).toMatch(
       /FieldWithSibling[^>]*fieldKey="name"|fieldKey="name"[^>]*FieldWithSibling/s,
     );
-  });
-
-  test("wraps description field in FieldWithSibling", () => {
-    expect(src).toMatch(
-      /FieldWithSibling[^>]*fieldKey="description"|fieldKey="description"[^>]*FieldWithSibling/s,
-    );
-  });
-
-  test("wraps recipeCategory field in FieldWithSibling", () => {
-    expect(src).toMatch(
-      /FieldWithSibling[^>]*fieldKey="recipeCategory"|fieldKey="recipeCategory"[^>]*FieldWithSibling/s,
-    );
-  });
-
-  test("wraps recipeCuisine field in FieldWithSibling", () => {
-    expect(src).toMatch(
-      /FieldWithSibling[^>]*fieldKey="recipeCuisine"|fieldKey="recipeCuisine"[^>]*FieldWithSibling/s,
-    );
-  });
-
-  test("passes splitView prop to FieldWithSibling", () => {
-    expect(src).toMatch(/FieldWithSibling[^>]*splitView/s);
   });
 });
 
@@ -127,25 +135,32 @@ describe("RecipeForm — subHeaderStrip mode switching", () => {
   });
 });
 
-describe("RecipeForm — per-field AI buttons on translatable fields", () => {
-  test("imports AiFieldSuggestButton", () => {
-    expect(src).toMatch(/AiFieldSuggestButton/);
+describe("RecipeForm — per-field AI buttons handled by field components", () => {
+  // AI button switching (suggest vs translate) is now encapsulated in TextareaField/TextField.
+  // RecipeForm passes `splitView` to the field components; no direct button rendering needed.
+
+  test("does not directly render AiFieldSuggestButton for description (handled by TextareaField)", () => {
+    expect(src).not.toMatch(/<AiFieldSuggestButton[^>]*fieldPath="description"/s);
   });
 
-  test("imports AiFieldTranslateButton", () => {
-    expect(src).toMatch(/AiFieldTranslateButton/);
+  test("does not directly render AiFieldTranslateButton for description (handled by TextareaField)", () => {
+    expect(src).not.toMatch(/<AiFieldTranslateButton[^>]*fieldPath="description"/s);
   });
 
-  test("renders AiFieldSuggestButton for description field", () => {
-    expect(src).toMatch(
-      /AiFieldSuggestButton[^>]*fieldPath="description"|fieldPath="description"[^>]*AiFieldSuggestButton/s,
-    );
+  test("does not directly render AiFieldSuggestButton for recipeCategory (handled by TextField)", () => {
+    expect(src).not.toMatch(/<AiFieldSuggestButton[^>]*fieldPath="recipeCategory"/s);
   });
 
-  test("renders AiFieldTranslateButton for description field", () => {
-    expect(src).toMatch(
-      /AiFieldTranslateButton[^>]*fieldPath="description"|fieldPath="description"[^>]*AiFieldTranslateButton/s,
-    );
+  test("does not directly render AiFieldTranslateButton for recipeCategory (handled by TextField)", () => {
+    expect(src).not.toMatch(/<AiFieldTranslateButton[^>]*fieldPath="recipeCategory"/s);
+  });
+
+  test("does not directly render AiFieldSuggestButton for recipeCuisine (handled by TextField)", () => {
+    expect(src).not.toMatch(/<AiFieldSuggestButton[^>]*fieldPath="recipeCuisine"/s);
+  });
+
+  test("does not directly render AiFieldTranslateButton for recipeCuisine (handled by TextField)", () => {
+    expect(src).not.toMatch(/<AiFieldTranslateButton[^>]*fieldPath="recipeCuisine"/s);
   });
 });
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useStore } from "@tanstack/react-form";
-import { useAdminForm } from "@/components/admin/fields/index.ts";
+import { useForm, useStore } from "@tanstack/react-form";
+import { TextareaField } from "@/components/admin/fields/index.ts";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
 import { Sparkles, Loader2, Trash2, Check, ExternalLink } from "lucide-react";
@@ -30,10 +30,7 @@ import {
   type SiblingLocale,
 } from "@/hooks/use-ai-suggestions.tsx";
 import { EntityFormLayout } from "./EntityFormLayout.tsx";
-import { FieldWithSibling } from "./FieldWithSibling.tsx";
 import FormActionBar from "./FormActionBar.tsx";
-import { AiFieldSuggestButton } from "@registry/components/ai-field-suggest-button";
-import { AiFieldTranslateButton } from "@registry/components/ai-field-translate-button";
 import { useSplitViewPreference } from "@/hooks/use-split-view-preference.ts";
 import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
 import type { EndpointRef } from "entity-kind";
@@ -128,7 +125,7 @@ export default function PairingForm({
     saveDraftRef.current = draft;
   }, [draft]);
 
-  const form = useAdminForm({
+  const form = useForm({
     defaultValues: {
       endpoint1Slug: ep0.slug,
       endpoint2Slug: ep1.slug,
@@ -561,32 +558,23 @@ export default function PairingForm({
         <section id="section-description">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Description ({locale.toUpperCase()})</CardTitle>
-                <div className="flex items-center gap-2">
-                  {splitView && <AiFieldTranslateButton fieldPath="description" />}
-                  {!splitView && <AiFieldSuggestButton fieldPath="description" />}
-                </div>
-              </div>
+              <CardTitle>Description</CardTitle>
             </CardHeader>
             <CardContent>
-              <FieldWithSibling
-                label="Description"
-                fieldKey="description"
-                siblingValue={siblingLocaleData?.data["description"]}
-                siblingLocale={siblingLoc}
-                splitView={splitView}
-              >
-                <form.AppField name="description">
-                  {(field) => (
-                    <field.TextareaField
-                      rows={4}
-                      placeholder={`Why do ${formValues.endpoint1Slug || "these"} and ${formValues.endpoint2Slug || "these"} pair well? (${locale.toUpperCase()})`}
-                      suggestionPath="description"
-                    />
-                  )}
-                </form.AppField>
-              </FieldWithSibling>
+              <form.Field name="description">
+                {(field) => (
+                  <TextareaField
+                    field={field}
+                    label={`Description (${locale.toUpperCase()})`}
+                    rows={4}
+                    placeholder={`Why do ${formValues.endpoint1Slug || "these"} and ${formValues.endpoint2Slug || "these"} pair well? (${locale.toUpperCase()})`}
+                    suggestionPath="description"
+                    splitView={splitView}
+                    siblingValue={siblingLocaleData?.data["description"]}
+                    siblingLocale={siblingLoc}
+                  />
+                )}
+              </form.Field>
             </CardContent>
           </Card>
         </section>

@@ -39,12 +39,13 @@ describe("IngredientForm — useAiSuggestions orchestration", () => {
     expect(src).toMatch(/<SuggestionFlowProvider/);
   });
 
-  test("mounts InlineFieldSuggestion for summary field", () => {
-    expect(src).toMatch(/InlineFieldSuggestion[^>]*fieldPath="summary"/s);
+  test("uses TextField with suggestionPath for summary (InlineFieldSuggestion delegated to field component)", () => {
+    // InlineFieldSuggestion is now internal to TextField; the form passes suggestionPath.
+    expect(src).toMatch(/suggestionPath="summary"/);
   });
 
-  test("mounts InlineFieldSuggestion for description field", () => {
-    expect(src).toMatch(/InlineFieldSuggestion[^>]*fieldPath="description"/s);
+  test("uses TextareaField with suggestionPath for description (InlineFieldSuggestion delegated to field component)", () => {
+    expect(src).toMatch(/suggestionPath="description"/);
   });
 
   test("handleManualRefresh delegates to aiFlow.run()", () => {
@@ -106,10 +107,10 @@ describe("PairingForm — useAiSuggestions orchestration", () => {
     expect(src).toMatch(/SuggestionFlowProvider/);
   });
 
-  test("uses composed field hook (useAdminForm)", () => {
-    // InlineFieldSuggestion is now encapsulated inside the composed TextareaField;
-    // PairingForm imports useAdminForm to get access to AppField + TextareaField.
-    expect(src).toMatch(/useAdminForm/);
+  test("uses standard form.Field render-prop with TextareaField", () => {
+    // PairingForm now uses the standard TanStack Form API: form.Field + TextareaField.
+    // InlineFieldSuggestion is encapsulated inside TextareaField.
+    expect(src).toMatch(/form\.Field[^>]*name="description"/s);
   });
 
   test("calls useAiSuggestions hook", () => {
@@ -170,14 +171,14 @@ describe("RecipeForm — useAiSuggestions integration verification", () => {
     expect(src).toMatch(/aiFlow\.run\(\)/);
   });
 
-  test("mounts InlineFieldSuggestion for description field", () => {
-    expect(src).toMatch(/InlineFieldSuggestion[^>]*fieldPath="description"/s);
+  test("uses TextareaField with suggestionPath for description (InlineFieldSuggestion delegated to field component)", () => {
+    // InlineFieldSuggestion is now internal to TextareaField; the form passes suggestionPath.
+    expect(src).toMatch(/suggestionPath="description"/);
   });
 
-  test("mounts InlineFieldSuggestion for tags field", () => {
-    expect(src).toMatch(
-      /InlineFieldSuggestion[^>]*fieldPath="tags"|fieldPath="tags"[^>]*InlineFieldSuggestion/s,
-    );
+  test("uses TagInputField with suggestionPath for tags (InlineFieldSuggestion delegated to field component)", () => {
+    // InlineFieldSuggestion is now internal to TagInputField; the form passes suggestionPath.
+    expect(src).toMatch(/suggestionPath="tags"/);
   });
 });
 

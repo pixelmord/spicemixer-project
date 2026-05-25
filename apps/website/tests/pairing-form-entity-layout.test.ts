@@ -29,8 +29,8 @@ describe("PairingForm — EntityFormLayout adoption", () => {
     expect(src).toMatch(/overflowMenuItems/);
   });
 
-  test("passes sections to EntityFormLayout", () => {
-    expect(src).toMatch(/sections/);
+  test("uses HTML section elements to divide the form", () => {
+    expect(src).toMatch(/<section\b/);
   });
 
   test("subHeaderStrip is null for pairings", () => {
@@ -60,19 +60,34 @@ describe("PairingForm — FormActionBar footer", () => {
   });
 });
 
-describe("PairingForm — FieldWithSibling for description", () => {
-  test("imports FieldWithSibling", () => {
-    expect(src).toMatch(/FieldWithSibling/);
+describe("PairingForm — TextareaField for description", () => {
+  test("imports TextareaField from fields", () => {
+    expect(src).toMatch(/import.*TextareaField.*from.*fields|TextareaField/);
   });
 
-  test("wraps description in FieldWithSibling", () => {
-    expect(src).toMatch(
-      /<FieldWithSibling[^>]*fieldKey="description"|fieldKey="description"[^>]*FieldWithSibling/s,
-    );
+  test("uses form.Field (standard TanStack render-prop) for description", () => {
+    expect(src).toMatch(/form\.Field[^>]*name="description"/s);
   });
 
-  test("passes splitView prop to FieldWithSibling", () => {
-    expect(src).toMatch(/FieldWithSibling[^>]*splitView|splitView[^/]*FieldWithSibling/s);
+  test("renders TextareaField inside the description field render prop", () => {
+    expect(src).toMatch(/<TextareaField[^>]*|TextareaField\b/s);
+  });
+
+  test("TextareaField receives splitView prop", () => {
+    expect(src).toMatch(/TextareaField[^/]*splitView|splitView[^<]*TextareaField/s);
+  });
+
+  test("TextareaField receives siblingValue prop", () => {
+    expect(src).toMatch(/TextareaField[^/]*siblingValue|siblingValue[^<]*TextareaField/s);
+  });
+
+  test("TextareaField receives siblingLocale prop", () => {
+    expect(src).toMatch(/TextareaField[^/]*siblingLocale|siblingLocale[^<]*TextareaField/s);
+  });
+
+  test("no longer manually wraps description in FieldWithSibling", () => {
+    // FieldWithSibling layout is now inside TextareaField
+    expect(src).not.toMatch(/<FieldWithSibling/);
   });
 });
 
@@ -94,20 +109,12 @@ describe("PairingForm — split view", () => {
   });
 });
 
-describe("PairingForm — AI field buttons", () => {
-  test("imports AiFieldSuggestButton", () => {
-    expect(src).toMatch(/AiFieldSuggestButton/);
+describe("PairingForm — AI buttons delegated to TextareaField", () => {
+  test("does not directly render AiFieldSuggestButton (handled by TextareaField)", () => {
+    expect(src).not.toMatch(/<AiFieldSuggestButton/);
   });
 
-  test("renders AiFieldSuggestButton for description", () => {
-    expect(src).toMatch(/<AiFieldSuggestButton[^>]*fieldPath="description"/s);
-  });
-
-  test("imports AiFieldTranslateButton", () => {
-    expect(src).toMatch(/AiFieldTranslateButton/);
-  });
-
-  test("renders AiFieldTranslateButton for description", () => {
-    expect(src).toMatch(/<AiFieldTranslateButton[^>]*fieldPath="description"/s);
+  test("does not directly render AiFieldTranslateButton (handled by TextareaField)", () => {
+    expect(src).not.toMatch(/<AiFieldTranslateButton/);
   });
 });

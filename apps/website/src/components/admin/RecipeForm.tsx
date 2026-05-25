@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Sparkles,
   Link2,
-  Tag,
   Loader2,
   Languages,
   Check,
@@ -45,8 +44,8 @@ import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
 import { AiBulkSuggestButton } from "@registry/components/ai-bulk-suggest-button";
 import { AiBulkTranslateButton } from "@registry/components/ai-bulk-translate-button";
 import { AiFieldSuggestButton } from "@registry/components/ai-field-suggest-button";
-import { AiFieldTranslateButton } from "@registry/components/ai-field-translate-button";
 import type { SiblingLocale } from "@registry/components/use-ai-suggestions";
+import { TextField, TextareaField, TagInputField } from "@/components/admin/fields/index.ts";
 interface AiSuggestion {
   field: string;
   suggestion: string;
@@ -366,11 +365,7 @@ export default function RecipeForm({
     null,
   );
   const [featuredPairings, setFeaturedPairings] = useState<PairingListItem[]>([]);
-  const [tags, setTags] = useState<string[]>(meta.tags);
   const [regions, setRegions] = useState<RegionCode[]>(meta.region ?? []);
-  const [keywords, setKeywords] = useState<string[]>(
-    Array.isArray(recipe.keywords) ? recipe.keywords : [],
-  );
   const [dietTags, setDietTags] = useState<string[]>(
     Array.isArray(recipe.suitableForDiet) ? recipe.suitableForDiet : [],
   );
@@ -428,8 +423,6 @@ export default function RecipeForm({
     slug: string;
     confidence: "high" | "medium" | "low";
   }> | null>(null);
-  const [aiTagsLoading, setAiTagsLoading] = useState(false);
-  const [aiKeywordsLoading, setAiKeywordsLoading] = useState(false);
   const [aiLinksLoading, setAiLinksLoading] = useState(false);
 
   const [splitView, setSplitView] = useSplitViewPreference();
@@ -576,6 +569,10 @@ export default function RecipeForm({
       cookTime: recipe.cookTime ?? "",
       totalTime: recipe.totalTime ?? "",
       datePublished: recipe.datePublished ?? "",
+      keywords: Array.isArray(recipe.keywords)
+        ? recipe.keywords.filter((k): k is string => typeof k === "string")
+        : ([] as string[]),
+      tags: meta.tags as string[],
     },
     onSubmit: async ({ value }) => {
       const payloadCheck = buildPayload({
@@ -625,7 +622,7 @@ export default function RecipeForm({
       if (value.recipeYield) recipePayload.recipeYield = value.recipeYield;
       if (value.recipeCategory) recipePayload.recipeCategory = value.recipeCategory;
       if (value.recipeCuisine) recipePayload.recipeCuisine = value.recipeCuisine;
-      if (keywords.length) recipePayload.keywords = keywords;
+      if (value.keywords.length) recipePayload.keywords = value.keywords;
       if (dietTags.length) recipePayload.suitableForDiet = dietTags;
       if (value.prepTime) recipePayload.prepTime = value.prepTime;
       if (value.cookTime) recipePayload.cookTime = value.cookTime;
@@ -649,7 +646,7 @@ export default function RecipeForm({
         region: regions,
         language: language || undefined,
         locale: language || undefined,
-        tags,
+        tags: value.tags,
         ingredientLinks,
         externalSources: externalSources.filter((s) => s.url.trim()),
         variants,
@@ -733,7 +730,7 @@ export default function RecipeForm({
       totalTime: formValues.totalTime,
       recipeCategory: formValues.recipeCategory,
       recipeCuisine: formValues.recipeCuisine,
-      keywords,
+      keywords: formValues.keywords,
       datePublished: formValues.datePublished,
       recipeIngredient: ingredients.filter(Boolean),
       recipeInstructions: instructions.filter((s) => s.text.trim()),
@@ -741,7 +738,7 @@ export default function RecipeForm({
     setCompleteness(
       computeCompletenessFromBlob("recipe", recipeSnap as never, { ingredientLinks } as never),
     );
-  }, [formValues, ingredients, instructions, keywords, ingredientLinks]);
+  }, [formValues, ingredients, instructions, ingredientLinks]);
 
   function openQuickCreate(
     kind: "ingredient" | "recipe" | "mixture",
@@ -764,7 +761,7 @@ export default function RecipeForm({
       totalTime: !!formValues.totalTime,
       recipeCategory: !!formValues.recipeCategory,
       recipeCuisine: !!formValues.recipeCuisine,
-      keywords: keywords.length > 0,
+      keywords: (formValues.keywords ?? []).length > 0,
       datePublished: !!formValues.datePublished,
     };
     return map[key] ?? false;
@@ -928,31 +925,6 @@ export default function RecipeForm({
     setActiveProposers([]);
   }
 
-  // Per-section AI helpers
-  async function runProposeTags(forKeywords = false) {
-    const setter = forKeywords ? setAiKeywordsLoading : setAiTagsLoading;
-    setter(true);
-    try {
-      const { data, error } = await actions.aiProposeTags({
-        recipe: {
-          name: formValues.name,
-          description: formValues.description,
-          recipeCategory: formValues.recipeCategory,
-          recipeCuisine: formValues.recipeCuisine,
-          recipeIngredient: ingredients.filter(Boolean),
-          keywords,
-        },
-      });
-      if (error) throw new Error(error.message);
-      if (forKeywords) setPendingKeywords(data?.tags ?? []);
-      else setPendingTags(data?.tags ?? []);
-    } catch (e) {
-      toast.error(String(e instanceof Error ? e.message : e));
-    } finally {
-      setter(false);
-    }
-  }
-
   async function runProposeLinks() {
     setAiLinksLoading(true);
     try {
@@ -990,8 +962,8 @@ export default function RecipeForm({
       recipeIngredient: ingredients.filter(Boolean),
       recipeCategory: formValues.recipeCategory,
       recipeCuisine: formValues.recipeCuisine,
-      keywords,
-      tags,
+      keywords: formValues.keywords,
+      tags: formValues.tags,
     };
   }
 
@@ -1001,7 +973,7 @@ export default function RecipeForm({
       draft,
       language: language || undefined,
       locale: language || undefined,
-      tags,
+      tags: formValues.tags,
       ingredientLinks,
       externalSources,
       variants,
@@ -1046,7 +1018,10 @@ export default function RecipeForm({
       );
     }
     if (Array.isArray(p.keywords)) {
-      setKeywords(p.keywords.filter((k): k is string => typeof k === "string"));
+      form.setFieldValue(
+        "keywords",
+        p.keywords.filter((k): k is string => typeof k === "string"),
+      );
     }
     if (Array.isArray(p.suitableForDiet)) {
       setDietTags(p.suitableForDiet.filter((d): d is string => typeof d === "string"));
@@ -1318,38 +1293,17 @@ export default function RecipeForm({
 
                   <form.Field name="description">
                     {(field) => (
-                      <FieldWithSibling
+                      <TextareaField
+                        field={field}
                         label="Description"
-                        fieldKey="description"
+                        rows={3}
+                        placeholder="A warming North African spice blend…"
+                        suggestionPath="description"
+                        splitView={splitView}
                         siblingValue={siblingData?.data["description"]}
                         siblingLocale={siblingLocale}
-                        splitView={splitView}
-                      >
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor={field.name}>
-                            Description
-                            <RecommendedHint show={!field.state.value} />
-                          </Label>
-                          <div className="flex items-center gap-1">
-                            <AiFieldSuggestButton fieldPath="description" />
-                            <AiFieldTranslateButton fieldPath="description" />
-                          </div>
-                        </div>
-                        <Textarea
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          onBlur={field.handleBlur}
-                          rows={3}
-                          placeholder="A warming North African spice blend…"
-                        />
-                        <InlineFieldSuggestion
-                          fieldPath="description"
-                          currentValue={field.state.value}
-                          onApply={(v) => field.handleChange(String(v))}
-                          kind="text"
-                        />
-                      </FieldWithSibling>
+                        hint={<RecommendedHint show={!field.state.value} />}
+                      />
                     )}
                   </form.Field>
 
@@ -1855,150 +1809,52 @@ export default function RecipeForm({
                   )}
                   <form.Field name="recipeCategory">
                     {(field) => (
-                      <FieldWithSibling
+                      <TextField
+                        field={field}
                         label="Category"
-                        fieldKey="recipeCategory"
+                        placeholder="Main Course"
+                        suggestionPath="recipeCategory"
+                        splitView={splitView}
                         siblingValue={siblingData?.data["recipeCategory"]}
                         siblingLocale={siblingLocale}
-                        splitView={splitView}
-                      >
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor={field.name}>
-                            Category
-                            <RecommendedHint show={!field.state.value} />
-                          </Label>
-                          <div className="flex items-center gap-1">
-                            <AiFieldSuggestButton fieldPath="recipeCategory" />
-                            <AiFieldTranslateButton fieldPath="recipeCategory" />
-                          </div>
-                        </div>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="Main Course"
-                        />
-                        <InlineFieldSuggestion
-                          fieldPath="recipeCategory"
-                          currentValue={field.state.value}
-                          onApply={(v) => field.handleChange(String(v))}
-                          kind="text"
-                        />
-                      </FieldWithSibling>
+                        hint={<RecommendedHint show={!field.state.value} />}
+                      />
                     )}
                   </form.Field>
                   <form.Field name="recipeCuisine">
                     {(field) => (
-                      <FieldWithSibling
+                      <TextField
+                        field={field}
                         label="Cuisine"
-                        fieldKey="recipeCuisine"
+                        placeholder="Moroccan"
+                        suggestionPath="recipeCuisine"
+                        splitView={splitView}
                         siblingValue={siblingData?.data["recipeCuisine"]}
                         siblingLocale={siblingLocale}
-                        splitView={splitView}
-                      >
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor={field.name}>
-                            Cuisine
-                            <RecommendedHint show={!field.state.value} />
-                          </Label>
-                          <div className="flex items-center gap-1">
-                            <AiFieldSuggestButton fieldPath="recipeCuisine" />
-                            <AiFieldTranslateButton fieldPath="recipeCuisine" />
-                          </div>
-                        </div>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="Moroccan"
-                        />
-                        <InlineFieldSuggestion
-                          fieldPath="recipeCuisine"
-                          currentValue={field.state.value}
-                          onApply={(v) => field.handleChange(String(v))}
-                          kind="text"
-                        />
-                      </FieldWithSibling>
+                        hint={<RecommendedHint show={!field.state.value} />}
+                      />
                     )}
                   </form.Field>
-                  <div className="col-span-2 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label>
-                        Keywords
-                        <RecommendedHint show={keywords.length === 0} />
-                      </Label>
-                      <button
-                        type="button"
-                        onClick={() => runProposeTags(true)}
-                        disabled={aiKeywordsLoading}
-                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        {aiKeywordsLoading ? (
-                          <Loader2 size={11} className="animate-spin" />
-                        ) : (
-                          <Sparkles size={11} />
-                        )}
-                        AI suggest
-                      </button>
-                    </div>
-                    <TagInput
-                      value={keywords}
-                      onChange={setKeywords}
-                      suggestions={tagSuggestions}
-                      placeholder="vegan, pantry, quick"
-                    />
-                    <InlineFieldSuggestion
-                      fieldPath="keywords"
-                      currentValue={keywords}
-                      onApply={(v) => {
-                        if (Array.isArray(v))
-                          setKeywords((prev) => [...new Set([...prev, ...v.map(String)])]);
-                      }}
-                      kind="array"
-                    />
-                    {pendingKeywords && pendingKeywords.length > 0 && (
-                      <div className="rounded-md border p-2 text-sm mt-1.5">
-                        <div className="flex flex-wrap gap-1">
-                          {pendingKeywords
-                            .filter((t) => !keywords.includes(t))
-                            .map((t) => (
-                              <button
-                                key={t}
-                                type="button"
-                                onClick={() => {
-                                  setKeywords((prev) => [...new Set([...prev, t])]);
-                                  setPendingKeywords((prev) =>
-                                    prev ? prev.filter((x) => x !== t) : prev,
-                                  );
-                                }}
-                                className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
-                              >
-                                + {t}
-                              </button>
-                            ))}
-                        </div>
-                        <div className="mt-1.5 flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const toAdd = pendingKeywords.filter((t) => !keywords.includes(t));
-                              setKeywords((prev) => [...new Set([...prev, ...toAdd])]);
-                              setPendingKeywords(null);
-                            }}
-                            className="text-xs text-muted-foreground hover:text-foreground px-1"
-                          >
-                            Add all
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPendingKeywords(null)}
-                            className="text-xs text-muted-foreground hover:text-foreground px-1"
-                          >
-                            Dismiss
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                  <div className="col-span-2">
+                    <form.Field name="keywords">
+                      {(field) => (
+                        <TagInputField
+                          field={field}
+                          label={
+                            <>
+                              Keywords
+                              <RecommendedHint show={(field.state.value ?? []).length === 0} />
+                            </>
+                          }
+                          placeholder="vegan, pantry, quick"
+                          suggestions={tagSuggestions}
+                          suggestionPath="keywords"
+                          pendingItems={pendingKeywords}
+                          onAcceptItems={() => setPendingKeywords(null)}
+                          onDismissItems={() => setPendingKeywords(null)}
+                        />
+                      )}
+                    </form.Field>
                   </div>
                   <div className="col-span-2 space-y-1.5">
                     <Label>Suitable for diet</Label>
@@ -2054,82 +1910,20 @@ export default function RecipeForm({
                   <CardTitle>Publishing</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label>Tags</Label>
-                      <button
-                        type="button"
-                        onClick={() => runProposeTags(false)}
-                        disabled={aiTagsLoading}
-                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        {aiTagsLoading ? (
-                          <Loader2 size={11} className="animate-spin" />
-                        ) : (
-                          <Tag size={11} />
-                        )}
-                        AI suggest
-                      </button>
-                    </div>
-                    <TagInput
-                      value={tags}
-                      onChange={setTags}
-                      suggestions={tagSuggestions}
-                      placeholder="weeknight, make-ahead"
-                    />
-                    <InlineFieldSuggestion
-                      fieldPath="tags"
-                      currentValue={tags}
-                      onApply={(v) => {
-                        if (Array.isArray(v))
-                          setTags((prev) => [...new Set([...prev, ...v.map(String)])]);
-                      }}
-                      kind="array"
-                    />
-                    {pendingTags && pendingTags.length > 0 && (
-                      <div className="rounded-md border p-2 text-sm mt-1.5">
-                        <div className="flex flex-wrap gap-1">
-                          {pendingTags
-                            .filter((t) => !tags.includes(t))
-                            .map((t) => (
-                              <button
-                                key={t}
-                                type="button"
-                                onClick={() => {
-                                  setTags((prev) => [...new Set([...prev, t])]);
-                                  setPendingTags((prev) =>
-                                    prev ? prev.filter((x) => x !== t) : prev,
-                                  );
-                                }}
-                                className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
-                              >
-                                + {t}
-                              </button>
-                            ))}
-                        </div>
-                        <div className="mt-1.5 flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const toAdd = pendingTags.filter((t) => !tags.includes(t));
-                              setTags((prev) => [...new Set([...prev, ...toAdd])]);
-                              setPendingTags(null);
-                            }}
-                            className="text-xs text-muted-foreground hover:text-foreground px-1"
-                          >
-                            Add all
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPendingTags(null)}
-                            className="text-xs text-muted-foreground hover:text-foreground px-1"
-                          >
-                            Dismiss
-                          </button>
-                        </div>
-                      </div>
+                  <form.Field name="tags">
+                    {(field) => (
+                      <TagInputField
+                        field={field}
+                        label="Tags"
+                        placeholder="weeknight, make-ahead"
+                        suggestions={tagSuggestions}
+                        suggestionPath="tags"
+                        pendingItems={pendingTags}
+                        onAcceptItems={() => setPendingTags(null)}
+                        onDismissItems={() => setPendingTags(null)}
+                      />
                     )}
-                  </div>
+                  </form.Field>
                   <div className="space-y-1.5">
                     <Label>Language</Label>
                     <div className="flex items-center gap-2">
