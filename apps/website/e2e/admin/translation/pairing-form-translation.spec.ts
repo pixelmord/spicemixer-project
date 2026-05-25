@@ -1,9 +1,9 @@
 /**
  * Translation split-view matrix: PairingForm
  *
- * Seeded fixtures used:
- *   EN pairing: /admin/pairings/caraway--cumin/edit?locale=en
- *   DE pairing (draft, translationOf: "caraway--cumin"): /admin/pairings/caraway--cumin/edit?locale=de
+ * Seeded from e2e/fixtures/content-overlay/:
+ *   EN: /admin/pairings/e2e-pair-a--e2e-pair-b/edit?locale=en (canonical)
+ *   DE: /admin/pairings/e2e-pair-a--e2e-pair-b/edit?locale=de (draft, translationOf)
  */
 import { expect, test } from "@playwright/test";
 import {
@@ -15,8 +15,8 @@ import {
   splitViewToggle,
 } from "./shared.ts";
 
-const EN_URL = "/admin/pairings/caraway--cumin/edit?locale=en";
-const DE_URL = "/admin/pairings/caraway--cumin/edit?locale=de";
+const EN_URL = "/admin/pairings/e2e-pair-a--e2e-pair-b/edit?locale=en";
+const DE_URL = "/admin/pairings/e2e-pair-a--e2e-pair-b/edit?locale=de";
 
 test.describe("PairingForm split-view: split-view toggle + persistence", () => {
   test.beforeEach(async ({ page }) => {
@@ -235,7 +235,7 @@ test.describe("PairingForm: header overflow delete", () => {
 
     page.once("dialog", (dialog) => dialog.dismiss());
     await page.getByRole("button", { name: /delete/i }).click();
-    await expect(page).toHaveURL(new RegExp("caraway--cumin"));
+    await expect(page).toHaveURL(new RegExp("e2e-pair-a--e2e-pair-b"));
   });
 });
 

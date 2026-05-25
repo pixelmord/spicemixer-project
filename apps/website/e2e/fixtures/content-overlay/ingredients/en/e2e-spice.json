@@ -1,0 +1,11 @@
+{
+  "name": "E2E Test Spice",
+  "summary": "A canonical English ingredient used only by the e2e translation suite.",
+  "description": "This entity exists solely for Playwright tests covering split-view translation flows. Do not reference it in product content or seed it into the public site.",
+  "category": "seed",
+  "origin": ["Testland"],
+  "flavorNotes": ["test", "fixture", "stable"],
+  "images": [],
+  "commonNames": [],
+  "region": []
+}

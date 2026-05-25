@@ -1,0 +1,11 @@
+{
+  "name": "E2E Testgewürz",
+  "summary": "Eine englische Originalzutat, die nur von der E2E-Übersetzungssuite verwendet wird.",
+  "description": "Diese Entität existiert ausschließlich für Playwright-Tests, die Split-View-Übersetzungsabläufe abdecken. Nicht in Produktinhalten referenzieren oder in die öffentliche Seite einspielen.",
+  "category": "seed",
+  "origin": ["Testland"],
+  "flavorNotes": ["test", "fixture", "stabil"],
+  "images": [],
+  "commonNames": [],
+  "region": []
+}

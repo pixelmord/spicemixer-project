@@ -1,0 +1,11 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "E2E Test Blend",
+  "description": "A mixture used only by the e2e translation suite. No DE sibling — exercises the no-sibling fetch path.",
+  "recipeIngredient": ["1 tsp e2e test spice", "1 tsp salt"],
+  "recipeInstructions": [
+    { "@type": "HowToStep", "text": "Combine ingredients in a small bowl." },
+    { "@type": "HowToStep", "text": "Store in an airtight jar." }
+  ]
+}

@@ -1,10 +1,10 @@
 /**
  * Translation split-view matrix: IngredientForm
  *
- * Seeded fixtures used:
- *   EN ingredient: /admin/ingredients/caraway/edit (locale defaults to en)
- *   DE ingredient (draft, translationOf: "caraway"): /admin/ingredients/caraway/edit?locale=de
- *   Sibling data: EN caraway has a DE counterpart and vice versa
+ * Seeded from e2e/fixtures/content-overlay/:
+ *   EN: /admin/ingredients/e2e-spice/edit (canonical)
+ *   DE: /admin/ingredients/e2e-spice/edit?locale=de (draft, translationOf: "e2e-spice")
+ *   EN-only (no DE sibling): /admin/ingredients/e2e-untranslated/edit
  */
 import { expect, test } from "@playwright/test";
 import {
@@ -17,8 +17,8 @@ import {
   splitViewToggle,
 } from "./shared.ts";
 
-const EN_URL = "/admin/ingredients/caraway/edit";
-const DE_URL = "/admin/ingredients/caraway/edit?locale=de";
+const EN_URL = "/admin/ingredients/e2e-spice/edit";
+const DE_URL = "/admin/ingredients/e2e-spice/edit?locale=de";
 
 test.describe("IngredientForm split-view: toggle + persistence", () => {
   test.beforeEach(async ({ page }) => {
@@ -298,7 +298,7 @@ test.describe("IngredientForm: translate dialog + slug picker", () => {
   test("IngredientForm slug picker absent in Phase 1 (ingredients use shared slug)", async ({
     page,
   }) => {
-    await page.goto("/admin/ingredients/koriander/edit", { waitUntil: "networkidle" });
+    await page.goto("/admin/ingredients/e2e-untranslated/edit", { waitUntil: "networkidle" });
     const translateBtn = page.getByRole("button", { name: /^translate$/i });
     if (await translateBtn.isVisible()) {
       await translateBtn.click();

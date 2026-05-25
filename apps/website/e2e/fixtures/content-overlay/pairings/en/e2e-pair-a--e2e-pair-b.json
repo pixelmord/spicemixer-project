@@ -1,0 +1,7 @@
+{
+  "endpoints": [
+    { "collection": "ingredients", "slug": "e2e-spice" },
+    { "collection": "ingredients", "slug": "e2e-untranslated" }
+  ],
+  "description": "A canonical English pairing used only by the e2e translation suite."
+}

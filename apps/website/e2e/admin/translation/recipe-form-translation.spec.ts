@@ -1,9 +1,8 @@
 /**
  * Translation split-view matrix: RecipeForm (collection = "recipes")
  *
- * Seeded fixtures used:
- *   EN recipe: /admin/recipes/miso-butter-ramen/edit
- *   No DE translation exists for seeded recipes — sibling fetch returns null.
+ * Seeded from e2e/fixtures/content-overlay/:
+ *   EN: /admin/recipes/e2e-dish/edit (canonical, no DE sibling → sibling fetch returns null)
  */
 import { expect, test } from "@playwright/test";
 import {
@@ -16,7 +15,7 @@ import {
   splitViewToggle,
 } from "./shared.ts";
 
-const EDIT_URL = "/admin/recipes/miso-butter-ramen/edit";
+const EDIT_URL = "/admin/recipes/e2e-dish/edit";
 
 test.describe("RecipeForm split-view: toggle + persistence", () => {
   test.beforeEach(async ({ page }) => {
@@ -246,7 +245,7 @@ test.describe("RecipeForm: header overflow delete", () => {
 
     page.once("dialog", (dialog) => dialog.dismiss());
     await page.getByRole("button", { name: /delete/i }).click();
-    await expect(page).toHaveURL(new RegExp("miso-butter-ramen"));
+    await expect(page).toHaveURL(new RegExp("e2e-dish"));
   });
 });
 

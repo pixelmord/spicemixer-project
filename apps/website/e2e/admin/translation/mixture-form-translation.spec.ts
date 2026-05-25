@@ -1,9 +1,8 @@
 /**
  * Translation split-view matrix: RecipeForm (collection = "mixtures")
  *
- * Seeded fixtures used:
- *   EN mixture: /admin/mixtures/berbere/edit
- *   No DE sibling for berbere — sibling fetch returns null.
+ * Seeded from e2e/fixtures/content-overlay/:
+ *   EN: /admin/mixtures/e2e-blend/edit (canonical, no DE sibling → sibling fetch returns null)
  *
  * The mixture form is the same RecipeForm component with collection="mixtures".
  * Tests mirror the recipe matrix but verify the mixture-specific URL and behaviour.
@@ -19,7 +18,7 @@ import {
   splitViewToggle,
 } from "./shared.ts";
 
-const EDIT_URL = "/admin/mixtures/berbere/edit";
+const EDIT_URL = "/admin/mixtures/e2e-blend/edit";
 
 test.describe("MixtureForm split-view: toggle + persistence", () => {
   test.beforeEach(async ({ page }) => {
@@ -246,7 +245,7 @@ test.describe("MixtureForm: header overflow delete", () => {
 
     page.once("dialog", (dialog) => dialog.dismiss());
     await page.getByRole("button", { name: /delete/i }).click();
-    await expect(page).toHaveURL(new RegExp("berbere"));
+    await expect(page).toHaveURL(new RegExp("e2e-blend"));
   });
 });
 

@@ -1,0 +1,10 @@
+{
+  "name": "E2E Untranslated",
+  "summary": "An EN-only ingredient with no DE sibling, used to verify the slug picker and translate dialog behavior.",
+  "category": "other",
+  "origin": [],
+  "flavorNotes": [],
+  "images": [],
+  "commonNames": [],
+  "region": []
+}
