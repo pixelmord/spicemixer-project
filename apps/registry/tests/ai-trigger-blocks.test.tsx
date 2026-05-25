@@ -117,7 +117,7 @@ describe("AiBulkSuggestButton — running state", () => {
   test("does not show Get AI suggestions when running", async () => {
     const flow = makeFlow({ isRunning: true });
     const screen = await renderWithFlow(<AiBulkSuggestButton />, flow);
-    expect(screen.queryByText(/get ai suggestions/i)).not.toBeInTheDocument?.();
+    await expect.element(screen.getByText(/get ai suggestions/i)).not.toBeInTheDocument();
   });
 });
 
@@ -330,7 +330,9 @@ describe("AiFieldTranslateButton — copy mode", () => {
     const flow = makeFlow({ forField: vi.fn().mockReturnValue(accessor) });
     const screen = await renderWithFlow(<AiFieldTranslateButton fieldPath="slug" />, flow);
     // The chevron / merge dropdown button should NOT be rendered in copy mode
-    expect(screen.queryByRole("button", { name: /merge options/i })).not.toBeInTheDocument?.();
+    await expect
+      .element(screen.getByRole("button", { name: /merge options/i }))
+      .not.toBeInTheDocument();
   });
 });
 

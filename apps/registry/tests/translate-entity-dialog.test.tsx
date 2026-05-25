@@ -169,7 +169,7 @@ describe("setup step — locale picker", () => {
     const screen = await render(
       <TranslateEntityDialog {...makeProps({ availableLocales: ["de"] })} />,
     );
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument?.();
+    await expect.element(screen.getByRole("combobox")).not.toBeInTheDocument();
   });
 });
 

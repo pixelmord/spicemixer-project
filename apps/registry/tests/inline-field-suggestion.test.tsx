@@ -173,7 +173,7 @@ describe("single text suggestion", () => {
 
   test("calls markViewed on mount when suggestion is present", async () => {
     const flow = makeFlow({ description: textSuggestion });
-    renderWithFlow(
+    void renderWithFlow(
       <InlineFieldSuggestion
         fieldPath="description"
         currentValue=""
