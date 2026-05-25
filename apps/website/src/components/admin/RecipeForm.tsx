@@ -46,8 +46,12 @@ import type { SiblingLocale } from "@registry/components/use-ai-suggestions";
 import { TextField, TextareaField, TagInputField } from "@/components/admin/fields/index.ts";
 interface AiSuggestion {
   field: string;
-  suggestion: string;
-  rationale: string;
+  suggestion: unknown;
+  rationale?: string;
+  summary?: string;
+  hash?: string;
+  traceId?: string;
+  confidence?: "high" | "medium" | "low";
 }
 
 interface AiSuggestions {
@@ -138,7 +142,7 @@ interface MetaData {
   region: RegionCode[];
   tags: string[];
   ingredientLinks: IngredientLink[];
-  externalSources: Array<{ url: string; title: string; source?: string }>;
+  sources: Array<{ title: string; url: string; author?: string; year?: string }>;
   variants: string[];
   imageAttribution?: ImageAttribution;
   recipeInstructionsAttribution?: Array<{ index: number } & ImageAttribution>;
@@ -176,7 +180,7 @@ function emptyMeta(): MetaData {
     region: [],
     tags: [],
     ingredientLinks: [],
-    externalSources: [],
+    sources: [],
     variants: [],
     translations: {},
   };
@@ -286,13 +290,16 @@ function adaptAiSuggestionsToRunResult(data: AiSuggestions | undefined): RunResu
   const suggestions: Record<string, FieldSuggestion> = {};
   let counter = 0;
   for (const imp of data.improvements ?? []) {
+    const value = TIME_FIELDS.has(imp.field)
+      ? toIsoDuration(imp.suggestion as string)
+      : imp.suggestion;
     suggestions[imp.field] = {
       kind: "single",
-      value: TIME_FIELDS.has(imp.field) ? toIsoDuration(imp.suggestion) : imp.suggestion,
-      confidence: "medium",
-      summary: imp.rationale,
-      hash: `${imp.field}-${counter++}`,
-      traceId: "legacy",
+      value,
+      confidence: imp.confidence ?? "medium",
+      summary: imp.summary ?? imp.rationale ?? `AI suggestion for ${imp.field}`,
+      hash: imp.hash ?? `${imp.field}-${counter++}`,
+      traceId: imp.traceId ?? "legacy",
     };
   }
   if (data.tags && data.tags.length > 0) {
@@ -356,7 +363,7 @@ export default function RecipeForm({
     ),
   );
   const [ingredientLinks, setIngredientLinks] = useState<IngredientLink[]>(meta.ingredientLinks);
-  const [externalSources, setExternalSources] = useState(meta.externalSources);
+  const [sources, setSources] = useState(meta.sources);
   const [variants, setVariants] = useState<string[]>(meta.variants ?? []);
   const [pendingPairingDialog, setPendingPairingDialog] = useState<PairingAiSuggestion | null>(
     null,
@@ -643,7 +650,7 @@ export default function RecipeForm({
         locale: language || undefined,
         tags: value.tags,
         ingredientLinks,
-        externalSources: externalSources.filter((s) => s.url.trim()),
+        sources: sources.filter((s) => s.url.trim()),
         variants,
         kind: collection === "mixtures" ? kind || undefined : (meta.kind ?? undefined),
         imageAttribution: imageAttribution || undefined,
@@ -821,10 +828,12 @@ export default function RecipeForm({
   const aiFlow = useAiSuggestions({
     contract: RECIPE_AI_CONTRACT,
     siblingLocale: siblingData ?? undefined,
-    onRefine: async () => {
+    onRefine: async (params) => {
       const snap = buildRecipeSnapshot();
       const metaSnap = buildMetaSnapshot();
-      const missingKeys = RECIPE_RECOMMENDED.filter((k) => !recipeFieldHas(k));
+      // Per-field run: only refresh exactly what the client asked for.
+      // Full run: derive missing-recommended-fields from completeness.
+      const missingKeys = params.target ?? RECIPE_RECOMMENDED.filter((k) => !recipeFieldHas(k));
       let captured: AiSuggestions | undefined;
       setAiRefreshing(true);
       try {
@@ -837,6 +846,10 @@ export default function RecipeForm({
             missingFields: missingKeys,
             locale: language ?? "en",
             force: true,
+            // Pass through the per-field target so the server skips
+            // side-effect proposers + the sidecar.write that would trip
+            // Astro's HMR and wipe the just-arrived suggestion.
+            ...(params.target ? { target: params.target } : {}),
           },
           (data) => {
             captured = data.aiSuggestions;
@@ -884,6 +897,7 @@ export default function RecipeForm({
       missingFields: string[];
       locale: string;
       force?: boolean;
+      target?: string[];
     },
     onResult: (data: {
       aiSuggestions: AiSuggestions;
@@ -970,7 +984,7 @@ export default function RecipeForm({
       locale: language || undefined,
       tags: formValues.tags,
       ingredientLinks,
-      externalSources,
+      sources,
       variants,
     };
   }
@@ -2050,11 +2064,9 @@ export default function RecipeForm({
                 </CardHeader>
                 <CardContent>
                   <SortableArrayField
-                    items={externalSources}
-                    onChange={setExternalSources}
-                    onAdd={() =>
-                      setExternalSources((prev) => [...prev, { url: "", title: "", source: "" }])
-                    }
+                    items={sources}
+                    onChange={setSources}
+                    onAdd={() => setSources((prev) => [...prev, { title: "", url: "" }])}
                     addLabel="Add source"
                     getKey={(_, i) => `src-${i}`}
                     renderItem={(src, i) => (
@@ -2063,9 +2075,18 @@ export default function RecipeForm({
                           Source {i + 1}
                         </span>
                         <Input
+                          value={src.title}
+                          onChange={(e) =>
+                            setSources((prev) =>
+                              prev.map((s, j) => (j === i ? { ...s, title: e.target.value } : s)),
+                            )
+                          }
+                          placeholder="Title"
+                        />
+                        <Input
                           value={src.url}
                           onChange={(e) =>
-                            setExternalSources((prev) =>
+                            setSources((prev) =>
                               prev.map((s, j) => (j === i ? { ...s, url: e.target.value } : s)),
                             )
                           }
@@ -2073,22 +2094,26 @@ export default function RecipeForm({
                           placeholder="https://…"
                         />
                         <Input
-                          value={src.title}
+                          value={src.author ?? ""}
                           onChange={(e) =>
-                            setExternalSources((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, title: e.target.value } : s)),
+                            setSources((prev) =>
+                              prev.map((s, j) =>
+                                j === i ? { ...s, author: e.target.value || undefined } : s,
+                              ),
                             )
                           }
-                          placeholder="Title"
+                          placeholder="Author / publisher"
                         />
                         <Input
-                          value={src.source ?? ""}
+                          value={src.year ?? ""}
                           onChange={(e) =>
-                            setExternalSources((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, source: e.target.value } : s)),
+                            setSources((prev) =>
+                              prev.map((s, j) =>
+                                j === i ? { ...s, year: e.target.value || undefined } : s,
+                              ),
                             )
                           }
-                          placeholder="Source name (e.g. Serious Eats)"
+                          placeholder="Year"
                         />
                       </div>
                     )}
@@ -2183,7 +2208,7 @@ export default function RecipeForm({
                 kind: entityKind,
                 tags: [] as string[],
                 ingredientLinks: [] as unknown[],
-                externalSources: [] as unknown[],
+                sources: [] as unknown[],
                 variants: [] as string[],
                 language: targetLocale,
                 locale: targetLocale,

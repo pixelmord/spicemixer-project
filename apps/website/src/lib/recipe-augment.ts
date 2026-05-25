@@ -20,7 +20,7 @@ export type IngredientLink = {
   kind?: "ingredient" | "recipe";
   collection?: string;
 };
-export type ExternalSource = { url: string; title: string; source?: string };
+export type Source = { title: string; url: string; author?: string; year?: string };
 
 export type Meta = {
   kind?: "recipe" | MixtureKind;
@@ -32,7 +32,7 @@ export type Meta = {
   translations?: Record<string, string>;
   variants: string[];
   ingredientLinks: IngredientLink[];
-  externalSources: ExternalSource[];
+  sources: Source[];
   tags: string[];
 };
 
@@ -47,7 +47,7 @@ type PairingData = {
 const EMPTY_META: Meta = {
   variants: [],
   ingredientLinks: [],
-  externalSources: [],
+  sources: [],
   tags: [],
   translations: {},
 };

@@ -96,7 +96,7 @@ describe("aiCreateTranslation: recipe atomic create", () => {
       kind: "recipe",
       tags: [],
       ingredientLinks: [],
-      externalSources: [],
+      sources: [],
       variants: [],
       language: "de",
       locale: "de",

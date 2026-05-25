@@ -3,10 +3,10 @@
   "region": ["western-europe"],
   "tags": [],
   "ingredientLinks": [],
-  "externalSources": [
+  "sources": [
     {
-      "url": "https://www.chefkoch.de/rezepte/3043981457086610/Mojo-rojo-zu-Kartoffelspalten.html",
-      "title": "Mojo rojo zu Kartoffelspalten von Chefkoch-Video"
+      "title": "Mojo rojo zu Kartoffelspalten von Chefkoch-Video",
+      "url": "https://www.chefkoch.de/rezepte/3043981457086610/Mojo-rojo-zu-Kartoffelspalten.html"
     }
   ],
   "variants": [],

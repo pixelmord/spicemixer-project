@@ -528,7 +528,7 @@ describe("getEffectiveVariants — canonical-locale meta resolution", () => {
       variants: ["harissa-moroccan", "harissa-lebanese"],
       translationOf: undefined,
       ingredientLinks: [],
-      externalSources: [],
+      sources: [],
       tags: [],
     } as Parameters<typeof getEffectiveVariants>[2];
 
@@ -559,7 +559,7 @@ describe("getEffectiveVariants — canonical-locale meta resolution", () => {
       variants: [],
       translationOf: "harissa",
       ingredientLinks: [],
-      externalSources: [],
+      sources: [],
       tags: [],
     } as Parameters<typeof getEffectiveVariants>[2];
 
@@ -575,7 +575,7 @@ describe("getEffectiveVariants — canonical-locale meta resolution", () => {
       variants: [],
       translationOf: "harissa",
       ingredientLinks: [],
-      externalSources: [],
+      sources: [],
       tags: [],
     } as Parameters<typeof getEffectiveVariants>[2];
 

@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response("Bad request: expected JSON body", { status: 400 });
   }
 
-  const { collection, slug, recipe, meta, missingFields, locale, force } = body as {
+  const { collection, slug, recipe, meta, missingFields, locale, force, target } = body as {
     collection?: string;
     slug?: string;
     recipe?: Record<string, unknown>;
@@ -28,6 +28,7 @@ export const POST: APIRoute = async ({ request }) => {
     missingFields?: string[];
     locale?: string;
     force?: boolean;
+    target?: string[];
   };
 
   if (!collection || !slug || !recipe) {
@@ -78,6 +79,7 @@ export const POST: APIRoute = async ({ request }) => {
               payload: recipe,
               existingMeta: meta ?? {},
               missingFields: missingFields ?? [],
+              ...(target ? { target } : {}),
               locale: locale ?? "en",
               store,
               sidecar,

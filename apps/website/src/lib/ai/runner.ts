@@ -46,6 +46,13 @@ export interface AiRefreshInput {
   metaRef: MetaRef;
   payload: Record<string, unknown>;
   missingFields: string[];
+  /**
+   * Per-field run scope. When set, the runner treats this as an explicit
+   * per-field request: it limits the refine target to exactly these fields
+   * and skips side-effect proposers (pairings auto-apply, language detection)
+   * that would write to disk and trigger HMR reloads of unsaved form state.
+   */
+  target?: string[];
   locale: string;
   store: ContentStore;
   sidecar: AiEventSidecar;
@@ -82,6 +89,7 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
     metaRef,
     payload,
     missingFields,
+    target,
     locale,
     store,
     eventLog,
@@ -89,13 +97,16 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
     existingMeta = {},
   } = input;
 
+  const isPerField = target !== undefined;
+
   const entityRef = metaRefToEntityRef(metaRef);
   const existingEvents = await eventLog.read(entityRef);
 
-  const [ingredientItems, mixtureItems] = await Promise.all([
-    store.list("ingredients"),
-    store.list("mixtures"),
-  ]);
+  // Skip inventory listing entirely on per-field runs — it's only used to
+  // build the cross-collection candidate set for the pairings proposer.
+  const [ingredientItems, mixtureItems] = isPerField
+    ? [[] as Awaited<ReturnType<typeof store.list>>, [] as Awaited<ReturnType<typeof store.list>>]
+    : await Promise.all([store.list("ingredients"), store.list("mixtures")]);
   const inventory = [
     ...ingredientItems
       .filter((i) => i.id.startsWith(`${locale}/`) && i.id !== `${locale}/${metaRef.slug}`)
@@ -120,12 +131,17 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
       }),
   ];
 
-  const fieldsForAi = missingFields.filter((f) => f !== "image");
-  const targetFields = [
-    ...fieldsForAi,
-    ...(inventory.length ? ["pairings"] : []),
-    ...(!existingMeta["locale"] ? ["language"] : []),
-  ];
+  const fieldsForAi = (isPerField ? target : missingFields).filter((f) => f !== "image");
+  // Per-field runs target exactly what the client asked for. Full refreshes
+  // also include pairings (auto-apply) and language detection — both of which
+  // can write files; OK only when the user expects a full re-evaluation.
+  const targetFields = isPerField
+    ? fieldsForAi
+    : [
+        ...fieldsForAi,
+        ...(inventory.length ? ["pairings"] : []),
+        ...(!existingMeta["locale"] ? ["language"] : []),
+      ];
 
   const {
     suggestions,
@@ -158,7 +174,15 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
     .filter((f) => suggestions.has(f))
     .map((f) => {
       const sugg = suggestions.get(f)!;
-      return { field: f, suggestion: sugg.kind === "single" ? sugg.value : undefined };
+      const isSingle = sugg.kind === "single";
+      return {
+        field: f,
+        suggestion: isSingle ? sugg.value : undefined,
+        summary: isSingle ? sugg.summary : `AI suggestion for ${f}`,
+        hash: isSingle ? sugg.hash : undefined,
+        traceId: sugg.traceId,
+        confidence: isSingle ? sugg.confidence : undefined,
+      };
     });
   const filteredImprovements = filterImprovements(
     rawImprovements as Array<{ field: string; suggestion: unknown }>,
@@ -238,6 +262,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     metaRef,
     payload,
     missingFields,
+    target,
     locale,
     store,
     sidecar,
@@ -246,6 +271,8 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     force,
     existingMeta: meta = {},
   } = input;
+
+  const isPerField = target !== undefined;
 
   const entityRef = metaRefToEntityRef(metaRef);
   const skipResult = await eventLog.checkFingerprint(
@@ -266,7 +293,10 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
 
   const { fingerprint, existingEvents } = skipResult;
 
-  const ingredientItems = await store.list("ingredients");
+  // Inventory + cross-collection listing is only needed to build the candidate
+  // set for the pairings/relations proposers. Per-field runs target exactly
+  // what the client asked for and skip those proposers entirely.
+  const ingredientItems = isPerField ? [] : await store.list("ingredients");
   const inventory = ingredientItems
     .filter((i) => i.id.startsWith(`${locale}/`))
     .map((i) => {
@@ -277,7 +307,9 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
       };
     });
 
-  const [recipes, mixtures] = await Promise.all([store.list("recipes"), store.list("mixtures")]);
+  const [recipes, mixtures] = isPerField
+    ? [[] as Awaited<ReturnType<typeof store.list>>, [] as Awaited<ReturnType<typeof store.list>>]
+    : await Promise.all([store.list("recipes"), store.list("mixtures")]);
   const existingRecipes = [
     ...recipes.map((r) => {
       const d = r.data as Record<string, unknown>;
@@ -301,17 +333,23 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
   const recipeIngredients = Array.isArray(payload["recipeIngredient"])
     ? (payload["recipeIngredient"] as string[])
     : [];
-  const fieldsForAi = missingFields.filter((f) => f !== "image");
+  const fieldsForAi = (isPerField ? target : missingFields).filter((f) => f !== "image");
 
+  // Per-field runs target only the fields the client requested. Full refreshes
+  // additionally include the side-effect proposers (keywords, ingredientLinks,
+  // relations, pairings, language) which can write to disk and trigger HMR
+  // reloads of unsaved form state.
   const hasPairableEntities = inventory.length > 0 || existingRecipes.length > 0;
-  const targetFields = [
-    ...fieldsForAi,
-    "keywords",
-    ...(recipeIngredients.length ? ["ingredientLinks"] : []),
-    ...(existingRecipes.length ? ["relations"] : []),
-    ...(hasPairableEntities ? ["pairings"] : []),
-    ...(!meta["language"] ? ["language"] : []),
-  ];
+  const targetFields = isPerField
+    ? fieldsForAi
+    : [
+        ...fieldsForAi,
+        "keywords",
+        ...(recipeIngredients.length ? ["ingredientLinks"] : []),
+        ...(existingRecipes.length ? ["relations"] : []),
+        ...(hasPairableEntities ? ["pairings"] : []),
+        ...(!meta["language"] ? ["language"] : []),
+      ];
 
   const {
     suggestions,
@@ -344,7 +382,15 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     .filter((f) => suggestions.has(f))
     .map((f) => {
       const sugg = suggestions.get(f)!;
-      return { field: f, suggestion: sugg.kind === "single" ? sugg.value : undefined };
+      const isSingle = sugg.kind === "single";
+      return {
+        field: f,
+        suggestion: isSingle ? sugg.value : undefined,
+        summary: isSingle ? sugg.summary : `AI suggestion for ${f}`,
+        hash: isSingle ? sugg.hash : undefined,
+        traceId: sugg.traceId,
+        confidence: isSingle ? sugg.confidence : undefined,
+      };
     });
   const filteredImprovements = filterImprovements(
     rawImprovements as Array<{ field: string; suggestion: unknown }>,
@@ -405,9 +451,12 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
   const existingPatterns = new Set(
     existingLinks.map((l) => (typeof l["pattern"] === "string" ? l["pattern"] : "")),
   );
-  const toAutoApply = ingredientLinks.filter(
-    (l) => isHighConfidence(l.confidence) && !existingPatterns.has(l.pattern),
-  );
+  // Per-field runs never auto-apply: persistence happens on the user's save.
+  const toAutoApply = isPerField
+    ? []
+    : ingredientLinks.filter(
+        (l) => isHighConfidence(l.confidence) && !existingPatterns.has(l.pattern),
+      );
 
   const updatedMeta: Record<string, unknown> = { ...meta };
   const runId = getCurrentOrigin()?.runId;
@@ -432,7 +481,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     }
   }
 
-  if (!meta["language"] && detectedLanguage) {
+  if (!isPerField && !meta["language"] && detectedLanguage) {
     updatedMeta["language"] = detectedLanguage;
     updatedMeta["locale"] = detectedLanguage;
     await eventLog.append(entityRef, {
@@ -448,25 +497,30 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     });
   }
 
-  const freshItem = await sidecar.read(metaRef);
-  const freshMeta = (freshItem?.data as Record<string, unknown> | undefined) ?? meta;
-  const newMeta: Record<string, unknown> = {
-    ...freshMeta,
-    ...updatedMeta,
-    aiSuggestions: {
-      fingerprint,
-      at: new Date().toISOString(),
-      model: config.model,
-      data: aiSuggestions,
-    },
-  };
+  // Per-field runs do not persist the meta sidecar — writing to disk would
+  // trip Astro's content watcher and wipe the just-arrived suggestion from
+  // the client's form state.
+  if (!isPerField) {
+    const freshItem = await sidecar.read(metaRef);
+    const freshMeta = (freshItem?.data as Record<string, unknown> | undefined) ?? meta;
+    const newMeta: Record<string, unknown> = {
+      ...freshMeta,
+      ...updatedMeta,
+      aiSuggestions: {
+        fingerprint,
+        at: new Date().toISOString(),
+        model: config.model,
+        data: aiSuggestions,
+      },
+    };
 
-  const stripTimestamp = (m: Record<string, unknown>) => {
-    const cache = m["aiSuggestions"] as { at?: string } | undefined;
-    return cache ? { ...m, aiSuggestions: { ...cache, at: "" } } : m;
-  };
-  if (hashContent(stripTimestamp(newMeta)) !== hashContent(stripTimestamp(meta))) {
-    await sidecar.write(metaRef, newMeta);
+    const stripTimestamp = (m: Record<string, unknown>) => {
+      const cache = m["aiSuggestions"] as { at?: string } | undefined;
+      return cache ? { ...m, aiSuggestions: { ...cache, at: "" } } : m;
+    };
+    if (hashContent(stripTimestamp(newMeta)) !== hashContent(stripTimestamp(meta))) {
+      await sidecar.write(metaRef, newMeta);
+    }
   }
 
   return {
@@ -481,7 +535,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
 }
 
 async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult> {
-  const { metaRef, payload, locale, eventLog, config } = input;
+  const { metaRef, payload, target, locale, eventLog, config } = input;
 
   const existingEvents = await eventLog.read(metaRefToEntityRef(metaRef));
 
@@ -506,6 +560,7 @@ async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult
       ingredients: [refSlug(ings?.[0]), refSlug(ings?.[1])],
     } as never,
     sourceContext: { locale },
+    ...(target ? { target } : {}),
     events: existingEvents as unknown as RefineAiEvent[],
     config,
     logger: aiLogger.child({ kind: "pairing", slug: metaRef.slug }),
@@ -523,11 +578,16 @@ async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult
   }
 
   const descSugg = suggestions.get("description");
+  const isSingle = descSugg?.kind === "single";
   const improvements = descSugg
     ? [
         {
           field: "description",
-          suggestion: descSugg.kind === "single" ? descSugg.value : undefined,
+          suggestion: isSingle ? descSugg.value : undefined,
+          summary: isSingle ? descSugg.summary : `AI suggestion for description`,
+          hash: isSingle ? descSugg.hash : undefined,
+          traceId: descSugg.traceId,
+          confidence: isSingle ? descSugg.confidence : undefined,
         },
       ]
     : [];

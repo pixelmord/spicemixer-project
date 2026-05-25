@@ -249,12 +249,13 @@ export const recipeMetaSchema = z.object({
   translations: z.record(z.string(), z.string()).default({}),
   variants: z.array(z.string()).default([]),
   ingredientLinks: z.array(ingredientLinkItem).default([]),
-  externalSources: z
+  sources: z
     .array(
       z.object({
-        url: z.string().url(),
         title: z.string(),
-        source: z.string().optional(),
+        url: z.string().url(),
+        author: z.string().optional(),
+        year: z.string().optional(),
       }),
     )
     .default([]),

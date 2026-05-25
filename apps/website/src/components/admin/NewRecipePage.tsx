@@ -74,7 +74,7 @@ export default function NewRecipePage({ collection }: Props) {
           recipe: parsed.recipe,
           meta: {
             draft: true,
-            externalSources: sourceUrl.trim() ? [{ url: sourceUrl, title: recipeName }] : [],
+            sources: sourceUrl.trim() ? [{ title: recipeName, url: sourceUrl }] : [],
             aiEvents,
             ...(language ? { language } : {}),
           },

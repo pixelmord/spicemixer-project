@@ -52,7 +52,15 @@ interface Props {
 const ALL_LOCALES = ["en", "de"] as const;
 
 function adaptPairingImprovementsToRunResult(
-  improvements: Array<{ field: string; suggestion: string; rationale: string }>,
+  improvements: Array<{
+    field: string;
+    suggestion: unknown;
+    rationale?: string;
+    summary?: string;
+    hash?: string;
+    traceId?: string;
+    confidence?: "high" | "medium" | "low";
+  }>,
 ): RunResult {
   const suggestions: Record<string, FieldSuggestion> = {};
   let counter = 0;
@@ -60,10 +68,10 @@ function adaptPairingImprovementsToRunResult(
     suggestions[imp.field] = {
       kind: "single",
       value: imp.suggestion,
-      confidence: "medium",
-      summary: imp.rationale,
-      hash: `${imp.field}-${counter++}`,
-      traceId: "legacy",
+      confidence: imp.confidence ?? "medium",
+      summary: imp.summary ?? imp.rationale ?? `AI suggestion for ${imp.field}`,
+      hash: imp.hash ?? `${imp.field}-${counter++}`,
+      traceId: imp.traceId ?? "legacy",
     };
   }
   return { suggestions, autoApplied: {}, traces: {} };
@@ -225,14 +233,20 @@ export default function PairingForm({
           endpoints: initialEndpoints ?? [],
           description: formValues.description,
         },
-        ...(params.target?.length ? { missingFields: params.target } : {}),
+        // Per-field scope: tells the server to target exactly this field and
+        // skip side-effect proposers / disk writes.
+        ...(params.target?.length ? { target: params.target } : {}),
       });
       const block = data?.aiSuggestions?.[locale] as Record<string, unknown> | undefined;
       const improvements =
         (block?.["improvements"] as Array<{
           field: string;
-          suggestion: string;
-          rationale: string;
+          suggestion: unknown;
+          rationale?: string;
+          summary?: string;
+          hash?: string;
+          traceId?: string;
+          confidence?: "high" | "medium" | "low";
         }>) ?? [];
       return adaptPairingImprovementsToRunResult(improvements);
     },

@@ -1164,6 +1164,11 @@ export const server = {
       ingredient: z.record(z.string(), z.unknown()),
       existingMeta: z.record(z.string(), z.unknown()).optional(),
       missingFields: z.array(z.string()).default([]),
+      // When set, the client is requesting a per-field run for exactly these
+      // fields. The server skips pairings auto-apply and language detection so
+      // a per-field refine cannot write side-effect files (which trip Astro's
+      // content watcher and wipe unsaved form state).
+      target: z.array(z.string()).optional(),
     }),
     handler: wrapWithOrigin({
       surface: "admin",
@@ -1171,7 +1176,7 @@ export const server = {
       entityKind: "ingredient",
       triggeredBy: "editor",
       userInitiated: true,
-    })(async ({ locale, slug, ingredient, existingMeta = {}, missingFields }) => {
+    })(async ({ locale, slug, ingredient, existingMeta = {}, missingFields, target }) => {
       const config = resolveAiConfig();
       const { runAiRefresh } = await import("@/lib/ai/runner.ts");
       const store = await createStore();
@@ -1182,6 +1187,7 @@ export const server = {
         payload: ingredient,
         existingMeta,
         missingFields,
+        target,
         locale,
         store,
         sidecar,
@@ -1384,6 +1390,8 @@ export const server = {
       locale: z.string().length(2).default("en"),
       pairing: z.record(z.string(), z.unknown()),
       missingFields: z.array(z.string()).default([]),
+      // Per-field scope. When set, the runner targets exactly these fields.
+      target: z.array(z.string()).optional(),
     }),
     handler: wrapWithOrigin({
       surface: "admin",
@@ -1391,7 +1399,7 @@ export const server = {
       entityKind: "pairing",
       triggeredBy: "editor",
       userInitiated: true,
-    })(async ({ id, locale, pairing, missingFields }) => {
+    })(async ({ id, locale, pairing, missingFields, target }) => {
       const config = resolveAiConfig();
       const { runAiRefresh } = await import("@/lib/ai/runner.ts");
       const store = await createStore();
@@ -1401,6 +1409,7 @@ export const server = {
         metaRef: { collection: "pairings", slug: id },
         payload: pairing,
         missingFields,
+        target,
         locale,
         store,
         sidecar,
@@ -1562,6 +1571,11 @@ export const server = {
       missingFields: z.array(z.string()).default([]),
       locale: z.enum(["en", "de"]).default("en"),
       force: z.boolean().default(false),
+      // Per-field scope. When set, the runner skips the side-effect
+      // proposers (keywords/ingredientLinks/relations/pairings/language) and
+      // the sidecar.write that follows them — both can trigger Astro HMR
+      // reloads that wipe unsaved form state.
+      target: z.array(z.string()).optional(),
     }),
     handler: wrapWithOrigin({
       surface: "admin",
@@ -1569,7 +1583,7 @@ export const server = {
       entityKind: "recipe",
       triggeredBy: "editor",
       userInitiated: true,
-    })(async ({ collection, slug, recipe, meta, missingFields, locale, force }) => {
+    })(async ({ collection, slug, recipe, meta, missingFields, locale, force, target }) => {
       const config = resolveAiConfig();
       const { runAiRefresh } = await import("@/lib/ai/runner.ts");
       const store = await createStore();
@@ -1580,6 +1594,7 @@ export const server = {
         payload: recipe,
         existingMeta: meta,
         missingFields,
+        target,
         locale,
         store,
         sidecar,
@@ -1731,7 +1746,7 @@ export const server = {
           kind: collection === "recipes" ? "recipe" : "mixture",
           tags: [],
           ingredientLinks: [],
-          externalSources: [],
+          sources: [],
           variants: [],
         },
       );
