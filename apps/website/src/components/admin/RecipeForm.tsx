@@ -38,12 +38,10 @@ import { useEntityFormState } from "@/hooks/useEntityFormState.ts";
 import { buildPayload } from "@/lib/entity-form-payload.ts";
 import { readSSE } from "@/lib/sse.ts";
 import { EntityFormLayout, type OverflowMenuItem } from "@/components/admin/EntityFormLayout.tsx";
-import { FieldWithSibling } from "@/components/admin/FieldWithSibling.tsx";
 import { useSplitViewPreference } from "@/hooks/use-split-view-preference.ts";
 import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
 import { AiBulkSuggestButton } from "@registry/components/ai-bulk-suggest-button";
 import { AiBulkTranslateButton } from "@registry/components/ai-bulk-translate-button";
-import { AiFieldSuggestButton } from "@registry/components/ai-field-suggest-button";
 import type { SiblingLocale } from "@registry/components/use-ai-suggestions";
 import { TextField, TextareaField, TagInputField } from "@/components/admin/fields/index.ts";
 interface AiSuggestion {
@@ -88,7 +86,6 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog.tsx"
 import IngredientLinkModal from "./IngredientLinkModal.tsx";
 import { useAiSuggestions, type RunResult, type FieldSuggestion } from "@/hooks/use-ai-suggestions";
 import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
-import { InlineFieldSuggestion } from "./InlineFieldSuggestion.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
@@ -1265,29 +1262,19 @@ export default function RecipeForm({
 
                   <form.Field name="name">
                     {(field) => (
-                      <FieldWithSibling
-                        label="Name"
-                        fieldKey="name"
+                      <TextField
+                        field={field}
+                        label="Name *"
+                        placeholder="Ras el Hanout"
+                        suggestionPath="name"
+                        buttonPosition="inline"
+                        splitView={splitView}
                         siblingValue={siblingData?.data["name"]}
                         siblingLocale={siblingLocale}
-                        splitView={splitView}
-                      >
-                        <Label htmlFor={field.name}>Name *</Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            id={field.name}
-                            value={field.state.value}
-                            onChange={(e) => {
-                              field.handleChange(e.target.value);
-                              if (isNew && !slug) setSlug(slugify(e.target.value));
-                            }}
-                            onBlur={field.handleBlur}
-                            placeholder="Ras el Hanout"
-                            className="flex-1"
-                          />
-                          <AiFieldSuggestButton fieldPath="name" />
-                        </div>
-                      </FieldWithSibling>
+                        onValueChange={(v) => {
+                          if (isNew && !slug) setSlug(slugify(v));
+                        }}
+                      />
                     )}
                   </form.Field>
 
@@ -1475,24 +1462,13 @@ export default function RecipeForm({
                   ))}
                   <form.Field name="recipeYield">
                     {(field) => (
-                      <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>
-                          Yield / servings
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          placeholder="4 servings"
-                        />
-                        <InlineFieldSuggestion
-                          fieldPath="recipeYield"
-                          currentValue={field.state.value}
-                          onApply={(v) => field.handleChange(String(v))}
-                          kind="text"
-                        />
-                      </div>
+                      <TextField
+                        field={field}
+                        label="Yield / servings"
+                        placeholder="4 servings"
+                        suggestionPath="recipeYield"
+                        hint={<RecommendedHint show={!field.state.value} />}
+                      />
                     )}
                   </form.Field>
                 </CardContent>

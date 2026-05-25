@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Sparkles, Loader2, Check, Trash2, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
 import {
   Select,
   SelectContent,
@@ -35,7 +34,6 @@ import CompletenessPanel from "./CompletenessPanel.tsx";
 import RecommendedHint from "./RecommendedHint.tsx";
 import QuickCreateDialog from "./QuickCreateDialog.tsx";
 import { EntityFormLayout } from "./EntityFormLayout.tsx";
-import { FieldWithSibling } from "./FieldWithSibling.tsx";
 import { IngestDialog } from "./IngestDialog.tsx";
 import IngredientDiff from "./IngredientDiff.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -58,11 +56,8 @@ import {
   type SiblingLocale,
 } from "@/hooks/use-ai-suggestions";
 import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
-import { InlineFieldSuggestion } from "./InlineFieldSuggestion.tsx";
 import { AiBulkSuggestButton } from "@registry/components/ai-bulk-suggest-button";
 import { AiBulkTranslateButton } from "@registry/components/ai-bulk-translate-button";
-import { AiFieldSuggestButton } from "@registry/components/ai-field-suggest-button";
-import { AiFieldTranslateButton } from "@registry/components/ai-field-translate-button";
 import { useSplitViewPreference } from "@/hooks/use-split-view-preference.ts";
 import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
 import { TextField, TextareaField } from "@/components/admin/fields/index.ts";
@@ -1029,27 +1024,19 @@ export default function IngredientForm({
 
                 <form.Field name="name">
                   {(field) => (
-                    <FieldWithSibling
-                      label="Name"
-                      fieldKey="name"
+                    <TextField
+                      field={field}
+                      label="Name *"
+                      placeholder="Cardamom"
+                      suggestionPath="name"
+                      hideSuggest
+                      splitView={splitView}
                       siblingValue={siblingData?.data["name"]}
                       siblingLocale={siblingLocaleCode}
-                      splitView={splitView}
-                    >
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor={field.name}>Name *</Label>
-                        {splitView && <AiFieldTranslateButton fieldPath="name" />}
-                      </div>
-                      <Input
-                        id={field.name}
-                        value={field.state.value}
-                        onChange={(e) => {
-                          field.handleChange(e.target.value);
-                          if (isNew && !slug) setSlug(slugify(e.target.value));
-                        }}
-                        placeholder="Cardamom"
-                      />
-                    </FieldWithSibling>
+                      onValueChange={(v) => {
+                        if (isNew && !slug) setSlug(slugify(v));
+                      }}
+                    />
                   )}
                 </form.Field>
 
@@ -1439,45 +1426,29 @@ export default function IngredientForm({
                 {(field) => (
                   <Card>
                     <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle>{label}</CardTitle>
-                        <div className="flex items-center gap-1.5">
-                          {splitView ? (
-                            <AiFieldTranslateButton fieldPath={key} />
-                          ) : (
-                            !aiFlow.forField(key).suggestion && (
-                              <AiFieldSuggestButton fieldPath={key} />
-                            )
-                          )}
-                        </div>
-                      </div>
+                      <CardTitle>{label}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <FieldWithSibling
-                        label={label}
-                        fieldKey={key}
+                      <TextareaField
+                        field={{
+                          name: field.name,
+                          state: { value: field.state.value as string | undefined },
+                          handleChange: (v: string) => field.handleChange(v as never),
+                          handleBlur: field.handleBlur,
+                        }}
+                        placeholder={placeholder}
+                        rows={5}
+                        suggestionPath={key}
+                        splitView={splitView}
                         siblingValue={siblingData?.data[key]}
                         siblingLocale={siblingLocaleCode}
-                        splitView={splitView}
-                      >
-                        <Textarea
-                          id={field.name}
-                          value={field.state.value as string}
-                          onChange={(e) => field.handleChange(e.target.value as never)}
-                          rows={5}
-                          placeholder={placeholder}
-                          className="font-mono text-sm"
-                        />
-                        <InlineFieldSuggestion
-                          fieldPath={key}
-                          currentValue={(field.state.value as string) ?? ""}
-                          onApply={(v) => field.handleChange(String(v) as never)}
-                          kind="text"
-                        />
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Supports inline markdown links: <code>[text](url)</code>
-                        </p>
-                      </FieldWithSibling>
+                        className="font-mono text-sm"
+                        hint={
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Supports inline markdown links: <code>[text](url)</code>
+                          </p>
+                        }
+                      />
                     </CardContent>
                   </Card>
                 )}

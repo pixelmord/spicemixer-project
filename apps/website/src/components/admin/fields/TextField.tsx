@@ -37,6 +37,22 @@ interface TextFieldProps {
   /** Extra node rendered below the input, e.g. a <RecommendedHint>. */
   hint?: React.ReactNode;
   className?: string;
+  /**
+   * Where to render the AI action button.
+   * - "label-row" (default): button appears in the label row, right-aligned.
+   * - "inline": button appears beside the input in a flex container (label is its own row).
+   */
+  buttonPosition?: "label-row" | "inline";
+  /**
+   * When true, the AiFieldSuggestButton is never shown (even when !splitView).
+   * Use for fields that are translate-only (e.g. name in entity forms).
+   */
+  hideSuggest?: boolean;
+  /**
+   * Optional side-effect called with the new string value on each change,
+   * after field.handleChange. Use for derived state (e.g. slug generation).
+   */
+  onValueChange?: (value: string) => void;
 }
 
 function formatSiblingValue(value: unknown): string {
@@ -62,33 +78,60 @@ export function TextField({
   siblingLocale,
   hint,
   className,
+  buttonPosition = "label-row",
+  hideSuggest = false,
+  onValueChange,
 }: TextFieldProps) {
   const showAiButtons = !!suggestionPath;
-  const showLabelRow = !!label || showAiButtons;
+  const showSuggestButton = showAiButtons && !splitView && !hideSuggest;
+  const showTranslateButton = showAiButtons && !!splitView;
+
+  // In "inline" mode the AI button sits beside the input; label row has no button.
+  const isInline = buttonPosition === "inline";
+  const showLabelRow = !!label || (showAiButtons && !isInline);
+
+  const inputEl = (
+    <Input
+      id={field.name}
+      type={type}
+      value={field.state.value ?? ""}
+      onChange={(e) => {
+        field.handleChange(e.target.value);
+        onValueChange?.(e.target.value);
+      }}
+      onBlur={field.handleBlur}
+      placeholder={placeholder}
+      disabled={disabled}
+      className={isInline ? cn("flex-1", className) : className}
+    />
+  );
 
   const innerContent = (
     <>
       {showLabelRow && (
         <div className={`flex items-center ${label ? "justify-between" : "justify-end"}`}>
           {label && <Label htmlFor={field.name}>{label}</Label>}
-          {showAiButtons && (
+          {!isInline && showAiButtons && (
             <div className="flex items-center gap-1">
-              {!splitView && <AiFieldSuggestButton fieldPath={suggestionPath} />}
-              {splitView && <AiFieldTranslateButton fieldPath={suggestionPath} />}
+              {showSuggestButton && <AiFieldSuggestButton fieldPath={suggestionPath} />}
+              {showTranslateButton && <AiFieldTranslateButton fieldPath={suggestionPath} />}
             </div>
           )}
         </div>
       )}
-      <Input
-        id={field.name}
-        type={type}
-        value={field.state.value ?? ""}
-        onChange={(e) => field.handleChange(e.target.value)}
-        onBlur={field.handleBlur}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={className}
-      />
+      {isInline ? (
+        <div className="flex items-center gap-2">
+          {inputEl}
+          {showAiButtons && (
+            <div className="flex items-center gap-1">
+              {showSuggestButton && <AiFieldSuggestButton fieldPath={suggestionPath} />}
+              {showTranslateButton && <AiFieldTranslateButton fieldPath={suggestionPath} />}
+            </div>
+          )}
+        </div>
+      ) : (
+        inputEl
+      )}
       {suggestionPath && (
         <InlineFieldSuggestion
           fieldPath={suggestionPath}

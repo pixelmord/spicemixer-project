@@ -20,8 +20,8 @@ describe("RecipeForm — EntityFormLayout adoption", () => {
     expect(src).toMatch(/EntityFormLayout/);
   });
 
-  test("imports FieldWithSibling", () => {
-    expect(src).toMatch(/FieldWithSibling/);
+  test("does not directly import FieldWithSibling (all text fields use field components now)", () => {
+    expect(src).not.toMatch(/^import.*FieldWithSibling/m);
   });
 
   test("imports useSplitViewPreference", () => {
@@ -88,9 +88,10 @@ describe("RecipeForm — TextareaField / TextField for translatable text fields"
     expect(src).toMatch(/TextareaField[^/]*splitView|TextField[^/]*splitView/s);
   });
 
-  test("name field is still wrapped in FieldWithSibling (special layout, not yet migrated)", () => {
+  test("name field uses TextField with buttonPosition=inline (suggest button beside the input)", () => {
+    // name has a non-standard layout: suggest button is inline with the input, not in the label row.
     expect(src).toMatch(
-      /FieldWithSibling[^>]*fieldKey="name"|fieldKey="name"[^>]*FieldWithSibling/s,
+      /TextField[^>]*buttonPosition="inline"|buttonPosition="inline"[^>]*TextField/s,
     );
   });
 });

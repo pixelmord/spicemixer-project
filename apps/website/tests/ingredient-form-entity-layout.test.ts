@@ -39,12 +39,12 @@ describe("IngredientForm — EntityFormLayout migration", () => {
     expect(src).toMatch(/<EntityFormLayout/);
   });
 
-  test("imports FieldWithSibling", () => {
-    expect(src).toMatch(/import.*FieldWithSibling.*from.*FieldWithSibling/);
+  test("does not directly import FieldWithSibling (all fields migrated to field components)", () => {
+    expect(src).not.toMatch(/^import.*FieldWithSibling/m);
   });
 
-  test("renders FieldWithSibling in JSX", () => {
-    expect(src).toMatch(/<FieldWithSibling/);
+  test("does not render FieldWithSibling directly in JSX", () => {
+    expect(src).not.toMatch(/<FieldWithSibling/);
   });
 
   // ── Split-view preference hook ───────────────────────────────────────────
@@ -81,29 +81,23 @@ describe("IngredientForm — EntityFormLayout migration", () => {
     expect(src).toMatch(/<AiBulkTranslateButton/);
   });
 
-  // ── Per-field AI buttons ─────────────────────────────────────────────────
+  // ── Per-field AI buttons delegated to field components ──────────────────
+  // AiFieldSuggestButton / AiFieldTranslateButton are no longer imported
+  // directly — they are encapsulated inside TextField / TextareaField.
 
-  test("imports AiFieldSuggestButton", () => {
-    expect(src).toMatch(/AiFieldSuggestButton/);
+  test("does not directly import AiFieldSuggestButton (delegated to field components)", () => {
+    expect(src).not.toMatch(/^import.*AiFieldSuggestButton/m);
   });
 
-  test("renders AiFieldSuggestButton", () => {
-    expect(src).toMatch(/<AiFieldSuggestButton/);
-  });
-
-  test("imports AiFieldTranslateButton", () => {
-    expect(src).toMatch(/AiFieldTranslateButton/);
-  });
-
-  test("renders AiFieldTranslateButton", () => {
-    expect(src).toMatch(/<AiFieldTranslateButton/);
+  test("does not directly import AiFieldTranslateButton (delegated to field components)", () => {
+    expect(src).not.toMatch(/^import.*AiFieldTranslateButton/m);
   });
 
   // ── Direct translatable fields ───────────────────────────────────────────
 
-  // "name" still uses FieldWithSibling (special layout: translate-only, no suggest)
-  test(`wraps "name" field in FieldWithSibling`, () => {
-    expect(src).toMatch(new RegExp(`<FieldWithSibling[^>]*fieldKey="name"`, "s"));
+  // "name" uses TextField with hideSuggest (translate-only, no AI suggest button)
+  test(`uses TextField with hideSuggest for "name" field`, () => {
+    expect(src).toMatch(/TextField[^>]*hideSuggest|hideSuggest[^>]*TextField/s);
   });
 
   // summary, description, seasonality now delegate to field components
@@ -146,10 +140,10 @@ describe("IngredientForm — EntityFormLayout migration", () => {
     }
   });
 
-  test("longform section renders FieldWithSibling with dynamic fieldKey", () => {
-    // Longform fields are rendered via a loop — fieldKey={key} is the dynamic pattern
+  test("longform section renders TextareaField via LONGFORM_SECTIONS.map", () => {
+    // Longform fields are rendered via a loop — TextareaField now replaces FieldWithSibling+Textarea.
     expect(src).toMatch(/LONGFORM_SECTIONS\.map/);
-    expect(src).toMatch(/<FieldWithSibling[^>]*fieldKey=\{key\}/s);
+    expect(src).toMatch(/<TextareaField/);
   });
 
   // All 11 combined for contract completeness
