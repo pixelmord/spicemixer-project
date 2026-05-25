@@ -6,6 +6,9 @@
   "scripts": {
     "ready": "vp fmt && vp lint && vp run -r test && vp run -r build",
     "build": "vp run -r build",
+    "test": "vp run -r test",
+    "e2e": "vp run website#e2e",
+    "e2e:ui": "vp run website#e2e:ui",
     "dev": "vp run website#dev",
     "prepare": "vp config",
     "sandcastle": "node --experimental-strip-types .sandcastle/main.ts"
