@@ -413,8 +413,6 @@ export default function RecipeForm({
   const [imageSearchTarget, setImageSearchTarget] = useState<"main" | number | null>(null);
 
   // Per-section AI state
-  const [pendingTags, setPendingTags] = useState<string[] | null>(null);
-  const [pendingKeywords, setPendingKeywords] = useState<string[] | null>(null);
   const [pendingLinks, setPendingLinks] = useState<Array<{
     pattern: string;
     slug: string;
@@ -1824,9 +1822,6 @@ export default function RecipeForm({
                           placeholder="vegan, pantry, quick"
                           suggestions={tagSuggestions}
                           suggestionPath="keywords"
-                          pendingItems={pendingKeywords}
-                          onAcceptItems={() => setPendingKeywords(null)}
-                          onDismissItems={() => setPendingKeywords(null)}
                         />
                       )}
                     </form.Field>
@@ -1893,9 +1888,6 @@ export default function RecipeForm({
                         placeholder="weeknight, make-ahead"
                         suggestions={tagSuggestions}
                         suggestionPath="tags"
-                        pendingItems={pendingTags}
-                        onAcceptItems={() => setPendingTags(null)}
-                        onDismissItems={() => setPendingTags(null)}
                       />
                     )}
                   </form.Field>

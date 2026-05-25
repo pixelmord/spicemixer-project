@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "inline-array-suggestion",
+  "type": "registry:block",
+  "title": "InlineArraySuggestion",
+  "description": "Per-field inline suggestion for string[] tag/keyword fields. Pass existingItems so already-accepted values are filtered out and an empty state renders when nothing new remains.",
+  "registryDependencies": [
+    "use-field-suggestion",
+    "tags-suggestion-row",
+    "choice-suggestion-block",
+    "retranslate-button",
+    "suggestion-layout"
+  ],
+  "files": [
+    {
+      "path": "components/ui/inline-array-suggestion.tsx",
+      "type": "registry:block",
+      "content": "import { useFieldSuggestion } from \"@/components/ui/use-field-suggestion\";\nimport { TagsSuggestionRow } from \"@/components/ui/tags-suggestion-row\";\nimport { ChoiceSuggestionBlock } from \"@/components/ui/choice-suggestion-block\";\nimport { RetranslateButton } from \"@/components/ui/retranslate-button\";\nimport { SuggestionLayout } from \"@/components/ui/suggestion-layout\";\n\n// Flow-aware inline suggestion component for string[] fields. Reads the\n// pending suggestion from SuggestionFlowProvider via useFieldSuggestion, then\n// renders chips through TagsSuggestionRow which owns the existing-items filter\n// and empty-state rule.\n\nexport interface InlineArraySuggestionProps {\n  fieldPath: string;\n  /** Tags already on the field — filtered out of the chip list so duplicates never render. */\n  existingItems?: string[];\n  /** Called with the items to merge into the field value (additive). */\n  onApply: (items: string[]) => void;\n  /** Read-only sibling-locale value rendered alongside in translation flows. */\n  sourceSlot?: React.ReactNode;\n  className?: string;\n}\n\nexport function InlineArraySuggestion({\n  fieldPath,\n  existingItems,\n  onApply,\n  sourceSlot,\n  className,\n}: InlineArraySuggestionProps) {\n  const { suggestion, accessor, showRetranslate } = useFieldSuggestion(fieldPath);\n\n  const retranslateSlot = showRetranslate ? (\n    <div className=\"mt-1\">\n      <RetranslateButton\n        sourceLocale={accessor.sourceLocale!}\n        isStale={accessor.isStale}\n        onRetranslate={() => void accessor.retranslate()}\n      />\n    </div>\n  ) : null;\n\n  if (!suggestion) {\n    if (!showRetranslate) return null;\n    return (\n      <div className={className}>\n        <RetranslateButton\n          sourceLocale={accessor.sourceLocale!}\n          isStale={accessor.isStale}\n          onRetranslate={() => void accessor.retranslate()}\n        />\n      </div>\n    );\n  }\n\n  if (suggestion.kind === \"choice\") {\n    return (\n      <SuggestionLayout\n        sourceSlot={sourceSlot}\n        retranslateSlot={retranslateSlot}\n        className={className}\n      >\n        <ChoiceSuggestionBlock\n          suggestion={suggestion}\n          onApply={(v) => onApply(Array.isArray(v) ? v.map(String) : [])}\n          accessor={accessor}\n        />\n      </SuggestionLayout>\n    );\n  }\n\n  const tags = Array.isArray(suggestion.value) ? suggestion.value.map(String) : [];\n\n  return (\n    <SuggestionLayout\n      sourceSlot={sourceSlot}\n      retranslateSlot={retranslateSlot}\n      className={className}\n    >\n      <TagsSuggestionRow\n        tags={tags}\n        existingItems={existingItems}\n        confidence={suggestion.confidence}\n        summary={suggestion.summary}\n        onApply={(applied) => {\n          onApply(applied);\n          accessor.recordAccept(suggestion.hash, applied);\n        }}\n        onApplyPartial={(applied) => onApply(applied)}\n        onReject={() => accessor.recordReject(suggestion.hash)}\n      />\n    </SuggestionLayout>\n  );\n}\n"
+    }
+  ]
+}

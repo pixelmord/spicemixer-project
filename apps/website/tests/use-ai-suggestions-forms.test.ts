@@ -27,8 +27,8 @@ describe("IngredientForm — useAiSuggestions orchestration", () => {
     expect(src).toMatch(/SuggestionFlowProvider/);
   });
 
-  test("does not directly import InlineFieldSuggestion (delegated to field components)", () => {
-    expect(src).not.toMatch(/^import.*InlineFieldSuggestion/m);
+  test("does not directly import per-kind Inline*Suggestion (delegated to field components)", () => {
+    expect(src).not.toMatch(/^import.*Inline(Text|Array|Enum|MultiEnum|Date|Choice)Suggestion/m);
   });
 
   test("calls useAiSuggestions hook", () => {
@@ -155,8 +155,8 @@ describe("RecipeForm — useAiSuggestions integration verification", () => {
     expect(src).toMatch(/SuggestionFlowProvider/);
   });
 
-  test("does not directly import InlineFieldSuggestion (delegated to field components)", () => {
-    expect(src).not.toMatch(/^import.*InlineFieldSuggestion/m);
+  test("does not directly import per-kind Inline*Suggestion (delegated to field components)", () => {
+    expect(src).not.toMatch(/^import.*Inline(Text|Array|Enum|MultiEnum|Date|Choice)Suggestion/m);
   });
 
   test("calls useAiSuggestions hook", () => {

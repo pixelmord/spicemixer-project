@@ -17,6 +17,15 @@ export interface RecipeRefineContext {
   locale?: string;
 }
 
+// Rule reused across string[] fields so suggestions don't echo back values
+// the user has already accepted. Without this the model parrots existing items.
+function excludeExistingValuesRule(existing: string[] | undefined): string {
+  if (!existing?.length) return "";
+  return `Existing values already on the entity: ${existing.join(", ")}.
+You MUST NOT include any of these in your output — they are already accepted.
+Return ONLY genuinely new values. If you have nothing new to add, return an empty array [].`;
+}
+
 function buildRecipeCtx(
   currentData: z.infer<RecipeSchema> | undefined,
   maxIngredients = 8,
@@ -118,10 +127,14 @@ export const recipeContract: AiContract<RecipeSchema, RecipeRefineContext> = {
         const tagHints = existingTags.length
           ? `Prefer tags from this existing vocabulary where applicable:\n${existingTags.slice(0, 60).join(", ")}`
           : "";
+        const existing = Array.isArray(currentData?.keywords) ? currentData.keywords : [];
+        const exclude = excludeExistingValuesRule(existing);
         return `Suggest 3–8 concise tags for this recipe. Tags should be lowercase, hyphenated if multi-word (e.g. "quick-dinner", "vegan", "spicy").
 
 ${ctx}
-${tagHints}`;
+${tagHints}
+
+${exclude}`;
       },
       outputSchema: tagsOutputSchema,
       autoApply: { policy: "never" },

@@ -4,10 +4,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, test, beforeAll } from "vite-plus/test";
 
 // Structural contract tests for the InlineArraySuggestion registry component.
-// This is a standalone, context-free component for "pick some / all / none" UX
-// on a proposed list of string items — suitable for use in TagInputField and any
-// other array field that wants a batch-suggestion affordance without the full
-// SuggestionFlowProvider context.
+// Flow-aware per-kind component for string[] fields. Reads pending suggestions
+// from SuggestionFlowProvider via useFieldSuggestion and delegates the filter
+// + empty-state rule to TagsSuggestionRow.
 
 const REGISTRY_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const COMPONENTS = join(REGISTRY_ROOT, "src", "components");
@@ -23,67 +22,45 @@ describe("InlineArraySuggestion — module contract", () => {
     expect(src).toMatch(/^export function InlineArraySuggestion\b/m);
   });
 
-  test("accepts items prop (string[])", () => {
-    expect(src).toMatch(/items[?:].*string\[\]/);
+  test("accepts fieldPath prop", () => {
+    expect(src).toMatch(/fieldPath[?:]/);
   });
 
   test("accepts existingItems optional prop", () => {
     expect(src).toMatch(/existingItems\?/);
   });
 
-  test("accepts onAccept callback", () => {
-    expect(src).toMatch(/onAccept[?:].*string\[\]/);
-  });
-
-  test("accepts onDismiss callback", () => {
-    expect(src).toMatch(/onDismiss[?:]/);
+  test("accepts onApply callback", () => {
+    expect(src).toMatch(/onApply[?:]/);
   });
 
   test("accepts optional className", () => {
     expect(src).toMatch(/className\?/);
   });
-});
 
-describe("InlineArraySuggestion — UX structure", () => {
-  test("renders nothing when items is empty (early return)", () => {
-    expect(src).toMatch(/items\.length.*0|length === 0/);
-  });
-
-  test("renders each item as a clickable button (pill)", () => {
-    // Items that are not yet in existingItems should appear as buttons.
-    expect(src).toMatch(/type="button"/);
-    expect(src).toMatch(/onAccept/);
-  });
-
-  test("has an Add all action", () => {
-    expect(src).toMatch(/[Aa]dd all/);
-  });
-
-  test("has a Dismiss action", () => {
-    expect(src).toMatch(/[Dd]ismiss/);
-  });
-
-  test("Dismiss calls onDismiss", () => {
-    expect(src).toMatch(/onDismiss\(\)|onClick.*onDismiss/);
-  });
-
-  test("filters out items already present in existingItems", () => {
-    // Items already in the existing set should not be shown.
-    expect(src).toMatch(/existingItems/);
-    expect(src).toMatch(/includes|filter/);
+  test("accepts optional sourceSlot for translation flows", () => {
+    expect(src).toMatch(/sourceSlot\?/);
   });
 });
 
-describe("InlineArraySuggestion — no context dependency", () => {
-  test("does not import useSuggestionFlowContext", () => {
-    expect(src).not.toMatch(/useSuggestionFlowContext/);
+describe("InlineArraySuggestion — flow integration", () => {
+  test("uses useFieldSuggestion hook (no inline flow plumbing)", () => {
+    expect(src).toMatch(/useFieldSuggestion/);
   });
 
-  test("does not import SuggestionFlowProvider", () => {
-    expect(src).not.toMatch(/^import.*SuggestionFlowProvider/m);
+  test("delegates UI to TagsSuggestionRow", () => {
+    expect(src).toMatch(/TagsSuggestionRow/);
   });
 
-  test("does not import useAiSuggestions", () => {
-    expect(src).not.toMatch(/^import.*useAiSuggestions/m);
+  test("forwards existingItems to TagsSuggestionRow (filter lives there)", () => {
+    expect(src).toMatch(/existingItems=\{existingItems\}/);
+  });
+
+  test("renders ChoiceSuggestionBlock for choice-shape suggestions", () => {
+    expect(src).toMatch(/ChoiceSuggestionBlock/);
+  });
+
+  test("renders RetranslateButton for translatable fields", () => {
+    expect(src).toMatch(/RetranslateButton/);
   });
 });

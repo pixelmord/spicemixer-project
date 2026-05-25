@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "retranslate-button",
+  "type": "registry:ui",
+  "title": "RetranslateButton",
+  "description": "Compact \"Retranslate from <locale>\" affordance with stale-indicator styling. Shared across Inline*Suggestion components.",
+  "files": [
+    {
+      "path": "components/ui/retranslate-button.tsx",
+      "type": "registry:ui",
+      "content": "import { cn } from \"@/lib/utils\";\n\ninterface RetranslateButtonProps {\n  sourceLocale: string;\n  isStale: boolean;\n  onRetranslate: () => void;\n  className?: string;\n}\n\nexport function RetranslateButton({\n  sourceLocale,\n  isStale,\n  onRetranslate,\n  className,\n}: RetranslateButtonProps) {\n  return (\n    <button\n      type=\"button\"\n      data-stale={isStale ? \"true\" : undefined}\n      onClick={onRetranslate}\n      className={cn(\n        \"inline-flex items-center rounded px-2 py-0.5 text-xs\",\n        isStale\n          ? \"bg-amber-100 font-medium text-amber-800 hover:bg-amber-200\"\n          : \"text-muted-foreground hover:bg-muted\",\n        className,\n      )}\n    >\n      Retranslate from {sourceLocale}\n    </button>\n  );\n}\n"
+    }
+  ]
+}

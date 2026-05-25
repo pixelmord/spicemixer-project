@@ -4,6 +4,12 @@ import { ConfidenceBadge } from "./confidence-badge";
 
 interface TagsSuggestionRowProps {
   tags: string[];
+  /**
+   * Tags already present on the field. Filtered out of the visible chip list.
+   * When all proposed tags are filtered out, an "already covered" hint is shown
+   * instead of an empty row.
+   */
+  existingItems?: string[];
   confidence?: "high" | "medium" | "low";
   summary?: string;
   readOnly?: boolean;
@@ -26,6 +32,7 @@ interface TagsSuggestionRowProps {
 
 export function TagsSuggestionRow({
   tags,
+  existingItems = [],
   confidence,
   summary,
   readOnly = false,
@@ -35,9 +42,36 @@ export function TagsSuggestionRow({
   className,
 }: TagsSuggestionRowProps) {
   const [applied, setApplied] = useState<Set<string>>(new Set());
-  const remaining = tags.filter((t) => !applied.has(t));
+  const existingSet = new Set(existingItems);
+  const candidateTags = tags.filter((t) => !existingSet.has(t));
+  const remaining = candidateTags.filter((t) => !applied.has(t));
 
   if (tags.length === 0) return null;
+
+  // All proposed tags are already on the field — show empty state so the user
+  // knows the model ran but had nothing new to add, instead of a silent null.
+  if (candidateTags.length === 0) {
+    if (readOnly || !onReject) return null;
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-between rounded-md border border-dashed p-2 text-sm",
+          className,
+        )}
+      >
+        <p className="text-xs text-muted-foreground">
+          No new suggestions — current values already cover this.
+        </p>
+        <button
+          type="button"
+          onClick={onReject}
+          className="text-xs text-muted-foreground hover:text-foreground px-1"
+        >
+          Dismiss
+        </button>
+      </div>
+    );
+  }
 
   if (readOnly || !onApply || !onReject) {
     return (
@@ -47,7 +81,7 @@ export function TagsSuggestionRow({
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap gap-1">
-            {tags.map((tag) => (
+            {candidateTags.map((tag) => (
               <span
                 key={tag}
                 className="inline-flex items-center rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700"
@@ -66,8 +100,8 @@ export function TagsSuggestionRow({
   const applyOne = (t: string) => {
     const nextApplied = new Set([...applied, t]);
     setApplied(nextApplied);
-    if (nextApplied.size === tags.length) {
-      onApply(tags);
+    if (nextApplied.size === candidateTags.length) {
+      onApply(candidateTags);
     } else if (onApplyPartial) {
       onApplyPartial([t]);
     } else {
@@ -98,7 +132,7 @@ export function TagsSuggestionRow({
       <div className="mt-1.5 flex gap-1">
         <button
           type="button"
-          onClick={() => onApply(tags)}
+          onClick={() => onApply(candidateTags)}
           className="text-xs text-muted-foreground hover:text-foreground px-1"
         >
           Add all

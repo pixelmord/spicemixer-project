@@ -1,6 +1,6 @@
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { InlineFieldSuggestion } from "@/components/admin/InlineFieldSuggestion.tsx";
+import { InlineTextSuggestion } from "@registry/components/inline-text-suggestion";
 import { AiFieldSuggestButton } from "@registry/components/ai-field-suggest-button";
 import { AiFieldTranslateButton } from "@registry/components/ai-field-translate-button";
 import { cn } from "@/lib/utils.ts";
@@ -21,7 +21,7 @@ interface TextareaFieldProps {
   placeholder?: string;
   disabled?: boolean;
   rows?: number;
-  /** AI contract field key. Enables suggest/translate buttons and InlineFieldSuggestion. */
+  /** AI contract field key. Enables suggest/translate buttons and InlineTextSuggestion. */
   suggestionPath?: string;
   /**
    * Controls which AI button to show.
@@ -90,12 +90,7 @@ export function TextareaField({
         className={className}
       />
       {suggestionPath && (
-        <InlineFieldSuggestion
-          fieldPath={suggestionPath}
-          currentValue={field.state.value}
-          onApply={(v) => field.handleChange(String(v))}
-          kind="text"
-        />
+        <InlineTextSuggestion fieldPath={suggestionPath} onApply={(v) => field.handleChange(v)} />
       )}
       {hint}
     </>

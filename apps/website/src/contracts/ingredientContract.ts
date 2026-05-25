@@ -27,6 +27,16 @@ function buildIngredientCtx(currentData: z.infer<IngredientSchema> | undefined):
     .join("\n");
 }
 
+// Rule reused across string[] fields so suggestions don't echo back values
+// the user has already accepted. Without this the model treats the field's
+// existing items as informational context and parrots them back verbatim.
+function excludeExistingValuesRule(existing: string[] | undefined): string {
+  if (!existing?.length) return "";
+  return `Existing values already on the entity: ${existing.join(", ")}.
+You MUST NOT include any of these in your output — they are already accepted.
+Return ONLY genuinely new values. If you have nothing new to add, return an empty array [].`;
+}
+
 // Presets available on ingredient fields.
 const presets = [
   {
@@ -114,10 +124,13 @@ export const ingredientContract: AiContract<IngredientSchema, IngredientRefineCo
     origin: {
       systemPrompt: ({ currentData }) => {
         const ctx = buildIngredientCtx(currentData);
+        const exclude = excludeExistingValuesRule(currentData?.origin);
         return `You are a culinary geographer. Suggest 1–5 primary geographic origin regions for this ingredient (countries or distinctive regions), favoring the most authoritative or historically associated areas.
 
 Ingredient context:
 ${ctx}
+
+${exclude}
 
 Rules:
 - Return concise place names (e.g. "Iran", "Guatemala", "Sichuan").
@@ -133,10 +146,13 @@ Rules:
     flavorNotes: {
       systemPrompt: ({ currentData }) => {
         const ctx = buildIngredientCtx(currentData);
+        const exclude = excludeExistingValuesRule(currentData?.flavorNotes);
         return `Suggest 3–7 concise flavor descriptors for this ingredient.
 
 Ingredient context:
 ${ctx}
+
+${exclude}
 
 Rules:
 - Lowercase single words or short hyphenated phrases (e.g. "floral", "earthy", "warm", "citrus-peel").

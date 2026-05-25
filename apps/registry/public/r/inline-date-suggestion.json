@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "inline-date-suggestion",
+  "type": "registry:block",
+  "title": "InlineDateSuggestion",
+  "description": "Per-field inline suggestion for ISO-date fields. Renders the proposed date in the user locale via DateSuggestionRow.",
+  "registryDependencies": [
+    "use-field-suggestion",
+    "date-suggestion-row",
+    "choice-suggestion-block",
+    "retranslate-button",
+    "suggestion-layout"
+  ],
+  "files": [
+    {
+      "path": "components/ui/inline-date-suggestion.tsx",
+      "type": "registry:block",
+      "content": "import { useFieldSuggestion } from \"@/components/ui/use-field-suggestion\";\nimport { DateSuggestionRow } from \"@/components/ui/date-suggestion-row\";\nimport { ChoiceSuggestionBlock } from \"@/components/ui/choice-suggestion-block\";\nimport { RetranslateButton } from \"@/components/ui/retranslate-button\";\nimport { SuggestionLayout } from \"@/components/ui/suggestion-layout\";\n\nexport interface InlineDateSuggestionProps {\n  fieldPath: string;\n  onApply: (value: string) => void;\n  sourceSlot?: React.ReactNode;\n  className?: string;\n}\n\nexport function InlineDateSuggestion({\n  fieldPath,\n  onApply,\n  sourceSlot,\n  className,\n}: InlineDateSuggestionProps) {\n  const { suggestion, accessor, showRetranslate } = useFieldSuggestion(fieldPath);\n\n  const retranslateSlot = showRetranslate ? (\n    <div className=\"mt-1\">\n      <RetranslateButton\n        sourceLocale={accessor.sourceLocale!}\n        isStale={accessor.isStale}\n        onRetranslate={() => void accessor.retranslate()}\n      />\n    </div>\n  ) : null;\n\n  if (!suggestion) {\n    if (!showRetranslate) return null;\n    return (\n      <div className={className}>\n        <RetranslateButton\n          sourceLocale={accessor.sourceLocale!}\n          isStale={accessor.isStale}\n          onRetranslate={() => void accessor.retranslate()}\n        />\n      </div>\n    );\n  }\n\n  if (suggestion.kind === \"choice\") {\n    return (\n      <SuggestionLayout\n        sourceSlot={sourceSlot}\n        retranslateSlot={retranslateSlot}\n        className={className}\n      >\n        <ChoiceSuggestionBlock\n          suggestion={suggestion}\n          onApply={(v) => onApply(String(v ?? \"\"))}\n          accessor={accessor}\n        />\n      </SuggestionLayout>\n    );\n  }\n\n  return (\n    <SuggestionLayout\n      sourceSlot={sourceSlot}\n      retranslateSlot={retranslateSlot}\n      className={className}\n    >\n      <DateSuggestionRow\n        value={String(suggestion.value ?? \"\")}\n        confidence={suggestion.confidence}\n        summary={suggestion.summary}\n        onApply={(v) => {\n          onApply(v);\n          accessor.recordAccept(suggestion.hash, v);\n        }}\n        onReject={() => accessor.recordReject(suggestion.hash)}\n      />\n    </SuggestionLayout>\n  );\n}\n"
+    }
+  ]
+}

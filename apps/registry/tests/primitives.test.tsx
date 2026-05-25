@@ -191,6 +191,48 @@ describe("TagsSuggestionRow", () => {
     await screen.getByRole("button", { name: /dismiss/i }).click();
     expect(onReject).toHaveBeenCalled();
   });
+
+  test("filters out tags present in existingItems", async () => {
+    const screen = await render(
+      <TagsSuggestionRow
+        tags={["spicy", "savory", "umami"]}
+        existingItems={["spicy"]}
+        onApply={vi.fn()}
+        onReject={vi.fn()}
+      />,
+    );
+    await expect.element(screen.getByRole("button", { name: /\+ spicy/ })).not.toBeInTheDocument();
+    await expect.element(screen.getByRole("button", { name: /\+ savory/ })).toBeVisible();
+  });
+
+  test("'Add all' applies only the unfiltered candidates", async () => {
+    const onApply = vi.fn();
+    const screen = await render(
+      <TagsSuggestionRow
+        tags={["spicy", "savory", "umami"]}
+        existingItems={["spicy"]}
+        onApply={onApply}
+        onReject={vi.fn()}
+      />,
+    );
+    await screen.getByRole("button", { name: /add all/i }).click();
+    expect(onApply).toHaveBeenCalledWith(["savory", "umami"]);
+  });
+
+  test("renders 'No new suggestions' empty state when every tag is already present", async () => {
+    const onReject = vi.fn();
+    const screen = await render(
+      <TagsSuggestionRow
+        tags={["spicy", "savory"]}
+        existingItems={["spicy", "savory"]}
+        onApply={vi.fn()}
+        onReject={onReject}
+      />,
+    );
+    await expect.element(screen.getByText(/no new suggestions/i)).toBeVisible();
+    await screen.getByRole("button", { name: /dismiss/i }).click();
+    expect(onReject).toHaveBeenCalled();
+  });
 });
 
 // ── EnumSuggestionRow ────────────────────────────────────────────────────────

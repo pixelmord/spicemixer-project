@@ -1,32 +1,23 @@
 import { useFieldSuggestion } from "./use-field-suggestion";
-import { TagsSuggestionRow } from "./tags-suggestion-row";
+import { TextSuggestionRow } from "./text-suggestion-row";
 import { ChoiceSuggestionBlock } from "./choice-suggestion-block";
 import { RetranslateButton } from "./retranslate-button";
 import { SuggestionLayout } from "./suggestion-layout";
 
-// Flow-aware inline suggestion component for string[] fields. Reads the
-// pending suggestion from SuggestionFlowProvider via useFieldSuggestion, then
-// renders chips through TagsSuggestionRow which owns the existing-items filter
-// and empty-state rule.
-
-export interface InlineArraySuggestionProps {
+export interface InlineTextSuggestionProps {
   fieldPath: string;
-  /** Tags already on the field — filtered out of the chip list so duplicates never render. */
-  existingItems?: string[];
-  /** Called with the items to merge into the field value (additive). */
-  onApply: (items: string[]) => void;
+  onApply: (value: string) => void;
   /** Read-only sibling-locale value rendered alongside in translation flows. */
   sourceSlot?: React.ReactNode;
   className?: string;
 }
 
-export function InlineArraySuggestion({
+export function InlineTextSuggestion({
   fieldPath,
-  existingItems,
   onApply,
   sourceSlot,
   className,
-}: InlineArraySuggestionProps) {
+}: InlineTextSuggestionProps) {
   const { suggestion, accessor, showRetranslate } = useFieldSuggestion(fieldPath);
 
   const retranslateSlot = showRetranslate ? (
@@ -61,14 +52,12 @@ export function InlineArraySuggestion({
       >
         <ChoiceSuggestionBlock
           suggestion={suggestion}
-          onApply={(v) => onApply(Array.isArray(v) ? v.map(String) : [])}
+          onApply={(v) => onApply(String(v ?? ""))}
           accessor={accessor}
         />
       </SuggestionLayout>
     );
   }
-
-  const tags = Array.isArray(suggestion.value) ? suggestion.value.map(String) : [];
 
   return (
     <SuggestionLayout
@@ -76,16 +65,14 @@ export function InlineArraySuggestion({
       retranslateSlot={retranslateSlot}
       className={className}
     >
-      <TagsSuggestionRow
-        tags={tags}
-        existingItems={existingItems}
+      <TextSuggestionRow
+        value={String(suggestion.value ?? "")}
         confidence={suggestion.confidence}
         summary={suggestion.summary}
-        onApply={(applied) => {
-          onApply(applied);
-          accessor.recordAccept(suggestion.hash, applied);
+        onApply={(v) => {
+          onApply(v);
+          accessor.recordAccept(suggestion.hash, v);
         }}
-        onApplyPartial={(applied) => onApply(applied)}
         onReject={() => accessor.recordReject(suggestion.hash)}
       />
     </SuggestionLayout>

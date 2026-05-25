@@ -219,9 +219,15 @@ When deepening (merging shallow modules into a deeper one):
 
 The repo runs on Vite+ (`vp`). Per `CLAUDE.md`:
 
-- Use `vp check`, `vp test`, `vp run -r <task>`, `vp install`,
+- Use `vp check`, `vp run -r test`, `vp run -r <task>`, `vp install`,
   `vp build`. Never invoke `pnpm exec vitest`, `npx oxlint`,
   `npm run`, or `tsc` directly.
+- **Run tests via `vp run -r test`, not `vp test` from root.** Each
+  package owns its own Vitest config (registry uses browser-mode
+  for `.test.tsx`, node-mode for `.test.ts`; website is node-only).
+  Root `vp test` misses the registry's browser project and reports
+  spurious failures. Per-package: `cd apps/<pkg> && vp test`.
+  Targeted: `vp test <path>` from the owning package's directory.
 - One-off binaries: `vp dlx <pkg>`, never `npx`/`pnpm dlx`.
 - Imports come from `vite-plus` / `vite-plus/test`, not `vite` /
   `vitest`. Reject `import { test } from "vitest"`.

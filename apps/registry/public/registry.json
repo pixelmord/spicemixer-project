@@ -288,24 +288,146 @@
       ]
     },
     {
-      "name": "inline-field-suggestion",
+      "name": "use-field-suggestion",
+      "type": "registry:hook",
+      "title": "useFieldSuggestion",
+      "description": "Hook reading a single field's pending suggestion + accessor from SuggestionFlowProvider. Bundles markViewed effect and retranslate-readiness check. Used by every Inline*Suggestion component.",
+      "registryDependencies": ["suggestion-flow-provider", "use-ai-suggestions"],
+      "files": [
+        {
+          "path": "hooks/use-field-suggestion.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "retranslate-button",
+      "type": "registry:ui",
+      "title": "RetranslateButton",
+      "description": "Compact \"Retranslate from <locale>\" button with stale-indicator styling. Shared across Inline*Suggestion components.",
+      "files": [
+        {
+          "path": "components/ui/retranslate-button.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "suggestion-layout",
+      "type": "registry:ui",
+      "title": "SuggestionLayout",
+      "description": "Wraps an Inline*Suggestion row with optional sourceSlot (sibling-locale read-only column for translation review) and retranslate affordance. Switches to a three-column grid when sourceSlot is provided.",
+      "files": [
+        {
+          "path": "components/ui/suggestion-layout.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "choice-suggestion-block",
+      "type": "registry:ui",
+      "title": "ChoiceSuggestionBlock",
+      "description": "Renders a `choice`-shape FieldSuggestion (single-pick or multi-pick with min/max). Shared by every Inline*Suggestion component for when the flow returns a choice instead of a single value.",
+      "registryDependencies": ["confidence-badge", "accept-reject-buttons", "use-ai-suggestions"],
+      "files": [
+        {
+          "path": "components/ui/choice-suggestion-block.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "inline-text-suggestion",
       "type": "registry:block",
-      "title": "InlineFieldSuggestion",
-      "description": "Per-field AI suggestion block that mounts adjacent to a form input. Dispatches by field kind via renderers prop. Ships defaultRenderers for text, array, enum, multi-enum, date. Supports single and choice (single/multi-pick) suggestion variants.",
+      "title": "InlineTextSuggestion",
+      "description": "Per-field inline AI suggestion for string text fields. Reads from SuggestionFlowProvider via useFieldSuggestion. Handles single + choice suggestion shapes. Used alongside <Input> / <Textarea>.",
       "registryDependencies": [
-        "use-ai-suggestions",
-        "suggestion-flow-provider",
-        "confidence-badge",
-        "accept-reject-buttons",
+        "use-field-suggestion",
         "text-suggestion-row",
-        "tags-suggestion-row",
-        "enum-suggestion-row",
-        "multi-enum-suggestion-row",
-        "date-suggestion-row"
+        "choice-suggestion-block",
+        "retranslate-button",
+        "suggestion-layout"
       ],
       "files": [
         {
-          "path": "components/ui/inline-field-suggestion.tsx",
+          "path": "components/ui/inline-text-suggestion.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "inline-array-suggestion",
+      "type": "registry:block",
+      "title": "InlineArraySuggestion",
+      "description": "Per-field inline AI suggestion for string[] tag/keyword fields. Pass existingItems so already-accepted values are filtered out and an empty state renders when nothing new remains.",
+      "registryDependencies": [
+        "use-field-suggestion",
+        "tags-suggestion-row",
+        "choice-suggestion-block",
+        "retranslate-button",
+        "suggestion-layout"
+      ],
+      "files": [
+        {
+          "path": "components/ui/inline-array-suggestion.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "inline-enum-suggestion",
+      "type": "registry:block",
+      "title": "InlineEnumSuggestion",
+      "description": "Per-field inline AI suggestion for single-value enum fields. Pass options for validation context.",
+      "registryDependencies": [
+        "use-field-suggestion",
+        "enum-suggestion-row",
+        "choice-suggestion-block",
+        "retranslate-button",
+        "suggestion-layout"
+      ],
+      "files": [
+        {
+          "path": "components/ui/inline-enum-suggestion.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "inline-multi-enum-suggestion",
+      "type": "registry:block",
+      "title": "InlineMultiEnumSuggestion",
+      "description": "Per-field inline AI suggestion for multi-select enum fields.",
+      "registryDependencies": [
+        "use-field-suggestion",
+        "multi-enum-suggestion-row",
+        "choice-suggestion-block",
+        "retranslate-button",
+        "suggestion-layout"
+      ],
+      "files": [
+        {
+          "path": "components/ui/inline-multi-enum-suggestion.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "inline-date-suggestion",
+      "type": "registry:block",
+      "title": "InlineDateSuggestion",
+      "description": "Per-field inline AI suggestion for ISO-date fields. Renders the proposed date in the user locale via DateSuggestionRow.",
+      "registryDependencies": [
+        "use-field-suggestion",
+        "date-suggestion-row",
+        "choice-suggestion-block",
+        "retranslate-button",
+        "suggestion-layout"
+      ],
+      "files": [
+        {
+          "path": "components/ui/inline-date-suggestion.tsx",
           "type": "registry:block"
         }
       ]
@@ -339,12 +461,8 @@
       "name": "translate-entity-dialog",
       "type": "registry:block",
       "title": "TranslateEntityDialog",
-      "description": "Phase 1 atomic-create translation dialog. Two-call runFill (slug first for recipes/mixtures, then bulk) or one-call for ingredients/pairings. Composes InlineFieldSuggestion with sourceSlot. Primary CTA: Accept all & save draft.",
-      "registryDependencies": [
-        "use-ai-suggestions",
-        "suggestion-flow-provider",
-        "inline-field-suggestion"
-      ],
+      "description": "Phase 1 atomic-create translation dialog. Two-call runFill (slug first for recipes/mixtures, then bulk) or one-call for ingredients/pairings. Primary CTA: Accept all & save draft.",
+      "registryDependencies": ["use-ai-suggestions", "suggestion-flow-provider"],
       "files": [
         {
           "path": "components/ui/translate-entity-dialog.tsx",

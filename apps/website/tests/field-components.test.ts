@@ -244,45 +244,38 @@ describe("TagInputField — AI button integration", () => {
     expect(tagSrc).toMatch(/<AiFieldSuggestButton/);
   });
 
-  test("uses InlineFieldSuggestion with kind='array'", () => {
-    expect(tagSrc).toMatch(/InlineFieldSuggestion/);
-    expect(tagSrc).toMatch(/kind="array"/);
+  test("uses dedicated InlineArraySuggestion (no dispatcher with kind prop)", () => {
+    expect(tagSrc).toMatch(/InlineArraySuggestion/);
+    expect(tagSrc).not.toMatch(/InlineFieldSuggestion/);
+    expect(tagSrc).not.toMatch(/kind="array"/);
   });
 
-  test("InlineFieldSuggestion onApply merges new items with existing value", () => {
-    // Must not simply replace the array — must merge (union) incoming tags.
+  test("passes existingItems to InlineArraySuggestion so duplicates filter out", () => {
+    expect(tagSrc).toMatch(/existingItems=\{currentValue\}/);
+  });
+
+  test("onApply merges new items with existing value (union, not replace)", () => {
     expect(tagSrc).toMatch(/new Set|\.filter|spread.*field\.state\.value/s);
   });
 });
 
-describe("TagInputField — InlineArraySuggestion batch suggest", () => {
+describe("TagInputField — locale-agnostic", () => {
   let tagSrc: string;
 
   beforeAll(async () => {
     tagSrc = await readFile(join(FIELDS, "TagInputField.tsx"), "utf-8");
   });
 
-  test("imports InlineArraySuggestion from @registry", () => {
-    expect(tagSrc).toMatch(/InlineArraySuggestion/);
-  });
-
-  test("accepts pendingItems prop", () => {
-    expect(tagSrc).toMatch(/pendingItems[?:]/);
-  });
-
-  test("accepts onAcceptItems callback", () => {
-    expect(tagSrc).toMatch(/onAcceptItems[?:]/);
-  });
-
-  test("accepts onDismissItems callback", () => {
-    expect(tagSrc).toMatch(/onDismissItems[?:]/);
-  });
-
-  test("renders InlineArraySuggestion when pendingItems is set", () => {
-    expect(tagSrc).toMatch(/<InlineArraySuggestion/);
-  });
-
   test("no splitView — tags are locale-agnostic", () => {
     expect(tagSrc).not.toMatch(/splitView/);
+  });
+
+  test("no dead pendingItems wiring", () => {
+    // The pendingItems/onAcceptItems/onDismissItems props were vestigial state
+    // that never carried real items in any call site. Removed during the
+    // dispatcher-to-dedicated-components consolidation.
+    expect(tagSrc).not.toMatch(/pendingItems/);
+    expect(tagSrc).not.toMatch(/onAcceptItems/);
+    expect(tagSrc).not.toMatch(/onDismissItems/);
   });
 });

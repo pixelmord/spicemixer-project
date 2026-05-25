@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "use-field-suggestion",
+  "type": "registry:hook",
+  "title": "useFieldSuggestion",
+  "description": "Hook reading a single field's pending suggestion + accessor from SuggestionFlowProvider. Bundles markViewed effect, retranslate-readiness check. Used by each Inline*Suggestion component.",
+  "registryDependencies": ["suggestion-flow-provider", "use-ai-suggestions"],
+  "files": [
+    {
+      "path": "hooks/use-field-suggestion.ts",
+      "type": "registry:hook",
+      "content": "import { useEffect } from \"react\";\nimport { useSuggestionFlowContext } from \"@/components/ui/suggestion-flow-provider\";\nimport type { FieldSuggestion, PerFieldAccessor } from \"@/components/ui/use-ai-suggestions\";\n\n// Bundled flow-wiring for a single field. Used by the per-kind Inline*Suggestion\n// components (text, array, enum, multi-enum, date, choice) so they all share the\n// same accept/reject/markViewed/retranslate plumbing without re-implementing it.\n//\n// Why a hook (and not a wrapper component): keeps each per-kind component a\n// single function call away from its presentational row, with typed value and\n// per-kind props at the call site. There is no dispatcher and no renderer map.\n\nexport interface UseFieldSuggestionResult {\n  /** Raw suggestion from the flow context. undefined when nothing pending. */\n  suggestion: FieldSuggestion | undefined;\n  accessor: PerFieldAccessor;\n  /** True for \"single\" suggestions; false/undefined for \"choice\" or absent. */\n  isSingle: boolean;\n  /** True when a Retranslate affordance should be shown for translatable fields. */\n  showRetranslate: boolean;\n}\n\nexport function useFieldSuggestion(fieldPath: string): UseFieldSuggestionResult {\n  const flow = useSuggestionFlowContext();\n  const accessor = flow.forField(fieldPath);\n  const suggestion = accessor.suggestion;\n\n  // Mark suggestion as viewed once it is in scope. Keyed on a value that\n  // changes per suggestion identity so re-renders of unchanged suggestions\n  // don't re-trigger markViewed.\n  let suggestionKey: string | null = null;\n  if (suggestion?.kind === \"single\") suggestionKey = suggestion.hash;\n  else if (suggestion) suggestionKey = suggestion.traceId;\n\n  useEffect(() => {\n    if (suggestionKey !== null) {\n      flow.forField(fieldPath).markViewed();\n    }\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [fieldPath, suggestionKey]);\n\n  const showRetranslate =\n    accessor.sourceLocale !== undefined &&\n    accessor.translationMode !== undefined &&\n    accessor.translationMode !== \"copy\" &&\n    accessor.translationMode !== \"skip\";\n\n  return {\n    suggestion,\n    accessor,\n    isSingle: suggestion?.kind === \"single\",\n    showRetranslate,\n  };\n}\n"
+    }
+  ]
+}
