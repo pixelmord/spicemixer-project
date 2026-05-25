@@ -1,10 +1,11 @@
 ---
-import { getCollection } from "astro:content";
+import { getCollection, type CollectionEntry } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import FilterBar from "../FilterBar.astro";
 import RecipeMeta from "../RecipeMeta.astro";
 import { firstImage, keywordList } from "../../lib/instructions.ts";
 import { getPublished, slugFromLocaleId } from "../../lib/recipe-augment.ts";
+import { resolvePublished } from "../../lib/published-entity.ts";
 import { MIXTURE_KINDS, buildKindBySlug } from "../../lib/mixture-schema.ts";
 import { useTranslations, type Lang, type TranslationKey } from "../../i18n/translations.ts";
 
@@ -12,10 +13,15 @@ const locale = Astro.currentLocale as Lang;
 const t = useTranslations(locale);
 const prefix = locale === "de" ? "/de" : "";
 
-const [mixtures, rawMeta] = await Promise.all([
+const [allMixtures, rawMeta] = await Promise.all([
   getPublished("mixtures"),
   getCollection("meta"),
 ]);
+const uniqueSlugs = [...new Set(allMixtures.map((m: { id: string }) => slugFromLocaleId(m.id)))];
+const resolvedEntries = await Promise.all(uniqueSlugs.map((slug) => resolvePublished("mixtures", slug, locale)));
+const mixtures = resolvedEntries
+  .filter((r): r is NonNullable<typeof r> => r !== null)
+  .map((r) => r.entity as CollectionEntry<"mixtures">);
 const sorted = mixtures.sort((a, b) =>
   (b.data.datePublished ?? "").localeCompare(a.data.datePublished ?? ""),
 );

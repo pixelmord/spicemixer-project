@@ -12,7 +12,9 @@ import { resolvePublished } from "../published-entity.ts";
 export async function mixtureSlugPaths(locale: Lang) {
   const rawMeta = await getCollection("meta");
   const kindBySlug = buildKindBySlug(rawMeta);
-  const enMixtures = await getPublished("mixtures", "en");
+  const allMixtures = await getPublished("mixtures");
+  const enMixtures = allMixtures.filter((m: { id: string }) => m.id.startsWith("en/"));
+  const uniqueSlugs = [...new Set(allMixtures.map((e: { id: string }) => slugFromLocaleId(e.id)))];
 
   const kindPaths = MIXTURE_KINDS.map((kind) => ({
     params: { slug: MIXTURE_KIND_PLURALS[kind] },
@@ -26,8 +28,7 @@ export async function mixtureSlugPaths(locale: Lang) {
   }));
 
   const detailPathResults = await Promise.all(
-    enMixtures.map(async (entry: { id: string }) => {
-      const slug = slugFromLocaleId(entry.id);
+    uniqueSlugs.map(async (slug) => {
       const resolved = await resolvePublished("mixtures", slug, locale);
       if (!resolved) return null;
       return {
