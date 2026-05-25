@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
@@ -207,21 +207,25 @@ const RECOMMENDED_ANCHOR: Record<string, string> = {
   flavorProfile: "section-taxonomy",
 };
 
+const TRANSLATABLE_FIELDS = [
+  "name",
+  "summary",
+  "description",
+  "culinaryUse",
+  "medicinalUses",
+  "healthBenefits",
+  "safetyNotes",
+  "history",
+  "storage",
+  "sourcing",
+  "seasonality",
+] as const;
+
 const AI_CONTRACT = {
   presets: [],
-  fields: {
-    name: { translation: { mode: "translate" as const } },
-    summary: { translation: { mode: "translate" as const } },
-    description: { translation: { mode: "translate" as const } },
-    culinaryUse: { translation: { mode: "translate" as const } },
-    medicinalUses: { translation: { mode: "translate" as const } },
-    healthBenefits: { translation: { mode: "translate" as const } },
-    safetyNotes: { translation: { mode: "translate" as const } },
-    history: { translation: { mode: "translate" as const } },
-    storage: { translation: { mode: "translate" as const } },
-    sourcing: { translation: { mode: "translate" as const } },
-    seasonality: { translation: { mode: "translate" as const } },
-  },
+  fields: Object.fromEntries(
+    TRANSLATABLE_FIELDS.map((key) => [key, { translation: { mode: "translate" as const } }]),
+  ),
 };
 
 function emptyIngredient(): IngredientData {
@@ -840,25 +844,24 @@ export default function IngredientForm({
   }
 
   const overflowMenuItems = useMemo(() => {
-    const items = [];
-    if (!isNew && slug) {
-      items.push({
+    if (isNew || !slug) return [];
+    return [
+      {
         label: "View public page",
         icon: <ExternalLink size={14} />,
         onClick: () => window.open(`/ingredients/${slug}`, "_blank"),
-      });
-      items.push({
+      },
+      {
         label: "Open meta sidecar",
         icon: <ExternalLink size={14} />,
         onClick: () => window.open(`/admin/ingredients/${slug}/meta`, "_blank"),
-      });
-      items.push({
+      },
+      {
         label: "Delete",
         icon: <Trash2 size={14} />,
         onClick: () => setDeleteConfirmOpen(true),
-      });
-    }
-    return items;
+      },
+    ];
   }, [isNew, slug]);
 
   const headerAuxiliary =
@@ -887,13 +890,14 @@ export default function IngredientForm({
       </div>
     ) : undefined;
 
-  const subHeaderStrip = !isNew ? (
-    splitView ? (
+  let subHeaderStrip: ReactNode;
+  if (!isNew && splitView) {
+    subHeaderStrip = (
       <AiBulkTranslateButton contract={AI_CONTRACT} currentData={buildIngredientSnapshot()} />
-    ) : (
-      <AiBulkSuggestButton />
-    )
-  ) : undefined;
+    );
+  } else if (!isNew) {
+    subHeaderStrip = <AiBulkSuggestButton />;
+  }
 
   const localeChip = (
     <span className="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground">
