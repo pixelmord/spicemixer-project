@@ -493,6 +493,35 @@ export default function IngredientForm({
     contract: AI_CONTRACT,
     onRefine: async (params) => {
       const snap = buildIngredientSnapshot();
+
+      // Array fields (origin, flavorNotes) have a dedicated endpoint that understands
+      // the ingredient's category/context. Route per-field array targets there.
+      if (params.target && params.target.every((f) => ARRAY_SUGGESTION_FIELDS.has(f))) {
+        const fieldName = params.target[0];
+        try {
+          const { data: result, error } = await actions.aiProposeIngredientImprovements({
+            ingredient: {
+              name: formValues.name,
+              category: formValues.category,
+              ...(fieldName === "origin"
+                ? { flavorNotes: snap.flavorNotes as string[] }
+                : { origin: snap.origin as string[] }),
+            },
+            missingFields: [fieldName],
+          });
+          if (error) throw new Error(error.message);
+          const fields = result?.fields as Array<{ field: string; suggestion: string }> | undefined;
+          const fieldResult = fields?.find((f) => f.field === fieldName);
+          if (!fieldResult) return { suggestions: {}, autoApplied: {}, traces: {} };
+          return adaptIngredientImprovementsToRunResult([
+            { field: fieldName, suggestion: fieldResult.suggestion, rationale: "" },
+          ]);
+        } catch (e) {
+          toast.error(`AI suggest failed: ${e instanceof Error ? e.message : String(e)}`);
+          return { suggestions: {}, autoApplied: {}, traces: {} };
+        }
+      }
+
       // Per-field run: use params.target directly.
       // Full refresh: derive missing keys from recommended field completeness.
       const missingKeys =
