@@ -433,3 +433,258 @@ Companion to ADR 0014 (pairings folder-per-locale), which removes
 the last structural exception to the uniform translation flow.
 Amendment to ADR 0004 (AI auto-apply boundary) reframes that ADR's
 translate clause in light of this decision.
+
+## Amendment — 2026-05-25: split view as the editing surface, Phase 1 collapses to preflight
+
+Decided in the 2026-05-25 grilling session
+(`/docs/research/2026-05-25-translation-split-view.md`). Execution
+detail in `/docs/plans/2026-05-25-translation-split-view.md`.
+
+The original ADR locked a two-phase editorial model where Phase 1
+(`TranslateEntityDialog`) rendered per-field suggestion rows for
+in-modal review with "Accept all & save draft" as the primary CTA.
+Implementation across the three forms (`IngredientForm`,
+`RecipeForm`, `PairingForm`) has surfaced a structural mismatch:
+in-modal review duplicates the split-view review surface, the
+sibling-aware editing capability landed unevenly (three fields in
+`IngredientForm` via `TranslationCompanion`/`FieldWithTranslation`;
+absent in `PairingForm` and `RecipeForm`), and the bidirectional
+intent of "translate either way" was never realised — the UI is
+asymmetric around `canonicalLocale` even though the data model
+treats per-entry canonical neutrally (ADR 0003).
+
+This amendment locks the corrections.
+
+### Locked: Phase 1 modal degrades to preflight-only
+
+`TranslateEntityDialog` no longer renders per-field suggestion rows.
+Its body is:
+
+- (Always) entity-summary line ("This will create a DE translation
+  of cardamom; all translatable fields auto-translate. Review in
+  split view after.")
+- (Recipes / mixtures only) slug picker with availability check and
+  manual override, populated via
+  `runFill({ target: ["slug"], sourceContext: … })`.
+- A single "Create & translate" CTA.
+- Progress indicator during the bulk run ("Translating 5 of 12…").
+
+On run completion the dialog saves the draft and redirects to the
+new draft's edit page with split view auto-on (see below). All
+review/correction happens post-save in split view; the modal carries
+no review surface.
+
+Partial-failure behaviour: lenient. If a field's LLM call fails, the
+draft saves with whatever succeeded and the editor lands in split
+view with a toast naming the unfilled fields. Recovery is per-field
+via the field's translate button. This supersedes open follow-up #2,
+which is closed by this decision.
+
+The dialog is always shown, even for ingredients and pairings (where
+there is no slug picker). The body collapses to summary + CTA in
+that case. Consistency wins; the saved click does not.
+
+### Locked: split view is the editing surface for translations
+
+Phase 2 editing is no longer "a form with optional source rendering
+on three fields." It is a uniform split view: every translatable
+field renders a two-column row with the sibling-locale value
+(read-only, no collapsible) on one side and the editable input on
+the other. Non-translatable fields render full-width.
+
+Implementation is per-field, not per-pane: there is one scroll
+container; the side-by-side effect emerges from stacking
+two-column field rows. Scroll synchronisation is therefore a
+non-problem and is not implemented. Section anchors and the
+completeness panel continue to track the editable side only.
+
+Split-view entry:
+
+- Auto-on when the loaded entity has `translationOf` set.
+- Manual toggle from a header control ("Compare with `<sibling>` ↔")
+  available on any entity, regardless of locale or `translationOf`
+  status. The toggle state persists globally (single boolean in
+  localStorage); per-entity persistence is deferred.
+- Phase 1 dialog redirect lands with split view auto-on.
+
+Inside split view, a swap-language control navigates to the sibling
+entity's edit page (with a discard-or-save prompt if the current
+form is dirty). This realises the "translate either direction"
+intent and decouples editing affordance from `canonicalLocale`
+designation. Bidirectional staleness is **not** implemented in this
+amendment; the existing `canonicalLocale` / `translationStaleSince`
+machinery continues to anchor on the original canonical. Whether to
+make staleness bidirectional is deferred — open follow-up below.
+
+When split view is on, the form sidebars collapse to vertical icon
+rails: a TOC icon (left) opens the section-nav popover; a small
+completeness ring (right) opens the field-status popover. The
+`AdminShell` sidebar is unaffected.
+
+`PairingSuggestionPanel` (the AI-pairing-proposal block in
+`IngredientForm`'s right rail) is hidden in split view — pairings
+are not a translation concern.
+
+### Locked: workflow controls live in a sub-header strip
+
+The "Get AI suggestions / Accept all" indicator card moves out of
+the right rail. Workflow actions live in a sub-header strip between
+the form header and form body, owned by the layout. The strip
+renders one of:
+
+| Mode                         | Strip content                                               |
+| ---------------------------- | ----------------------------------------------------------- |
+| Single edit, no pending      | `ai-bulk-suggest-button` ("Get AI suggestions")             |
+| Single edit, ≥1 pending      | `ai-bulk-suggest-button` ("Accept all (N)")                 |
+| Translation mode, no pending | `ai-bulk-translate-button` ("Translate all missing", combo) |
+| Translation mode, ≥1 pending | `ai-bulk-translate-button` ("Apply all (N)")                |
+| Translation mode, running    | progress indicator, disabled                                |
+| Pairings (any mode)          | strip not rendered (single translatable field)              |
+
+`SuggestionsOptions` (the `Settings2` menu on the current
+`AiSuggestionsIndicator`) is **deleted entirely**. Per-field
+accept / partial-apply / reject is always the UX for suggestions;
+no write-policy toggle is meaningful for refine.
+
+### Locked: bulk-translate write policy
+
+`ai-bulk-translate-button` is a split combo. Primary CTA uses the
+editor's persisted write policy. The dropdown surfaces exactly two
+choices:
+
+- **Fill gaps only** (default, label: "Translate all missing") —
+  bulk `runFill` runs only against translatable fields whose target
+  value is empty.
+- **Replace all translations** (label: "Re-translate everything") —
+  bulk `runFill` runs against every translatable field; suggestions
+  for filled fields render as previews; nothing applies without an
+  explicit Apply.
+
+No third option. No prompt mode. No preserve-existing mode. No
+per-field policy. Editor's choice persists globally in localStorage.
+
+Stale-refresh remains a separate flow keyed off
+`canonicalFieldHashes` per the original ADR; it is **not** a third
+write-policy on this button.
+
+### Locked: per-field translate combo
+
+Each translatable field's per-field "AI suggest" button is replaced
+in translation mode by `ai-field-translate-button`, a split combo:
+
+- Primary CTA: "Translate from `<sibling>`" (or "Copy from
+  `<sibling>`" when the field's contract `translation.mode` is
+  `copy` — same combo, different label, no LLM call for `copy`).
+  Runs single-field `runFill` with sibling-locale source. Suggestion
+  lands in `InlineFieldSuggestion` below the input; Apply overwrites.
+- Dropdown alt: "Merge with existing" — runs single-field `runFill`
+  with an editor-side merge instruction (see below).
+
+For `skip`-mode fields the button is not rendered.
+
+`runFill` gains an optional `mergeInstruction?: string` parameter.
+When set, it is prepended to the per-field prompt as a fixed
+instruction: "Preserve as much of the existing target text as
+possible; integrate sibling content only where absent." This is an
+**editor-side write-policy**, not a contract-side translation mode
+— it does not extend `TranslationBehavior`. Per-field translate
+policy persists independently of the bulk write policy (different
+axes: "how to write" vs "which fields to touch").
+
+### Locked: per-field suggest combo
+
+In single edit mode, each translatable field's "AI suggest" button
+becomes `ai-field-suggest-button`, a split combo:
+
+- Primary CTA: "AI suggest" — runs the configured system prompt
+  for the field.
+- Dropdown: reveals a `<UserPromptField>` textarea for a one-shot
+  custom instruction. Submit runs the same `runRefine` flow with
+  `userPrompt` set. Custom prompts **reset per-field, per-open**;
+  they do not persist across fields.
+
+The `userPrompt` mix-in is already first-class in
+`useAiSuggestions` / `runRefine`; this block exposes it inline
+without the deleted `SuggestionsOptions` menu.
+
+### Locked: form-shell standardisation
+
+A new `EntityFormLayout` component (in
+`apps/website/src/components/admin/`) wraps the common shape:
+header (back arrow, title, locale chip, swap-language, translation
+links, "Compare with `<sibling>` ↔" toggle, "Enhance", overflow
+`⋯`), left rail (`SectionNav`, collapsible to icon rail in split
+view), centre (form-body children), right rail
+(`CompletenessPanel`, collapsible to icon rail in split view, plus
+optional consumer slot for extra blocks), sub-header strip
+(workflow buttons per the table above), footer (`FormActionBar`).
+
+All three forms adopt it. Per-entity bodies stay per-entity — the
+schemas are too different to abstract beyond the shell. A second
+component, `FieldWithSibling`, handles per-field bisection in split
+view (replaces `TranslationCompanion`/`FieldWithTranslation`, drops
+the collapsible chevron on the sibling side, applies to every
+translatable field, not three).
+
+`FormActionBar` is the unified footer for all three forms.
+`PairingForm` adopts it and loses its custom one-button footer; the
+header draft pill collapses into the footer's status pill + split
+save button. Delete moves into the header overflow `⋯` for all three
+forms; `IngredientForm` and `RecipeForm` gain a delete affordance
+they previously lacked.
+
+### Locked: new registry blocks
+
+Four new blocks land in `@pixelmord/ui-registry`:
+
+- `ai-bulk-suggest-button` — refine bulk action.
+- `ai-bulk-translate-button` — translate bulk action with write-policy combo.
+- `ai-field-suggest-button` — per-field refine with custom-prompt dropdown.
+- `ai-field-translate-button` — per-field translate with merge-mode dropdown.
+
+The form-shell components (`EntityFormLayout`, `FieldWithSibling`)
+stay in `apps/website/` — they couple to Spicemixer-specific
+admin concerns (sections, completeness, locale chips). Lift to the
+registry only when a second consumer needs the shape.
+
+The original ADR's `AiSuggestionsIndicator` registry export is
+removed; its inner button mechanics move into
+`ai-bulk-suggest-button`. `SuggestionsOptions` and the standalone
+`UserPromptField` rendering inside it are removed;
+`UserPromptField` survives as a primitive consumed by
+`ai-field-suggest-button`'s dropdown.
+
+### What dies on adoption of this amendment
+
+- Per-field review rows inside `TranslateEntityDialog`.
+- The `Settings2` write-policy menu on `AiSuggestionsIndicator`.
+- `AiSuggestionsIndicator` as a registry block (replaced by
+  `ai-bulk-suggest-button`).
+- `TranslationCompanion` + `FieldWithTranslation` in
+  `apps/website/` (replaced by `FieldWithSibling`).
+- `PairingForm`'s custom footer + header draft pill.
+- The per-field "AI suggest" inline JSX in `IngredientForm` /
+  `RecipeForm` (replaced by `ai-field-suggest-button`).
+
+### Open follow-ups added by this amendment
+
+7. **Bidirectional staleness.** `translationStaleSince` and
+   `canonicalFieldHashes` still anchor on the original canonical
+   locale. If editors routinely author DE-first and translate to EN,
+   the asymmetry will surface — but only as a stale-flag direction
+   issue, not an editing-flow issue. Deferred; revisit when
+   editorial telemetry surfaces a real case.
+8. **Multi-sibling locales (Phase 3+).** "Compare with `<sibling>`"
+   assumes a single sibling. When a third locale enters, the
+   control becomes a picker. Trivial extension; no work needed
+   until the third locale is real.
+
+### Backward compatibility
+
+Data shape unchanged: `translationOf`, `canonicalLocale`,
+`canonicalFieldHashes`, `translationStaleSince`, the
+`sibling-locale` source kind on `runFill`, and per-field
+`TranslationBehavior` all survive verbatim. The amendment is
+strictly a UI/flow reshape plus one new optional `runFill`
+parameter (`mergeInstruction`). No migration required for existing
+entities or meta sidecars.
