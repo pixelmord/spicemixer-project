@@ -86,9 +86,15 @@ export function TranslateEntityDialog({
 
   const twoCallMode = onCheckSlugAvailable !== undefined;
 
-  const translatableFieldCount = Object.values(contract.fields).filter(
-    (cfg) => cfg.translation?.mode !== "skip" && cfg.translation?.mode !== "copy",
-  ).length;
+  const translatableFields = useMemo(
+    () =>
+      Object.entries(contract.fields)
+        .filter(([, cfg]) => cfg.translation?.mode !== "skip" && cfg.translation?.mode !== "copy")
+        .map(([k]) => k),
+    [contract.fields],
+  );
+
+  const translatableFieldCount = translatableFields.length;
 
   const sourceContext = useMemo(
     () => ({
@@ -144,10 +150,6 @@ export function TranslateEntityDialog({
           }
         }
 
-        // Determine partial failure: translatable fields missing from suggestions
-        const translatableFields = Object.entries(contract.fields)
-          .filter(([, cfg]) => cfg.translation?.mode !== "skip" && cfg.translation?.mode !== "copy")
-          .map(([k]) => k);
         const failedFields = translatableFields.filter((f) => !suggestions.has(f));
 
         // Compute canonicalFieldHashes from source
@@ -192,6 +194,7 @@ export function TranslateEntityDialog({
     },
     [
       contract.fields,
+      translatableFields,
       sourceData,
       origin.runId,
       targetLocale,

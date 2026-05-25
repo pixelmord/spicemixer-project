@@ -193,11 +193,12 @@ export async function runFill<S extends ZodSchema, Source>(
       } = await contract.buildMessages(sourceContext);
       warnings.push(...msgWarnings);
 
-      const effectiveMergeUserPrompt = mergeInstruction
-        ? userPrompt
-          ? `${mergeInstruction}\n\n${userPrompt}`
-          : mergeInstruction
-        : userPrompt;
+      let effectiveMergeUserPrompt = userPrompt;
+      if (mergeInstruction && userPrompt) {
+        effectiveMergeUserPrompt = `${mergeInstruction}\n\n${userPrompt}`;
+      } else if (mergeInstruction) {
+        effectiveMergeUserPrompt = mergeInstruction;
+      }
 
       const rawOutput = await callLlm(
         contract.schema,

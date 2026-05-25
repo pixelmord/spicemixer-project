@@ -24,10 +24,6 @@ export function AiFieldSuggestButton({ fieldPath, className }: AiFieldSuggestBut
 
   async function handleSubmitCustomPrompt() {
     handleDropdownClose();
-    // The forField run() uses the flow's current userPrompt; we temporarily set it
-    // via flow.setUserPrompt for the duration of this targeted call, but since
-    // setUserPrompt is async-state, the simplest approach is to call flow.run
-    // with the custom prompt — for now delegate to accessor.run() after setting prompt
     flow.setUserPrompt(customPrompt);
     await accessor.run();
   }
