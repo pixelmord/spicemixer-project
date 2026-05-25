@@ -158,25 +158,18 @@ describe("TextField — split-view sibling layout", () => {
   });
 });
 
-describe("TextField — buttonPosition and hideSuggest extensions", () => {
-  test('accepts buttonPosition prop ("label-row" | "inline")', () => {
-    expect(textSrc).toMatch(/buttonPosition/);
-  });
-
+describe("TextField — hideSuggest extension", () => {
   test("accepts hideSuggest prop", () => {
     expect(textSrc).toMatch(/hideSuggest/);
   });
 
-  test("renders button inline with input when buttonPosition=inline", () => {
-    // When inline, the input and AI button share a flex container.
-    expect(textSrc).toMatch(/buttonPosition.*inline|inline.*buttonPosition/s);
-    expect(textSrc).toMatch(/flex.*items-center.*gap|flex-1/s);
-  });
-
   test("suppresses AiFieldSuggestButton when hideSuggest is true", () => {
     // hideSuggest blocks the suggest button even when !splitView.
-    expect(textSrc).toMatch(/hideSuggest/);
     expect(textSrc).toMatch(/!hideSuggest|hideSuggest.*false/s);
+  });
+
+  test("does not have buttonPosition prop (AI button always in label row)", () => {
+    expect(textSrc).not.toMatch(/buttonPosition/);
   });
 });
 

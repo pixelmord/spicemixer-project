@@ -88,11 +88,8 @@ describe("RecipeForm — TextareaField / TextField for translatable text fields"
     expect(src).toMatch(/TextareaField[^/]*splitView|TextField[^/]*splitView/s);
   });
 
-  test("name field uses TextField with buttonPosition=inline (suggest button beside the input)", () => {
-    // name has a non-standard layout: suggest button is inline with the input, not in the label row.
-    expect(src).toMatch(
-      /TextField[^>]*buttonPosition="inline"|buttonPosition="inline"[^>]*TextField/s,
-    );
+  test("name field uses TextField with suggestionPath (AI button in label row, consistent layout)", () => {
+    expect(src).toMatch(/TextField[^>]*suggestionPath="name"|suggestionPath="name"[^>]*TextField/s);
   });
 });
 

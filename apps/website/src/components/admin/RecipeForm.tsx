@@ -1267,7 +1267,6 @@ export default function RecipeForm({
                         label="Name *"
                         placeholder="Ras el Hanout"
                         suggestionPath="name"
-                        buttonPosition="inline"
                         splitView={splitView}
                         siblingValue={siblingData?.data["name"]}
                         siblingLocale={siblingLocale}
