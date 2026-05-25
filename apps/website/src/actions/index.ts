@@ -324,7 +324,7 @@ export const server = {
   /** Fetch a single content item + its meta (if applicable). */
   getItem: defineAction({
     input: z.object({
-      collection: z.enum(["recipes", "mixtures", "ingredients", "meta"]),
+      collection: z.enum(["recipes", "mixtures", "ingredients", "meta", "pairings"]),
       id: z.string(),
     }),
     handler: async ({ collection, id }) => {
