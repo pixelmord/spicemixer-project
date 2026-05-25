@@ -53,8 +53,10 @@
   "devDependencies": {
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
+    "@vitejs/plugin-react": "^5.2.0",
     "devalue": "^5.8.0",
-    "pagefind": "catalog:"
+    "pagefind": "catalog:",
+    "vitest-browser-react": "^2.2.0"
   },
   "engines": {
     "node": ">=22.12.0"

@@ -74,19 +74,3 @@ describe("AiImportPage uses CapabilityLabel", () => {
     expect(src).toMatch(/<CapabilityLabel/);
   });
 });
-
-describe("PairingSuggestionPanel uses CapabilityLabel", () => {
-  let src: string;
-
-  beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "PairingSuggestionPanel.tsx"), "utf-8");
-  });
-
-  test("imports CapabilityLabel", () => {
-    expect(src).toMatch(/import.*CapabilityLabel.*from.*CapabilityLabel/);
-  });
-
-  test("renders CapabilityLabel when an op is loading", () => {
-    expect(src).toMatch(/<CapabilityLabel/);
-  });
-});

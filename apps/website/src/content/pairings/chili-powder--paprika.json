@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "chili-powder"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "paprika"
+    }
+  ],
+  "description": "Paprika adds a sweet and smoky flavor that harmonizes with the heat of chili powder, making it perfect for seasoning meats and vegetables."
+}

@@ -1,3 +1,98 @@
 {
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "aiEvents": [
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "42148668067b",
+        "summary": "Pairing auto-applied: chili-powder ↔ berbere"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "86696ee9-f343-4807-b1fd-7c97567b2a3f",
+      "id": "f73c92c8-d44e-4943-be64-fdcdadf7529a",
+      "at": "2026-05-25T22:03:33.691Z"
+    },
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "f753f8033058",
+        "summary": "Pairing auto-applied: chili-powder ↔ harissa"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "86696ee9-f343-4807-b1fd-7c97567b2a3f",
+      "id": "4b313ca5-04a8-4abf-8db7-9df234dc160f",
+      "at": "2026-05-25T22:03:33.694Z"
+    },
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "b39c7a047d91",
+        "summary": "Pairing auto-applied: chili-powder ↔ cumin"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "86696ee9-f343-4807-b1fd-7c97567b2a3f",
+      "id": "908f2220-b87f-49c5-afdd-1905130e4ae3",
+      "at": "2026-05-25T22:03:33.695Z"
+    },
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "1e2941ba9d27",
+        "summary": "Pairing auto-applied: chili-powder ↔ paprika"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "bb436eef-5b6d-4153-b6d1-6df7c8f77968",
+      "id": "0790806e-1790-4308-83fa-3f1adb605cc3",
+      "at": "2026-05-25T22:08:10.379Z"
+    },
+    {
+      "type": "accepted",
+      "field": "culinaryUse",
+      "suggestion": {
+        "hash": "culinaryUse-0",
+        "summary": "AI suggestion for culinaryUse"
+      },
+      "at": "2026-05-25T22:14:07.004Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "4385e7e1-1230-4a75-9a72-51c978718b75"
+    },
+    {
+      "type": "accepted",
+      "field": "medicinalUses",
+      "suggestion": {
+        "hash": "medicinalUses-0",
+        "summary": "AI suggestion for medicinalUses"
+      },
+      "at": "2026-05-25T22:14:36.752Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "legacy",
+      "id": "3fa7046a-81b6-4ef0-870f-528d8b98555e"
+    },
+    {
+      "type": "accepted",
+      "field": "seasonality",
+      "suggestion": {
+        "hash": "08b2208d5291",
+        "summary": "seasonality: Chili powder is typically available year-round, as it is made from dried chilies"
+      },
+      "at": "2026-05-25T22:22:12.842Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "b66de55b-57cb-46f4-b12e-ef62e3cabef1",
+      "id": "71768daa-6079-4122-b7cd-fa5165a4940d"
+    }
+  ],
+  "draft": false,
+  "canonicalContentHash": "b7c3d79144531120"
 }

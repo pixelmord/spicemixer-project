@@ -16,7 +16,7 @@ describe("IngredientForm — useAiSuggestions orchestration", () => {
   let src: string;
 
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "IngredientForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "ingredient", "IngredientForm.tsx"), "utf-8");
   });
 
   test("imports useAiSuggestions", () => {
@@ -39,14 +39,8 @@ describe("IngredientForm — useAiSuggestions orchestration", () => {
     expect(src).toMatch(/<SuggestionFlowProvider/);
   });
 
-  test("uses TextField with suggestionPath for summary (InlineFieldSuggestion delegated to field component)", () => {
-    // InlineFieldSuggestion is now internal to TextField; the form passes suggestionPath.
-    expect(src).toMatch(/suggestionPath="summary"/);
-  });
-
-  test("uses TextareaField with suggestionPath for description (InlineFieldSuggestion delegated to field component)", () => {
-    expect(src).toMatch(/suggestionPath="description"/);
-  });
+  // suggestionPath="summary" / suggestionPath="description" now live in
+  // forms/ingredient/sections/BasicInfoSection.tsx — covered by section tests.
 
   test("handleManualRefresh delegates to aiFlow.run()", () => {
     expect(src).toMatch(/aiFlow\.run\(\)/);
@@ -72,19 +66,19 @@ describe("IngredientForm — useAiSuggestions orchestration", () => {
   });
 });
 
-describe("IngredientForm — PairingSuggestionPanel callsite", () => {
+describe("IngredientForm — PairingsSection integration", () => {
   let src: string;
 
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "IngredientForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "ingredient", "IngredientForm.tsx"), "utf-8");
   });
 
-  test("imports PairingSuggestionPanel", () => {
-    expect(src).toMatch(/import.*PairingSuggestionPanel.*from.*PairingSuggestionPanel/);
+  test("does not import the legacy PairingSuggestionPanel", () => {
+    expect(src).not.toMatch(/PairingSuggestionPanel/);
   });
 
-  test("mounts PairingSuggestionPanel", () => {
-    expect(src).toMatch(/<PairingSuggestionPanel/);
+  test("mounts PairingsSection", () => {
+    expect(src).toMatch(/<PairingsSection/);
   });
 
   test("does not reference AiAssistPanel", () => {

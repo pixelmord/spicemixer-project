@@ -35,12 +35,17 @@ describe("CompletenessPanel — AI props stripped", () => {
 });
 
 describe("Form callsites — no AI props passed to CompletenessPanel", () => {
-  for (const formFile of ["RecipeForm.tsx", "IngredientForm.tsx", "PairingForm.tsx"]) {
-    describe(formFile, () => {
+  const formFiles: Array<[label: string, path: string[]]> = [
+    ["RecipeForm.tsx", ["RecipeForm.tsx"]],
+    ["IngredientForm.tsx", ["forms", "ingredient", "IngredientForm.tsx"]],
+    ["PairingForm.tsx", ["PairingForm.tsx"]],
+  ];
+  for (const [formLabel, segments] of formFiles) {
+    describe(formLabel, () => {
       let src: string;
 
       beforeAll(async () => {
-        src = await readFile(join(COMPONENTS, formFile), "utf-8");
+        src = await readFile(join(COMPONENTS, ...segments), "utf-8");
       });
 
       for (const prop of AI_PROPS) {

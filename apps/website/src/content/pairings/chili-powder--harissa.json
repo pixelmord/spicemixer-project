@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "chili-powder"
+    },
+    {
+      "collection": "mixtures",
+      "slug": "harissa"
+    }
+  ],
+  "description": "Chili powder's smoky, earthy notes complement the aromatic blend of spices in harissa, enhancing its depth in Mediterranean dishes."
+}

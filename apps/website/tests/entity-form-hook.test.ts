@@ -76,7 +76,7 @@ describe("IngredientForm — binds useEntityFormState", () => {
   let src: string;
 
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "IngredientForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "ingredient", "IngredientForm.tsx"), "utf-8");
   });
 
   test("imports useEntityFormState", () => {

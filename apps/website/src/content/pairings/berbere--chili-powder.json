@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "mixtures",
+      "slug": "berbere"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "chili-powder"
+    }
+  ],
+  "description": "Both chili powder and berbere have complex flavors featuring heat and depth, making them a great match for spicy stews and grilled meats."
+}

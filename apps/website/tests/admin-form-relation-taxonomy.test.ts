@@ -92,7 +92,7 @@ describe("RecipeForm — read-only featured pairings section", () => {
 describe("IngredientForm — PairingEditor removal", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "IngredientForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "ingredient", "IngredientForm.tsx"), "utf-8");
   });
 
   test("no longer imports PairingEditor", () => {
@@ -112,25 +112,29 @@ describe("IngredientForm — PairingEditor removal", () => {
   });
 });
 
-describe("IngredientForm — CreatePairingDialog wiring", () => {
+// CreatePairingDialog and pendingPairingDialog state moved into
+// forms/_shared/PairingsSection.tsx. The orchestrator now only mounts
+// <PairingsSection> and passes the create handler down.
+
+describe("IngredientForm — PairingsSection integration", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "IngredientForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "ingredient", "IngredientForm.tsx"), "utf-8");
   });
 
-  test("imports CreatePairingDialog", () => {
-    expect(src).toMatch(/CreatePairingDialog/);
+  test("mounts the shared PairingsSection", () => {
+    expect(src).toMatch(/<PairingsSection/);
   });
 
-  test("has state for pending pairing dialog", () => {
-    expect(src).toMatch(/pendingPairingDialog/);
+  test("passes the create-pairing handler to PairingsSection", () => {
+    expect(src).toMatch(/onCreatePairing=\{handleCreatePairing\}/);
   });
 });
 
 describe("IngredientForm — read-only featured pairings section", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "IngredientForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "ingredient", "IngredientForm.tsx"), "utf-8");
   });
 
   test("calls listPairingsFor to load pairings", () => {

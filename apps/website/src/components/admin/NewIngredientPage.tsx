@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import IngredientForm from "./IngredientForm.tsx";
+import IngredientForm from "./forms/ingredient/IngredientForm.tsx";
 
 interface Props {
   locale: "en" | "de";

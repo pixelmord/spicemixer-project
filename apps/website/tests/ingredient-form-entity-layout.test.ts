@@ -12,7 +12,7 @@ describe("IngredientForm — EntityFormLayout migration", () => {
   let src: string;
 
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "IngredientForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "ingredient", "IngredientForm.tsx"), "utf-8");
   });
 
   // ── Old scaffolding removed ──────────────────────────────────────────────
@@ -58,9 +58,11 @@ describe("IngredientForm — EntityFormLayout migration", () => {
   });
 
   // ── Sibling data fetch ───────────────────────────────────────────────────
+  // Encapsulated in the useSiblingEntity hook (forms moved off the inline
+  // useEffect + getSiblingEntity call).
 
-  test("imports getSiblingEntity", () => {
-    expect(src).toMatch(/getSiblingEntity/);
+  test("uses the useSiblingEntity hook", () => {
+    expect(src).toMatch(/useSiblingEntity/);
   });
 
   // ── AI bulk buttons in subHeaderStrip ───────────────────────────────────
@@ -93,37 +95,28 @@ describe("IngredientForm — EntityFormLayout migration", () => {
     expect(src).not.toMatch(/^import.*AiFieldTranslateButton/m);
   });
 
-  // ── Direct translatable fields ───────────────────────────────────────────
+  // ── Section components ──────────────────────────────────────────────────
+  // Per-field JSX moved into forms/ingredient/sections/*. The orchestrator
+  // now imports + composes section components rather than rendering each
+  // field inline.
 
-  // "name" uses TextField with hideSuggest (translate-only, no AI suggest button)
-  test(`uses TextField with hideSuggest for "name" field`, () => {
-    expect(src).toMatch(/TextField[^>]*hideSuggest|hideSuggest[^>]*TextField/s);
+  test("imports BasicInfoSection", () => {
+    expect(src).toMatch(/BasicInfoSection/);
   });
 
-  // summary, description, seasonality now delegate to field components
-  test("uses TextField for summary (no longer raw FieldWithSibling)", () => {
-    expect(src).toMatch(
-      /<TextField[^>]*suggestionPath="summary"|suggestionPath="summary"[^>]*TextField/s,
-    );
+  test("imports TaxonomySection", () => {
+    expect(src).toMatch(/TaxonomySection/);
   });
 
-  test("uses TextareaField for description (no longer raw FieldWithSibling)", () => {
-    expect(src).toMatch(
-      /<TextareaField[^>]*suggestionPath="description"|suggestionPath="description"[^>]*TextareaField/s,
-    );
+  test("imports LongformSection", () => {
+    expect(src).toMatch(/LongformSection/);
   });
 
-  test("uses TextField for seasonality (no longer raw FieldWithSibling)", () => {
-    expect(src).toMatch(
-      /<TextField[^>]*suggestionPath="seasonality"|suggestionPath="seasonality"[^>]*TextField/s,
-    );
+  test("imports OriginFlavorSection", () => {
+    expect(src).toMatch(/OriginFlavorSection/);
   });
 
-  test("TextField/TextareaField receive splitView prop", () => {
-    expect(src).toMatch(/TextareaField[^/]*splitView|TextField[^/]*splitView/s);
-  });
-
-  // Longform fields are rendered via LONGFORM_SECTIONS loop with fieldKey={key}
+  // Translation contract stays in the orchestrator's AI_CONTRACT.
   const longformFields = [
     "culinaryUse",
     "medicinalUses",
@@ -133,20 +126,6 @@ describe("IngredientForm — EntityFormLayout migration", () => {
     "storage",
     "sourcing",
   ];
-
-  test("longform fields declared in LONGFORM_SECTIONS with all translatable keys", () => {
-    for (const field of longformFields) {
-      expect(src).toMatch(new RegExp(`key:\\s*"${field}"`));
-    }
-  });
-
-  test("longform section renders TextareaField via LONGFORM_SECTIONS.map", () => {
-    // Longform fields are rendered via a loop — TextareaField now replaces FieldWithSibling+Textarea.
-    expect(src).toMatch(/LONGFORM_SECTIONS\.map/);
-    expect(src).toMatch(/<TextareaField/);
-  });
-
-  // All 11 combined for contract completeness
   const directTranslatableFields = ["name", "summary", "description", "seasonality"];
   const translatableFields = [...directTranslatableFields, ...longformFields];
 
@@ -169,14 +148,13 @@ describe("IngredientForm — EntityFormLayout migration", () => {
     expect(src).toMatch(/onFill:/);
   });
 
-  // ── PairingSuggestionPanel conditioned on !splitView ────────────────────
+  // ── Pairings section ────────────────────────────────────────────────────
 
-  test("PairingSuggestionPanel is conditionally rendered based on splitView", () => {
-    // Find the JSX usage (not the import). Look for the component rendered in JSX.
-    const jsxIdx = src.indexOf("<PairingSuggestionPanel");
-    expect(jsxIdx).toBeGreaterThan(-1);
-    // The nearby context should reference splitView to gate the render
-    const surrounding = src.slice(Math.max(0, jsxIdx - 400), jsxIdx + 200);
-    expect(surrounding).toMatch(/splitView/);
+  test("renders the shared PairingsSection component", () => {
+    expect(src).toMatch(/<PairingsSection/);
+  });
+
+  test("no longer references the legacy PairingSuggestionPanel", () => {
+    expect(src).not.toMatch(/PairingSuggestionPanel/);
   });
 });
