@@ -1,0 +1,20 @@
+{
+  "draft": false,
+  "canonicalLocale": "de",
+  "canonicalContentHash": "1fe5735434560dbc",
+  "aiEvents": [
+    {
+      "type": "accepted",
+      "field": "healthBenefits",
+      "suggestion": {
+        "hash": "04aebc1c8315",
+        "summary": "healthBenefits: Kardamom ist nicht nur für sein einzigartiges Geschmacksprofil geschätzt, sonder"
+      },
+      "at": "2026-05-25T09:39:24.233Z",
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "0273c766-c881-423a-b01a-ba94b9eac657",
+      "id": "85c73728-727e-4afa-a1d6-9e34ebfdfffa"
+    }
+  ]
+}

@@ -1,9 +1,19 @@
 {
   "name": "Kardamom",
-  "summary": "Eines der vielseitigsten Gewürze der Welt — süß, kampferartig und blumig. Zu Hause in Chai, Kaffee, Biryanis und skandinavischem Gebäck.",
-  "description": "Grüne Kardamomkapseln enthalten winzige schwarze Samen mit einem wärmenden, eukalyptusartigen Duft. Immer ganze Kapseln kaufen und frisch aufbrechen — gemahlener Kardamom verliert sein Aroma innerhalb weniger Wochen. Schwarzer Kardamom (eine andere Art) ist rauchiger und wird vor allem in herzhaften Gerichten verwendet. Kardamom lebt von der Spannung zwischen seiner Süße und seiner kühlenden, fast mentholähnlichen Qualität — das macht ihn in süßen wie herzhaften Gerichten gleich wertvoll.",
   "category": "spice",
   "origin": ["Guatemala", "Indien", "Sri Lanka"],
   "flavorNotes": ["blumig", "kampferartig", "warm", "zitrusartig"],
-  "images": ["https://images.unsplash.com/photo-1607189117789-2f40f68e96e5?w=800&q=80"]
+  "summary": "Eines der vielseitigsten Gewürze der Welt — süß, kampferartig und blumig. Zu Hause in Chai, Kaffee, Biryanis und skandinavischem Gebäck.",
+  "description": "Grüne Kardamomkapseln enthalten winzige schwarze Samen mit einem wärmenden, eukalyptusartigen Duft. Immer ganze Kapseln kaufen und frisch aufbrechen — gemahlener Kardamom verliert sein Aroma innerhalb weniger Wochen. Schwarzer Kardamom (eine andere Art) ist rauchiger und wird vor allem in herzhaften Gerichten verwendet. Kardamom lebt von der Spannung zwischen seiner Süße und seiner kühlenden, fast mentholähnlichen Qualität — das macht ihn in süßen wie herzhaften Gerichten gleich wertvoll.",
+  "healthBenefits": "Kardamom ist nicht nur für sein einzigartiges Geschmacksprofil geschätzt, sondern bietet auch mehrere potenzielle Gesundheitsvorteile, die durch Forschung unterstützt werden:\n\n1. **Verdauungsgesundheit**: Kardamom wurde traditionell zur Linderung von Verdauungsproblemen verwendet. Es enthält Verbindungen, die helfen können, Blähungen, Gas und Unbehagen zu reduzieren und hat sich als appetitanregend und verdauungsfördernd erwiesen.\n\n2. **Antioxidative Eigenschaften**: Dieses Gewürz ist reich an Antioxidantien, die helfen, oxidativem Stress im Körper entgegenzuwirken. Antioxidantien sind wichtig, um freie Radikale zu neutralisieren und möglicherweise das Risiko chronischer Krankheiten zu reduzieren.\n\n3. **Entzündungshemmende Wirkungen**: Kardamom ist bekannt für seine entzündungshemmenden Eigenschaften, die bei der Behandlung entzündlicher Erkrankungen helfen können. Einige Studien legen nahe, dass es entzündliche Marker im Körper reduzieren kann.\n\n4. **Mundgesundheit**: Traditionell wurde Kardamom als Heilmittel für orale Gesundheitsprobleme eingesetzt. Seine antibakteriellen Eigenschaften können helfen, den Atem aufzufrischen und das Risiko von Karies und Zahnfleischkrankheiten zu reduzieren.\n\n5. **Atemwegsgesundheit**: Kardamom könnte sich positiv auf die Atemwegsgesundheit auswirken. Es wurde in der traditionellen Medizin verwendet, um Husten und Bronchitis zu lindern, und einige Forschungen legen nahe, dass es auch asthmatische Symptome verbessern könnte.\n\n6. **Blutzuckerregulation**: Vorläufige Studien deuten darauf hin, dass Kardamom einen positiven Einfluss auf den Blutzuckerspiegel haben könnte, was ihn potenziell vorteilhaft für Menschen mit Diabetes oder für diejenigen macht, die stabile Blutzuckerwerte aufrechterhalten möchten.\n\n7. **Stimmungsaufheller**: Historisch wurde Kardamom mit Stimmungsaufhellung in Verbindung gebracht, da es aromatische Eigenschaften besitzt. Einige Forschungen legen nahe, dass es antidepressiv wirken und zur allgemeinen mentalen Gesundheit beitragen kann.\n\nWenn Sie Kardamom in die Ernährung integrieren, ist es wichtig, dies im Rahmen eines ausgewogenen Ernährungsansatzes zu tun und die individuellen Gesundheitsbedürfnisse zu berücksichtigen.",
+  "images": ["https://live.staticflickr.com/3728/12856625505_a95491b62e_b.jpg"],
+  "imageAttribution": {
+    "source": "flickr",
+    "sourceUrl": "https://www.flickr.com/photos/59077316@N06/12856625505",
+    "creator": "Glassholic",
+    "creatorUrl": "https://www.flickr.com/photos/59077316@N06",
+    "license": "by-nc-nd",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-nd/2.0/",
+    "attribution": "\"Cardamome - Elettaria cardamomum\" by Glassholic is licensed under CC BY-NC-ND 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-nd/2.0/."
+  }
 }
