@@ -1,7 +1,7 @@
+/// <reference types="vite-plus/test/globals" />
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { beforeAll, describe, expect, test } from "vite-plus/test";
 
 const REGISTRY_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const PUBLIC = join(REGISTRY_ROOT, "public");

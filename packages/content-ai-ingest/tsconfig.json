@@ -1,5 +1,10 @@
 {
   "compilerOptions": {
+    "paths": {
+      "@pixelmord/content-ai-core": ["../content-ai-core/src/index.ts"],
+      "@pixelmord/content-ai-core/server": ["../content-ai-core/src/server.ts"],
+      "@pixelmord/content-ai-core/testing": ["../content-ai-core/src/testing/index.ts"]
+    },
     "target": "esnext",
     "lib": ["es2023"],
     "moduleDetection": "force",

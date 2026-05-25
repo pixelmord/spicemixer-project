@@ -37,6 +37,7 @@ export default defineConfig({
           name: "node",
           include: ["tests/**/*.test.ts"],
           environment: "node",
+          globals: true,
         },
       },
     ],

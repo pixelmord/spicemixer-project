@@ -8,9 +8,7 @@ export default defineConfig({
       "presentation/index": "src/presentation/index.ts",
       "testing/index": "src/testing/index.ts",
     },
-    dts: {
-      tsgo: true,
-    },
+    dts: true,
     exports: true,
   },
   lint: {
