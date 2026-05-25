@@ -299,6 +299,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.12.2
+      devalue:
+        specifier: ^5.8.0
+        version: 5.8.0
       pagefind:
         specifier: 'catalog:'
         version: 1.5.2
@@ -3162,9 +3165,6 @@ packages:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
 
-  devalue@5.7.1:
-    resolution: {integrity: sha512-MUbZ586EgQqdRnC4yDrlod3BEdyvE4TapGYHMW2CiaW+KkkFmWEFqBUaLltEZCGi0iFXCEjRF0OjF0DV2QHjOA==}
-
   devalue@5.8.0:
     resolution: {integrity: sha512-2zA9pFEsnp7vWBZbXF5JAgAq0fsUIt/1XPbRiAmRV3lp/2C3upzH+sADiyy66aFCihoLEsrQHxNM5w1gIDfsBg==}
 
@@ -5488,7 +5488,7 @@ snapshots:
       '@types/react': 19.2.14
       '@types/react-dom': 19.2.3(@types/react@19.2.14)
       '@vitejs/plugin-react': 5.2.0(@voidzero-dev/vite-plus-core@0.1.22(@types/node@24.12.2)(esbuild@0.27.7)(jiti@2.6.1)(typescript@6.0.3)(yaml@2.9.0))
-      devalue: 5.7.1
+      devalue: 5.8.0
       react: 19.2.5
       react-dom: 19.2.5(react@19.2.5)
       ultrahtml: 1.6.0
@@ -8140,8 +8140,6 @@ snapshots:
   detect-indent@6.1.0: {}
 
   detect-libc@2.1.2: {}
-
-  devalue@5.7.1: {}
 
   devalue@5.8.0: {}
 

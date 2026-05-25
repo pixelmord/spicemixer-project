@@ -52,6 +52,7 @@
   "devDependencies": {
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
+    "devalue": "^5.8.0",
     "pagefind": "catalog:"
   },
   "engines": {
