@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "cumin"
+    },
+    {
+      "collection": "ingredients",
+      "slug": "sumac"
+    }
+  ],
+  "description": "This pairing melds the earthy warmth of cumin with the zesty brightness of sumac, creating a harmonious balance that elevates dishes. The aromatic depth of cumin complements the sharp acidity of sumac, while together they offer a textural contrast that enhances both the flavors and the overall experience of North African and Levantine cuisine."
+}

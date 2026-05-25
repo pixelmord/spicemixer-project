@@ -21,46 +21,46 @@
   "canonicalLocale": "en",
   "aiSuggestions": {
     "fingerprint": "b231f92fa723a472607ea3ff2e29a6bef225fddf57b56ffdaca9c08cbcaedf92",
-    "at": "2026-05-21T18:52:52.609Z",
+    "at": "2026-05-24T22:23:34.183Z",
     "model": "gpt-4o-mini",
     "data": {
       "improvements": [],
       "tags": [
         "dark-chocolate",
-        "rye-cookies",
+        "rye-flour",
         "scandinavian-dessert",
         "chewy-cookies",
+        "malt-flavor",
         "baking",
-        "gourmet-treats",
         "sweet-treats",
-        "muscovado-sugar"
+        "dessert-recipes"
       ],
       "ingredientLinks": [],
       "relations": [],
       "pairings": [
         {
           "otherCollection": "ingredients",
-          "otherSlug": "caraway",
-          "rationale": "Caraway seeds have a warm, slightly sweet and anise-like flavor that complements the deep chocolate and malty notes of the rye cookies, enhancing their complexity.",
-          "traceId": "10e2390b-72f9-4228-aaaf-05eea50d6d8d"
+          "otherSlug": "cardamom",
+          "rationale": "Cardamom's warm, aromatic qualities complement the rich chocolate in the cookies, enhancing their depth and adding a layer of exotic flavor that resonates with Scandinavian culinary traditions.",
+          "traceId": "8f474497-7e59-4a25-878f-cfc33c18050f"
         },
         {
           "otherCollection": "ingredients",
-          "otherSlug": "cardamom",
-          "rationale": "Cardamom brings a floral and spicy note that pairs well with the richness of chocolate and adds an aromatic element to the cookies, echoing Scandinavian flavor profiles.",
-          "traceId": "10e2390b-72f9-4228-aaaf-05eea50d6d8d"
+          "otherSlug": "caraway",
+          "rationale": "Caraway's nutty and slightly sweet notes echo the malty flavor of rye flour, creating a harmonious pairing that elevates the cookies' complex flavors.",
+          "traceId": "8f474497-7e59-4a25-878f-cfc33c18050f"
         },
         {
           "otherCollection": "mixtures",
           "otherSlug": "dukka",
-          "rationale": "Dukkah's mixture of nuts, seeds, and spices adds a crunchy contrast and earthy flavor that enhances the deep chocolate in the cookies, making for an intriguing flavor experience.",
-          "traceId": "10e2390b-72f9-4228-aaaf-05eea50d6d8d"
+          "rationale": "Dukkah's blend of nuts and spices introduces crunchy textures and a savory element that balances the sweetness of the dark chocolate, making for an intriguing contrast.",
+          "traceId": "8f474497-7e59-4a25-878f-cfc33c18050f"
         },
         {
           "otherCollection": "recipes",
           "otherSlug": "preserved-lemon-couscous",
-          "rationale": "The bright acidity of preserved lemon couscous can create a refreshing contrast to the rich, chewy cookies, offering a balanced dessert experience.",
-          "traceId": "10e2390b-72f9-4228-aaaf-05eea50d6d8d"
+          "rationale": "The bright acidity of preserved lemon couscous serves as a refreshing counterpart to the rich and dense cookies, providing a delightful palate cleanser after each bite.",
+          "traceId": "8f474497-7e59-4a25-878f-cfc33c18050f"
         }
       ]
     }

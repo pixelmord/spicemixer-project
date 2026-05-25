@@ -1,7 +1,7 @@
 {
   "draft": false,
   "region": ["east-asia"],
-  "tags": [],
+  "tags": ["quick-recipe", "japanese-cuisine", "easy-dinner"],
   "ingredientLinks": [],
   "externalSources": [],
   "variants": [],
@@ -9,5 +9,52 @@
   "language": "en",
   "locale": "en",
   "kind": "recipe",
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "aiSuggestions": {
+    "fingerprint": "361e3e945db3958f06190dfe13393a5ee4e6128a481194fe45a53a063fa36a97",
+    "at": "2026-05-24T20:39:47.201Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [
+        "miso-butter-ramen",
+        "quick-recipe",
+        "japanese-cuisine",
+        "30-minute-meal",
+        "comfort-food",
+        "pantry-ingredients",
+        "easy-dinner",
+        "vegetarian"
+      ],
+      "ingredientLinks": [],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "preserved-lemon-couscous",
+          "rationale": "The bright acidity of preserved lemon couscous complements the rich and savory miso-butter broth, offering a refreshing contrast that enhances the overall meal experience.",
+          "traceId": "03f09878-87d1-4fc1-b5bd-ed9e61f0fd1d"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "dukkah",
+          "rationale": "Adding dukkah to the miso butter ramen introduces a nutty crunch and aromatic spices that elevate the dish's texture and flavor complexity.",
+          "traceId": "03f09878-87d1-4fc1-b5bd-ed9e61f0fd1d"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "chili-powder",
+          "rationale": "A sprinkle of chili powder can add a gentle heat to the ramen, balancing the creamy miso-butter with a bit of spice to enhance its depth.",
+          "traceId": "03f09878-87d1-4fc1-b5bd-ed9e61f0fd1d"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cardamom",
+          "rationale": "Cardamom's subtle sweetness and warmth can enrich the umami flavors of the broth, providing an intriguing flavor layer that complements the dish.",
+          "traceId": "03f09878-87d1-4fc1-b5bd-ed9e61f0fd1d"
+        }
+      ]
+    }
+  },
+  "canonicalContentHash": "be9433e57a941fc3"
 }

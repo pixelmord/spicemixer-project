@@ -1,4 +1,8 @@
 {
   "canonicalLocale": "de",
-  "featured": true
+  "featured": true,
+  "translations": {
+    "en": "en/cumin--sumac"
+  },
+  "draft": false
 }
