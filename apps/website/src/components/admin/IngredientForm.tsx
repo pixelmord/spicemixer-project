@@ -3,8 +3,6 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
 import { Sparkles, Check, Trash2, ExternalLink } from "lucide-react";
-
-const ARRAY_SUGGESTION_FIELDS = new Set(["origin", "flavorNotes"]);
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import {
@@ -101,20 +99,14 @@ type PairingProposal = {
 };
 
 function adaptIngredientImprovementsToRunResult(
-  improvements: Array<{ field: string; suggestion: string; rationale: string }>,
+  improvements: Array<{ field: string; suggestion: unknown; rationale: string }>,
 ): RunResult {
   const suggestions: Record<string, FieldSuggestion> = {};
   let counter = 0;
   for (const imp of improvements) {
-    const value = ARRAY_SUGGESTION_FIELDS.has(imp.field)
-      ? imp.suggestion
-          .split(/[,;]\s*/)
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : imp.suggestion;
     suggestions[imp.field] = {
       kind: "single",
-      value,
+      value: imp.suggestion,
       confidence: "medium",
       summary: imp.rationale,
       hash: `${imp.field}-${counter++}`,
@@ -493,35 +485,6 @@ export default function IngredientForm({
     contract: AI_CONTRACT,
     onRefine: async (params) => {
       const snap = buildIngredientSnapshot();
-
-      // Array fields (origin, flavorNotes) have a dedicated endpoint that understands
-      // the ingredient's category/context. Route per-field array targets there.
-      if (params.target && params.target.every((f) => ARRAY_SUGGESTION_FIELDS.has(f))) {
-        const fieldName = params.target[0];
-        try {
-          const { data: result, error } = await actions.aiProposeIngredientImprovements({
-            ingredient: {
-              name: formValues.name,
-              category: formValues.category,
-              ...(fieldName === "origin"
-                ? { flavorNotes: snap.flavorNotes as string[] }
-                : { origin: snap.origin as string[] }),
-            },
-            missingFields: [fieldName],
-          });
-          if (error) throw new Error(error.message);
-          const fields = result?.fields as Array<{ field: string; suggestion: string }> | undefined;
-          const fieldResult = fields?.find((f) => f.field === fieldName);
-          if (!fieldResult) return { suggestions: {}, autoApplied: {}, traces: {} };
-          return adaptIngredientImprovementsToRunResult([
-            { field: fieldName, suggestion: fieldResult.suggestion, rationale: "" },
-          ]);
-        } catch (e) {
-          toast.error(`AI suggest failed: ${e instanceof Error ? e.message : String(e)}`);
-          return { suggestions: {}, autoApplied: {}, traces: {} };
-        }
-      }
-
       // Per-field run: use params.target directly.
       // Full refresh: derive missing keys from recommended field completeness.
       const missingKeys =

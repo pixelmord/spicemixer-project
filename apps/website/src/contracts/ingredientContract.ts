@@ -71,6 +71,9 @@ Rules:
   writePolicy: "replace",
 });
 
+// Array string output for tag-like fields (origin, flavorNotes).
+const stringArrayOutputSchema = z.array(z.string());
+
 // Pairing proposals field — each item seeds a new Pairing entity on accept.
 // confidence is retained here (not surfaced to UI) so the runner can auto-apply high-confidence items.
 const pairingsOutputSchema = z.array(
@@ -106,6 +109,45 @@ export const ingredientContract: AiContract<IngredientSchema, IngredientRefineCo
       "Describe how to source and select high-quality versions of this ingredient.",
     ),
     seasonality: textFieldConfig("Describe the seasonal availability of this ingredient."),
+
+    // Geographic origins (string[]) — typically untranslated proper nouns.
+    origin: {
+      systemPrompt: ({ currentData }) => {
+        const ctx = buildIngredientCtx(currentData);
+        return `You are a culinary geographer. Suggest 1–5 primary geographic origin regions for this ingredient (countries or distinctive regions), favoring the most authoritative or historically associated areas.
+
+Ingredient context:
+${ctx}
+
+Rules:
+- Return concise place names (e.g. "Iran", "Guatemala", "Sichuan").
+- Prefer the historically/agriculturally dominant origins; do not over-list.
+- Do not include continents unless that is the most specific accurate level.`;
+      },
+      outputSchema: stringArrayOutputSchema,
+      autoApply: { policy: "never" },
+      translation: { mode: "copy" },
+    },
+
+    // Flavor descriptors (string[]) — localizable adjectives.
+    flavorNotes: {
+      systemPrompt: ({ currentData }) => {
+        const ctx = buildIngredientCtx(currentData);
+        return `Suggest 3–7 concise flavor descriptors for this ingredient.
+
+Ingredient context:
+${ctx}
+
+Rules:
+- Lowercase single words or short hyphenated phrases (e.g. "floral", "earthy", "warm", "citrus-peel").
+- Cover the dominant tasting notes a cook would notice.
+- No duplicates, no generic words like "tasty" or "good".`;
+      },
+      outputSchema: stringArrayOutputSchema,
+      autoApply: { policy: "never" },
+      translation: { mode: "localize" },
+    },
+
     // Language detection — replaces detectLanguage for ingredients
     language: {
       systemPrompt: ({ currentData }) => {
