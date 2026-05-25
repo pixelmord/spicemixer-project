@@ -157,7 +157,7 @@
       "name": "capability-label",
       "type": "registry:ui",
       "title": "CapabilityLabel",
-      "description": "In-flight action label e.g. \"Proposing tags…\" with spinner.",
+      "description": "In-flight action label e.g. \"Proposing tags\u2026\" with spinner.",
       "dependencies": ["lucide-react"],
       "files": [
         {
@@ -183,7 +183,7 @@
       "name": "suggestion-trace-info",
       "type": "registry:ui",
       "title": "SuggestionTraceInfo",
-      "description": "Popover showing TraceSummary scalars only — no payloads (ADR 0011).",
+      "description": "Popover showing TraceSummary scalars only \u2014 no payloads (ADR 0011).",
       "dependencies": ["lucide-react"],
       "files": [
         {
@@ -255,29 +255,10 @@
       ]
     },
     {
-      "name": "suggestions-options",
-      "type": "registry:block",
-      "title": "SuggestionsOptions",
-      "description": "Options panel composing PresetPicker, UserPromptField, and WritePolicyPicker with a Run button. Reads run state from SuggestionFlowProvider context. Pass showRunButton={false} when embedding inside IngestDialog.",
-      "registryDependencies": [
-        "use-ai-suggestions",
-        "suggestion-flow-provider",
-        "preset-picker",
-        "user-prompt-field",
-        "write-policy-picker"
-      ],
-      "files": [
-        {
-          "path": "components/ui/suggestions-options.tsx",
-          "type": "registry:block"
-        }
-      ]
-    },
-    {
       "name": "file-text-prompt-source-picker",
       "type": "registry:block",
       "title": "FileTextPromptSourcePicker",
-      "description": "Tabbed three-way source input (file / text / prompt) that emits a controlled { kind, …payload } union. Reference block for IngestDialog source selection.",
+      "description": "Tabbed three-way source input (file / text / prompt) that emits a controlled { kind, \u2026payload } union. Reference block for IngestDialog source selection.",
       "dependencies": ["lucide-react"],
       "registryDependencies": ["file-input", "text-area-source", "prompt-input-source"],
       "files": [
@@ -302,24 +283,6 @@
       "files": [
         {
           "path": "components/ui/ingest-dialog.tsx",
-          "type": "registry:block"
-        }
-      ]
-    },
-    {
-      "name": "ai-suggestions-indicator",
-      "type": "registry:block",
-      "title": "AiSuggestionsIndicator",
-      "description": "Small widget showing idle / running / has-suggestions / mixed-auto-applied-with-review states with a counter (N auto-applied · M to review) and an Options affordance that opens SuggestionsOptions.",
-      "dependencies": ["lucide-react"],
-      "registryDependencies": [
-        "use-ai-suggestions",
-        "suggestion-flow-provider",
-        "suggestions-options"
-      ],
-      "files": [
-        {
-          "path": "components/ui/ai-suggestions-indicator.tsx",
           "type": "registry:block"
         }
       ]
@@ -398,6 +361,66 @@
       "files": [
         {
           "path": "components/ui/create-pairing-dialog.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "ai-bulk-suggest-button",
+      "type": "registry:block",
+      "title": "AiBulkSuggestButton",
+      "description": "Single button for bulk AI suggestions. States: idle, running, has-pending (Accept all N). Calls flow.run() / flow.acceptAll().",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": ["use-ai-suggestions", "suggestion-flow-provider"],
+      "files": [
+        {
+          "path": "components/ui/ai-bulk-suggest-button.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "ai-bulk-translate-button",
+      "type": "registry:block",
+      "title": "AiBulkTranslateButton",
+      "description": "Split combo for bulk translation. CTA label reflects spicemixer.bulkTranslateWritePolicy (fill-gaps | replace-all). Persists policy to localStorage. Running state disables button.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": ["use-ai-suggestions", "suggestion-flow-provider"],
+      "files": [
+        {
+          "path": "components/ui/ai-bulk-translate-button.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "ai-field-suggest-button",
+      "type": "registry:block",
+      "title": "AiFieldSuggestButton",
+      "description": "Split combo per-field AI suggest button. Primary triggers forField(name).run(). Dropdown exposes UserPromptField + Submit. Textarea resets on close.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "use-ai-suggestions",
+        "suggestion-flow-provider",
+        "user-prompt-field"
+      ],
+      "files": [
+        {
+          "path": "components/ui/ai-field-suggest-button.tsx",
+          "type": "registry:block"
+        }
+      ]
+    },
+    {
+      "name": "ai-field-translate-button",
+      "type": "registry:block",
+      "title": "AiFieldTranslateButton",
+      "description": "Split combo per-field translate button. Label is Translate from <sibling> or Copy from <sibling>. Merge with existing dropdown for translate/localize modes. Not rendered for skip fields.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": ["use-ai-suggestions", "suggestion-flow-provider"],
+      "files": [
+        {
+          "path": "components/ui/ai-field-translate-button.tsx",
           "type": "registry:block"
         }
       ]

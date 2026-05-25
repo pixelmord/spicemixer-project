@@ -4,6 +4,7 @@ import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 import {
   useAiSuggestions,
   hashFieldValue,
+  MERGE_INSTRUCTION,
   type UseAiSuggestionsInput,
 } from "../src/components/use-ai-suggestions";
 
@@ -645,5 +646,78 @@ describe("retranslate", () => {
     });
     expect(result.current.suggestions.has("tags")).toBe(true);
     expect(result.current.suggestions.has("description")).toBe(true);
+  });
+});
+
+// ── retranslate({ merge }) ────────────────────────────────────────────────────
+
+describe("retranslate merge option", () => {
+  const siblingLocale = {
+    ref: { kind: "ingredient", id: "basil-en" },
+    data: { description: "Aromatic herb", name: "Basil" },
+    locale: "en",
+    fieldHashes: {},
+  };
+
+  const contractWithTranslation = {
+    presets: [],
+    fields: {
+      description: { translation: { mode: "translate" as const } },
+      name: { translation: { mode: "copy" as const } },
+      slug: { translation: { mode: "skip" as const } },
+    },
+  };
+
+  test("merge:true passes mergeInstruction to onFill", async () => {
+    const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
+    const { result, act } = await renderHook(() =>
+      useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
+    );
+    await act(async () => {
+      await result.current.forField("description").retranslate({ merge: true });
+    });
+    expect(onFill).toHaveBeenCalledWith(
+      expect.objectContaining({ mergeInstruction: MERGE_INSTRUCTION }),
+    );
+  });
+
+  test("merge:false (default) does not pass mergeInstruction to onFill", async () => {
+    const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
+    const { result, act } = await renderHook(() =>
+      useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
+    );
+    await act(async () => {
+      await result.current.forField("description").retranslate({ merge: false });
+    });
+    const call = onFill.mock.calls[0][0] as Record<string, unknown>;
+    expect(call.mergeInstruction).toBeUndefined();
+  });
+
+  test("retranslate() with no opts does not pass mergeInstruction", async () => {
+    const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
+    const { result, act } = await renderHook(() =>
+      useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
+    );
+    await act(async () => {
+      await result.current.forField("description").retranslate();
+    });
+    const call = onFill.mock.calls[0][0] as Record<string, unknown>;
+    expect(call.mergeInstruction).toBeUndefined();
+  });
+
+  test("merge:true on copy-mode field still does not call onFill", async () => {
+    const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
+    const { result, act } = await renderHook(() =>
+      useAiSuggestions(makeInput({ siblingLocale, onFill, contract: contractWithTranslation })),
+    );
+    await act(async () => {
+      await result.current.forField("name").retranslate({ merge: true });
+    });
+    expect(onFill).not.toHaveBeenCalled();
+  });
+
+  test("MERGE_INSTRUCTION constant is non-empty string", () => {
+    expect(typeof MERGE_INSTRUCTION).toBe("string");
+    expect(MERGE_INSTRUCTION.length).toBeGreaterThan(0);
   });
 });

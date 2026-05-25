@@ -104,6 +104,7 @@ export interface TraceSummary {
   runtimeMs: number;
   preset?: string;
   userPrompt?: string;
+  mergeInstruction?: string;
   confidence?: "high" | "medium" | "low";
 }
 
@@ -135,6 +136,13 @@ export interface RunFillParams<S extends ZodSchema, Source> {
    * Logs LLM call lifecycle, message warnings, and errors.
    */
   logger?: Logger;
+  /**
+   * When set on a sibling-locale source run, this string is prepended to the
+   * per-field user-message so the LLM can blend new content with existing
+   * target-language text. Silently ignored for non-sibling-locale source kinds.
+   * Use the exported MERGE_INSTRUCTION constant for consistent trace events.
+   */
+  mergeInstruction?: string;
 }
 
 export interface RunFillResult {

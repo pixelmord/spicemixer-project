@@ -1,6 +1,4 @@
 import { useState, useMemo, useCallback } from "react";
-import { SuggestionFlowProvider } from "./suggestion-flow-provider";
-import { InlineFieldSuggestion } from "./inline-field-suggestion";
 import {
   hashFieldValue,
   type AiContract,
@@ -9,10 +7,8 @@ import {
   type EntityRef,
   type FieldSuggestion,
   type Origin,
-  type PerFieldAccessor,
   type RunParams,
   type RunResult,
-  type UseAiSuggestionsReturn,
 } from "./use-ai-suggestions";
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -23,6 +19,11 @@ export interface TranslationMeta {
   canonicalFieldHashes: Record<string, string>;
   draft: true;
   aiEvents: AiEvent[];
+}
+
+export interface TranslationFailureMetadata {
+  failedFields: string[];
+  errors: Record<string, string>;
 }
 
 export interface TranslateEntityDialogProps {
@@ -43,7 +44,7 @@ export interface TranslateEntityDialogProps {
     fields: Record<string, unknown>,
     meta: TranslationMeta,
   ) => Promise<EntityRef>;
-  onComplete: (newRef: EntityRef) => void;
+  onComplete: (newRef: EntityRef, failure?: TranslationFailureMetadata) => void;
   aiEventLog: AiEventLog;
   onFill: (params: RunParams) => Promise<RunResult>;
   origin: Origin;
@@ -51,7 +52,7 @@ export interface TranslateEntityDialogProps {
 
 // ── Dialog step state ──────────────────────────────────────────────────────────
 
-type DialogStep = "setup" | "slug-filling" | "slug-review" | "bulk-filling" | "review" | "saving";
+type DialogStep = "setup" | "slug-filling" | "slug-review" | "bulk-filling" | "saving";
 
 function slugStatusLabel(isChecking: boolean, available: boolean | null): string | null {
   if (isChecking) return "Checking availability…";
@@ -80,13 +81,14 @@ export function TranslateEntityDialog({
   const [slugInput, setSlugInput] = useState("");
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
-  const [suggestions, setSuggestions] = useState<Map<string, FieldSuggestion>>(new Map());
-  const [appliedValues, setAppliedValues] = useState<Record<string, unknown>>({});
-  const [viewedFields, setViewedFields] = useState<Set<string>>(new Set());
-  const [showFieldReview, setShowFieldReview] = useState(false);
+  const [fillProgress, setFillProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const twoCallMode = onCheckSlugAvailable !== undefined;
+
+  const translatableFieldCount = Object.values(contract.fields).filter(
+    (cfg) => cfg.translation?.mode !== "skip" && cfg.translation?.mode !== "copy",
+  ).length;
 
   const sourceContext = useMemo(
     () => ({
@@ -117,13 +119,96 @@ export function TranslateEntityDialog({
     [onCheckSlugAvailable, sourceRef.kind],
   );
 
+  // ── Save helper ──────────────────────────────────────────────────────────────
+
+  const saveTranslation = useCallback(
+    async (suggestions: Map<string, FieldSuggestion>, slug: string | undefined): Promise<void> => {
+      setStep("saving");
+      setError(null);
+      try {
+        const fields: Record<string, unknown> = {};
+
+        for (const [field, sug] of suggestions) {
+          if (sug.kind === "single") {
+            fields[field] = sug.value;
+          } else if (sug.kind === "choice" && sug.candidates.length > 0) {
+            fields[field] = sug.candidates[0].value;
+          }
+        }
+
+        // Include copy-mode fields from source
+        for (const [field, config] of Object.entries(contract.fields)) {
+          if (config.translation?.mode === "copy" && !(field in fields)) {
+            const srcVal = sourceData[field];
+            if (srcVal !== undefined) fields[field] = srcVal;
+          }
+        }
+
+        // Determine partial failure: translatable fields missing from suggestions
+        const translatableFields = Object.entries(contract.fields)
+          .filter(([, cfg]) => cfg.translation?.mode !== "skip" && cfg.translation?.mode !== "copy")
+          .map(([k]) => k);
+        const failedFields = translatableFields.filter((f) => !suggestions.has(f));
+
+        // Compute canonicalFieldHashes from source
+        const canonicalFieldHashes: Record<string, string> = {};
+        for (const field of Object.keys(contract.fields)) {
+          const val = sourceData[field];
+          if (val !== undefined) canonicalFieldHashes[field] = hashFieldValue(val);
+        }
+
+        const ingestedEvent: AiEvent = {
+          type: "ingested",
+          suggestion: { hash: origin.runId, summary: `Translation to ${targetLocale}` },
+          at: new Date().toISOString(),
+          model: "translation",
+          traceId: origin.runId,
+        };
+
+        const meta: TranslationMeta = {
+          translationOf: sourceRef,
+          canonicalLocale: sourceLocale,
+          canonicalFieldHashes,
+          draft: true,
+          aiEvents: [ingestedEvent],
+        };
+
+        const newRef = await onCreate(targetLocale, slug, fields, meta);
+        await aiEventLog.append(newRef, ingestedEvent);
+
+        const failure: TranslationFailureMetadata | undefined =
+          failedFields.length > 0
+            ? {
+                failedFields,
+                errors: Object.fromEntries(failedFields.map((f) => [f, "not filled"])),
+              }
+            : undefined;
+
+        onComplete(newRef, failure);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Save failed");
+        setStep("bulk-filling");
+      }
+    },
+    [
+      contract.fields,
+      sourceData,
+      origin.runId,
+      targetLocale,
+      sourceRef,
+      sourceLocale,
+      onCreate,
+      aiEventLog,
+      onComplete,
+    ],
+  );
+
   // ── Step handlers ──────────────────────────────────────────────────────────
 
   const handleStart = useCallback(async () => {
     setError(null);
 
     if (twoCallMode) {
-      // Step 1: fill slug only
       setStep("slug-filling");
       try {
         const result = await onFill({
@@ -142,183 +227,59 @@ export function TranslateEntityDialog({
         setStep("setup");
       }
     } else {
-      // One-call mode: fill all fields
       setStep("bulk-filling");
+      setFillProgress({ done: 0, total: translatableFieldCount });
       try {
         const result = await onFill({
           entityRef: sourceRef,
           origin,
           sourceContext,
         });
-        setSuggestions(new Map(Object.entries(result.suggestions)));
-        setAppliedValues({});
-        setViewedFields(new Set());
-        setStep("review");
+        setFillProgress({
+          done: result.suggestions ? Object.keys(result.suggestions).length : 0,
+          total: translatableFieldCount,
+        });
+        await saveTranslation(new Map(Object.entries(result.suggestions)), undefined);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Fill failed");
         setStep("setup");
+        setFillProgress(null);
       }
     }
-  }, [twoCallMode, onFill, sourceRef, origin, sourceContext, checkSlug]);
+  }, [
+    twoCallMode,
+    onFill,
+    sourceRef,
+    origin,
+    sourceContext,
+    checkSlug,
+    translatableFieldCount,
+    saveTranslation,
+  ]);
 
   const handleContinueAfterSlug = useCallback(async () => {
     setError(null);
     setStep("bulk-filling");
+    const nonSlugFields = Object.keys(contract.fields).filter((f) => f !== "slug");
+    setFillProgress({ done: 0, total: nonSlugFields.length });
     try {
-      const nonSlugFields = Object.keys(contract.fields).filter((f) => f !== "slug");
       const result = await onFill({
         entityRef: sourceRef,
         origin,
         target: nonSlugFields,
         sourceContext,
       });
-      setSuggestions(new Map(Object.entries(result.suggestions)));
-      setAppliedValues({});
-      setViewedFields(new Set());
-      setStep("review");
+      setFillProgress({
+        done: result.suggestions ? Object.keys(result.suggestions).length : 0,
+        total: nonSlugFields.length,
+      });
+      await saveTranslation(new Map(Object.entries(result.suggestions)), slugInput);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Fill failed");
       setStep("slug-review");
+      setFillProgress(null);
     }
-  }, [contract.fields, onFill, sourceRef, origin, sourceContext]);
-
-  const handleAcceptAll = useCallback(async () => {
-    setStep("saving");
-    setError(null);
-    try {
-      // Collect fields: already-applied values + remaining suggestions + copy fields
-      const fields: Record<string, unknown> = { ...appliedValues };
-
-      for (const [field, sug] of suggestions) {
-        if (!(field in fields)) {
-          if (sug.kind === "single") {
-            fields[field] = sug.value;
-          } else if (sug.kind === "choice" && sug.candidates.length > 0) {
-            // Take first candidate for bulk accept
-            fields[field] = sug.candidates[0].value;
-          }
-        }
-      }
-
-      // Include copy-mode fields from source
-      for (const [field, config] of Object.entries(contract.fields)) {
-        if (config.translation?.mode === "copy" && !(field in fields)) {
-          const srcVal = sourceData[field];
-          if (srcVal !== undefined) fields[field] = srcVal;
-        }
-      }
-
-      // Compute canonicalFieldHashes from source
-      const canonicalFieldHashes: Record<string, string> = {};
-      for (const field of Object.keys(contract.fields)) {
-        const val = sourceData[field];
-        if (val !== undefined) canonicalFieldHashes[field] = hashFieldValue(val);
-      }
-
-      // Build single ingested aiEvent
-      const ingestedEvent: AiEvent = {
-        type: "ingested",
-        suggestion: { hash: origin.runId, summary: `Translation to ${targetLocale}` },
-        at: new Date().toISOString(),
-        model: "translation",
-        traceId: origin.runId,
-      };
-
-      const meta: TranslationMeta = {
-        translationOf: sourceRef,
-        canonicalLocale: sourceLocale,
-        canonicalFieldHashes,
-        draft: true,
-        aiEvents: [ingestedEvent],
-      };
-
-      const newRef = await onCreate(
-        targetLocale,
-        twoCallMode ? slugInput : undefined,
-        fields,
-        meta,
-      );
-
-      // Append ingested event to the new entity's event log
-      await aiEventLog.append(newRef, ingestedEvent);
-
-      onComplete(newRef);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
-      setStep("review");
-    }
-  }, [
-    appliedValues,
-    suggestions,
-    contract.fields,
-    sourceData,
-    origin.runId,
-    targetLocale,
-    sourceRef,
-    sourceLocale,
-    twoCallMode,
-    slugInput,
-    onCreate,
-    aiEventLog,
-    onComplete,
-  ]);
-
-  // ── SuggestionFlowProvider value ───────────────────────────────────────────
-
-  const flowValue: UseAiSuggestionsReturn = useMemo(() => {
-    const forField = (field: string): PerFieldAccessor => ({
-      suggestion: suggestions.get(field),
-      autoApplied: undefined,
-      trace: undefined,
-      source: sourceData[field],
-      sourceLocale,
-      isStale: false,
-      translationMode: contract.fields[field]?.translation?.mode,
-      retranslate: async () => {},
-      recordAccept(hash: string, value: unknown) {
-        setAppliedValues((prev) => ({ ...prev, [field]: value }));
-        setSuggestions((prev) => {
-          const next = new Map(prev);
-          next.delete(field);
-          return next;
-        });
-        setViewedFields((prev) => new Set([...prev, field]));
-      },
-      recordReject() {
-        setSuggestions((prev) => {
-          const next = new Map(prev);
-          next.delete(field);
-          return next;
-        });
-      },
-      revertAutoApply() {},
-      markViewed() {
-        setViewedFields((prev) => new Set([...prev, field]));
-      },
-      isRunning: false,
-      run: async () => {},
-    });
-
-    return {
-      isRunning: step === "bulk-filling",
-      suggestions,
-      autoApplied: new Map(),
-      traces: new Map(),
-      viewedFields,
-      rejectedHidden: new Set(),
-      preset: undefined,
-      setPreset: () => {},
-      userPrompt: "",
-      setUserPrompt: () => {},
-      writePolicy: "fill-if-empty",
-      setWritePolicy: () => {},
-      run: async () => {},
-      acceptAll: () => {},
-      forField,
-    };
-  }, [suggestions, viewedFields, sourceData, sourceLocale, contract.fields, step]);
-
-  const pendingSuggestionCount = suggestions.size;
+  }, [contract.fields, onFill, sourceRef, origin, sourceContext, slugInput, saveTranslation]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -335,23 +296,25 @@ export function TranslateEntityDialog({
       {/* ── Setup step ── */}
       {step === "setup" && (
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <label htmlFor="target-locale" className="text-sm font-medium">
-              Target locale
-            </label>
-            <select
-              id="target-locale"
-              value={targetLocale}
-              onChange={(e) => setTargetLocale(e.target.value)}
-              className="rounded border px-2 py-1 text-sm"
-            >
-              {availableLocales.map((locale) => (
-                <option key={locale} value={locale}>
-                  {locale}
-                </option>
-              ))}
-            </select>
-          </div>
+          {availableLocales.length > 1 && (
+            <div className="flex items-center gap-3">
+              <label htmlFor="target-locale" className="text-sm font-medium">
+                Target locale
+              </label>
+              <select
+                id="target-locale"
+                value={targetLocale}
+                onChange={(e) => setTargetLocale(e.target.value)}
+                className="rounded border px-2 py-1 text-sm"
+              >
+                {availableLocales.map((locale) => (
+                  <option key={locale} value={locale}>
+                    {locale}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => void handleStart()}
@@ -398,66 +361,11 @@ export function TranslateEntityDialog({
 
       {/* ── Bulk filling ── */}
       {step === "bulk-filling" && (
-        <p className="text-sm text-muted-foreground">Translating fields…</p>
-      )}
-
-      {/* ── Review step ── */}
-      {step === "review" && (
-        <SuggestionFlowProvider value={flowValue}>
-          <div className="space-y-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <button
-                type="button"
-                onClick={() => void handleAcceptAll()}
-                className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-              >
-                Accept all &amp; save draft
-              </button>
-              {pendingSuggestionCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowFieldReview((v) => !v)}
-                  className="rounded border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
-                >
-                  {showFieldReview
-                    ? "Hide field review"
-                    : `Review ${pendingSuggestionCount} fields →`}
-                </button>
-              )}
-            </div>
-
-            {showFieldReview && (
-              <div className="space-y-4 rounded-lg border p-4">
-                {Object.keys(contract.fields)
-                  .filter((field) => field !== "slug")
-                  .map((field) => {
-                    const sourceVal = sourceData[field];
-                    return (
-                      <div key={field} className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">{field}</p>
-                        <InlineFieldSuggestion
-                          fieldPath={field}
-                          currentValue={appliedValues[field]}
-                          onApply={(value) => {
-                            setAppliedValues((prev) => ({ ...prev, [field]: value }));
-                          }}
-                          sourceSlot={
-                            sourceVal !== undefined ? (
-                              <span className="break-words">
-                                {Array.isArray(sourceVal)
-                                  ? sourceVal.join(", ")
-                                  : String(sourceVal)}
-                              </span>
-                            ) : undefined
-                          }
-                        />
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-        </SuggestionFlowProvider>
+        <p className="text-sm text-muted-foreground">
+          {fillProgress !== null
+            ? `Translating ${fillProgress.done} of ${fillProgress.total} fields…`
+            : "Translating fields…"}
+        </p>
       )}
 
       {/* ── Saving ── */}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "ai-bulk-suggest-button",
+  "type": "registry:block",
+  "title": "AiBulkSuggestButton",
+  "description": "Single button for bulk AI suggestions. States: idle (Get AI suggestions), running (spinner), has-pending (Accept all N). Calls flow.run() / flow.acceptAll().",
+  "dependencies": ["lucide-react"],
+  "registryDependencies": ["use-ai-suggestions", "suggestion-flow-provider"],
+  "files": [
+    {
+      "path": "components/ui/ai-bulk-suggest-button.tsx",
+      "type": "registry:block",
+      "content": "import { Loader2, Sparkles } from \"lucide-react\";\nimport { cn } from \"@/lib/utils\";\nimport { useSuggestionFlowContext } from \"./suggestion-flow-provider\";\n\ninterface AiBulkSuggestButtonProps {\n  className?: string;\n}\n\nexport function AiBulkSuggestButton({ className }: AiBulkSuggestButtonProps) {\n  const flow = useSuggestionFlowContext();\n\n  const pendingCount = flow.suggestions.size;\n\n  if (flow.isRunning) {\n    return (\n      <button\n        type=\"button\"\n        disabled\n        className={cn(\n          \"inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium opacity-60\",\n          className,\n        )}\n      >\n        <Loader2 size={14} className=\"animate-spin\" />\n        Running…\n      </button>\n    );\n  }\n\n  if (pendingCount > 0) {\n    return (\n      <button\n        type=\"button\"\n        onClick={() => flow.acceptAll()}\n        className={cn(\n          \"inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity\",\n          className,\n        )}\n      >\n        <Sparkles size={14} />\n        Accept all ({pendingCount})\n      </button>\n    );\n  }\n\n  return (\n    <button\n      type=\"button\"\n      onClick={() => void flow.run()}\n      className={cn(\n        \"inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted transition-colors\",\n        className,\n      )}\n    >\n      <Sparkles size={14} />\n      Get AI suggestions\n    </button>\n  );\n}\n"
+    }
+  ]
+}

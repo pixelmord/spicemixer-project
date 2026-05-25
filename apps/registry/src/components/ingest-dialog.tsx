@@ -3,8 +3,10 @@ import { Loader2, Sparkles, ChevronLeft } from "lucide-react";
 import { cn } from "../lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { FileTextPromptSourcePicker } from "./file-text-prompt-source-picker";
-import { SuggestionsOptions } from "./suggestions-options";
-import { SuggestionFlowProvider } from "./suggestion-flow-provider";
+import { SuggestionFlowProvider, useSuggestionFlowContext } from "./suggestion-flow-provider";
+import { PresetPicker } from "./preset-picker";
+import { UserPromptField } from "./user-prompt-field";
+import { WritePolicyPicker } from "./write-policy-picker";
 import type { SourceShape } from "./file-text-prompt-source-picker";
 import type { AiPreset, UseAiSuggestionsReturn } from "./use-ai-suggestions";
 
@@ -52,6 +54,19 @@ export interface IngestDialogProps {
 }
 
 type Phase = "source" | "review";
+
+function IngestFlowOptions({ presets }: { presets: AiPreset[] }) {
+  const flow = useSuggestionFlowContext();
+  return (
+    <div className="space-y-3">
+      {presets.length > 0 && (
+        <PresetPicker presets={presets} value={flow.preset} onSelect={flow.setPreset} />
+      )}
+      <UserPromptField value={flow.userPrompt} onChange={flow.setUserPrompt} />
+      <WritePolicyPicker value={flow.writePolicy} onChange={flow.setWritePolicy} />
+    </div>
+  );
+}
 
 function IngestDialogContent({
   onOpenChange,
@@ -108,9 +123,7 @@ function IngestDialogContent({
         <div className="space-y-4">
           <FileTextPromptSourcePicker onChange={setSource} />
 
-          {flow && presets.length > 0 && (
-            <SuggestionsOptions presets={presets} showRunButton={false} />
-          )}
+          {flow && presets.length > 0 && <IngestFlowOptions presets={presets} />}
 
           <button
             type="button"

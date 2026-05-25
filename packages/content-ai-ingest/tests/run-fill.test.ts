@@ -1,6 +1,7 @@
 import { describe, expect, test, vi, beforeEach } from "vite-plus/test";
 import { z } from "zod";
 import type { MessageSet, SiblingLocaleSource } from "../src/types.ts";
+import { MERGE_INSTRUCTION } from "../src/run-fill.ts";
 
 vi.mock("ai", () => ({
   generateText: vi.fn(),
@@ -676,6 +677,120 @@ describe("runFill — sibling-locale source", () => {
     });
 
     expect(result.traces.size).toBe(1);
+  });
+});
+
+// ── mergeInstruction ─────────────────────────────────────────────────────────
+
+describe("runFill — mergeInstruction (sibling-locale)", () => {
+  const translateContract = {
+    ...makeContract(),
+    fieldConfigs: {
+      name: { translation: { mode: "translate" as const } },
+      description: { translation: { mode: "translate" as const } },
+    },
+  };
+
+  test("empty target: mergeInstruction is prepended when no userPrompt", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { name: "Basilikum" } } as never);
+
+    await runFill({
+      contract: translateContract,
+      sourceContext: makeSiblingSource({ name: "Basil" }),
+      config: MOCK_CONFIG,
+      mergeInstruction: MERGE_INSTRUCTION,
+    });
+
+    const call = vi.mocked(generateText).mock.calls[0][0] as Record<string, unknown>;
+    // effectivePrompt is built inside callLlm from messageSet.prompt + userPrompt
+    // mergeInstruction becomes the userPrompt passed to callLlm
+    const promptArg = (call.prompt as string) ?? "";
+    expect(promptArg).toContain(MERGE_INSTRUCTION);
+  });
+
+  test("short target: mergeInstruction precedes the field-specific user-message", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { name: "Basilikum" } } as never);
+
+    const fieldPrompt = "Use formal register.";
+    await runFill({
+      contract: translateContract,
+      sourceContext: makeSiblingSource({ name: "Basil" }),
+      config: MOCK_CONFIG,
+      mergeInstruction: MERGE_INSTRUCTION,
+      userPrompt: fieldPrompt,
+    });
+
+    const call = vi.mocked(generateText).mock.calls[0][0] as Record<string, unknown>;
+    const promptArg = (call.prompt as string) ?? "";
+    // mergeInstruction should appear before fieldPrompt
+    const mergeIdx = promptArg.indexOf(MERGE_INSTRUCTION);
+    const fieldIdx = promptArg.indexOf(fieldPrompt);
+    expect(mergeIdx).toBeGreaterThanOrEqual(0);
+    expect(fieldIdx).toBeGreaterThan(mergeIdx);
+  });
+
+  test("long target: mergeInstruction + long user prompt combined correctly", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { name: "Basilikum" } } as never);
+
+    const longPrompt = "A".repeat(500);
+    await runFill({
+      contract: translateContract,
+      sourceContext: makeSiblingSource({ name: "Basil" }),
+      config: MOCK_CONFIG,
+      mergeInstruction: MERGE_INSTRUCTION,
+      userPrompt: longPrompt,
+    });
+
+    const call = vi.mocked(generateText).mock.calls[0][0] as Record<string, unknown>;
+    const promptArg = (call.prompt as string) ?? "";
+    expect(promptArg).toContain(MERGE_INSTRUCTION);
+    expect(promptArg).toContain(longPrompt);
+    expect(promptArg.indexOf(MERGE_INSTRUCTION)).toBeLessThan(promptArg.indexOf(longPrompt));
+  });
+
+  test("non-sibling-locale source silently ignores mergeInstruction", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { name: "Basil" } } as never);
+
+    await runFill({
+      contract: makeContract(),
+      sourceContext: { kind: "text", content: "Basil is an herb." } as TestSource,
+      config: MOCK_CONFIG,
+      mergeInstruction: MERGE_INSTRUCTION,
+    });
+
+    // generateText is still called (normal path), no error thrown
+    expect(vi.mocked(generateText)).toHaveBeenCalledOnce();
+    // the mergeInstruction does NOT appear in the prompt for non-sibling sources
+    const call = vi.mocked(generateText).mock.calls[0][0] as Record<string, unknown>;
+    const promptArg = (call.prompt as string) ?? "";
+    expect(promptArg).not.toContain(MERGE_INSTRUCTION);
+  });
+
+  test("mergeInstruction is recorded in the trace when set on sibling-locale run", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { name: "Basilikum" } } as never);
+
+    const result = await runFill({
+      contract: translateContract,
+      sourceContext: makeSiblingSource({ name: "Basil" }),
+      config: MOCK_CONFIG,
+      mergeInstruction: MERGE_INSTRUCTION,
+    });
+
+    const [trace] = result.traces.values();
+    expect(trace.mergeInstruction).toBe(MERGE_INSTRUCTION);
+  });
+
+  test("trace omits mergeInstruction when not set", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { name: "Basilikum" } } as never);
+
+    const result = await runFill({
+      contract: translateContract,
+      sourceContext: makeSiblingSource({ name: "Basil" }),
+      config: MOCK_CONFIG,
+    });
+
+    const [trace] = result.traces.values();
+    expect(trace.mergeInstruction).toBeUndefined();
   });
 });
 

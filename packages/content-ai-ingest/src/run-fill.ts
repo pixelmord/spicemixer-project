@@ -66,6 +66,10 @@ function isSiblingLocaleSource(source: unknown): source is SiblingLocaleSource {
   );
 }
 
+/** Prepended to the per-field user-message on merge-aware sibling-locale runs. */
+export const MERGE_INSTRUCTION =
+  "Merge the translation with the existing target-language content: preserve the editor's edits and blend in updates from the source rather than replacing the existing text entirely.";
+
 const DEFAULT_TRANSLATION: TranslationBehavior = { mode: "translate" };
 
 function resolveTranslationMode(
@@ -125,7 +129,14 @@ async function callLlm(
 export async function runFill<S extends ZodSchema, Source>(
   params: RunFillParams<S, Source>,
 ): Promise<RunFillResult> {
-  const { contract, sourceContext, config, userPrompt, logger = noopLogger } = params;
+  const {
+    contract,
+    sourceContext,
+    config,
+    userPrompt,
+    mergeInstruction,
+    logger = noopLogger,
+  } = params;
   logger.info(
     {
       op: "fill.start",
@@ -182,12 +193,18 @@ export async function runFill<S extends ZodSchema, Source>(
       } = await contract.buildMessages(sourceContext);
       warnings.push(...msgWarnings);
 
+      const effectiveMergeUserPrompt = mergeInstruction
+        ? userPrompt
+          ? `${mergeInstruction}\n\n${userPrompt}`
+          : mergeInstruction
+        : userPrompt;
+
       const rawOutput = await callLlm(
         contract.schema,
         contract.systemPrompt,
         config,
         { messages, prompt },
-        userPrompt,
+        effectiveMergeUserPrompt,
         params.sinks,
         logger,
       );
@@ -214,6 +231,7 @@ export async function runFill<S extends ZodSchema, Source>(
       runtimeMs,
       ...(params.preset ? { preset: params.preset } : {}),
       ...(userPrompt ? { userPrompt } : {}),
+      ...(mergeInstruction ? { mergeInstruction } : {}),
     });
 
     const ingestedEvent: IngestAiEvent = {

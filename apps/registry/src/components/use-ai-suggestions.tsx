@@ -2,6 +2,10 @@ import { useState, useCallback } from "react";
 
 // ── Local types (compatible with @pixelmord/content-ai-core) ─────────────────
 
+/** Canonical wording for merge-aware retranslation; matches the constant in content-ai-ingest. */
+export const MERGE_INSTRUCTION =
+  "Merge the translation with the existing target-language content: preserve the editor's edits and blend in updates from the source rather than replacing the existing text entirely.";
+
 type FieldPath = string;
 type Confidence = "high" | "medium" | "low";
 type WritePolicy = "preserve" | "replace" | "fill-if-empty" | "merge-instructions";
@@ -101,6 +105,8 @@ export interface RunParams {
   target?: string[];
   /** Source context for sibling-locale translations */
   sourceContext?: unknown;
+  /** Prepended to the per-field user-message on merge-aware retranslation runs */
+  mergeInstruction?: string;
 }
 
 export interface RunResult {
@@ -126,7 +132,7 @@ export interface PerFieldAccessor {
   /** Translation behavior for this field per contract, undefined if not declared */
   translationMode: TranslationBehavior["mode"] | undefined;
   /** Re-run fill for this field using the sibling-locale source */
-  retranslate: () => Promise<void>;
+  retranslate: (opts?: { merge?: boolean }) => Promise<void>;
   /** True while a targeted run() call for this specific field is in progress */
   isRunning: boolean;
   /** Trigger onRefine scoped to this field (passes target: [fieldPath]) */
@@ -152,6 +158,8 @@ export interface UseAiSuggestionsReturn {
   forField(field: FieldPath): PerFieldAccessor;
   acceptAll(): { requiresReview: FieldPath[] } | void;
   run(): Promise<void>;
+  /** Trigger a fill/translation run via onFill with optional target field list */
+  runTranslation(opts?: { target?: FieldPath[] }): Promise<void>;
 }
 
 export interface SiblingLocale {
@@ -289,7 +297,7 @@ export function useAiSuggestions({
       const fieldConfig = contract.fields[field];
       const translationMode = fieldConfig?.translation?.mode;
 
-      const retranslate = async (): Promise<void> => {
+      const retranslate = async (opts?: { merge?: boolean }): Promise<void> => {
         if (!siblingLocale || !onFill) return;
         const mode = translationMode ?? "translate";
         if (mode === "copy" || mode === "skip") return;
@@ -305,6 +313,7 @@ export function useAiSuggestions({
             sourceLocale: siblingLocale.locale,
             fieldHashes: siblingLocale.fieldHashes,
           },
+          ...(opts?.merge ? { mergeInstruction: MERGE_INSTRUCTION } : {}),
         });
         setSuggestions((prev) => {
           const next = new Map(prev);
@@ -452,6 +461,36 @@ export function useAiSuggestions({
     ],
   );
 
+  const runTranslation = useCallback(
+    async (opts?: { target?: FieldPath[] }): Promise<void> => {
+      if (!onFill || !siblingLocale) return;
+      setIsRunning(true);
+      try {
+        const result = await onFill({
+          currentData,
+          entityRef,
+          origin,
+          target: opts?.target,
+          sourceContext: {
+            kind: "sibling-locale",
+            sourceRef: siblingLocale.ref,
+            sourceData: siblingLocale.data,
+            sourceLocale: siblingLocale.locale,
+            fieldHashes: siblingLocale.fieldHashes,
+          },
+        });
+        setSuggestions(new Map(Object.entries(result.suggestions ?? {})));
+        setAutoApplied(new Map(Object.entries(result.autoApplied ?? {})));
+        setTraces(new Map(Object.entries(result.traces ?? {})));
+        setViewedFields(new Set());
+        setRejectedHidden(new Set());
+      } finally {
+        setIsRunning(false);
+      }
+    },
+    [onFill, siblingLocale, currentData, entityRef, origin],
+  );
+
   const acceptAll = useCallback((): { requiresReview: FieldPath[] } | void => {
     const unviewed = [...suggestions.keys()].filter((field) => !viewedFields.has(field));
     if (unviewed.length > 0) {
@@ -491,5 +530,6 @@ export function useAiSuggestions({
     forField,
     acceptAll,
     run,
+    runTranslation,
   };
 }

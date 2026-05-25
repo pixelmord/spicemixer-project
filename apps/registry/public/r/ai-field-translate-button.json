@@ -1,0 +1,16 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "ai-field-translate-button",
+  "type": "registry:block",
+  "title": "AiFieldTranslateButton",
+  "description": "Split combo per-field translate button. Label is 'Translate from <sibling>' (translate/localize) or 'Copy from <sibling>' (copy). Dropdown shows Merge with existing for translate/localize modes. Not rendered for skip fields.",
+  "dependencies": ["lucide-react"],
+  "registryDependencies": ["use-ai-suggestions", "suggestion-flow-provider"],
+  "files": [
+    {
+      "path": "components/ui/ai-field-translate-button.tsx",
+      "type": "registry:block",
+      "content": "import { useState } from \"react\";\nimport { ChevronDown, Loader2 } from \"lucide-react\";\nimport { cn } from \"@/lib/utils\";\nimport { useSuggestionFlowContext } from \"./suggestion-flow-provider\";\n\ninterface AiFieldTranslateButtonProps {\n  fieldPath: string;\n  className?: string;\n}\n\nexport function AiFieldTranslateButton({ fieldPath, className }: AiFieldTranslateButtonProps) {\n  const flow = useSuggestionFlowContext();\n  const accessor = flow.forField(fieldPath);\n  const [dropdownOpen, setDropdownOpen] = useState(false);\n  const [mergeEnabled, setMergeEnabled] = useState(false);\n\n  const mode = accessor.translationMode;\n  const siblingLocale = accessor.sourceLocale;\n\n  if (mode === \"skip\") return null;\n\n  const isCopyMode = mode === \"copy\";\n  const canMerge = !isCopyMode;\n  const label = isCopyMode ? `Copy from ${siblingLocale ?? \"source\"}` : `Translate from ${siblingLocale ?? \"source\"}`;\n\n  async function handleRun() {\n    setDropdownOpen(false);\n    await accessor.retranslate(canMerge && mergeEnabled ? { merge: true } : undefined);\n  }\n\n  if (accessor.isRunning) {\n    return (\n      <button type=\"button\" disabled className={cn(\"inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium opacity-60\", className)}>\n        <Loader2 size={12} className=\"animate-spin\" />\n        Running…\n      </button>\n    );\n  }\n\n  return (\n    <div className={cn(\"relative inline-flex\", className)}>\n      <button type=\"button\" onClick={() => void handleRun()} className=\"inline-flex items-center rounded-l-md border border-r-0 px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted transition-colors\">\n        {label}\n      </button>\n      {canMerge && (\n        <button type=\"button\" aria-label=\"Merge options\" onClick={() => setDropdownOpen((v) => !v)} className=\"inline-flex items-center rounded-r-md border px-1.5 py-1 text-xs text-foreground hover:bg-muted transition-colors\">\n          <ChevronDown size={12} />\n        </button>\n      )}\n      {dropdownOpen && canMerge && (\n        <div className=\"absolute right-0 top-full z-10 mt-1 min-w-[11rem] rounded-md border bg-popover shadow-md\">\n          <label className=\"flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-muted\">\n            <input type=\"checkbox\" checked={mergeEnabled} onChange={(e) => { setMergeEnabled(e.target.checked); setDropdownOpen(false); }} className=\"rounded\" />\n            Merge with existing\n          </label>\n        </div>\n      )}\n    </div>\n  );\n}\n"
+    }
+  ]
+}

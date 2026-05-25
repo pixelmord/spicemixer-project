@@ -1,4 +1,4 @@
-export { runFill } from "./run-fill.ts";
+export { runFill, MERGE_INSTRUCTION } from "./run-fill.ts";
 
 export type {
   AiConfig,

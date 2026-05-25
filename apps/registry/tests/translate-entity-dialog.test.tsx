@@ -6,6 +6,7 @@ import {
   TranslateEntityDialog,
   type TranslateEntityDialogProps,
   type TranslationMeta,
+  type TranslationFailureMetadata,
 } from "../src/components/translate-entity-dialog";
 import type {
   EntityRef,
@@ -148,7 +149,7 @@ function makeProps(
 // ── Setup step ─────────────────────────────────────────────────────────────────
 
 describe("setup step — locale picker", () => {
-  test("renders locale dropdown with available locales", async () => {
+  test("renders locale dropdown with available locales when more than one", async () => {
     const screen = await render(<TranslateEntityDialog {...makeProps()} />);
     await expect.element(screen.getByRole("combobox")).toBeVisible();
   });
@@ -162,6 +163,13 @@ describe("setup step — locale picker", () => {
     const screen = await render(<TranslateEntityDialog {...makeProps()} />);
     await expect.element(screen.getByRole("option", { name: "de" })).toBeInTheDocument();
     await expect.element(screen.getByRole("option", { name: "fr" })).toBeInTheDocument();
+  });
+
+  test("hides locale picker when only one locale is available", async () => {
+    const screen = await render(
+      <TranslateEntityDialog {...makeProps({ availableLocales: ["de"] })} />,
+    );
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument?.();
   });
 });
 
@@ -246,17 +254,20 @@ describe("two-call flow — recipe with slug + onCheckSlugAvailable", () => {
     expect(secondCall.sourceContext).toMatchObject({ kind: "sibling-locale" });
   });
 
-  test("shows review step after bulk fill", async () => {
-    const { props } = makeRecipeProps();
-    const screen = await render(<TranslateEntityDialog {...props} />);
+  test("calls onComplete after bulk fill and auto-save", async () => {
+    const onComplete = vi.fn();
+    const onCreate = vi.fn().mockResolvedValue(newEntityRef);
+    const { props, onFill } = makeRecipeProps();
+    const screen = await render(
+      <TranslateEntityDialog {...props} onComplete={onComplete} onCreate={onCreate} />,
+    );
 
     await screen.getByRole("button", { name: /start translation/i }).click();
     await expect.element(screen.getByRole("button", { name: /continue/i })).toBeVisible();
     await screen.getByRole("button", { name: /continue/i }).click();
 
-    await expect
-      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
-      .toBeVisible();
+    await vi.waitFor(() => expect(onFill).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalled());
   });
 });
 
@@ -298,79 +309,137 @@ describe("one-call flow — ingredient without onCheckSlugAvailable", () => {
 
     await screen.getByRole("button", { name: /start translation/i }).click();
 
-    await expect
-      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
-      .toBeVisible();
     await expect.element(screen.getByText(/confirm slug/i)).not.toBeInTheDocument();
+    await expect.element(screen.getByRole("textbox")).not.toBeInTheDocument();
   });
 
-  test("goes directly to review after single fill", async () => {
-    const { props } = makeIngredientProps();
-    const screen = await render(<TranslateEntityDialog {...props} />);
-
-    await screen.getByRole("button", { name: /start translation/i }).click();
-
-    await expect
-      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
-      .toBeVisible();
-  });
-});
-
-// ── Review step ───────────────────────────────────────────────────────────────
-
-describe("review step", () => {
-  async function renderAtReview(onFill?: (params: RunParams) => Promise<RunResult>) {
-    const mockOnFill = (onFill ?? vi.fn().mockResolvedValue(makeIngredientBulkResult())) as (
-      params: RunParams,
-    ) => Promise<RunResult>;
+  test("calls onComplete after single fill auto-save", async () => {
+    const onComplete = vi.fn();
     const onCreate = vi.fn().mockResolvedValue(newEntityRef);
-    const props = makeProps({
-      contract: ingredientContract,
-      sourceRef: { kind: "ingredient", id: "cardamom" },
-      sourceData: {
-        name: "Cardamom",
-        description: "An aromatic spice",
-        botanicalName: "Elettaria cardamomum",
-      },
-      onFill: mockOnFill,
-      onCreate,
-    });
-    const screen = await render(<TranslateEntityDialog {...props} />);
+    const { props, onFill } = makeIngredientProps();
+    const screen = await render(
+      <TranslateEntityDialog {...props} onComplete={onComplete} onCreate={onCreate} />,
+    );
+
     await screen.getByRole("button", { name: /start translation/i }).click();
-    await expect
-      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
-      .toBeVisible();
-    return { onCreate, onFill: mockOnFill, screen };
-  }
 
-  test("shows 'Accept all & save draft' as primary CTA", async () => {
-    const { screen } = await renderAtReview();
-    await expect
-      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
-      .toBeVisible();
+    await vi.waitFor(() => expect(onFill).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalledWith(newEntityRef, undefined));
   });
 
-  test("shows 'Review N fields' disclosure button", async () => {
-    const { screen } = await renderAtReview();
-    await expect.element(screen.getByRole("button", { name: /review \d+ fields/i })).toBeVisible();
-  });
+  test("shows progress indicator during bulk fill", async () => {
+    let resolveOnFill!: (val: RunResult) => void;
+    const onFill = vi.fn().mockReturnValue(
+      new Promise<RunResult>((res) => {
+        resolveOnFill = res;
+      }),
+    );
+    const screen = await render(
+      <TranslateEntityDialog
+        {...makeProps({
+          contract: ingredientContract,
+          sourceRef: { kind: "ingredient", id: "cardamom" },
+          sourceData: {
+            name: "Cardamom",
+            description: "An aromatic spice",
+            botanicalName: "Elettaria cardamomum",
+          },
+          onFill,
+        })}
+      />,
+    );
 
-  test("expands per-field review when disclosure is clicked", async () => {
-    const { screen } = await renderAtReview();
-    await screen.getByRole("button", { name: /review \d+ fields/i }).click();
-    await expect.element(screen.getByText("Kardamom")).toBeVisible();
-  });
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    await expect.element(screen.getByText(/translating \d+ of \d+ fields/i)).toBeVisible();
 
-  test("shows source-locale content in sourceSlot when review is expanded", async () => {
-    const { screen } = await renderAtReview();
-    await screen.getByRole("button", { name: /review \d+ fields/i }).click();
-    await expect.element(screen.getByText("Cardamom")).toBeVisible();
+    // resolve to avoid hanging test
+    resolveOnFill(makeIngredientBulkResult());
   });
 });
 
-// ── Integration: Accept all & save draft ──────────────────────────────────────
+// ── Partial failure ───────────────────────────────────────────────────────────
 
-describe("integration: accept all & save draft", () => {
+describe("partial failure — onComplete receives failure metadata", () => {
+  test("calls onComplete with failedFields when some translatable fields have no suggestion", async () => {
+    // onFill returns only 'name', missing 'description' (also translatable)
+    const partialResult: RunResult = {
+      suggestions: {
+        name: {
+          kind: "single",
+          value: "Kardamom",
+          confidence: "high",
+          summary: "German name",
+          hash: "name-hash-002",
+          traceId: "trace-name-2",
+        },
+      },
+      autoApplied: {},
+      traces: {},
+    };
+    const onFill = vi.fn().mockResolvedValue(partialResult);
+    const onComplete = vi.fn();
+    const onCreate = vi.fn().mockResolvedValue(newEntityRef);
+    const screen = await render(
+      <TranslateEntityDialog
+        {...makeProps({
+          contract: ingredientContract,
+          sourceRef: { kind: "ingredient", id: "cardamom" },
+          sourceData: {
+            name: "Cardamom",
+            description: "An aromatic spice",
+            botanicalName: "Elettaria cardamomum",
+          },
+          onFill,
+          onCreate,
+          onComplete,
+        })}
+      />,
+    );
+
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalled());
+
+    const [, failure] = onComplete.mock.calls[0] as [EntityRef, TranslationFailureMetadata];
+    expect(failure).toBeDefined();
+    expect(failure.failedFields).toContain("description");
+    expect(failure.failedFields).not.toContain("name");
+  });
+
+  test("calls onComplete with no failure when all translatable fields are filled", async () => {
+    const onFill = vi.fn().mockResolvedValue(makeIngredientBulkResult());
+    const onComplete = vi.fn();
+    const onCreate = vi.fn().mockResolvedValue(newEntityRef);
+    const screen = await render(
+      <TranslateEntityDialog
+        {...makeProps({
+          contract: ingredientContract,
+          sourceRef: { kind: "ingredient", id: "cardamom" },
+          sourceData: {
+            name: "Cardamom",
+            description: "An aromatic spice",
+            botanicalName: "Elettaria cardamomum",
+          },
+          onFill,
+          onCreate,
+          onComplete,
+        })}
+      />,
+    );
+
+    await screen.getByRole("button", { name: /start translation/i }).click();
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalled());
+
+    const [, failure] = onComplete.mock.calls[0] as [
+      EntityRef,
+      TranslationFailureMetadata | undefined,
+    ];
+    expect(failure).toBeUndefined();
+  });
+});
+
+// ── Integration: auto-save after fill ────────────────────────────────────────
+
+describe("integration: auto-save after fill", () => {
   async function runFullFlow() {
     const onFill = vi.fn().mockResolvedValue(makeIngredientBulkResult());
     const onCreate = vi.fn().mockResolvedValue(newEntityRef);
@@ -395,10 +464,6 @@ describe("integration: accept all & save draft", () => {
     const screen = await render(<TranslateEntityDialog {...props} />);
 
     await screen.getByRole("button", { name: /start translation/i }).click();
-    await expect
-      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
-      .toBeVisible();
-    await screen.getByRole("button", { name: /accept all & save draft/i }).click();
 
     await vi.waitFor(() => expect(onCreate).toHaveBeenCalled());
     return { onCreate, onComplete, aiEventLog: aiEventLogMock };
@@ -498,7 +563,7 @@ describe("integration: accept all & save draft", () => {
 
   test("calls onComplete with new entity ref after save", async () => {
     const { onComplete } = await runFullFlow();
-    expect(onComplete).toHaveBeenCalledWith(newEntityRef);
+    expect(onComplete).toHaveBeenCalledWith(newEntityRef, undefined);
   });
 
   test("appends ingested event to aiEventLog for new entity ref", async () => {
@@ -530,10 +595,6 @@ describe("integration: recipe two-call — slug passed to onCreate", () => {
     await screen.getByRole("button", { name: /start translation/i }).click();
     await expect.element(screen.getByRole("button", { name: /continue/i })).toBeVisible();
     await screen.getByRole("button", { name: /continue/i }).click();
-    await expect
-      .element(screen.getByRole("button", { name: /accept all & save draft/i }))
-      .toBeVisible();
-    await screen.getByRole("button", { name: /accept all & save draft/i }).click();
 
     await vi.waitFor(() => expect(onCreate).toHaveBeenCalled());
     const [, slug] = onCreate.mock.calls[0] as [
