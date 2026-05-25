@@ -5,5 +5,118 @@
   "ingredientLinks": [],
   "externalSources": [],
   "tags": [],
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "aiEvents": [
+    {
+      "type": "auto-applied",
+      "field": "language",
+      "suggestion": {
+        "hash": "114a6e8f5c43",
+        "summary": "Language detected: en"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "5503ae9b-0239-4aa8-8081-7e8e5ca71d36",
+      "id": "d10408b7-944a-4de1-ae70-d132a89dd757",
+      "at": "2026-05-25T15:28:31.352Z"
+    }
+  ],
+  "language": "en",
+  "locale": "en",
+  "aiSuggestions": {
+    "fingerprint": "15ae6382b5457085386afc6be6446fd0db47fc8204a0e5a7cc53840ebf964ed5",
+    "at": "2026-05-25T15:28:31.354Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [
+        "couscous",
+        "preserved-lemon",
+        "moroccan",
+        "side-dish",
+        "herb-rich",
+        "vegetarian",
+        "fresh-flavors",
+        "with-almonds"
+      ],
+      "ingredientLinks": [
+        {
+          "pattern": "couscous",
+          "slug": "",
+          "confidence": "low"
+        },
+        {
+          "pattern": "vegetable stock",
+          "slug": "",
+          "confidence": "low"
+        },
+        {
+          "pattern": "preserved lemon",
+          "slug": "",
+          "confidence": "low"
+        },
+        {
+          "pattern": "toasted almonds",
+          "slug": "",
+          "confidence": "low"
+        },
+        {
+          "pattern": "flat-leaf parsley",
+          "slug": "",
+          "confidence": "low"
+        },
+        {
+          "pattern": "mint",
+          "slug": "",
+          "confidence": "low"
+        },
+        {
+          "pattern": "extra-virgin olive oil",
+          "slug": "",
+          "confidence": "low"
+        },
+        {
+          "pattern": "lemon",
+          "slug": "",
+          "confidence": "low"
+        },
+        {
+          "pattern": "salt and black pepper",
+          "slug": "",
+          "confidence": "low"
+        }
+      ],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "dukka",
+          "rationale": "Dukkah's nutty, spice-forward flavor enhances the crunchy almonds in the couscous, while adding an extra layer of complexity that complements the bright, citrus notes of the preserved lemon.",
+          "traceId": "0e1f386e-55ce-4159-96ec-494d0cb33e16"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "ras-el-hanout",
+          "rationale": "Ras el Hanout's warm spices harmonize beautifully with the herbal elements of the couscous, amplifying its Moroccan roots while providing a rich flavor contrast to the acidity of the lemon.",
+          "traceId": "0e1f386e-55ce-4159-96ec-494d0cb33e16"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cumin",
+          "rationale": "Cumin's earthy and warm characteristics pair well with the preserved lemon, enhancing the savory quality of the couscous and balancing out its brightness.",
+          "traceId": "0e1f386e-55ce-4159-96ec-494d0cb33e16"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "koriander",
+          "rationale": "Fresh koriander adds a zesty, citrusy note that complements the preserved lemon, brightening the overall dish and echoing the fresh herbs within the couscous.",
+          "traceId": "0e1f386e-55ce-4159-96ec-494d0cb33e16"
+        }
+      ],
+      "detectedLanguage": "en"
+    }
+  },
+  "draft": false,
+  "translations": {},
+  "canonicalContentHash": "4da7d6391ff36828"
 }

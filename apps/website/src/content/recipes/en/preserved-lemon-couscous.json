@@ -2,16 +2,6 @@
   "@context": "https://schema.org",
   "@type": "Recipe",
   "name": "Preserved Lemon Couscous",
-  "description": "Bright, citrus-perfumed couscous with herbs, almonds, and a salty hit of preserved lemon. Perfect alongside grilled fish.",
-  "author": { "@type": "Person", "name": "Yael Aroun" },
-  "datePublished": "2026-04-02",
-  "recipeYield": "4 servings",
-  "recipeCategory": "Side",
-  "recipeCuisine": "Moroccan",
-  "keywords": ["vegan", "make-ahead", "quick", "gluten-free"],
-  "prepTime": "PT10M",
-  "cookTime": "PT8M",
-  "totalTime": "PT18M",
   "recipeIngredient": [
     "250g couscous",
     "300ml hot vegetable stock",
@@ -24,9 +14,34 @@
     "Salt and black pepper to taste"
   ],
   "recipeInstructions": [
-    "Place couscous in a heatproof bowl. Pour over hot stock, cover, and rest for 8 minutes.",
-    "Fluff with a fork, then stir in olive oil, lemon juice, and a pinch of salt.",
-    "Fold through preserved lemon, almonds, parsley, and mint.",
-    "Taste, adjust seasoning, and serve warm or at room temperature."
-  ]
+    {
+      "@type": "HowToStep",
+      "text": "Place couscous in a heatproof bowl. Pour over hot stock, cover, and rest for 8 minutes."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Fluff with a fork, then stir in olive oil, lemon juice, and a pinch of salt."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Fold through preserved lemon, almonds, parsley, and mint."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Taste, adjust seasoning, and serve warm or at room temperature."
+    }
+  ],
+  "description": "Bright, citrus-perfumed couscous with herbs, almonds, and a salty hit of preserved lemon. Perfect alongside grilled fish.",
+  "author": {
+    "@type": "Person",
+    "name": "Yael Aroun"
+  },
+  "recipeYield": "4 servings",
+  "recipeCategory": "Side",
+  "recipeCuisine": "Moroccan",
+  "keywords": ["vegan", "make-ahead", "quick", "gluten-free"],
+  "prepTime": "PT10M",
+  "cookTime": "PT8M",
+  "totalTime": "PT18M",
+  "datePublished": "2026-04-02"
 }

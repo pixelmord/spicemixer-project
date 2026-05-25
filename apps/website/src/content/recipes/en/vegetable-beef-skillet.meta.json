@@ -11,10 +11,83 @@
     "vegetable",
     "beef"
   ],
-  "ingredientLinks": [],
+  "ingredientLinks": [
+    {
+      "pattern": "chili powder",
+      "slug": "chili-powder",
+      "kind": "ingredient"
+    }
+  ],
   "externalSources": [],
   "variants": [],
   "kind": "recipe",
   "language": "en",
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "aiEvents": [
+    {
+      "type": "auto-applied",
+      "field": "ingredientLinks",
+      "suggestion": {
+        "hash": "6896d97f7663",
+        "summary": "Link chili powder → chili-powder"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "de96b5f6-773a-4891-96d3-693d5c714aa7",
+      "id": "38898cca-49ad-4803-98ac-e9e997a9e8b3",
+      "at": "2026-05-25T15:19:23.083Z"
+    }
+  ],
+  "aiSuggestions": {
+    "fingerprint": "9a93b5d3218a335e7a5586e7cf6d675a57ab9515d893a3d78f54b2b4f658e622",
+    "at": "2026-05-25T15:19:23.091Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [
+        "beef-skillet",
+        "vegetable-dish",
+        "one-pan-meal",
+        "easy-dinner",
+        "american-cuisine",
+        "healthy-recipe",
+        "cheesy-dinner",
+        "quick-meal"
+      ],
+      "ingredientLinks": [
+        {
+          "pattern": "chili powder",
+          "slug": "chili-powder",
+          "confidence": "high"
+        }
+      ],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "berbere",
+          "rationale": "The warm spices in berbere complement the hearty flavors of the lean beef and vegetables, enhancing the overall depth of the dish while adding a unique Ethiopian flair.",
+          "traceId": "d62a7245-b0d0-4701-9608-80143c25a1a3"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cumin",
+          "rationale": "Cumin's earthy and warm profile harmonizes beautifully with the chili powder and oregano in the skillet, rounding out the savory notes of the beef and veggies.",
+          "traceId": "d62a7245-b0d0-4701-9608-80143c25a1a3"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "paprika",
+          "rationale": "Paprika adds a subtle smokiness and vibrant color to the dish, enhancing the flavors of the tomatoes and cheese, making the skillet even more appetizing.",
+          "traceId": "d62a7245-b0d0-4701-9608-80143c25a1a3"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "harissa",
+          "rationale": "Harissa provides a spicy kick that can elevate the dish, adding complexity and richness that works well with the other ingredients, especially the beef.",
+          "traceId": "d62a7245-b0d0-4701-9608-80143c25a1a3"
+        }
+      ]
+    }
+  }
 }
