@@ -3,8 +3,7 @@ import { useStore } from "@tanstack/react-form";
 import { useAdminForm } from "@/components/admin/fields/index.ts";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, Languages, Loader2, Trash2, Eye, EyeOff, Check } from "lucide-react";
-import LinkButton from "@/components/admin/LinkButton.tsx";
+import { Sparkles, Languages, Loader2, Trash2, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
@@ -28,7 +27,15 @@ import {
   useAiSuggestions,
   type RunResult,
   type FieldSuggestion,
+  type SiblingLocale,
 } from "@/hooks/use-ai-suggestions.tsx";
+import { EntityFormLayout, type SectionDef } from "./EntityFormLayout.tsx";
+import { FieldWithSibling } from "./FieldWithSibling.tsx";
+import FormActionBar from "./FormActionBar.tsx";
+import { AiFieldSuggestButton } from "@registry/components/ai-field-suggest-button";
+import { AiFieldTranslateButton } from "@registry/components/ai-field-translate-button";
+import { useSplitViewPreference } from "@/hooks/use-split-view-preference.ts";
+import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
 import type { EndpointRef } from "entity-kind";
 
 interface Props {
@@ -41,9 +48,17 @@ interface Props {
   initialImageAttribution?: ImageAttribution;
   existingTranslationLocales?: string[];
   isNew?: boolean;
+  /** Set when this locale is a translation of another locale's pairing */
+  initialTranslationOf?: string;
 }
 
 const ALL_LOCALES = ["en", "de"] as const;
+
+const SECTIONS: SectionDef[] = [
+  { id: "section-endpoints", label: "Endpoints" },
+  { id: "section-image", label: "Image" },
+  { id: "section-description", label: "Description" },
+];
 
 function adaptPairingImprovementsToRunResult(
   improvements: Array<{ field: string; suggestion: string; rationale: string }>,
@@ -73,6 +88,7 @@ export default function PairingForm({
   initialImageAttribution,
   existingTranslationLocales = [],
   isNew,
+  initialTranslationOf,
 }: Props) {
   const { draft, setDraft, saving, setSaving } = useEntityFormState({
     kind: "pairing",
@@ -92,8 +108,35 @@ export default function PairingForm({
   const [translateRunId] = useState(() => crypto.randomUUID());
   const pendingTranslationRef = useRef<{ locale: string; desc: string } | null>(null);
 
+  // Split view
+  const [splitView, setSplitView] = useSplitViewPreference();
+  const [siblingLocaleData, setSiblingLocaleData] = useState<SiblingLocale | null>(null);
+  const siblingLoc = locale === "en" ? "de" : "en";
+
+  // Auto-enable split view for translation drafts (translationOf set)
+  useEffect(() => {
+    if (initialTranslationOf) {
+      setSplitView(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch sibling entity on mount or when split view is toggled on
+  useEffect(() => {
+    if (!splitView || !initialId) return;
+    void getSiblingEntity({ kind: "pairing", slug: initialId, locale: siblingLoc }).then((result) =>
+      setSiblingLocaleData(result),
+    );
+  }, [splitView, initialId, siblingLoc]);
+
   const ep0 = initialEndpoints?.[0] ?? { collection: "ingredients" as const, slug: "" };
   const ep1 = initialEndpoints?.[1] ?? { collection: "ingredients" as const, slug: "" };
+
+  // Ref to carry the intended draft state into the tanstack-form onSubmit closure
+  const saveDraftRef = useRef(initialDraft);
+  useEffect(() => {
+    saveDraftRef.current = draft;
+  }, [draft]);
 
   const form = useAdminForm({
     defaultValues: {
@@ -116,6 +159,7 @@ export default function PairingForm({
       try {
         const id = [value.endpoint1Slug, value.endpoint2Slug].sort().join("--");
         const pendingAiEvents = pendingAiEventsRef.current;
+        const effectiveDraft = saveDraftRef.current;
         const { error } = await actions.savePairing({
           id,
           endpoints: [
@@ -124,7 +168,7 @@ export default function PairingForm({
           ],
           description: value.description,
           locale,
-          draft,
+          draft: effectiveDraft,
           image: value.image || "",
           imageAttribution: (value.imageAttribution ?? undefined) as
             | Record<string, unknown>
@@ -134,6 +178,7 @@ export default function PairingForm({
         if (error) throw new Error(error.message);
         // Events were persisted with the save — clear the buffer.
         pendingAiEventsRef.current = [];
+        setDraft(effectiveDraft);
         toast.success("Saved");
         if (isNew) {
           window.location.href = `/admin/pairings/${encodeURIComponent(id)}/edit?locale=${locale}`;
@@ -178,7 +223,12 @@ export default function PairingForm({
   const aiEntityRef = useMemo(() => ({ kind: "pairing", id: initialId ?? "" }), [initialId]);
 
   const aiFlow = useAiSuggestions({
-    contract: { presets: [], fields: {} },
+    contract: {
+      presets: [],
+      fields: {
+        description: { translation: { mode: "translate" } },
+      },
+    },
     onRefine: async (params) => {
       if (!initialId) return { suggestions: {}, autoApplied: {}, traces: {} };
       const { data } = await actions.aiRefreshPairingSuggestions({
@@ -199,6 +249,23 @@ export default function PairingForm({
         }>) ?? [];
       return adaptPairingImprovementsToRunResult(improvements);
     },
+    onFill: async (params) => {
+      if (!initialId) return { suggestions: {}, autoApplied: {}, traces: {} };
+      const ctx = params.sourceContext as {
+        sourceLocale: string;
+        sourceData: Record<string, unknown>;
+      };
+      const { data, error } = await actions.aiFillTranslation({
+        kind: "pairing",
+        sourceRef: { id: initialId, kind: "pairing" },
+        sourceLocale: (ctx?.sourceLocale ?? siblingLoc) as "en" | "de",
+        targetLocale: locale as "en" | "de",
+        sourceData: ctx?.sourceData ?? siblingLocaleData?.data ?? {},
+        target: params.target,
+      });
+      if (error) throw new Error(error.message);
+      return data!;
+    },
     aiEventLog,
     entityRef: aiEntityRef,
     origin: {
@@ -209,6 +276,7 @@ export default function PairingForm({
       runId: `pairing-${initialId ?? "new"}`,
       triggeredBy: "editor",
     },
+    siblingLocale: siblingLocaleData ?? undefined,
   });
 
   const ingestAction = useIngestAction({
@@ -227,18 +295,6 @@ export default function PairingForm({
     } catch {
       toast.error("Could not refresh suggestions");
     }
-  }
-
-  async function handleToggleDraft() {
-    if (!initialId) return;
-    const newDraft = !draft;
-    const { error } = await actions.togglePairingDraft({ id: initialId, locale, draft: newDraft });
-    if (error) {
-      toast.error("Failed to update draft status");
-      return;
-    }
-    setDraft(newDraft);
-    toast.success(newDraft ? "Moved to drafts" : "Published");
   }
 
   async function handleDelete() {
@@ -336,357 +392,348 @@ export default function PairingForm({
     ? { ...ingestAction.proposed, description: proposedDescription }
     : null;
 
+  // Header locale chip
+  const localeChip = initialId ? (
+    <span
+      className={cn(
+        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide border",
+        locale === "de"
+          ? "bg-violet-100 text-violet-700 border-violet-300 dark:bg-violet-950 dark:text-violet-300"
+          : "bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-950 dark:text-sky-300",
+      )}
+    >
+      {locale}
+    </span>
+  ) : null;
+
+  // Overflow menu: Delete + View public page + Translate
+  const overflowMenuItems = initialId
+    ? [
+        {
+          label: "View public page",
+          icon: <ExternalLink size={14} />,
+          onClick: () => {
+            window.open(`/pairings/${encodeURIComponent(initialId)}`, "_blank");
+          },
+        },
+        ...(availableTranslationLocales.length > 0
+          ? [
+              {
+                label: "Translate…",
+                icon: <Languages size={14} />,
+                onClick: () => setTranslateOpen(true),
+              },
+            ]
+          : []),
+        {
+          label: `Delete ${locale.toUpperCase()}`,
+          icon: <Trash2 size={14} />,
+          onClick: () => void handleDelete(),
+        },
+      ]
+    : [];
+
+  // Header auxiliary: Enhance button
+  const headerAuxiliary =
+    !isNew && initialId ? (
+      <button
+        type="button"
+        onClick={() => {
+          void handleManualRefresh();
+          setEnhanceOpen(true);
+        }}
+        className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+      >
+        <Sparkles size={13} />
+        Enhance
+      </button>
+    ) : null;
+
+  function handleSave(asDraft: boolean) {
+    saveDraftRef.current = asDraft;
+    void form.handleSubmit();
+  }
+
+  function handleSwapLanguage() {
+    if (!initialId) return;
+    window.location.href = `/admin/pairings/${encodeURIComponent(initialId)}/edit?locale=${siblingLoc}`;
+  }
+
+  const title = isNew ? "New pairing" : `${formValues.endpoint1Slug} ↔ ${formValues.endpoint2Slug}`;
+
   return (
     <SuggestionFlowProvider value={aiFlow}>
-      <div className="mx-auto max-w-4xl">
-        {/* Header */}
-        <div className="mb-6 flex items-center gap-3">
-          <LinkButton variant="ghost" size="icon" href="/admin/pairings">
-            <ArrowLeft size={16} />
-          </LinkButton>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold">
-              {isNew ? "New pairing" : `${formValues.endpoint1Slug} ↔ ${formValues.endpoint2Slug}`}
-            </h1>
-            {!isNew && initialId && (
-              <p className="text-sm text-muted-foreground font-mono">
-                {initialId}{" "}
-                <span
-                  className={cn(
-                    "ml-1 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide border",
-                    locale === "de"
-                      ? "bg-violet-100 text-violet-700 border-violet-300 dark:bg-violet-950 dark:text-violet-300"
-                      : "bg-sky-100 text-sky-700 border-sky-300 dark:bg-sky-950 dark:text-sky-300",
-                  )}
-                >
-                  {locale}
-                </span>
-              </p>
-            )}
-          </div>
-          {!isNew && initialId && (
-            <>
-              <button
-                type="button"
-                onClick={handleToggleDraft}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
-                  draft
-                    ? "border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
-                    : "border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400",
-                )}
-                title={draft ? "Click to publish" : "Click to unpublish"}
-              >
-                {draft ? <EyeOff size={13} /> : <Eye size={13} />}
-                {draft ? "Draft" : "Published"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  handleManualRefresh();
-                  setEnhanceOpen(true);
-                }}
-                className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-              >
-                <Sparkles size={13} />
-                Enhance
-              </button>
-              {availableTranslationLocales.length > 0 && (
+      <EntityFormLayout
+        title={title}
+        localeChip={localeChip}
+        headerAuxiliary={headerAuxiliary}
+        overflowMenuItems={overflowMenuItems}
+        sections={SECTIONS}
+        subHeaderStrip={null}
+        completenessPanel={
+          <CompletenessPanel
+            result={completeness}
+            requiredFields={requiredFields}
+            recommendedFields={recommendedFields}
+          />
+        }
+        splitView={splitView}
+        siblingLocale={siblingLoc}
+        onToggleSplitView={() => setSplitView(!splitView)}
+        onSwapLanguage={splitView && !isNew && initialId ? handleSwapLanguage : undefined}
+        footer={
+          <FormActionBar
+            saving={saving}
+            isDraft={draft}
+            backHref="/admin/pairings"
+            previewHref={initialId ? `/pairings/${encodeURIComponent(initialId)}` : undefined}
+            onSave={handleSave}
+          />
+        }
+      >
+        {/* Endpoints */}
+        <section id="section-endpoints">
+          <Card>
+            <CardHeader>
+              <CardTitle>Endpoints</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Endpoint 1 *</Label>
+                <EntityCombobox
+                  value={formValues.endpoint1Slug}
+                  onChange={(v) => form.setFieldValue("endpoint1Slug" as never, v as never)}
+                  options={ingredientOptions.filter((o) => o.value !== formValues.endpoint2Slug)}
+                  placeholder="Select ingredient…"
+                  disabled={!isNew}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Endpoint 2 *</Label>
+                <EntityCombobox
+                  value={formValues.endpoint2Slug}
+                  onChange={(v) => form.setFieldValue("endpoint2Slug" as never, v as never)}
+                  options={ingredientOptions.filter((o) => o.value !== formValues.endpoint1Slug)}
+                  placeholder="Select ingredient…"
+                  disabled={!isNew}
+                />
+              </div>
+              {!isNew && (
+                <p className="col-span-2 text-xs text-muted-foreground">
+                  Endpoints cannot be changed after creation.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Image */}
+        <section id="section-image">
+          <Card>
+            <CardHeader>
+              <CardTitle>Image</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="pairing-image">Image URL</Label>
                 <button
                   type="button"
-                  onClick={() => setTranslateOpen(true)}
-                  className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+                  onClick={() => setImageSearchOpen(true)}
+                  className="text-xs text-primary hover:underline"
                 >
-                  <Languages size={13} />
-                  Translate
+                  Search image…
                 </button>
-              )}
-              {existingTranslationLocales.map((tl) => (
-                <a
-                  key={tl}
-                  href={`/admin/pairings/${encodeURIComponent(initialId)}/edit?locale=${tl}`}
-                  className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-                >
-                  {tl.toUpperCase()} →
-                </a>
-              ))}
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-destructive hover:bg-destructive/10 hover:border-destructive/30"
-              >
-                <Trash2 size={13} />
-                Delete {locale.toUpperCase()}
-              </button>
-            </>
-          )}
-        </div>
-
-        <div className="flex gap-6">
-          {/* Main form */}
-          <div className="flex-1 space-y-6 pb-16">
-            {/* Endpoints */}
-            <section id="section-endpoints">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Endpoints</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label>Endpoint 1 *</Label>
-                    <EntityCombobox
-                      value={formValues.endpoint1Slug}
-                      onChange={(v) => form.setFieldValue("endpoint1Slug" as never, v as never)}
-                      options={ingredientOptions.filter(
-                        (o) => o.value !== formValues.endpoint2Slug,
-                      )}
-                      placeholder="Select ingredient…"
-                      disabled={!isNew}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Endpoint 2 *</Label>
-                    <EntityCombobox
-                      value={formValues.endpoint2Slug}
-                      onChange={(v) => form.setFieldValue("endpoint2Slug" as never, v as never)}
-                      options={ingredientOptions.filter(
-                        (o) => o.value !== formValues.endpoint1Slug,
-                      )}
-                      placeholder="Select ingredient…"
-                      disabled={!isNew}
-                    />
-                  </div>
-                  {!isNew && (
-                    <p className="col-span-2 text-xs text-muted-foreground">
-                      Endpoints cannot be changed after creation.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </section>
-
-            {/* Image */}
-            <section id="section-image">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Image</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="pairing-image">Image URL</Label>
-                    <button
-                      type="button"
-                      onClick={() => setImageSearchOpen(true)}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Search image…
-                    </button>
-                  </div>
-                  <Input
-                    id="pairing-image"
-                    type="url"
-                    value={formValues.image}
-                    onChange={(e) => {
-                      form.setFieldValue("image" as never, e.target.value as never);
-                      if (!e.target.value)
-                        form.setFieldValue("imageAttribution" as never, undefined as never);
-                    }}
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  {formValues.image && (
-                    <img
-                      src={formValues.image}
-                      alt=""
-                      className="mt-2 h-24 rounded border border-border object-cover"
-                    />
-                  )}
-                  {formValues.imageAttribution && (
-                    <p className="text-[11px] text-muted-foreground">
-                      {formValues.imageAttribution.attribution}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </section>
-
-            {/* Description */}
-            <section id="section-description">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Description ({locale.toUpperCase()})</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <form.AppField name="description">
-                    {(field) => (
-                      <field.TextareaField
-                        rows={4}
-                        placeholder={`Why do ${formValues.endpoint1Slug || "these"} and ${formValues.endpoint2Slug || "these"} pair well? (${locale.toUpperCase()})`}
-                        suggestionPath="description"
-                      />
-                    )}
-                  </form.AppField>
-                </CardContent>
-              </Card>
-            </section>
-          </div>
-
-          {/* Right: completeness */}
-          <aside className="sticky top-0 h-fit w-52 shrink-0 pt-1">
-            <CompletenessPanel
-              result={completeness}
-              requiredFields={requiredFields}
-              recommendedFields={recommendedFields}
-            />
-          </aside>
-        </div>
-
-        {/* Save bar */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur px-6 py-3">
-          <div className="mx-auto max-w-4xl flex items-center justify-end gap-3">
-            <Button onClick={() => void form.handleSubmit()} disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 size={14} className="animate-spin mr-1" />
-                  Saving…
-                </>
-              ) : (
-                "Save"
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {/* Image search modal */}
-        <ImageSearchModal
-          open={imageSearchOpen}
-          onClose={() => setImageSearchOpen(false)}
-          defaultQuery={`${formValues.endpoint1Slug} ${formValues.endpoint2Slug}`.trim()}
-          onSelect={(selected: SelectedImage) => {
-            form.setFieldValue("image" as never, selected.url as never);
-            form.setFieldValue("imageAttribution" as never, selected.attribution as never);
-          }}
-        />
-
-        {/* Modals */}
-        {!isNew && initialId && (
-          <>
-            <IngestDialog
-              open={enhanceOpen}
-              onOpenChange={(o) => {
-                if (!o) {
-                  ingestAction.clearProposed();
-                  setEnhanceOpen(false);
-                }
-              }}
-              title={`Enhance pairing description (${locale.toUpperCase()})`}
-              onRun={ingestAction.onRun}
-              onReviewBack={ingestAction.clearProposed}
-              reviewChildren={
-                pairingProposedForDiff ? (
-                  <div className="space-y-4">
-                    <div className="max-h-[50vh] overflow-y-auto">
-                      {ingestAction.warnings.length > 0 && (
-                        <div className="mb-3 space-y-0.5">
-                          {ingestAction.warnings.map((w, i) => (
-                            <p key={i} className="text-xs text-amber-700 dark:text-amber-400">
-                              ⚠ {w}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                      <PairingDiff
-                        existing={pairingExistingForDiff}
-                        proposed={pairingProposedForDiff}
-                        locale={locale}
-                      />
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        onClick={() => void handleApplyEnhancement()}
-                        disabled={applyingEnhancement}
-                      >
-                        {applyingEnhancement ? (
-                          <>
-                            <Loader2 size={14} className="animate-spin mr-1" />
-                            Applying…
-                          </>
-                        ) : (
-                          <>
-                            <Check size={14} className="mr-1" />
-                            Apply changes
-                          </>
-                        )}
-                      </Button>
-                    </DialogFooter>
-                  </div>
-                ) : undefined
-              }
-              generateLabel="Generate enhanced version"
-              className="sm:max-w-4xl"
-            />
-            <Dialog open={translateOpen} onOpenChange={(o) => !o && setTranslateOpen(false)}>
-              <DialogContent className="sm:max-w-lg">
-                <TranslateEntityDialog
-                  contract={{
-                    presets: [],
-                    fields: { description: { translation: { mode: "translate" } } },
-                  }}
-                  sourceRef={{ kind: "pairing", id: initialId }}
-                  sourceLocale={locale}
-                  sourceData={{ description: formValues.description }}
-                  availableLocales={availableTranslationLocales}
-                  onCreate={async (targetLocale, _slug, fields) => {
-                    const description = String(fields["description"] ?? "");
-                    pendingTranslationRef.current = { locale: targetLocale, desc: description };
-                    const { error } = await actions.aiTranslatePairing({
-                      id: initialId,
-                      sourceLocale: locale as "en" | "de",
-                      targetLocale: targetLocale as "en" | "de",
-                      description,
-                    });
-                    if (error) throw new Error(error.message);
-                    return { kind: "pairing", id: initialId };
-                  }}
-                  onComplete={() => {
-                    pendingTranslationRef.current = null;
-                    setTranslateOpen(false);
-                    toast.success("Translation saved — switch locale to view");
-                  }}
-                  aiEventLog={{ read: async () => [], append: async () => {} }}
-                  onFill={async (params) => {
-                    const ctx = params.sourceContext as {
-                      sourceLocale: string;
-                      targetLocale: string;
-                      sourceData: Record<string, unknown>;
-                    };
-                    const { data, error } = await actions.aiFillTranslation({
-                      kind: "pairing",
-                      sourceRef: { id: initialId, kind: "pairing" },
-                      sourceLocale: ctx.sourceLocale as "en" | "de",
-                      targetLocale: ctx.targetLocale as "en" | "de",
-                      sourceData: ctx.sourceData,
-                      target: params.target,
-                    });
-                    if (error) throw new Error(error.message);
-                    return data!;
-                  }}
-                  origin={{
-                    surface: "admin",
-                    action: "aiFillTranslation",
-                    entityKind: "pairing",
-                    entityRef: initialId,
-                    userInitiated: true,
-                    runId: translateRunId,
-                    triggeredBy: "editor" as const,
-                  }}
+              </div>
+              <Input
+                id="pairing-image"
+                type="url"
+                value={formValues.image}
+                onChange={(e) => {
+                  form.setFieldValue("image" as never, e.target.value as never);
+                  if (!e.target.value)
+                    form.setFieldValue("imageAttribution" as never, undefined as never);
+                }}
+                placeholder="https://example.com/image.jpg"
+              />
+              {formValues.image && (
+                <img
+                  src={formValues.image}
+                  alt=""
+                  className="mt-2 h-24 rounded border border-border object-cover"
                 />
-              </DialogContent>
-            </Dialog>
-          </>
-        )}
-      </div>
+              )}
+              {formValues.imageAttribution && (
+                <p className="text-[11px] text-muted-foreground">
+                  {formValues.imageAttribution.attribution}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Description */}
+        <section id="section-description">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Description ({locale.toUpperCase()})</CardTitle>
+                <div className="flex items-center gap-2">
+                  {splitView && <AiFieldTranslateButton fieldPath="description" />}
+                  {!splitView && <AiFieldSuggestButton fieldPath="description" />}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <FieldWithSibling
+                label="Description"
+                fieldKey="description"
+                siblingValue={siblingLocaleData?.data["description"]}
+                siblingLocale={siblingLoc}
+                splitView={splitView}
+              >
+                <form.AppField name="description">
+                  {(field) => (
+                    <field.TextareaField
+                      rows={4}
+                      placeholder={`Why do ${formValues.endpoint1Slug || "these"} and ${formValues.endpoint2Slug || "these"} pair well? (${locale.toUpperCase()})`}
+                      suggestionPath="description"
+                    />
+                  )}
+                </form.AppField>
+              </FieldWithSibling>
+            </CardContent>
+          </Card>
+        </section>
+      </EntityFormLayout>
+
+      {/* Image search modal */}
+      <ImageSearchModal
+        open={imageSearchOpen}
+        onClose={() => setImageSearchOpen(false)}
+        defaultQuery={`${formValues.endpoint1Slug} ${formValues.endpoint2Slug}`.trim()}
+        onSelect={(selected: SelectedImage) => {
+          form.setFieldValue("image" as never, selected.url as never);
+          form.setFieldValue("imageAttribution" as never, selected.attribution as never);
+        }}
+      />
+
+      {/* Modals */}
+      {!isNew && initialId && (
+        <>
+          <IngestDialog
+            open={enhanceOpen}
+            onOpenChange={(o) => {
+              if (!o) {
+                ingestAction.clearProposed();
+                setEnhanceOpen(false);
+              }
+            }}
+            title={`Enhance pairing description (${locale.toUpperCase()})`}
+            onRun={ingestAction.onRun}
+            onReviewBack={ingestAction.clearProposed}
+            reviewChildren={
+              pairingProposedForDiff ? (
+                <div className="space-y-4">
+                  <div className="max-h-[50vh] overflow-y-auto">
+                    {ingestAction.warnings.length > 0 && (
+                      <div className="mb-3 space-y-0.5">
+                        {ingestAction.warnings.map((w, i) => (
+                          <p key={i} className="text-xs text-amber-700 dark:text-amber-400">
+                            ⚠ {w}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    <PairingDiff
+                      existing={pairingExistingForDiff}
+                      proposed={pairingProposedForDiff}
+                      locale={locale}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      onClick={() => void handleApplyEnhancement()}
+                      disabled={applyingEnhancement}
+                    >
+                      {applyingEnhancement ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin mr-1" />
+                          Applying…
+                        </>
+                      ) : (
+                        <>
+                          <Check size={14} className="mr-1" />
+                          Apply changes
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </div>
+              ) : undefined
+            }
+            generateLabel="Generate enhanced version"
+            className="sm:max-w-4xl"
+          />
+          <Dialog open={translateOpen} onOpenChange={(o) => !o && setTranslateOpen(false)}>
+            <DialogContent className="sm:max-w-lg">
+              <TranslateEntityDialog
+                contract={{
+                  presets: [],
+                  fields: { description: { translation: { mode: "translate" } } },
+                }}
+                sourceRef={{ kind: "pairing", id: initialId }}
+                sourceLocale={locale}
+                sourceData={{ description: formValues.description }}
+                availableLocales={availableTranslationLocales}
+                onCreate={async (targetLocale, _slug, fields) => {
+                  const description = String(fields["description"] ?? "");
+                  pendingTranslationRef.current = { locale: targetLocale, desc: description };
+                  const { error } = await actions.aiTranslatePairing({
+                    id: initialId,
+                    sourceLocale: locale as "en" | "de",
+                    targetLocale: targetLocale as "en" | "de",
+                    description,
+                  });
+                  if (error) throw new Error(error.message);
+                  return { kind: "pairing", id: initialId };
+                }}
+                onComplete={() => {
+                  pendingTranslationRef.current = null;
+                  setTranslateOpen(false);
+                  toast.success("Translation saved — switch locale to view");
+                }}
+                aiEventLog={{ read: async () => [], append: async () => {} }}
+                onFill={async (params) => {
+                  const ctx = params.sourceContext as {
+                    sourceLocale: string;
+                    targetLocale: string;
+                    sourceData: Record<string, unknown>;
+                  };
+                  const { data, error } = await actions.aiFillTranslation({
+                    kind: "pairing",
+                    sourceRef: { id: initialId, kind: "pairing" },
+                    sourceLocale: ctx.sourceLocale as "en" | "de",
+                    targetLocale: ctx.targetLocale as "en" | "de",
+                    sourceData: ctx.sourceData,
+                    target: params.target,
+                  });
+                  if (error) throw new Error(error.message);
+                  return data!;
+                }}
+                origin={{
+                  surface: "admin",
+                  action: "aiFillTranslation",
+                  entityKind: "pairing",
+                  entityRef: initialId,
+                  userInitiated: true,
+                  runId: translateRunId,
+                  triggeredBy: "editor" as const,
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
     </SuggestionFlowProvider>
   );
 }
