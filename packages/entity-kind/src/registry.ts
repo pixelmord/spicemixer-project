@@ -28,6 +28,13 @@ export interface EntityKindConfig {
   routePrefix: string;
   /** null = this kind does not participate in translation staleness tracking. */
   translationCanonicalKey: ((locale: string, slug: string) => string) | null;
+  /**
+   * Fields that must be identical across all locale variants (copy-mode).
+   * When any locale of this kind is saved, these fields are written to every
+   * other-locale variant of the same slug in the content store.
+   * Empty array = no cross-locale sync for this kind.
+   */
+  nonTranslatableFields: readonly string[];
 }
 
 const registry: Record<EntityKind, EntityKindConfig> = {
@@ -42,6 +49,7 @@ const registry: Record<EntityKind, EntityKindConfig> = {
     },
     routePrefix: "/ingredients/",
     translationCanonicalKey: (locale, slug) => `${locale}/${slug}`,
+    nonTranslatableFields: ["images", "imageAttribution"],
   },
 
   recipe: {
@@ -55,6 +63,7 @@ const registry: Record<EntityKind, EntityKindConfig> = {
     },
     routePrefix: "/recipes/",
     translationCanonicalKey: (_locale, slug) => slug,
+    nonTranslatableFields: ["image"],
   },
 
   pairing: {
@@ -68,6 +77,7 @@ const registry: Record<EntityKind, EntityKindConfig> = {
     },
     routePrefix: "/pairings/",
     translationCanonicalKey: null,
+    nonTranslatableFields: [],
   },
 };
 

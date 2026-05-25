@@ -13,6 +13,11 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe("ingredientSchema", () => {
+  test("defaults images to empty array when absent", () => {
+    const result = ingredientSchema.parse({ name: "Cumin", category: "spice" });
+    expect(result.images).toEqual([]);
+  });
+
   test("defaults region to empty array when absent", () => {
     const result = ingredientSchema.parse({ name: "Cumin", category: "spice" });
     expect(result.region).toEqual([]);
