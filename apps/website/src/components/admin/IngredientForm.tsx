@@ -852,11 +852,6 @@ export default function IngredientForm({
         onClick: () => window.open(`/ingredients/${slug}`, "_blank"),
       },
       {
-        label: "Open meta sidecar",
-        icon: <ExternalLink size={14} />,
-        onClick: () => window.open(`/admin/ingredients/${slug}/meta`, "_blank"),
-      },
-      {
         label: "Delete",
         icon: <Trash2 size={14} />,
         onClick: () => setDeleteConfirmOpen(true),
@@ -864,30 +859,24 @@ export default function IngredientForm({
     ];
   }, [isNew, slug]);
 
+  function handleSwapLanguage() {
+    if (!slug) return;
+    window.location.href = `/admin/ingredients/${slug}/edit?locale=${siblingLocaleCode}`;
+  }
+
   const headerAuxiliary =
     !isNew && slug ? (
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            handleManualRefresh();
-            setEnhanceOpen(true);
-          }}
-          className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-        >
-          <Sparkles size={13} />
-          Enhance
-        </button>
-        {!existingTranslationLocales.includes(siblingLocaleCode) && (
-          <button
-            type="button"
-            onClick={() => setTranslateOpen(true)}
-            className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-          >
-            Translate
-          </button>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={() => {
+          handleManualRefresh();
+          setEnhanceOpen(true);
+        }}
+        className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+      >
+        <Sparkles size={13} />
+        Enhance
+      </button>
     ) : undefined;
 
   let subHeaderStrip: ReactNode;
@@ -926,6 +915,8 @@ export default function IngredientForm({
               recommendedFields={recommendedFields}
             />
           }
+          completenessScore={completeness.score}
+          completenessColor={completeness.color}
           extraSidebarBlocks={
             !isNew && !splitView ? (
               <PairingSuggestionPanel
@@ -967,8 +958,12 @@ export default function IngredientForm({
             />
           }
           splitView={splitView}
-          siblingLocale={splitView ? siblingLocaleCode : undefined}
+          activeLocale={locale}
+          siblingLocale={siblingLocaleCode}
+          hasExistingTranslation={existingTranslationLocales.includes(siblingLocaleCode)}
+          onAddTranslation={!isNew && slug ? () => setTranslateOpen(true) : undefined}
           onToggleSplitView={() => setSplitView(!splitView)}
+          onSwapLanguage={splitView && !isNew && slug ? handleSwapLanguage : undefined}
         >
           {/* ── Basic info ── */}
           <section id="section-basic" className="scroll-mt-4">

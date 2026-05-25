@@ -3,7 +3,7 @@ import { useStore } from "@tanstack/react-form";
 import { useAdminForm } from "@/components/admin/fields/index.ts";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { Sparkles, Languages, Loader2, Trash2, Check, ExternalLink } from "lucide-react";
+import { Sparkles, Loader2, Trash2, Check, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
@@ -29,7 +29,7 @@ import {
   type FieldSuggestion,
   type SiblingLocale,
 } from "@/hooks/use-ai-suggestions.tsx";
-import { EntityFormLayout, type SectionDef } from "./EntityFormLayout.tsx";
+import { EntityFormLayout } from "./EntityFormLayout.tsx";
 import { FieldWithSibling } from "./FieldWithSibling.tsx";
 import FormActionBar from "./FormActionBar.tsx";
 import { AiFieldSuggestButton } from "@registry/components/ai-field-suggest-button";
@@ -53,12 +53,6 @@ interface Props {
 }
 
 const ALL_LOCALES = ["en", "de"] as const;
-
-const SECTIONS: SectionDef[] = [
-  { id: "section-endpoints", label: "Endpoints" },
-  { id: "section-image", label: "Image" },
-  { id: "section-description", label: "Description" },
-];
 
 function adaptPairingImprovementsToRunResult(
   improvements: Array<{ field: string; suggestion: string; rationale: string }>,
@@ -410,15 +404,6 @@ export default function PairingForm({
             window.open(`/pairings/${encodeURIComponent(initialId)}`, "_blank");
           },
         },
-        ...(availableTranslationLocales.length > 0
-          ? [
-              {
-                label: "Translate…",
-                icon: <Languages size={14} />,
-                onClick: () => setTranslateOpen(true),
-              },
-            ]
-          : []),
         {
           label: `Delete ${locale.toUpperCase()}`,
           icon: <Trash2 size={14} />,
@@ -461,7 +446,6 @@ export default function PairingForm({
         localeChip={localeChip}
         headerAuxiliary={headerAuxiliary}
         overflowMenuItems={overflowMenuItems}
-        sections={SECTIONS}
         subHeaderStrip={null}
         completenessPanel={
           <CompletenessPanel
@@ -470,8 +454,17 @@ export default function PairingForm({
             recommendedFields={recommendedFields}
           />
         }
+        completenessScore={completeness.score}
+        completenessColor={completeness.color}
         splitView={splitView}
+        activeLocale={locale}
         siblingLocale={siblingLoc}
+        hasExistingTranslation={existingTranslationLocales.includes(siblingLoc)}
+        onAddTranslation={
+          !isNew && initialId && !existingTranslationLocales.includes(siblingLoc)
+            ? () => setTranslateOpen(true)
+            : undefined
+        }
         onToggleSplitView={() => setSplitView(!splitView)}
         onSwapLanguage={splitView && !isNew && initialId ? handleSwapLanguage : undefined}
         footer={

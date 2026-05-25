@@ -1133,26 +1133,27 @@ export default function RecipeForm({
     },
   ];
 
+  function handleSwapLanguage() {
+    if (!slug || !language) return;
+    window.location.href = `/admin/${collection}/${slug}/edit?locale=${siblingLocale}`;
+  }
+
+  const hasExistingTranslation = !!meta.translations?.[siblingLocale];
+
   const headerAuxiliary =
     !isNew && slug ? (
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            handleManualRefresh();
-            setEnhanceOpen(true);
-          }}
-        >
-          <Sparkles size={14} className="mr-1.5" />
-          Enhance
-        </Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => setTranslateOpen(true)}>
-          <Languages size={14} className="mr-1.5" />
-          Translate
-        </Button>
-      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          handleManualRefresh();
+          setEnhanceOpen(true);
+        }}
+      >
+        <Sparkles size={14} className="mr-1.5" />
+        Enhance
+      </Button>
     ) : undefined;
 
   const subHeaderStrip = (
@@ -1212,8 +1213,14 @@ export default function RecipeForm({
             />
           }
           splitView={splitView}
-          siblingLocale={splitView ? siblingLocale : undefined}
+          activeLocale={language ?? undefined}
+          siblingLocale={siblingLocale}
+          hasExistingTranslation={hasExistingTranslation}
+          onAddTranslation={
+            !isNew && slug && !hasExistingTranslation ? () => setTranslateOpen(true) : undefined
+          }
           onToggleSplitView={() => setSplitView(!splitView)}
+          onSwapLanguage={splitView && !isNew && slug ? handleSwapLanguage : undefined}
         >
           <div className="space-y-8">
             {/* ── Basic info ── */}
