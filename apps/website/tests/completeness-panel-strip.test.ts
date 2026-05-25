@@ -38,7 +38,7 @@ describe("Form callsites — no AI props passed to CompletenessPanel", () => {
   const formFiles: Array<[label: string, path: string[]]> = [
     ["RecipeForm.tsx", ["RecipeForm.tsx"]],
     ["IngredientForm.tsx", ["forms", "ingredient", "IngredientForm.tsx"]],
-    ["PairingForm.tsx", ["PairingForm.tsx"]],
+    ["PairingForm.tsx", ["forms", "pairing", "PairingForm.tsx"]],
   ];
   for (const [formLabel, segments] of formFiles) {
     describe(formLabel, () => {

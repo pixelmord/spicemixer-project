@@ -9,7 +9,7 @@ const COMPONENTS = join(WEBSITE_ROOT, "src", "components", "admin");
 let src: string;
 
 beforeAll(async () => {
-  src = await readFile(join(COMPONENTS, "PairingForm.tsx"), "utf-8");
+  src = await readFile(join(COMPONENTS, "forms", "pairing", "PairingForm.tsx"), "utf-8");
 });
 
 describe("PairingForm — EntityFormLayout adoption", () => {
@@ -104,8 +104,8 @@ describe("PairingForm — split view", () => {
     expect(src).toMatch(/initialTranslationOf/);
   });
 
-  test("fetches sibling entity via getSiblingEntity", () => {
-    expect(src).toMatch(/getSiblingEntity/);
+  test("fetches sibling entity via the useSiblingEntity hook", () => {
+    expect(src).toMatch(/useSiblingEntity/);
   });
 });
 

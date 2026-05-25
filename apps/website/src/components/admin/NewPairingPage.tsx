@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import PairingForm from "./PairingForm.tsx";
+import PairingForm from "./forms/pairing/PairingForm.tsx";
 import type { EndpointRef } from "entity-kind";
 
 interface Props {

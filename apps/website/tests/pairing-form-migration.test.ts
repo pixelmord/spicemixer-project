@@ -5,20 +5,30 @@ import { describe, expect, test, beforeAll } from "vite-plus/test";
 
 const WEBSITE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const COMPONENTS = join(WEBSITE_ROOT, "src", "components", "admin");
+const PAIRING_DIR = join(COMPONENTS, "forms", "pairing");
 
 let src: string;
+let enhanceWrapperSrc: string;
 
 beforeAll(async () => {
-  src = await readFile(join(COMPONENTS, "PairingForm.tsx"), "utf-8");
+  src = await readFile(join(PAIRING_DIR, "PairingForm.tsx"), "utf-8");
+  enhanceWrapperSrc = await readFile(
+    join(PAIRING_DIR, "sections", "modals", "PairingEnhanceDialog.tsx"),
+    "utf-8",
+  );
 });
 
-describe("PairingForm — IngestDialog wiring", () => {
-  test("PairingForm imports IngestDialog", () => {
-    expect(src).toMatch(/import.*IngestDialog.*from/);
+describe("PairingForm — Enhance dialog wiring", () => {
+  test("PairingForm renders PairingEnhanceDialog wrapper", () => {
+    expect(src).toMatch(/<PairingEnhanceDialog\b/);
   });
 
-  test("PairingForm renders IngestDialog", () => {
-    expect(src).toMatch(/<IngestDialog\b/);
+  test("Enhance wrapper imports IngestDialog from canonical location", () => {
+    expect(enhanceWrapperSrc).toMatch(/import.*IngestDialog.*from/);
+  });
+
+  test("Enhance wrapper renders IngestDialog", () => {
+    expect(enhanceWrapperSrc).toMatch(/<IngestDialog\b/);
   });
 
   test("PairingForm uses useAiSuggestions hook", () => {
@@ -29,8 +39,8 @@ describe("PairingForm — IngestDialog wiring", () => {
     expect(src).toMatch(/useIngestAction/);
   });
 
-  test("PairingForm uses PairingDiff as reviewChildren", () => {
-    expect(src).toMatch(/PairingDiff/);
+  test("Enhance wrapper uses PairingDiff as reviewChildren", () => {
+    expect(enhanceWrapperSrc).toMatch(/PairingDiff/);
   });
 
   test("PairingForm persists description into form state on apply", () => {

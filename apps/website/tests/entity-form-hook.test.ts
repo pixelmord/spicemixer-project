@@ -92,7 +92,7 @@ describe("PairingForm — binds useEntityFormState", () => {
   let src: string;
 
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "PairingForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "pairing", "PairingForm.tsx"), "utf-8");
   });
 
   test("imports useEntityFormState", () => {
@@ -104,7 +104,7 @@ describe("PairingForm — uses @tanstack/react-form", () => {
   let src: string;
 
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "PairingForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "pairing", "PairingForm.tsx"), "utf-8");
   });
 
   test("imports useForm from @tanstack/react-form", () => {

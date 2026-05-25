@@ -3,36 +3,32 @@ import { useForm, useStore } from "@tanstack/react-form";
 import { TextareaField } from "@/components/admin/fields/index.ts";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { Sparkles, Loader2, Trash2, Check, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
+import { Sparkles, Trash2, ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { cn } from "@/lib/utils.ts";
 import { computeCompletenessFromBlob } from "@/lib/completeness.ts";
 import { useEntityFormState } from "@/hooks/useEntityFormState.ts";
-import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
-import CompletenessPanel from "./CompletenessPanel.tsx";
-import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
-import { IngestDialog } from "./IngestDialog.tsx";
-import PairingDiff from "./PairingDiff.tsx";
-import { TranslateEntityDialog } from "./TranslateEntityDialog.tsx";
-import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog.tsx";
+import EntityCombobox, { type EntityOption } from "@/components/admin/EntityCombobox.tsx";
+import CompletenessPanel from "@/components/admin/CompletenessPanel.tsx";
+import { SuggestionFlowProvider } from "@/components/admin/SuggestionFlowProvider.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
-} from "./ImageSearchModal.tsx";
+} from "@/components/admin/ImageSearchModal.tsx";
 import { useIngestAction } from "@/lib/ai/use-ingest-action.ts";
 import {
   useAiSuggestions,
   type RunResult,
   type FieldSuggestion,
-  type SiblingLocale,
 } from "@/hooks/use-ai-suggestions.tsx";
-import { EntityFormLayout } from "./EntityFormLayout.tsx";
-import FormActionBar from "./FormActionBar.tsx";
+import { EntityFormLayout } from "@/components/admin/EntityFormLayout.tsx";
+import FormActionBar from "@/components/admin/FormActionBar.tsx";
 import { useSplitViewPreference } from "@/hooks/use-split-view-preference.ts";
-import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
+import { useSiblingEntity } from "@/hooks/use-sibling-entity.ts";
+import { ImageField } from "@/components/admin/forms/_shared/ImageField.tsx";
+import { PairingEnhanceDialog } from "./sections/modals/PairingEnhanceDialog.tsx";
+import { PairingTranslateDialog } from "./sections/modals/PairingTranslateDialog.tsx";
 import type { EndpointRef } from "entity-kind";
 
 interface Props {
@@ -107,7 +103,6 @@ export default function PairingForm({
   const pendingTranslationRef = useRef<{ locale: string; desc: string } | null>(null);
 
   const [splitView, setSplitView] = useSplitViewPreference();
-  const [siblingLocaleData, setSiblingLocaleData] = useState<SiblingLocale | null>(null);
   const siblingLoc = locale === "en" ? "de" : "en";
 
   useEffect(() => {
@@ -117,15 +112,21 @@ export default function PairingForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!splitView || !initialId) return;
-    void getSiblingEntity({ kind: "pairing", slug: initialId, locale: siblingLoc }).then((result) =>
-      setSiblingLocaleData(result),
-    );
-  }, [splitView, initialId, siblingLoc]);
+  const siblingLocaleData = useSiblingEntity({
+    kind: "pairing",
+    slug: initialId ?? "",
+    locale: siblingLoc,
+    enabled: splitView && !!initialId,
+  });
 
   const ep0 = initialEndpoints?.[0] ?? { collection: "ingredients" as const, slug: "" };
   const ep1 = initialEndpoints?.[1] ?? { collection: "ingredients" as const, slug: "" };
+
+  // Per-field accept/reject events are buffered client-side and flushed only
+  // when the form is saved. Persisting them on every click writes a meta sidecar
+  // file inside the watched content collection, which triggers Astro's
+  // dev-mode HMR full-reload and wipes unsaved form state.
+  const pendingAiEventsRef = useRef<Record<string, unknown>[]>([]);
 
   // Ref to carry the intended draft state into the tanstack-form onSubmit closure
   const saveDraftRef = useRef(initialDraft);
@@ -171,7 +172,6 @@ export default function PairingForm({
           ...(pendingAiEvents.length > 0 ? { pendingAiEvents } : {}),
         });
         if (error) throw new Error(error.message);
-        // Events were persisted with the save — clear the buffer.
         pendingAiEventsRef.current = [];
         setDraft(effectiveDraft);
         toast.success("Saved");
@@ -199,12 +199,6 @@ export default function PairingForm({
       });
   }, []);
 
-  // Per-field accept/reject events are buffered client-side and flushed only
-  // when the form is saved. Persisting them on every click writes a meta sidecar
-  // file inside the watched content collection, which triggers Astro's
-  // dev-mode HMR full-reload and wipes unsaved form state. Flushing on save
-  // bundles all events into the same write the user already expects.
-  const pendingAiEventsRef = useRef<Record<string, unknown>[]>([]);
   const aiEventLog = useMemo(
     () => ({
       read: async () => [],
@@ -381,11 +375,11 @@ export default function PairingForm({
   const requiredFields = completenessFields;
   const recommendedFields: typeof completenessFields = [];
 
-  const availableTranslationLocales = ALL_LOCALES.filter(
+  const availableTranslationLocales: string[] = ALL_LOCALES.filter(
     (l) => l !== locale && !existingTranslationLocales.includes(l),
   );
 
-  const pairingExistingForDiff = {
+  const pairingExistingForDiff: Record<string, unknown> = {
     endpoints: initialEndpoints ?? [],
     description: formValues.description,
   };
@@ -530,27 +524,16 @@ export default function PairingForm({
             <CardHeader>
               <CardTitle>Image</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="pairing-image">Image URL</Label>
-                <button
-                  type="button"
-                  onClick={() => setImageSearchOpen(true)}
-                  className="text-xs text-primary hover:underline"
-                >
-                  Search image…
-                </button>
-              </div>
-              <Input
+            <CardContent>
+              <ImageField
                 id="pairing-image"
-                type="url"
-                value={formValues.image}
-                onChange={(e) => {
-                  form.setFieldValue("image" as never, e.target.value as never);
-                  if (!e.target.value)
-                    form.setFieldValue("imageAttribution" as never, undefined as never);
-                }}
-                placeholder="https://example.com/image.jpg"
+                value={formValues.image ?? ""}
+                onChange={(next) => form.setFieldValue("image" as never, next as never)}
+                attribution={formValues.imageAttribution}
+                onClearAttribution={() =>
+                  form.setFieldValue("imageAttribution" as never, undefined as never)
+                }
+                onOpenSearch={() => setImageSearchOpen(true)}
               />
               {formValues.image && (
                 <img
@@ -558,11 +541,6 @@ export default function PairingForm({
                   alt=""
                   className="mt-2 h-24 rounded border border-border object-cover"
                 />
-              )}
-              {formValues.imageAttribution && (
-                <p className="text-[11px] text-muted-foreground">
-                  {formValues.imageAttribution.attribution}
-                </p>
               )}
             </CardContent>
           </Card>
@@ -605,10 +583,9 @@ export default function PairingForm({
         }}
       />
 
-      {/* Modals */}
       {!isNew && initialId && (
         <>
-          <IngestDialog
+          <PairingEnhanceDialog
             open={enhanceOpen}
             onOpenChange={(o) => {
               if (!o) {
@@ -616,110 +593,25 @@ export default function PairingForm({
                 setEnhanceOpen(false);
               }
             }}
-            title={`Enhance pairing description (${locale.toUpperCase()})`}
+            locale={locale}
             onRun={ingestAction.onRun}
             onReviewBack={ingestAction.clearProposed}
-            reviewChildren={
-              pairingProposedForDiff ? (
-                <div className="space-y-4">
-                  <div className="max-h-[50vh] overflow-y-auto">
-                    {ingestAction.warnings.length > 0 && (
-                      <div className="mb-3 space-y-0.5">
-                        {ingestAction.warnings.map((w, i) => (
-                          <p key={i} className="text-xs text-amber-700 dark:text-amber-400">
-                            ⚠ {w}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                    <PairingDiff
-                      existing={pairingExistingForDiff}
-                      proposed={pairingProposedForDiff}
-                      locale={locale}
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      onClick={() => void handleApplyEnhancement()}
-                      disabled={applyingEnhancement}
-                    >
-                      {applyingEnhancement ? (
-                        <>
-                          <Loader2 size={14} className="animate-spin mr-1" />
-                          Applying…
-                        </>
-                      ) : (
-                        <>
-                          <Check size={14} className="mr-1" />
-                          Apply changes
-                        </>
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </div>
-              ) : undefined
-            }
-            generateLabel="Generate enhanced version"
-            className="sm:max-w-4xl"
+            warnings={ingestAction.warnings}
+            existing={pairingExistingForDiff}
+            proposed={pairingProposedForDiff}
+            applying={applyingEnhancement}
+            onApply={handleApplyEnhancement}
           />
-          <Dialog open={translateOpen} onOpenChange={(o) => !o && setTranslateOpen(false)}>
-            <DialogContent className="sm:max-w-lg">
-              <TranslateEntityDialog
-                contract={{
-                  presets: [],
-                  fields: { description: { translation: { mode: "translate" } } },
-                }}
-                sourceRef={{ kind: "pairing", id: initialId }}
-                sourceLocale={locale}
-                sourceData={{ description: formValues.description }}
-                availableLocales={availableTranslationLocales}
-                onCreate={async (targetLocale, _slug, fields) => {
-                  const description = String(fields["description"] ?? "");
-                  pendingTranslationRef.current = { locale: targetLocale, desc: description };
-                  const { error } = await actions.aiTranslatePairing({
-                    id: initialId,
-                    sourceLocale: locale as "en" | "de",
-                    targetLocale: targetLocale as "en" | "de",
-                    description,
-                  });
-                  if (error) throw new Error(error.message);
-                  return { kind: "pairing", id: initialId };
-                }}
-                onComplete={() => {
-                  pendingTranslationRef.current = null;
-                  setTranslateOpen(false);
-                  toast.success("Translation saved — switch locale to view");
-                }}
-                aiEventLog={{ read: async () => [], append: async () => {} }}
-                onFill={async (params) => {
-                  const ctx = params.sourceContext as {
-                    sourceLocale: string;
-                    targetLocale: string;
-                    sourceData: Record<string, unknown>;
-                  };
-                  const { data, error } = await actions.aiFillTranslation({
-                    kind: "pairing",
-                    sourceRef: { id: initialId, kind: "pairing" },
-                    sourceLocale: ctx.sourceLocale as "en" | "de",
-                    targetLocale: ctx.targetLocale as "en" | "de",
-                    sourceData: ctx.sourceData,
-                    target: params.target,
-                  });
-                  if (error) throw new Error(error.message);
-                  return data!;
-                }}
-                origin={{
-                  surface: "admin",
-                  action: "aiFillTranslation",
-                  entityKind: "pairing",
-                  entityRef: initialId,
-                  userInitiated: true,
-                  runId: translateRunId,
-                  triggeredBy: "editor" as const,
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+          <PairingTranslateDialog
+            open={translateOpen}
+            onOpenChange={setTranslateOpen}
+            pairingId={initialId}
+            locale={locale}
+            description={formValues.description}
+            availableLocales={availableTranslationLocales}
+            runId={translateRunId}
+            pendingTranslationRef={pendingTranslationRef}
+          />
         </>
       )}
     </SuggestionFlowProvider>

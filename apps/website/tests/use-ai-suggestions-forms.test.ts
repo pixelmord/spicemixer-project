@@ -90,7 +90,7 @@ describe("PairingForm — useAiSuggestions orchestration", () => {
   let src: string;
 
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "PairingForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "pairing", "PairingForm.tsx"), "utf-8");
   });
 
   test("imports useAiSuggestions", () => {
