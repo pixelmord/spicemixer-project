@@ -19,11 +19,11 @@ import {
   splitViewToggle,
 } from "./shared.ts";
 
-const URL = "/admin/mixtures/berbere/edit";
+const EDIT_URL = "/admin/mixtures/berbere/edit";
 
 test.describe("MixtureForm split-view: toggle + persistence", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "networkidle" });
+    await page.goto(EDIT_URL, { waitUntil: "networkidle" });
     await clearTranslationPrefs(page);
     await page.reload({ waitUntil: "networkidle" });
   });
@@ -54,7 +54,7 @@ test.describe("MixtureForm split-view: toggle + persistence", () => {
 
 test.describe("MixtureForm split-view: completeness rail", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "domcontentloaded" });
+    await page.goto(EDIT_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await setSplitViewPref(page, true);
     await page.reload({ waitUntil: "networkidle" });
@@ -77,7 +77,7 @@ test.describe("MixtureForm split-view: completeness rail", () => {
 
 test.describe("MixtureForm split-view: sibling data", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "domcontentloaded" });
+    await page.goto(EDIT_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await setSplitViewPref(page, true);
     await page.reload({ waitUntil: "networkidle" });
@@ -86,7 +86,6 @@ test.describe("MixtureForm split-view: sibling data", () => {
   test("MixtureForm sibling read-only renders translatable fields in split view", async ({
     page,
   }) => {
-    // Even without sibling data, FieldWithSibling renders dashed placeholder panels
     await expect(page.locator(".border-dashed").first()).toBeVisible({ timeout: 5000 });
   });
 
@@ -97,7 +96,7 @@ test.describe("MixtureForm split-view: sibling data", () => {
 
 test.describe("MixtureForm split-view: per-field translate buttons", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "domcontentloaded" });
+    await page.goto(EDIT_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await setSplitViewPref(page, true);
     await page.reload({ waitUntil: "networkidle" });
@@ -144,8 +143,6 @@ test.describe("MixtureForm split-view: per-field translate buttons", () => {
   });
 
   test("MixtureForm per-field translate not rendered for skip-mode fields", async ({ page }) => {
-    // RECIPE_AI_CONTRACT (mixtures) only has translate-mode fields.
-    // Non-contract fields have no translate button.
     const translateBtns = page.getByRole("button", { name: /translate from/i });
     const count = await translateBtns.count();
     expect(count).toBeGreaterThanOrEqual(1);
@@ -162,7 +159,7 @@ test.describe("MixtureForm split-view: per-field translate buttons", () => {
 
 test.describe("MixtureForm: bulk translate (split view)", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "domcontentloaded" });
+    await page.goto(EDIT_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await setSplitViewPref(page, true);
     await page.reload({ waitUntil: "networkidle" });
@@ -209,7 +206,7 @@ test.describe("MixtureForm: bulk translate (split view)", () => {
 
 test.describe("MixtureForm: per-field AI suggest", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "domcontentloaded" });
+    await page.goto(EDIT_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await setSplitViewPref(page, false);
     await page.reload({ waitUntil: "networkidle" });
@@ -236,14 +233,14 @@ test.describe("MixtureForm: per-field AI suggest", () => {
 
 test.describe("MixtureForm: section navigation", () => {
   test("MixtureForm section anchors exist inside EntityFormLayout", async ({ page }) => {
-    await page.goto(URL, { waitUntil: "networkidle" });
+    await page.goto(EDIT_URL, { waitUntil: "networkidle" });
     await expect(page.getByRole("link").first()).toBeVisible();
   });
 });
 
 test.describe("MixtureForm: header overflow delete", () => {
   test("MixtureForm header overflow Delete prompts via window.confirm", async ({ page }) => {
-    await page.goto(URL, { waitUntil: "networkidle" });
+    await page.goto(EDIT_URL, { waitUntil: "networkidle" });
     await openOverflowMenu(page);
     await expect(page.getByRole("button", { name: /delete/i })).toBeVisible();
 
@@ -257,7 +254,7 @@ test.describe("MixtureForm: translate dialog + slug picker", () => {
   test("MixtureForm slug picker renders in Phase 1 (mixtures need per-locale slug)", async ({
     page,
   }) => {
-    await page.goto(URL, { waitUntil: "networkidle" });
+    await page.goto(EDIT_URL, { waitUntil: "networkidle" });
     const translateBtn = page.getByRole("button", { name: /^translate$/i });
     await expect(translateBtn).toBeVisible({ timeout: 3000 });
     await translateBtn.click();

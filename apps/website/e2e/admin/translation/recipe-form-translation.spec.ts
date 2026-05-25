@@ -16,11 +16,11 @@ import {
   splitViewToggle,
 } from "./shared.ts";
 
-const URL = "/admin/recipes/miso-butter-ramen/edit";
+const EDIT_URL = "/admin/recipes/miso-butter-ramen/edit";
 
 test.describe("RecipeForm split-view: toggle + persistence", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "networkidle" });
+    await page.goto(EDIT_URL, { waitUntil: "networkidle" });
     await clearTranslationPrefs(page);
     await page.reload({ waitUntil: "networkidle" });
   });
@@ -53,7 +53,7 @@ test.describe("RecipeForm split-view: toggle + persistence", () => {
 
 test.describe("RecipeForm split-view: completeness rail", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "domcontentloaded" });
+    await page.goto(EDIT_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await setSplitViewPref(page, true);
     await page.reload({ waitUntil: "networkidle" });
@@ -76,7 +76,7 @@ test.describe("RecipeForm split-view: completeness rail", () => {
 
 test.describe("RecipeForm split-view: sibling data", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "domcontentloaded" });
+    await page.goto(EDIT_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await setSplitViewPref(page, true);
     await page.reload({ waitUntil: "networkidle" });
@@ -85,7 +85,6 @@ test.describe("RecipeForm split-view: sibling data", () => {
   test("RecipeForm sibling read-only renders translatable fields in split view", async ({
     page,
   }) => {
-    // Even without sibling data, FieldWithSibling renders dashed placeholder panels
     await expect(page.locator(".border-dashed").first()).toBeVisible({ timeout: 5000 });
   });
 
@@ -96,7 +95,7 @@ test.describe("RecipeForm split-view: sibling data", () => {
 
 test.describe("RecipeForm split-view: per-field translate buttons", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "domcontentloaded" });
+    await page.goto(EDIT_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await setSplitViewPref(page, true);
     await page.reload({ waitUntil: "networkidle" });
@@ -143,22 +142,8 @@ test.describe("RecipeForm split-view: per-field translate buttons", () => {
   });
 
   test("RecipeForm per-field translate not rendered for skip-mode fields", async ({ page }) => {
-    // RECIPE_AI_CONTRACT has name, description, recipeCategory, recipeCuisine — all translate mode.
-    // Non-contract fields like 'name' (in list but verify no buttons on structure-only fields).
-    // Check that the 'image' field area has no translate button
-    const nameLabel = page.getByText("Name", { exact: true }).first();
-    if (await nameLabel.isVisible()) {
-      // Name has AiFieldSuggestButton in non-split but no dedicated translate button in RECIPE_AI_CONTRACT
-      // In split view, description/recipeCategory/recipeCuisine have translate buttons
-      // Name in RecipeForm uses AiFieldSuggestButton only (not AiFieldTranslateButton)
-      const nameRow = nameLabel.locator("..").locator("..");
-      // No translate button should appear inside the name row in recipe form
-      // Actually in RecipeForm the name field doesn't have AiFieldTranslateButton
-    }
-    // Verify count of translate buttons matches expected (description, recipeCategory, recipeCuisine = 3)
     const translateBtns = page.getByRole("button", { name: /translate from/i });
     const count = await translateBtns.count();
-    // Should be at least one (description, recipeCategory, recipeCuisine)
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
@@ -174,7 +159,7 @@ test.describe("RecipeForm split-view: per-field translate buttons", () => {
 
 test.describe("RecipeForm: bulk translate (split view)", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "domcontentloaded" });
+    await page.goto(EDIT_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await setSplitViewPref(page, true);
     await page.reload({ waitUntil: "networkidle" });
@@ -221,7 +206,7 @@ test.describe("RecipeForm: bulk translate (split view)", () => {
 
 test.describe("RecipeForm: per-field AI suggest", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(URL, { waitUntil: "domcontentloaded" });
+    await page.goto(EDIT_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await setSplitViewPref(page, false);
     await page.reload({ waitUntil: "networkidle" });
@@ -248,15 +233,14 @@ test.describe("RecipeForm: per-field AI suggest", () => {
 
 test.describe("RecipeForm: section navigation", () => {
   test("RecipeForm section anchors exist inside EntityFormLayout", async ({ page }) => {
-    await page.goto(URL, { waitUntil: "networkidle" });
-    // RecipeForm has sections like Core, Metadata, Nutrition, etc.
+    await page.goto(EDIT_URL, { waitUntil: "networkidle" });
     await expect(page.getByRole("link").first()).toBeVisible();
   });
 });
 
 test.describe("RecipeForm: header overflow delete", () => {
   test("RecipeForm header overflow Delete prompts via window.confirm", async ({ page }) => {
-    await page.goto(URL, { waitUntil: "networkidle" });
+    await page.goto(EDIT_URL, { waitUntil: "networkidle" });
     await openOverflowMenu(page);
     await expect(page.getByRole("button", { name: /delete/i })).toBeVisible();
 
@@ -270,13 +254,11 @@ test.describe("RecipeForm: translate dialog + slug picker", () => {
   test("RecipeForm slug picker renders in Phase 1 (recipes need per-locale slug)", async ({
     page,
   }) => {
-    await page.goto(URL, { waitUntil: "networkidle" });
+    await page.goto(EDIT_URL, { waitUntil: "networkidle" });
     const translateBtn = page.getByRole("button", { name: /^translate$/i });
     await expect(translateBtn).toBeVisible({ timeout: 3000 });
     await translateBtn.click();
     await expect(page.getByRole("dialog")).toBeVisible({ timeout: 3000 });
-    // RecipeForm passes onCheckSlugAvailable → twoCallMode → slug picker in step 2
-    // In the setup phase, locale and submit button should be present
     await expect(
       page.getByRole("dialog").getByRole("button", { name: /translate|start/i }),
     ).toBeVisible({

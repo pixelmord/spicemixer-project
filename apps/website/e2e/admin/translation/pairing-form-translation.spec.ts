@@ -9,10 +9,7 @@ import { expect, test } from "@playwright/test";
 import {
   clearTranslationPrefs,
   completenessToggleBtn,
-  getBulkWritePolicy,
   getSplitViewPref,
-  LS_BULK_WRITE_POLICY,
-  LS_SPLIT_VIEW,
   openOverflowMenu,
   setSplitViewPref,
   splitViewToggle,
@@ -31,7 +28,6 @@ test.describe("PairingForm split-view: split-view toggle + persistence", () => {
   test("PairingForm non-translation draft: toggle split view on manually", async ({ page }) => {
     await expect(splitViewToggle(page)).toBeVisible();
     const stored = await getSplitViewPref(page);
-    // Default: splitView may be on or off depending on prior state — just test the toggle works
     const wasActive = stored === "true";
     await splitViewToggle(page).click();
     const nowStored = await getSplitViewPref(page);
@@ -55,12 +51,10 @@ test.describe("PairingForm split-view: split-view toggle + persistence", () => {
 
 test.describe("PairingForm split-view: translation draft auto-enables split view", () => {
   test("PairingForm translation draft auto-renders split view on load", async ({ page }) => {
-    // Clear pref first so localStorage doesn't force-enable
     await page.goto(DE_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await page.reload({ waitUntil: "networkidle" });
 
-    // The form has initialTranslationOf set, so it should auto-enable split view
     const stored = await getSplitViewPref(page);
     expect(stored).toBe("true");
   });
@@ -76,13 +70,11 @@ test.describe("PairingForm split-view: completeness rail", () => {
 
   test("PairingForm completeness rail collapses to icon in split view", async ({ page }) => {
     await expect(completenessToggleBtn(page)).toBeVisible();
-    // Panel is not expanded by default in split view
     await expect(page.getByRole("button", { name: "Toggle completeness panel" })).toBeVisible();
   });
 
   test("PairingForm completeness rail popover renders from icon", async ({ page }) => {
     await completenessToggleBtn(page).click();
-    // Should show completeness panel content (some required/recommended fields)
     await expect(
       page
         .locator(".absolute")
@@ -101,14 +93,10 @@ test.describe("PairingForm split-view: sibling data", () => {
   });
 
   test("PairingForm sibling read-only renders description in split view", async ({ page }) => {
-    // DE sibling caraway--cumin exists and has a description
-    // In split view, FieldWithSibling shows a read-only panel next to the field
     await expect(page.locator(".border-dashed").first()).toBeVisible({ timeout: 5000 });
   });
 
   test("PairingForm sibling-data skeleton placeholders render during fetch", async ({ page }) => {
-    // Navigate with split view already on — sibling fetch happens on mount
-    // The page may briefly show an empty dashed box before the data loads
     await expect(page.locator(".border-dashed").first()).toBeVisible({ timeout: 5000 });
   });
 });
@@ -122,7 +110,6 @@ test.describe("PairingForm split-view: per-field translate buttons", () => {
   });
 
   test("PairingForm per-field translate button visible in split view", async ({ page }) => {
-    // In split view, AiFieldTranslateButton renders for description
     await expect(page.getByRole("button", { name: /translate from/i }).first()).toBeVisible();
   });
 
@@ -134,7 +121,6 @@ test.describe("PairingForm split-view: per-field translate buttons", () => {
   });
 
   test("PairingForm per-field translate merge option available", async ({ page }) => {
-    // The chevron dropdown for merge options
     await expect(page.getByRole("button", { name: "Merge options" })).toBeVisible();
     await page.getByRole("button", { name: "Merge options" }).click();
     await expect(page.getByRole("checkbox", { name: /merge with existing/i })).toBeVisible();
@@ -145,20 +131,16 @@ test.describe("PairingForm split-view: per-field translate buttons", () => {
   }) => {
     const translateBtn = page.getByRole("button", { name: /translate from/i }).first();
     await translateBtn.click();
-    // Mock AI returns "e2e-mock" for string fields
-    // InlineFieldSuggestion should appear with accept/reject buttons
     await expect(page.getByRole("button", { name: /apply|accept/i }).first()).toBeVisible({
       timeout: 10000,
     });
   });
 
   test("PairingForm per-field translate with 'Merge with existing' enabled", async ({ page }) => {
-    // Enable merge checkbox
     await page.getByRole("button", { name: "Merge options" }).click();
     await page.getByRole("checkbox", { name: /merge with existing/i }).check();
     await expect(page.getByRole("checkbox", { name: /merge with existing/i })).toBeChecked();
 
-    // Now the primary translate button runs with merge
     const translateBtn = page.getByRole("button", { name: /translate from/i }).first();
     await translateBtn.click();
     await expect(page.getByRole("button", { name: /apply|accept/i }).first()).toBeVisible({
@@ -167,12 +149,9 @@ test.describe("PairingForm split-view: per-field translate buttons", () => {
   });
 
   test("PairingForm split view: no translate button in non-split view", async ({ page }) => {
-    // Turn off split view
     await setSplitViewPref(page, false);
     await page.reload({ waitUntil: "networkidle" });
-    // AI suggest button should be visible instead of translate
     await expect(page.getByRole("button", { name: /ai suggest/i }).first()).toBeVisible();
-    // Translate from should NOT be visible
     await expect(page.getByRole("button", { name: /translate from/i })).toHaveCount(0);
   });
 });
@@ -186,7 +165,6 @@ test.describe("PairingForm: per-field AI suggest", () => {
   });
 
   test("PairingForm per-field AI suggest with user prompt", async ({ page }) => {
-    // Open custom prompt dropdown on description field
     await page.getByRole("button", { name: "Custom prompt options" }).first().click();
     await expect(page.getByPlaceholder(/add instructions/i)).toBeVisible();
     await page.getByPlaceholder(/add instructions/i).fill("Make it more poetic");
@@ -199,9 +177,7 @@ test.describe("PairingForm: per-field AI suggest", () => {
   test("PairingForm per-field AI suggest textarea resets on dropdown close", async ({ page }) => {
     await page.getByRole("button", { name: "Custom prompt options" }).first().click();
     await page.getByPlaceholder(/add instructions/i).fill("Some prompt text");
-    // Close dropdown by pressing Escape
     await page.keyboard.press("Escape");
-    // Reopen
     await page.getByRole("button", { name: "Custom prompt options" }).first().click();
     const textarea = page.getByPlaceholder(/add instructions/i);
     await expect(textarea).toBeVisible();
@@ -217,7 +193,6 @@ test.describe("PairingForm: per-field AI suggest", () => {
 test.describe("PairingForm: section navigation", () => {
   test("PairingForm section anchors exist inside EntityFormLayout", async ({ page }) => {
     await page.goto(EN_URL, { waitUntil: "networkidle" });
-    // SectionNav renders links to sections
     await expect(page.getByRole("link", { name: /endpoints/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /description/i })).toBeVisible();
   });
@@ -236,7 +211,6 @@ test.describe("PairingForm: swap language", () => {
       timeout: 5000,
     });
     await page.getByRole("button", { name: "Swap language" }).click();
-    // Should navigate to DE locale
     await page.waitForURL(/locale=de/, { timeout: 5000 });
     expect(page.url()).toContain("locale=de");
   });
@@ -259,11 +233,8 @@ test.describe("PairingForm: header overflow delete", () => {
     await openOverflowMenu(page);
     await expect(page.getByRole("button", { name: /delete/i })).toBeVisible();
 
-    // Dismiss the confirm dialog so we don't actually delete the fixture
     page.once("dialog", (dialog) => dialog.dismiss());
     await page.getByRole("button", { name: /delete/i }).click();
-
-    // After dismiss, should still be on the same page
     await expect(page).toHaveURL(new RegExp("caraway--cumin"));
   });
 });
@@ -271,12 +242,10 @@ test.describe("PairingForm: header overflow delete", () => {
 test.describe("PairingForm: translate dialog + slug picker", () => {
   test("PairingForm slug picker absent in Phase 1 (pairings use shared slug)", async ({ page }) => {
     await page.goto(EN_URL, { waitUntil: "networkidle" });
-    // Pairings share slug across locales → no slug input in TranslateEntityDialog
     await openOverflowMenu(page);
     const translateBtn = page.getByRole("button", { name: /translate/i });
     await translateBtn.click();
     await expect(page.getByRole("dialog")).toBeVisible({ timeout: 3000 });
-    // No slug input field in the dialog
     await expect(page.getByLabel(/slug/i)).toHaveCount(0);
   });
 
@@ -304,7 +273,6 @@ test.describe("PairingForm: bulk AI (no subHeaderStrip, subHeaderStrip=null)", (
     await page.goto(EN_URL, { waitUntil: "networkidle" });
     await setSplitViewPref(page, true);
     await page.reload({ waitUntil: "networkidle" });
-    // PairingForm sets subHeaderStrip={null} — no bulk translate button
     await expect(page.getByRole("button", { name: /translate missing|re-translate/i })).toHaveCount(
       0,
     );

@@ -12,8 +12,6 @@ import {
   completenessToggleBtn,
   getBulkWritePolicy,
   getSplitViewPref,
-  LS_BULK_WRITE_POLICY,
-  LS_SPLIT_VIEW,
   openOverflowMenu,
   setSplitViewPref,
   splitViewToggle,
@@ -51,7 +49,6 @@ test.describe("IngredientForm split-view: toggle + persistence", () => {
 
 test.describe("IngredientForm: translation draft auto-enables split view", () => {
   test("IngredientForm translation draft auto-renders split view on load", async ({ page }) => {
-    // DE caraway has translationOf: "caraway" in its meta — form auto-enables split view
     await page.goto(DE_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
     await page.reload({ waitUntil: "networkidle" });
@@ -95,10 +92,8 @@ test.describe("IngredientForm split-view: sibling data", () => {
   test("IngredientForm sibling read-only renders all translatable fields in split view", async ({
     page,
   }) => {
-    // EN caraway has a DE sibling; split view shows dashed read-only panels
     const siblingPanels = page.locator(".border-dashed");
     await expect(siblingPanels.first()).toBeVisible({ timeout: 8000 });
-    // At least several sibling panels should exist (11 translatable fields)
     const count = await siblingPanels.count();
     expect(count).toBeGreaterThanOrEqual(4);
   });
@@ -106,7 +101,6 @@ test.describe("IngredientForm split-view: sibling data", () => {
   test("IngredientForm sibling-data skeleton placeholders render during fetch", async ({
     page,
   }) => {
-    // Dashed containers appear immediately; data fills in asynchronously
     await expect(page.locator(".border-dashed").first()).toBeVisible({ timeout: 5000 });
   });
 });
@@ -115,14 +109,8 @@ test.describe("IngredientForm split-view: PairingSuggestionPanel hidden", () => 
   test("IngredientForm PairingSuggestionPanel is hidden in split view", async ({ page }) => {
     await page.goto(EN_URL, { waitUntil: "domcontentloaded" });
     await clearTranslationPrefs(page);
-    // In non-split view, PairingSuggestionPanel is in the sidebar
-    await setSplitViewPref(page, false);
-    await page.reload({ waitUntil: "networkidle" });
-    const panel = page.locator("[data-testid='pairing-suggestion-panel'], .pairing-suggestion");
-    // If the panel exists in non-split view, enable split view and check it's hidden
     await setSplitViewPref(page, true);
     await page.reload({ waitUntil: "networkidle" });
-    // In split view, PairingSuggestionPanel is not rendered (extraSidebarBlocks={!isNew && !splitView ? <Panel/> : null})
     await expect(
       page.getByRole("button", { name: /refresh pairings|pairing suggestions/i }),
     ).toHaveCount(0);
@@ -163,7 +151,6 @@ test.describe("IngredientForm split-view: per-field translate buttons", () => {
   }) => {
     const translateBtn = page.getByRole("button", { name: /translate from/i }).first();
     await translateBtn.click();
-    // Mock AI returns "e2e-mock"; InlineFieldSuggestion appears
     await expect(page.getByRole("button", { name: /apply|accept/i }).first()).toBeVisible({
       timeout: 10000,
     });
@@ -182,9 +169,6 @@ test.describe("IngredientForm split-view: per-field translate buttons", () => {
   });
 
   test("IngredientForm per-field translate not rendered for skip-mode fields", async ({ page }) => {
-    // All 11 fields in AI_CONTRACT are mode: "translate" — no skip-mode fields.
-    // Verify that for fields NOT in the contract (e.g., category), no translate button appears.
-    // category field has no AiFieldTranslateButton
     const categorySection = page.locator("label", { hasText: "Category" }).first();
     const categoryContainer = categorySection.locator("..").locator("..");
     await expect(categoryContainer.getByRole("button", { name: /translate from/i })).toHaveCount(0);
@@ -212,20 +196,16 @@ test.describe("IngredientForm: bulk translate (split view)", () => {
   });
 
   test("IngredientForm bulk translate button renders in split view", async ({ page }) => {
-    // AiBulkTranslateButton renders in subHeaderStrip when splitView=true && !isNew
     await expect(
       page.getByRole("button", { name: /translate missing|re-translate/i }).first(),
     ).toBeVisible({ timeout: 5000 });
   });
 
   test("IngredientForm bulk translate 'fill-gaps' only targets empty fields", async ({ page }) => {
-    // Verify 'fill-gaps' is the default policy or set it
     const dropdown = page.getByRole("button", { name: "Translation options" });
     await dropdown.click();
     await expect(page.getByRole("button", { name: "Translate missing fields" })).toBeVisible();
-    // Click to set fill-gaps policy
     await page.getByRole("button", { name: "Translate missing fields" }).click();
-    // Main button should now read "Translate missing fields"
     await expect(
       page.getByRole("button", { name: "Translate missing fields" }).first(),
     ).toBeVisible();
@@ -295,7 +275,6 @@ test.describe("IngredientForm: section navigation", () => {
     page,
   }) => {
     await page.goto(EN_URL, { waitUntil: "networkidle" });
-    // SectionNav should render all sections
     await expect(page.getByRole("link", { name: /basic/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /taxonomy/i })).toBeVisible();
   });
@@ -308,10 +287,8 @@ test.describe("IngredientForm: header overflow delete", () => {
     await page.goto(EN_URL, { waitUntil: "networkidle" });
     await openOverflowMenu(page);
     await page.getByRole("button", { name: /delete/i }).click();
-    // IngredientForm uses a Dialog (not window.confirm) for delete confirmation
     await expect(page.getByRole("dialog")).toBeVisible({ timeout: 3000 });
     await expect(page.getByRole("button", { name: /cancel/i })).toBeVisible();
-    // Cancel to avoid deleting the seeded fixture
     await page.getByRole("button", { name: /cancel/i }).click();
     await expect(page.getByRole("dialog")).not.toBeVisible();
   });
@@ -321,15 +298,11 @@ test.describe("IngredientForm: translate dialog + slug picker", () => {
   test("IngredientForm slug picker absent in Phase 1 (ingredients use shared slug)", async ({
     page,
   }) => {
-    // Navigate to an ingredient that has no DE translation yet
-    // (cardamom has no DE content, so translate button should appear)
     await page.goto("/admin/ingredients/koriander/edit", { waitUntil: "networkidle" });
-    // If 'Translate' button visible, open the dialog
     const translateBtn = page.getByRole("button", { name: /^translate$/i });
     if (await translateBtn.isVisible()) {
       await translateBtn.click();
       await expect(page.getByRole("dialog")).toBeVisible({ timeout: 3000 });
-      // No slug input for ingredients (shared slug across locales)
       await expect(page.getByLabel(/slug/i)).toHaveCount(0);
     }
   });
