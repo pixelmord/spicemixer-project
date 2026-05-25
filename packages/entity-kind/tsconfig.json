@@ -17,7 +17,6 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "paths": {
-      "content-ai": ["../content-ai/src/index.ts"],
       "@pixelmord/content-ai-ingest": ["../content-ai-ingest/src/index.ts"],
       "@pixelmord/content-ai-core/testing": ["../content-ai-core/src/testing/index.ts"],
       "@pixelmord/content-ai-core": ["../content-ai-core/src/index.ts"],

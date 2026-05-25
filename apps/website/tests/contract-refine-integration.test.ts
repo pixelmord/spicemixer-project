@@ -13,24 +13,6 @@ vi.mock("@pixelmord/content-ai-refine", async (importOriginal) => {
   };
 });
 
-vi.mock("content-ai", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("content-ai")>();
-  return {
-    ...actual,
-    translateIngredientFields: vi.fn().mockResolvedValue({ targetLocale: "de", fields: {} }),
-    translateRecipeFields: vi.fn().mockResolvedValue({ targetLocale: "de", fields: {} }),
-    translatePairingDescription: vi.fn().mockResolvedValue({ targetLocale: "de", fields: {} }),
-    extractRecipeFromFile: vi.fn().mockResolvedValue({}),
-    extractIngredientFromFile: vi.fn().mockResolvedValue({}),
-    extractPairingFromFile: vi.fn().mockResolvedValue({}),
-    generateRecipeFromPrompt: vi.fn().mockResolvedValue({}),
-    mergeRecipe: vi.fn().mockResolvedValue({}),
-    mergeIngredient: vi.fn().mockResolvedValue({}),
-    mergePairing: vi.fn().mockResolvedValue({}),
-    searchImages: vi.fn().mockResolvedValue([]),
-  };
-});
-
 vi.mock("astro:actions", () => ({
   defineAction: (opts: { handler: unknown; input?: unknown; accept?: string }) => opts,
   ActionError: class ActionError extends Error {
@@ -59,12 +41,12 @@ vi.mock("recipe-ingestion", async (importOriginal) => {
 
 import { InMemoryStore } from "../src/lib/stores/in-memory.ts";
 import { createMetaSidecar } from "../src/lib/meta-sidecar.ts";
-import { createAiEventLog } from "content-ai";
+import { createAiEventLog } from "../src/lib/sidecar-event-log.ts";
 import { runAiRefresh } from "../src/lib/ai/runner.ts";
 import { recipeContract } from "../src/contracts/recipeContract.ts";
 import { ingredientContract } from "../src/contracts/ingredientContract.ts";
 import { pairingContract } from "../src/contracts/pairingContract.ts";
-import type { AiConfig } from "content-ai";
+import type { AiConfig } from "@pixelmord/content-ai-core";
 
 const CONFIG: AiConfig = { model: "gpt-4o-mini", apiKey: "test", baseUrl: "http://localhost" };
 

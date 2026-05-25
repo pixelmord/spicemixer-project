@@ -17,11 +17,11 @@ vi.mock("@pixelmord/content-ai-ingest", async (importOriginal) => {
   };
 });
 
-vi.mock("content-ai", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("content-ai")>();
+vi.mock("@pixelmord/content-ai-core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@pixelmord/content-ai-core")>();
   return {
     ...actual,
-    withOrigin: (_meta: unknown) => (fn: (...args: unknown[]) => unknown) => fn,
+    wrapWithOrigin: (_meta: unknown) => (fn: (...args: unknown[]) => unknown) => fn,
   };
 });
 
@@ -67,7 +67,8 @@ vi.mock("@/lib/ai/config.ts", () => ({
 
 import { InMemoryStore } from "../src/lib/stores/in-memory.ts";
 import { createMetaSidecar } from "../src/lib/meta-sidecar.ts";
-import { entityMeta, createAiEventLog } from "content-ai";
+import { entityMeta } from "../src/lib/entity-meta.ts";
+import { createAiEventLog } from "../src/lib/sidecar-event-log.ts";
 import { runFill } from "@pixelmord/content-ai-ingest";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

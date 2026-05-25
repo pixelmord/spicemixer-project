@@ -16,8 +16,8 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { cn } from "@/lib/utils.ts";
 import CapabilityLabel from "./CapabilityLabel.tsx";
-import { hashSuggestion, filterSuggestions } from "content-ai";
-import type { AiEvent } from "content-ai";
+import { hashSuggestion, filterSuggestions } from "@pixelmord/content-ai-core";
+import type { AiEvent } from "@pixelmord/content-ai-core";
 
 // ── Raw proposal types (from API) ──────────────────────────────────────────────
 

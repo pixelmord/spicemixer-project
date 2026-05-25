@@ -1,6 +1,6 @@
 import type { ContentStore } from "./content-store.ts";
 import type { MetaSidecar } from "./meta-sidecar.ts";
-import { entityMeta } from "content-ai";
+import { entityMeta } from "@/lib/entity-meta.ts";
 
 export type Locale = "en" | "de";
 

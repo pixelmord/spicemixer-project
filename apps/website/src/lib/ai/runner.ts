@@ -1,11 +1,10 @@
-import {
-  hashSuggestion,
-  hashContent,
-  getCurrentOrigin,
-  publish,
-  metaRefToEntityRef,
-} from "content-ai";
-import type { AiConfig, AiEventSidecar, MetaRef, SidecarEventLog, Confidence } from "content-ai";
+import { hashSuggestion, hashContent, getCurrentOrigin } from "@pixelmord/content-ai-core";
+import type { AiConfig } from "@pixelmord/content-ai-core";
+import { publish } from "@/lib/pubsub.ts";
+import { metaRefToEntityRef } from "@/lib/sidecar-event-log.ts";
+import type { AiEventSidecar, MetaRef, SidecarEventLog } from "@/lib/sidecar-event-log.ts";
+
+type Confidence = "high" | "medium" | "low";
 import type { EndpointRef } from "entity-kind";
 import { runRefine } from "@pixelmord/content-ai-refine";
 import type { AiEvent as RefineAiEvent } from "@pixelmord/content-ai-refine";

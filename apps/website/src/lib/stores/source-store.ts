@@ -1,4 +1,4 @@
-import { LocalSourceStore } from "content-ai";
+import { LocalSourceStore } from "@/lib/source-store/local.ts";
 import { join } from "node:path";
 
 export function createSourceStore() {

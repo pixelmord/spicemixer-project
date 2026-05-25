@@ -2,7 +2,7 @@ import type { ContentStore } from "./content-store.ts";
 import type { MetaSidecar } from "./meta-sidecar.ts";
 import type { EndpointRef } from "entity-kind";
 import { NotFoundError } from "./errors.ts";
-import { entityMeta } from "content-ai";
+import { entityMeta } from "@/lib/entity-meta.ts";
 
 export interface BuildPairingDataInput {
   id: string;

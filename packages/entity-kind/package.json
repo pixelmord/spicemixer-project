@@ -19,7 +19,7 @@
     "prepublishOnly": "vp run build"
   },
   "dependencies": {
-    "content-ai": "workspace:*",
+    "@pixelmord/content-ai-core": "workspace:*",
     "recipe-ingestion": "workspace:*",
     "zod": "catalog:"
   },
