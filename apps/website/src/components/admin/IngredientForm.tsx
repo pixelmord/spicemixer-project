@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { Sparkles, Loader2, Check, Trash2, ExternalLink } from "lucide-react";
+import { Sparkles, Check, Trash2, ExternalLink } from "lucide-react";
+
+const ARRAY_SUGGESTION_FIELDS = new Set(["origin", "flavorNotes"]);
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import {
@@ -104,9 +106,15 @@ function adaptIngredientImprovementsToRunResult(
   const suggestions: Record<string, FieldSuggestion> = {};
   let counter = 0;
   for (const imp of improvements) {
+    const value = ARRAY_SUGGESTION_FIELDS.has(imp.field)
+      ? imp.suggestion
+          .split(/[,;]\s*/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : imp.suggestion;
     suggestions[imp.field] = {
       kind: "single",
-      value: imp.suggestion,
+      value,
       confidence: "medium",
       summary: imp.rationale,
       hash: `${imp.field}-${counter++}`,
@@ -312,12 +320,6 @@ export default function IngredientForm({
   );
   const [detectedLanguage, setDetectedLanguage] = useState<string | undefined>();
   const [languageMismatch, setLanguageMismatch] = useState(false);
-
-  // Section-level AI states
-  const [aiOriginsLoading, setAiOriginsLoading] = useState(false);
-  const [pendingOrigins, setPendingOrigins] = useState<string[] | null>(null);
-  const [aiFlavorLoading, setAiFlavorLoading] = useState(false);
-  const [pendingFlavors, setPendingFlavors] = useState<string[] | null>(null);
 
   // Modals
   const [enhanceOpen, setEnhanceOpen] = useState(false);
@@ -678,66 +680,6 @@ export default function IngredientForm({
       if (r.data) setFeaturedPairings(r.data as PairingListItem[]);
     });
     return { kind: "pairing" as const, id };
-  }
-
-  // Per-section: propose origins
-  async function runProposeOrigin() {
-    setAiOriginsLoading(true);
-    try {
-      const { data: result, error } = await actions.aiProposeIngredientImprovements({
-        ingredient: {
-          name: formValues.name,
-          category: formValues.category,
-          flavorNotes: formValues.flavorNotes.filter(Boolean),
-        },
-        missingFields: ["origin"],
-      });
-      if (error) throw new Error(error.message);
-      const fields = result?.fields as Array<{ field: string; suggestion: string }> | undefined;
-      const originField = fields?.find((f) => f.field === "origin");
-      if (originField) {
-        const vals = originField.suggestion
-          .split(/[,;]\s*/)
-          .map((s: string) => s.trim())
-          .filter(Boolean);
-        setPendingOrigins(vals);
-      }
-    } catch (e) {
-      toast.error(String(e instanceof Error ? e.message : e));
-    } finally {
-      setAiOriginsLoading(false);
-    }
-  }
-
-  // Per-section: propose flavor notes
-  async function runProposeFlavors() {
-    setAiFlavorLoading(true);
-    try {
-      const { data: result, error } = await actions.aiProposeIngredientImprovements({
-        ingredient: {
-          name: formValues.name,
-          category: formValues.category,
-          origin: formValues.origin.filter(Boolean),
-        },
-        missingFields: ["flavorNotes"],
-      });
-      if (error) throw new Error(error.message);
-      const flavorFields = result?.fields as
-        | Array<{ field: string; suggestion: string }>
-        | undefined;
-      const field = flavorFields?.find((f) => f.field === "flavorNotes");
-      if (field) {
-        const vals = field.suggestion
-          .split(/[,;]\s*/)
-          .map((s: string) => s.trim().toLowerCase())
-          .filter(Boolean);
-        setPendingFlavors(vals);
-      }
-    } catch (e) {
-      toast.error(String(e instanceof Error ? e.message : e));
-    } finally {
-      setAiFlavorLoading(false);
-    }
   }
 
   function buildIngredientSnapshot(): Record<string, unknown> {
@@ -1284,22 +1226,7 @@ export default function IngredientForm({
           <section id="section-profile" className="scroll-mt-4 space-y-4">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Origin</CardTitle>
-                  <button
-                    type="button"
-                    onClick={runProposeOrigin}
-                    disabled={aiOriginsLoading}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    {aiOriginsLoading ? (
-                      <Loader2 size={11} className="animate-spin" />
-                    ) : (
-                      <Sparkles size={11} />
-                    )}
-                    AI suggest
-                  </button>
-                </div>
+                <CardTitle>Origin</CardTitle>
               </CardHeader>
               <CardContent>
                 <form.Field name="origin">
@@ -1307,9 +1234,7 @@ export default function IngredientForm({
                     <TagInputField
                       field={field}
                       placeholder="Iran, Guatemala…"
-                      pendingItems={pendingOrigins}
-                      onAcceptItems={() => setPendingOrigins(null)}
-                      onDismissItems={() => setPendingOrigins(null)}
+                      suggestionPath="origin"
                       hint={<RecommendedHint show={(field.state.value ?? []).length === 0} />}
                     />
                   )}
@@ -1319,22 +1244,7 @@ export default function IngredientForm({
 
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Flavor notes</CardTitle>
-                  <button
-                    type="button"
-                    onClick={runProposeFlavors}
-                    disabled={aiFlavorLoading}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    {aiFlavorLoading ? (
-                      <Loader2 size={11} className="animate-spin" />
-                    ) : (
-                      <Sparkles size={11} />
-                    )}
-                    AI suggest
-                  </button>
-                </div>
+                <CardTitle>Flavor notes</CardTitle>
               </CardHeader>
               <CardContent>
                 <form.Field name="flavorNotes">
@@ -1342,9 +1252,7 @@ export default function IngredientForm({
                     <TagInputField
                       field={field}
                       placeholder="floral, earthy, warm…"
-                      pendingItems={pendingFlavors}
-                      onAcceptItems={() => setPendingFlavors(null)}
-                      onDismissItems={() => setPendingFlavors(null)}
+                      suggestionPath="flavorNotes"
                     />
                   )}
                 </form.Field>
