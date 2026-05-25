@@ -5,13 +5,10 @@ vi.mock("ai", () => ({
   streamObject: vi.fn(),
 }));
 
-vi.mock("@pixelmord/content-ai-core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@pixelmord/content-ai-core")>();
-  return {
-    ...actual,
-    createProvider: vi.fn().mockReturnValue({}),
-  };
-});
+vi.mock("@/lib/ai/provider.ts", () => ({
+  createProvider: vi.fn().mockReturnValue({}),
+  PROVIDER_OPTIONS: { openai: { strictJsonSchema: false } },
+}));
 
 vi.mock("@pixelmord/content-ai-core/server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@pixelmord/content-ai-core/server")>();

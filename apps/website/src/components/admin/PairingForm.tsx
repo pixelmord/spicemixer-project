@@ -211,8 +211,6 @@ export default function PairingForm({
     },
   });
 
-  const handleManualRefresh = () => void aiFlow.run();
-
   const ingestAction = useIngestAction({
     kind: "pairing",
     slug: initialId ?? "",
@@ -222,6 +220,14 @@ export default function PairingForm({
       description: formValues.description,
     },
   });
+
+  async function handleManualRefresh() {
+    try {
+      await aiFlow.run();
+    } catch {
+      toast.error("Could not refresh suggestions");
+    }
+  }
 
   async function handleToggleDraft() {
     if (!initialId) return;

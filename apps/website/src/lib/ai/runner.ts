@@ -3,23 +3,18 @@ import { getCurrentOrigin } from "@pixelmord/content-ai-core/server";
 import type { AiConfig } from "@pixelmord/content-ai-core";
 import { aiLogger } from "@/lib/logger.ts";
 import { publish } from "@/lib/pubsub.ts";
-import {
-  metaRefToEntityRef,
-  type AiEventSidecar,
-  type MetaRef,
-  type SidecarEventLog,
-} from "@/lib/sidecar-event-log.ts";
-import type { EndpointRef } from "entity-kind";
-
-type Confidence = "high" | "medium" | "low";
+import { metaRefToEntityRef } from "@/lib/sidecar-event-log.ts";
+import type { AiEventSidecar, MetaRef, SidecarEventLog } from "@/lib/sidecar-event-log.ts";
+import type { EndpointRef, EntityKind } from "entity-kind";
 import { runRefine } from "@pixelmord/content-ai-refine";
 import type { AiEvent as RefineAiEvent } from "@pixelmord/content-ai-refine";
 import { ingredientContract } from "@/contracts/ingredientContract.ts";
 import { recipeContract } from "@/contracts/recipeContract.ts";
 import { pairingContract } from "@/contracts/pairingContract.ts";
-import type { EntityKind } from "entity-kind";
 import type { ContentStore } from "@/lib/content-store.ts";
 import type { EntityRef } from "@/lib/entity-ref.ts";
+
+type Confidence = "high" | "medium" | "low";
 
 function isHighConfidence(confidence: Confidence | number): boolean {
   if (typeof confidence === "number") return confidence >= 0.85;

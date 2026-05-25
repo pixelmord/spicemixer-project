@@ -127,6 +127,22 @@ vi.mock("@/lib/search-images.ts", () => ({
   searchImages: vi.fn().mockResolvedValue([]),
 }));
 
+// Stub wrapWithOrigin to run handlers inside a fixed origin context so traceId is available.
+vi.mock("@pixelmord/content-ai-core/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@pixelmord/content-ai-core/server")>();
+  return {
+    ...actual,
+    wrapWithOrigin:
+      (meta: unknown) =>
+      <A extends unknown[], R>(fn: (...a: A) => Promise<R>) =>
+      (...args: A): Promise<R> =>
+        actual.withOrigin(
+          { ...(meta as object), runId: "test-run-id" } as Parameters<typeof actual.withOrigin>[0],
+          () => fn(...args),
+        ),
+  };
+});
+
 // Stub runRefine (@pixelmord/content-ai-refine) to avoid network calls in integration tests.
 vi.mock("@pixelmord/content-ai-refine", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@pixelmord/content-ai-refine")>();

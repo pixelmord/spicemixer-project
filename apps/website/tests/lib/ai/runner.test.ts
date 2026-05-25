@@ -5,9 +5,9 @@ import { runAiRefresh } from "../../../src/lib/ai/runner.ts";
 import type { AiConfig } from "@pixelmord/content-ai-core";
 import { hashContent } from "@pixelmord/content-ai-core";
 import { withOrigin } from "@pixelmord/content-ai-core/server";
-import type { PubSubEvent } from "../../../src/lib/pubsub.ts";
-import { subscribe } from "../../../src/lib/pubsub.ts";
 import { createAiEventLog } from "../../../src/lib/sidecar-event-log.ts";
+import { subscribe } from "../../../src/lib/pubsub.ts";
+import type { PubSubEvent } from "../../../src/lib/pubsub.ts";
 import type { FieldSuggestion } from "@pixelmord/content-ai-refine";
 
 // Stub runRefine to avoid network calls; keep real event/hash utilities.

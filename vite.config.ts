@@ -5,7 +5,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./apps/website/src", import.meta.url)),
-      "content-ai": fileURLToPath(new URL("./packages/content-ai/src/index.ts", import.meta.url)),
       "@pixelmord/content-ai-ingest": fileURLToPath(
         new URL("./packages/content-ai-ingest/src/index.ts", import.meta.url),
       ),

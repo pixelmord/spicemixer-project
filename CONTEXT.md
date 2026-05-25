@@ -289,7 +289,9 @@ the appended log back. Replaces today's scattered fetch-modify-write
 pattern in action handlers.
 
 `@pixelmord/content-ai-core` (filterSuggestions, hashSuggestion, etc.)
-provides the utility functions behind this module's interface.
+provides the utility functions behind this module's interface — the
+implementation lives in `@pixelmord/content-ai-core/events.ts` (a
+utility-bag of free functions over arrays).
 
 `AiEventLog` is **editorial** — small, gitable, lives next to content,
 captures _decisions_ (auto-applied/accepted/rejected/ingested). It is
