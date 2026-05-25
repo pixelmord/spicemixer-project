@@ -86,7 +86,7 @@ describe("PairingForm — split view", () => {
   });
 
   test("auto-enables split view for translation drafts (translationOf)", () => {
-    expect(src).toMatch(/translationOf/);
+    expect(src).toMatch(/initialTranslationOf/);
   });
 
   test("fetches sibling entity via getSiblingEntity", () => {

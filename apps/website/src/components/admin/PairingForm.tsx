@@ -102,18 +102,15 @@ export default function PairingForm({
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const [applyingEnhancement, setApplyingEnhancement] = useState(false);
 
-  // Modals
   const [enhanceOpen, setEnhanceOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [translateRunId] = useState(() => crypto.randomUUID());
   const pendingTranslationRef = useRef<{ locale: string; desc: string } | null>(null);
 
-  // Split view
   const [splitView, setSplitView] = useSplitViewPreference();
   const [siblingLocaleData, setSiblingLocaleData] = useState<SiblingLocale | null>(null);
   const siblingLoc = locale === "en" ? "de" : "en";
 
-  // Auto-enable split view for translation drafts (translationOf set)
   useEffect(() => {
     if (initialTranslationOf) {
       setSplitView(true);
@@ -121,7 +118,6 @@ export default function PairingForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch sibling entity on mount or when split view is toggled on
   useEffect(() => {
     if (!splitView || !initialId) return;
     void getSiblingEntity({ kind: "pairing", slug: initialId, locale: siblingLoc }).then((result) =>
@@ -392,7 +388,6 @@ export default function PairingForm({
     ? { ...ingestAction.proposed, description: proposedDescription }
     : null;
 
-  // Header locale chip
   const localeChip = initialId ? (
     <span
       className={cn(
@@ -406,7 +401,6 @@ export default function PairingForm({
     </span>
   ) : null;
 
-  // Overflow menu: Delete + View public page + Translate
   const overflowMenuItems = initialId
     ? [
         {
@@ -433,7 +427,6 @@ export default function PairingForm({
       ]
     : [];
 
-  // Header auxiliary: Enhance button
   const headerAuxiliary =
     !isNew && initialId ? (
       <button
