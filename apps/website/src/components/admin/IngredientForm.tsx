@@ -1,9 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, Loader2, Languages, Check } from "lucide-react";
-import LinkButton from "@/components/admin/LinkButton.tsx";
+import { Sparkles, Loader2, Check, Trash2, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
@@ -29,13 +28,14 @@ import {
   type IngredientFlavorProfile,
 } from "@/lib/ingredient-schema.ts";
 import { slugify } from "@/lib/slugify.ts";
-import SectionNav, { type SectionDef } from "./SectionNav.tsx";
+import type { SectionDef } from "./SectionNav.tsx";
 import TagInput from "./TagInput.tsx";
 import FormActionBar from "./FormActionBar.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
 import RecommendedHint from "./RecommendedHint.tsx";
 import QuickCreateDialog from "./QuickCreateDialog.tsx";
-import TranslationCompanion, { FieldWithTranslation } from "./TranslationCompanion.tsx";
+import { EntityFormLayout } from "./EntityFormLayout.tsx";
+import { FieldWithSibling } from "./FieldWithSibling.tsx";
 import { IngestDialog } from "./IngestDialog.tsx";
 import IngredientDiff from "./IngredientDiff.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -51,9 +51,20 @@ import ImageSearchModal, {
 import EntityMultiCombobox from "./EntityMultiCombobox.tsx";
 import { REGION_OPTIONS, type RegionCode } from "@/lib/regions.ts";
 import { hasLiabilityScope } from "@/lib/liability.ts";
-import { useAiSuggestions, type RunResult, type FieldSuggestion } from "@/hooks/use-ai-suggestions";
+import {
+  useAiSuggestions,
+  type RunResult,
+  type FieldSuggestion,
+  type SiblingLocale,
+} from "@/hooks/use-ai-suggestions";
 import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
 import { InlineFieldSuggestion } from "./InlineFieldSuggestion.tsx";
+import { AiBulkSuggestButton } from "@registry/components/ai-bulk-suggest-button";
+import { AiBulkTranslateButton } from "@registry/components/ai-bulk-translate-button";
+import { AiFieldSuggestButton } from "@registry/components/ai-field-suggest-button";
+import { AiFieldTranslateButton } from "@registry/components/ai-field-translate-button";
+import { useSplitViewPreference } from "@/hooks/use-split-view-preference.ts";
+import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
 
 type Category = "spice" | "herb" | "seed" | "dried-fruit" | "salt" | "acid" | "allium" | "other";
 
@@ -196,6 +207,27 @@ const RECOMMENDED_ANCHOR: Record<string, string> = {
   flavorProfile: "section-taxonomy",
 };
 
+const TRANSLATABLE_FIELDS = [
+  "name",
+  "summary",
+  "description",
+  "culinaryUse",
+  "medicinalUses",
+  "healthBenefits",
+  "safetyNotes",
+  "history",
+  "storage",
+  "sourcing",
+  "seasonality",
+] as const;
+
+const AI_CONTRACT = {
+  presets: [],
+  fields: Object.fromEntries(
+    TRANSLATABLE_FIELDS.map((key) => [key, { translation: { mode: "translate" as const } }]),
+  ),
+};
+
 function emptyIngredient(): IngredientData {
   return { name: "", category: "spice", origin: [], flavorNotes: [] };
 }
@@ -300,6 +332,30 @@ export default function IngredientForm({
   const [translateOpen, setTranslateOpen] = useState(false);
   const [translateRunId] = useState(() => crypto.randomUUID());
   const translationTargetLocaleRef = useRef<string>("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  // Split view
+  const [splitView, setSplitView] = useSplitViewPreference();
+  const [siblingData, setSiblingData] = useState<SiblingLocale | null>(null);
+  const siblingLocaleCode = locale === "en" ? "de" : "en";
+
+  // Auto-enable split view when editing a translation
+  useEffect(() => {
+    if (initialMeta?.["translationOf"] && !splitView) {
+      setSplitView(true);
+    }
+  }, []);
+
+  // Fetch sibling entity when split view is toggled or on mount if split view is on
+  useEffect(() => {
+    if (!splitView || !slug) {
+      setSiblingData(null);
+      return;
+    }
+    void getSiblingEntity({ kind: "ingredient", slug, locale: siblingLocaleCode }).then((result) =>
+      setSiblingData(result),
+    );
+  }, [splitView, slug]);
 
   useEffect(() => {
     if (!isNew && slug) {
@@ -438,7 +494,7 @@ export default function IngredientForm({
   const aiEntityRef = useMemo(() => ({ kind: "ingredient", id: slug ?? "" }), [slug]);
 
   const aiFlow = useAiSuggestions({
-    contract: { presets: [], fields: {} },
+    contract: AI_CONTRACT,
     onRefine: async (params) => {
       const snap = buildIngredientSnapshot();
       // Per-field run: use params.target directly.
@@ -506,6 +562,24 @@ export default function IngredientForm({
       }
       return adaptIngredientImprovementsToRunResult(parsed.improvements);
     },
+    onFill: async (params) => {
+      const ctx = params.sourceContext as {
+        sourceLocale: string;
+        sourceData: Record<string, unknown>;
+        targetLocale?: string;
+      };
+      const { data: fillData, error } = await actions.aiFillTranslation({
+        kind: "ingredient",
+        sourceRef: { id: slug ?? "", kind: "ingredient" },
+        sourceLocale: ctx.sourceLocale as "en" | "de",
+        targetLocale: locale as "en" | "de",
+        sourceData: ctx.sourceData,
+        target: params.target,
+      });
+      if (error) throw new Error(error.message);
+      return fillData!;
+    },
+    siblingLocale: siblingData ?? undefined,
     aiEventLog,
     entityRef: aiEntityRef,
     origin: {
@@ -738,6 +812,20 @@ export default function IngredientForm({
     toast.success("Enhancement applied — review and save");
   }
 
+  async function handleDelete() {
+    if (!slug) return;
+    const { error } = await actions.deleteItem({
+      collection: "ingredients",
+      id: `${locale}/${slug}`,
+    });
+    if (error) {
+      toast.error("Delete failed: " + error.message);
+      return;
+    }
+    toast.success("Ingredient deleted");
+    window.location.href = "/admin/ingredients";
+  }
+
   // Visible pairing proposals (non-dismissed, not already in featured pairings)
   const visiblePairingProposals = pairingProposals.filter(
     (p) =>
@@ -755,1079 +843,1086 @@ export default function IngredientForm({
     );
   }
 
+  const overflowMenuItems = useMemo(() => {
+    if (isNew || !slug) return [];
+    return [
+      {
+        label: "View public page",
+        icon: <ExternalLink size={14} />,
+        onClick: () => window.open(`/ingredients/${slug}`, "_blank"),
+      },
+      {
+        label: "Open meta sidecar",
+        icon: <ExternalLink size={14} />,
+        onClick: () => window.open(`/admin/ingredients/${slug}/meta`, "_blank"),
+      },
+      {
+        label: "Delete",
+        icon: <Trash2 size={14} />,
+        onClick: () => setDeleteConfirmOpen(true),
+      },
+    ];
+  }, [isNew, slug]);
+
+  const headerAuxiliary =
+    !isNew && slug ? (
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            handleManualRefresh();
+            setEnhanceOpen(true);
+          }}
+          className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+        >
+          <Sparkles size={13} />
+          Enhance
+        </button>
+        {!existingTranslationLocales.includes(siblingLocaleCode) && (
+          <button
+            type="button"
+            onClick={() => setTranslateOpen(true)}
+            className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+          >
+            Translate
+          </button>
+        )}
+      </div>
+    ) : undefined;
+
+  let subHeaderStrip: ReactNode;
+  if (!isNew && splitView) {
+    subHeaderStrip = (
+      <AiBulkTranslateButton contract={AI_CONTRACT} currentData={buildIngredientSnapshot()} />
+    );
+  } else if (!isNew) {
+    subHeaderStrip = <AiBulkSuggestButton />;
+  }
+
+  const localeChip = (
+    <span className="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground">
+      {locale.toUpperCase()}
+    </span>
+  );
+
   return (
     <SuggestionFlowProvider value={aiFlow}>
-      <div className="mx-auto max-w-5xl">
-        {/* Header */}
-        <div className="mb-6 flex items-center gap-3">
-          <LinkButton variant="ghost" size="icon" href="/admin/ingredients">
-            <ArrowLeft size={16} />
-          </LinkButton>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold">{isNew ? "New ingredient" : `Edit · ${slug}`}</h1>
-            <p className="text-sm text-muted-foreground">Locale: {locale.toUpperCase()}</p>
-          </div>
-          {!isNew && slug && (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  handleManualRefresh();
-                  setEnhanceOpen(true);
-                }}
-                className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-              >
-                <Sparkles size={13} />
-                Enhance
-              </button>
-              {/* Only show translate button if no translation exists for the other locale */}
-              {!existingTranslationLocales.includes(locale === "en" ? "de" : "en") && (
-                <button
-                  type="button"
-                  onClick={() => setTranslateOpen(true)}
-                  className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-                >
-                  <Languages size={13} />
-                  Translate
-                </button>
-              )}
-            </>
-          )}
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void form.handleSubmit();
-          }}
-        >
-          <TranslationCompanion slug={slug} currentLocale={locale}>
-            {(companion) => (
-              <div className="flex gap-6">
-                {/* Left: section nav */}
-                <aside className="sticky top-0 h-fit w-40 shrink-0 pt-1">
-                  <SectionNav sections={SECTIONS} />
-                </aside>
-
-                {/* Center: form body */}
-                <div className="min-w-0 flex-1 space-y-8 pb-24">
-                  {/* ── Basic info ── */}
-                  <section id="section-basic" className="scroll-mt-4">
-                    <Card>
-                      <CardContent className="space-y-4 pt-6">
-                        {isNew && (
-                          <div className="space-y-1.5">
-                            <Label>Slug</Label>
-                            <div className="flex gap-2">
-                              <div className="relative flex-1">
-                                <Input
-                                  value={slug}
-                                  onChange={(e) => setSlug(e.target.value)}
-                                  placeholder="cardamom"
-                                />
-                                {slug && isNew && (
-                                  <span
-                                    className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium ${
-                                      slugChecking
-                                        ? "text-muted-foreground"
-                                        : slugAvailable === true
-                                          ? "text-emerald-600"
-                                          : slugAvailable === false
-                                            ? "text-red-500"
-                                            : ""
-                                    }`}
-                                  >
-                                    {slugChecking
-                                      ? "…"
-                                      : slugAvailable === true
-                                        ? "✓ available"
-                                        : slugAvailable === false
-                                          ? "✗ taken"
-                                          : ""}
-                                  </span>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                title="AI suggest slug"
-                                onClick={async () => {
-                                  const name = form.getFieldValue("name" as never) as string;
-                                  if (!name) return;
-                                  try {
-                                    const { data } = await actions.aiSuggestSlug({
-                                      name,
-                                      locale,
-                                      collection: "recipes", // slug suggestion is locale-aware only
-                                    });
-                                    if (data) setSlug(data.slug);
-                                  } catch {
-                                    toast.error("Could not suggest slug");
-                                  }
-                                }}
-                                className="flex items-center rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-                              >
-                                <Sparkles size={12} />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        <form.Field name="name">
-                          {(field) => (
-                            <FieldWithTranslation label="Name" fieldKey="name" context={companion}>
-                              <Label htmlFor={field.name}>Name *</Label>
-                              <Input
-                                id={field.name}
-                                value={field.state.value}
-                                onChange={(e) => {
-                                  field.handleChange(e.target.value);
-                                  if (isNew && !slug) setSlug(slugify(e.target.value));
-                                }}
-                                placeholder="Cardamom"
-                              />
-                            </FieldWithTranslation>
-                          )}
-                        </form.Field>
-
-                        <form.Field name="category">
-                          {(field) => (
-                            <div className="space-y-1.5">
-                              <Label>Category *</Label>
-                              <Select
-                                value={field.state.value}
-                                onValueChange={(v) => v && field.handleChange(v as Category)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {CATEGORIES.map((c) => (
-                                    <SelectItem key={c} value={c}>
-                                      {c}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                        </form.Field>
-
-                        <form.Field name="summary">
-                          {(field) => (
-                            <FieldWithTranslation
-                              label="Summary"
-                              fieldKey="summary"
-                              context={companion}
-                            >
-                              <div className="flex items-center justify-between">
-                                <Label htmlFor={field.name}>Summary *</Label>
-                                {!aiFlow.forField("summary").suggestion && (
-                                  <button
-                                    type="button"
-                                    onClick={() => void aiFlow.forField("summary").run()}
-                                    disabled={aiFlow.forField("summary").isRunning}
-                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                                  >
-                                    {aiFlow.forField("summary").isRunning ? (
-                                      <Loader2 size={11} className="animate-spin" />
-                                    ) : (
-                                      <Sparkles size={11} />
-                                    )}
-                                    AI suggest
-                                  </button>
-                                )}
-                              </div>
-                              <Input
-                                id={field.name}
-                                value={field.state.value}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                placeholder="One-sentence pitch"
-                              />
-                              <InlineFieldSuggestion
-                                fieldPath="summary"
-                                currentValue={field.state.value}
-                                onApply={(v) => field.handleChange(String(v))}
-                                kind="text"
-                              />
-                            </FieldWithTranslation>
-                          )}
-                        </form.Field>
-
-                        <form.Field name="description">
-                          {(field) => (
-                            <FieldWithTranslation
-                              label="Description"
-                              fieldKey="description"
-                              context={companion}
-                            >
-                              <div className="flex items-center justify-between">
-                                <Label htmlFor={field.name}>
-                                  Description
-                                  <RecommendedHint show={!field.state.value} />
-                                </Label>
-                                {!aiFlow.forField("description").suggestion && (
-                                  <button
-                                    type="button"
-                                    onClick={() => void aiFlow.forField("description").run()}
-                                    disabled={aiFlow.forField("description").isRunning}
-                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                                  >
-                                    {aiFlow.forField("description").isRunning ? (
-                                      <Loader2 size={11} className="animate-spin" />
-                                    ) : (
-                                      <Sparkles size={11} />
-                                    )}
-                                    AI suggest
-                                  </button>
-                                )}
-                              </div>
-                              <Textarea
-                                id={field.name}
-                                value={field.state.value}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                rows={4}
-                                placeholder="Detailed description…"
-                              />
-                              <InlineFieldSuggestion
-                                fieldPath="description"
-                                currentValue={field.state.value}
-                                onApply={(v) => field.handleChange(String(v))}
-                                kind="text"
-                              />
-                            </FieldWithTranslation>
-                          )}
-                        </form.Field>
-
-                        <form.Field name="image">
-                          {(field) => (
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <Label htmlFor={field.name}>
-                                  Image URL
-                                  <RecommendedHint show={!field.state.value} />
-                                </Label>
-                                <button
-                                  type="button"
-                                  onClick={() => setImageSearchOpen(true)}
-                                  className="text-xs text-primary hover:underline"
-                                >
-                                  Search image…
-                                </button>
-                              </div>
-                              <Input
-                                type="url"
-                                id={field.name}
-                                value={field.state.value}
-                                onChange={(e) => {
-                                  field.handleChange(e.target.value);
-                                  if (!e.target.value) setImageAttribution(undefined);
-                                  setImageBroken(false);
-                                  if (e.target.value) {
-                                    const img = new window.Image();
-                                    img.onerror = () => setImageBroken(true);
-                                    img.onload = () => setImageBroken(false);
-                                    img.src = e.target.value;
-                                  }
-                                }}
-                                placeholder="https://…"
-                                className={imageBroken ? "border-amber-400" : ""}
-                              />
-                              {imageBroken && (
-                                <p className="text-xs text-amber-600 dark:text-amber-400">
-                                  ⚠ Image URL appears broken or unreachable
-                                </p>
-                              )}
-                              {imageAttribution && (
-                                <p className="text-[11px] text-muted-foreground">
-                                  {imageAttribution.attribution}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </form.Field>
-
-                        {/* Language mismatch warning */}
-                        {languageMismatch && detectedLanguage && (
-                          <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2.5 text-xs text-amber-800 dark:text-amber-300">
-                            ⚠ Content appears to be in{" "}
-                            <strong>{detectedLanguage.toUpperCase()}</strong> but this file is under
-                            the <strong>{locale.toUpperCase()}</strong> locale. Consider moving it
-                            or creating a translation.
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </section>
-
-                  {/* ── Taxonomy ── */}
-                  <section id="section-taxonomy" className="scroll-mt-4 space-y-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Taxonomy</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="space-y-1.5">
-                          <Label>Common names</Label>
-                          <TagInput
-                            value={commonNames}
-                            onChange={setCommonNames}
-                            placeholder="kala zeera, cilantro…"
-                          />
-                        </div>
-
-                        <form.Field name="botanicalName">
-                          {(field) => (
-                            <div className="space-y-1.5">
-                              <Label htmlFor={field.name}>
-                                Botanical name
-                                <RecommendedHint show={!field.state.value} />
-                              </Label>
-                              <Input
-                                id={field.name}
-                                value={field.state.value}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                placeholder="Elettaria cardamomum"
-                              />
-                            </div>
-                          )}
-                        </form.Field>
-
-                        <form.Field name="family">
-                          {(field) => (
-                            <div className="space-y-1.5">
-                              <Label htmlFor={field.name}>
-                                Family
-                                <RecommendedHint show={!field.state.value} />
-                              </Label>
-                              <Input
-                                id={field.name}
-                                value={field.state.value}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                placeholder="Zingiberaceae"
-                              />
-                            </div>
-                          )}
-                        </form.Field>
-
-                        <div className="space-y-1.5">
-                          <Label>
-                            Parts used
-                            <RecommendedHint show={parts.length === 0} />
-                          </Label>
-                          <div className="flex flex-wrap gap-1.5">
-                            {INGREDIENT_PARTS.map((part) => (
-                              <button
-                                key={part}
-                                type="button"
-                                onClick={() => togglePart(part)}
-                                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                  parts.includes(part)
-                                    ? "border-primary bg-primary text-primary-foreground"
-                                    : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                                }`}
-                              >
-                                {part}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <form.Field name="seasonality">
-                          {(field) => (
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <Label htmlFor={field.name}>Seasonality</Label>
-                                {!aiFlow.forField("seasonality").suggestion && (
-                                  <button
-                                    type="button"
-                                    onClick={() => void aiFlow.forField("seasonality").run()}
-                                    disabled={aiFlow.forField("seasonality").isRunning}
-                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                                  >
-                                    {aiFlow.forField("seasonality").isRunning ? (
-                                      <Loader2 size={11} className="animate-spin" />
-                                    ) : (
-                                      <Sparkles size={11} />
-                                    )}
-                                    AI suggest
-                                  </button>
-                                )}
-                              </div>
-                              <Input
-                                id={field.name}
-                                value={field.state.value}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                placeholder="Spring, late summer…"
-                              />
-                              <InlineFieldSuggestion
-                                fieldPath="seasonality"
-                                currentValue={field.state.value ?? ""}
-                                onApply={(v) => field.handleChange(String(v))}
-                                kind="text"
-                              />
-                            </div>
-                          )}
-                        </form.Field>
-
-                        <div className="space-y-1.5">
-                          <Label>
-                            Flavor profile
-                            <RecommendedHint show={flavorProfile.length === 0} />
-                          </Label>
-                          <div className="flex flex-wrap gap-1.5">
-                            {INGREDIENT_FLAVOR_PROFILE.map((value) => (
-                              <button
-                                key={value}
-                                type="button"
-                                onClick={() => toggleFlavorProfile(value)}
-                                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                  flavorProfile.includes(value)
-                                    ? "border-primary bg-primary text-primary-foreground"
-                                    : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                                }`}
-                              >
-                                {value}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label>Safety flags</Label>
-                          <TagInput
-                            value={safetyFlags}
-                            onChange={setSafetyFlags}
-                            placeholder="allergen, contraindication…"
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </section>
-
-                  {/* ── Profile ── */}
-                  <section id="section-profile" className="scroll-mt-4 space-y-4">
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle>Origin</CardTitle>
-                          <button
-                            type="button"
-                            onClick={runProposeOrigin}
-                            disabled={aiOriginsLoading}
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            {aiOriginsLoading ? (
-                              <Loader2 size={11} className="animate-spin" />
-                            ) : (
-                              <Sparkles size={11} />
-                            )}
-                            AI suggest
-                          </button>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <TagInput
-                          value={origins}
-                          onChange={setOrigins}
-                          placeholder="Iran, Guatemala…"
-                        />
-                        {pendingOrigins && pendingOrigins.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {pendingOrigins
-                              .filter((o) => !origins.includes(o))
-                              .map((o) => (
-                                <button
-                                  key={o}
-                                  type="button"
-                                  onClick={() => setOrigins((prev) => [...prev, o])}
-                                  className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
-                                >
-                                  + {o}
-                                </button>
-                              ))}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOrigins((prev) => [...new Set([...prev, ...pendingOrigins])]);
-                                setPendingOrigins(null);
-                              }}
-                              className="text-xs text-muted-foreground hover:text-foreground px-1"
-                            >
-                              Add all
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setPendingOrigins(null)}
-                              className="text-xs text-muted-foreground hover:text-foreground px-1"
-                            >
-                              Dismiss
-                            </button>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle>Flavor notes</CardTitle>
-                          <button
-                            type="button"
-                            onClick={runProposeFlavors}
-                            disabled={aiFlavorLoading}
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            {aiFlavorLoading ? (
-                              <Loader2 size={11} className="animate-spin" />
-                            ) : (
-                              <Sparkles size={11} />
-                            )}
-                            AI suggest
-                          </button>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <TagInput
-                          value={flavorNotes}
-                          onChange={setFlavorNotes}
-                          placeholder="floral, earthy, warm…"
-                        />
-                        {pendingFlavors && pendingFlavors.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {pendingFlavors
-                              .filter((f) => !flavorNotes.includes(f))
-                              .map((f) => (
-                                <button
-                                  key={f}
-                                  type="button"
-                                  onClick={() => setFlavorNotes((prev) => [...prev, f])}
-                                  className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
-                                >
-                                  + {f}
-                                </button>
-                              ))}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setFlavorNotes((prev) => [
-                                  ...new Set([...prev, ...pendingFlavors]),
-                                ]);
-                                setPendingFlavors(null);
-                              }}
-                              className="text-xs text-muted-foreground hover:text-foreground px-1"
-                            >
-                              Add all
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setPendingFlavors(null)}
-                              className="text-xs text-muted-foreground hover:text-foreground px-1"
-                            >
-                              Dismiss
-                            </button>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </section>
-
-                  {/* ── Regions ── */}
-                  <section id="section-regions" className="scroll-mt-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Regions</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-1.5">
-                        <Label>Macro-regions</Label>
-                        <EntityMultiCombobox
-                          value={regions}
-                          onChange={(vals) => setRegions(vals as RegionCode[])}
-                          options={REGION_OPTIONS}
-                          placeholder="Select culinary macro-regions…"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Closed enum — different from <span className="font-mono">origin[]</span>{" "}
-                          (free-form, finer) and <span className="font-mono">recipeCuisine</span>{" "}
-                          (schema.org cuisine).
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </section>
-
-                  {/* ── Long-form sections ── */}
-                  <section id="section-longform" className="scroll-mt-4 space-y-4">
-                    {LONGFORM_SECTIONS.map(({ key, label, placeholder }) => (
-                      <form.Field key={key} name={key as never}>
-                        {(field) => (
-                          <Card>
-                            <CardHeader>
-                              <div className="flex items-center justify-between">
-                                <CardTitle>{label}</CardTitle>
-                                {!aiFlow.forField(key).suggestion && (
-                                  <button
-                                    type="button"
-                                    onClick={() => void aiFlow.forField(key).run()}
-                                    disabled={aiFlow.forField(key).isRunning}
-                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                                  >
-                                    {aiFlow.forField(key).isRunning ? (
-                                      <Loader2 size={11} className="animate-spin" />
-                                    ) : (
-                                      <Sparkles size={11} />
-                                    )}
-                                    AI suggest
-                                  </button>
-                                )}
-                              </div>
-                            </CardHeader>
-                            <CardContent>
-                              <Textarea
-                                id={field.name}
-                                value={field.state.value as string}
-                                onChange={(e) => field.handleChange(e.target.value as never)}
-                                rows={5}
-                                placeholder={placeholder}
-                                className="font-mono text-sm"
-                              />
-                              <InlineFieldSuggestion
-                                fieldPath={key}
-                                currentValue={(field.state.value as string) ?? ""}
-                                onApply={(v) => field.handleChange(String(v) as never)}
-                                kind="text"
-                              />
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                Supports inline markdown links: <code>[text](url)</code>
-                              </p>
-                            </CardContent>
-                          </Card>
-                        )}
-                      </form.Field>
-                    ))}
-                  </section>
-
-                  {/* ── Sources ── */}
-                  <section id="section-sources" className="scroll-mt-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Sources</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {sources.map((src, i) => (
-                          <div
-                            key={i}
-                            className="rounded-md border border-border p-3 space-y-2 relative"
-                          >
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setSources((prev) => prev.filter((_, idx) => idx !== i))
-                              }
-                              className="absolute right-2 top-2 text-xs text-muted-foreground hover:text-destructive"
-                              aria-label="Remove source"
-                            >
-                              ✕
-                            </button>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="space-y-1">
-                                <Label className="text-xs">Title *</Label>
-                                <Input
-                                  value={src.title}
-                                  onChange={(e) =>
-                                    setSources((prev) =>
-                                      prev.map((s, idx) =>
-                                        idx === i ? { ...s, title: e.target.value } : s,
-                                      ),
-                                    )
-                                  }
-                                  placeholder="Source title"
-                                  className="h-8 text-sm"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">URL *</Label>
-                                <Input
-                                  type="url"
-                                  value={src.url}
-                                  onChange={(e) =>
-                                    setSources((prev) =>
-                                      prev.map((s, idx) =>
-                                        idx === i ? { ...s, url: e.target.value } : s,
-                                      ),
-                                    )
-                                  }
-                                  placeholder="https://…"
-                                  className="h-8 text-sm"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Author</Label>
-                                <Input
-                                  value={src.author ?? ""}
-                                  onChange={(e) =>
-                                    setSources((prev) =>
-                                      prev.map((s, idx) =>
-                                        idx === i
-                                          ? { ...s, author: e.target.value || undefined }
-                                          : s,
-                                      ),
-                                    )
-                                  }
-                                  placeholder="Author name"
-                                  className="h-8 text-sm"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Year</Label>
-                                <Input
-                                  value={src.year ?? ""}
-                                  onChange={(e) =>
-                                    setSources((prev) =>
-                                      prev.map((s, idx) =>
-                                        idx === i ? { ...s, year: e.target.value || undefined } : s,
-                                      ),
-                                    )
-                                  }
-                                  placeholder="2024"
-                                  className="h-8 text-sm"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => setSources((prev) => [...prev, { title: "", url: "" }])}
-                          className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground w-full"
-                        >
-                          + Add source
-                        </button>
-                        {hasLiabilityScope(formValues) && sources.length === 0 && (
-                          <div
-                            data-testid="liability-warning"
-                            className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2.5 text-xs text-amber-800 dark:text-amber-300"
-                          >
-                            ⚠ This ingredient has medicinal, health, or safety content. Add at least
-                            one source to support these claims.
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </section>
-
-                  {/* ── Pairings ── */}
-                  <section id="section-pairings" className="scroll-mt-4">
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle>Pairings</CardTitle>
-                          {visiblePairingProposals.length > 0 && (
-                            <span className="text-xs text-primary">
-                              {visiblePairingProposals.length} AI suggestion
-                              {visiblePairingProposals.length !== 1 ? "s" : ""}
-                            </span>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {/* AI pairing suggestions */}
-                        {visiblePairingProposals.length > 0 && (
-                          <div className="rounded-md border border-primary/20 bg-primary/5 p-2 space-y-1.5">
-                            <p className="text-xs font-medium text-muted-foreground mb-1">
-                              AI suggested pairings
-                            </p>
-                            {visiblePairingProposals.map((p, i) => (
-                              <div key={i} className="flex items-start gap-2 text-xs">
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-muted-foreground">
-                                    {p.otherCollection}:{" "}
-                                  </span>
-                                  <span className="font-medium">{p.otherSlug}</span>
-                                  {p.rationale && (
-                                    <p className="text-muted-foreground mt-0.5 truncate">
-                                      {p.rationale}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex gap-1 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => setPendingPairingDialog(p)}
-                                    className="flex items-center gap-1 rounded border border-primary/20 px-1.5 py-0.5 text-primary hover:bg-primary/10"
-                                  >
-                                    Add
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setDismissedPairingProposals(
-                                        (prev) => new Set([...prev, p.otherSlug]),
-                                      )
-                                    }
-                                    className="rounded border border-border px-1.5 py-0.5 text-muted-foreground hover:text-foreground"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Read-only pairings featuring this entity */}
-                        {featuredPairings.length > 0 && (
-                          <div className="space-y-1">
-                            <p className="text-xs font-medium text-muted-foreground">
-                              Pairings featuring this entity
-                            </p>
-                            {featuredPairings.map((p) => (
-                              <div
-                                key={p.id}
-                                className="flex items-center gap-2 text-xs rounded border border-border px-2 py-1.5"
-                              >
-                                <span className="font-medium font-mono">{p.id}</span>
-                                {p.description && (
-                                  <span className="text-muted-foreground truncate">
-                                    {p.description}
-                                  </span>
-                                )}
-                                <a
-                                  href={`/admin/pairings/${p.id}/edit`}
-                                  className="ml-auto shrink-0 text-primary hover:underline"
-                                >
-                                  Edit
-                                </a>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {!isNew &&
-                          featuredPairings.length === 0 &&
-                          visiblePairingProposals.length === 0 && (
-                            <p className="text-xs text-muted-foreground">No pairings yet.</p>
-                          )}
-                      </CardContent>
-                    </Card>
-                  </section>
-                </div>
-
-                {/* Right: completeness + AI assist */}
-                <aside className="sticky top-0 h-fit w-52 shrink-0 pt-1 space-y-3">
-                  <CompletenessPanel
-                    result={completeness}
-                    requiredFields={requiredFields}
-                    recommendedFields={recommendedFields}
-                  />
-                  {!isNew && (
-                    <PairingSuggestionPanel
-                      snapshot={buildIngredientSnapshot()}
-                      missingFields={completeness.missing}
-                      locale={locale}
-                      onApplyPairings={(proposals) => {
-                        setPairingProposals((prev) => [
-                          ...prev,
-                          ...proposals
-                            .filter((p) => !prev.some((x) => x.otherSlug === p.slug))
-                            .map((p) => ({
-                              otherCollection: "ingredients" as const,
-                              otherSlug: p.slug,
-                              rationale: p.note ?? "",
-                            })),
-                        ]);
-                      }}
-                      onApplyField={(field, value) => {
-                        if (!Array.isArray(value)) {
-                          if (field === "flavorNotes")
-                            setFlavorNotes((prev) => [...new Set([...prev, String(value)])]);
-                          else if (field === "origin")
-                            setOrigins((prev) => [...new Set([...prev, String(value)])]);
-                          else form.setFieldValue(field as never, String(value) as never);
-                        }
-                      }}
-                    />
-                  )}
-                </aside>
-              </div>
-            )}
-          </TranslationCompanion>
-
-          {/* Sticky footer */}
-          <FormActionBar
-            saving={saving}
-            isDraft={draft}
-            backHref="/admin/ingredients"
-            previewHref={!isNew && slug ? `/ingredients/${slug}` : undefined}
-            onSave={handleSave}
-          />
-        </form>
-
-        {/* Enhance dialog */}
-        <IngestDialog
-          open={enhanceOpen}
-          onOpenChange={(o) => {
-            if (!o) {
-              clearIngestProposed();
-              setEnhanceOpen(false);
-            }
-          }}
-          title="Enhance ingredient"
-          onRun={onIngestRun}
-          onReviewBack={clearIngestProposed}
-          reviewChildren={
-            ingestProposed ? (
-              <div className="space-y-4">
-                <div className="max-h-[50vh] overflow-y-auto">
-                  {ingestWarnings.length > 0 && (
-                    <div className="mb-3 space-y-0.5">
-                      {ingestWarnings.map((w, i) => (
-                        <p key={i} className="text-xs text-amber-700 dark:text-amber-400">
-                          ⚠ {w}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                  <IngredientDiff existing={buildIngredientSnapshot()} proposed={ingestProposed} />
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleApplyEnhancement}>
-                    <Check size={14} className="mr-1" />
-                    Apply changes
-                  </Button>
-                </DialogFooter>
-              </div>
-            ) : undefined
-          }
-          generateLabel="Generate enhanced version"
-          className="sm:max-w-4xl"
-        />
-
-        <Dialog open={translateOpen} onOpenChange={(o) => !o && setTranslateOpen(false)}>
-          <DialogContent className="sm:max-w-lg">
-            <TranslateEntityDialog
-              contract={{
-                presets: [],
-                fields: {
-                  name: { translation: { mode: "translate" } },
-                  summary: { translation: { mode: "translate" } },
-                  description: { translation: { mode: "translate" } },
-                  culinaryUse: { translation: { mode: "translate" } },
-                  medicinalUses: { translation: { mode: "translate" } },
-                  healthBenefits: { translation: { mode: "translate" } },
-                  safetyNotes: { translation: { mode: "translate" } },
-                  history: { translation: { mode: "translate" } },
-                  storage: { translation: { mode: "translate" } },
-                  sourcing: { translation: { mode: "translate" } },
-                  seasonality: { translation: { mode: "translate" } },
-                },
-              }}
-              sourceRef={{ kind: "ingredient", id: slug }}
-              sourceLocale={locale}
-              sourceData={buildIngredientSnapshot()}
-              availableLocales={locale === "en" ? ["de"] : ["en"]}
-              onCreate={async (targetLocale, _slug, fields, meta) => {
-                translationTargetLocaleRef.current = targetLocale;
-                const { error } = await actions.aiCreateIngredientTranslation({
-                  slug,
-                  sourceLocale: locale,
-                  targetLocale: targetLocale as "en" | "de",
-                  fields,
-                  meta: meta as unknown as Record<string, unknown>,
-                });
-                if (error) throw new Error(error.message);
-                return { kind: "ingredient", id: slug };
-              }}
-              onComplete={() => {
-                const tl = translationTargetLocaleRef.current;
-                setTranslateOpen(false);
-                toast.success("Translation created");
-                if (tl) window.open(`/admin/ingredients/${slug}/edit?locale=${tl}`, "_blank");
-              }}
-              aiEventLog={{ read: async () => [], append: async () => {} }}
-              onFill={async (params) => {
-                const ctx = params.sourceContext as {
-                  sourceLocale: string;
-                  targetLocale: string;
-                  sourceData: Record<string, unknown>;
-                };
-                const { data, error } = await actions.aiFillTranslation({
-                  kind: "ingredient",
-                  sourceRef: { id: slug, kind: "ingredient" },
-                  sourceLocale: ctx.sourceLocale as "en" | "de",
-                  targetLocale: ctx.targetLocale as "en" | "de",
-                  sourceData: ctx.sourceData,
-                  target: params.target,
-                });
-                if (error) throw new Error(error.message);
-                return data!;
-              }}
-              origin={{
-                surface: "admin",
-                action: "aiFillTranslation",
-                entityKind: "ingredient",
-                entityRef: slug,
-                userInitiated: true,
-                runId: translateRunId,
-                triggeredBy: "editor" as const,
-              }}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void form.handleSubmit();
+        }}
+      >
+        <EntityFormLayout
+          title={isNew ? "New ingredient" : `Edit · ${slug}`}
+          localeChip={localeChip}
+          headerAuxiliary={headerAuxiliary}
+          overflowMenuItems={overflowMenuItems}
+          sections={SECTIONS}
+          completenessPanel={
+            <CompletenessPanel
+              result={completeness}
+              requiredFields={requiredFields}
+              recommendedFields={recommendedFields}
             />
-          </DialogContent>
-        </Dialog>
-
-        {/* Create pairing dialog */}
-        <Dialog
-          open={!!pendingPairingDialog}
-          onOpenChange={(o) => !o && setPendingPairingDialog(null)}
-        >
-          <DialogContent className="sm:max-w-md">
-            {pendingPairingDialog && (
-              <CreatePairingDialog
-                sourceRef={{ kind: "ingredient", id: slug ?? "" }}
-                aiSuggestion={pendingPairingDialog}
+          }
+          extraSidebarBlocks={
+            !isNew && !splitView ? (
+              <PairingSuggestionPanel
+                snapshot={buildIngredientSnapshot()}
+                missingFields={completeness.missing}
                 locale={locale}
-                onCreate={handleCreatePairing}
-                onComplete={() => {
-                  setPendingPairingDialog(null);
-                  toast.success("Pairing created");
+                onApplyPairings={(proposals) => {
+                  setPairingProposals((prev) => [
+                    ...prev,
+                    ...proposals
+                      .filter((p) => !prev.some((x) => x.otherSlug === p.slug))
+                      .map((p) => ({
+                        otherCollection: "ingredients" as const,
+                        otherSlug: p.slug,
+                        rationale: p.note ?? "",
+                      })),
+                  ]);
                 }}
-                aiEventLog={{ read: async () => [], append: async () => {} }}
-                origin={{
-                  surface: "admin",
-                  action: "createPairing",
-                  entityKind: "ingredient",
-                  userInitiated: true,
-                  runId: pairingRunId,
-                  triggeredBy: "editor",
+                onApplyField={(field, value) => {
+                  if (!Array.isArray(value)) {
+                    if (field === "flavorNotes")
+                      setFlavorNotes((prev) => [...new Set([...prev, String(value)])]);
+                    else if (field === "origin")
+                      setOrigins((prev) => [...new Set([...prev, String(value)])]);
+                    else form.setFieldValue(field as never, String(value) as never);
+                  }
                 }}
               />
-            )}
-          </DialogContent>
-        </Dialog>
+            ) : undefined
+          }
+          subHeaderStrip={subHeaderStrip}
+          footer={
+            <FormActionBar
+              saving={saving}
+              isDraft={draft}
+              backHref="/admin/ingredients"
+              previewHref={!isNew && slug ? `/ingredients/${slug}` : undefined}
+              onSave={handleSave}
+            />
+          }
+          splitView={splitView}
+          siblingLocale={splitView ? siblingLocaleCode : undefined}
+          onToggleSplitView={() => setSplitView(!splitView)}
+        >
+          {/* ── Basic info ── */}
+          <section id="section-basic" className="scroll-mt-4">
+            <Card>
+              <CardContent className="space-y-4 pt-6">
+                {isNew && (
+                  <div className="space-y-1.5">
+                    <Label>Slug</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          value={slug}
+                          onChange={(e) => setSlug(e.target.value)}
+                          placeholder="cardamom"
+                        />
+                        {slug && isNew && (
+                          <span
+                            className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium ${
+                              slugChecking
+                                ? "text-muted-foreground"
+                                : slugAvailable === true
+                                  ? "text-emerald-600"
+                                  : slugAvailable === false
+                                    ? "text-red-500"
+                                    : ""
+                            }`}
+                          >
+                            {slugChecking
+                              ? "…"
+                              : slugAvailable === true
+                                ? "✓ available"
+                                : slugAvailable === false
+                                  ? "✗ taken"
+                                  : ""}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        title="AI suggest slug"
+                        onClick={async () => {
+                          const name = form.getFieldValue("name" as never) as string;
+                          if (!name) return;
+                          try {
+                            const { data } = await actions.aiSuggestSlug({
+                              name,
+                              locale,
+                              collection: "recipes", // slug suggestion is locale-aware only
+                            });
+                            if (data) setSlug(data.slug);
+                          } catch {
+                            toast.error("Could not suggest slug");
+                          }
+                        }}
+                        className="flex items-center rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+                      >
+                        <Sparkles size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-        {/* Quick create dialog */}
-        {quickCreateCallback && (
-          <QuickCreateDialog
-            open
-            onClose={() => setQuickCreateCallback(null)}
-            kind="ingredient"
-            initialName={quickCreateName}
-            onCreated={(newSlug, newLabel) => {
-              quickCreateCallback(newSlug, newLabel);
-              setQuickCreateCallback(null);
+                <form.Field name="name">
+                  {(field) => (
+                    <FieldWithSibling
+                      label="Name"
+                      fieldKey="name"
+                      siblingValue={siblingData?.data["name"]}
+                      siblingLocale={siblingLocaleCode}
+                      splitView={splitView}
+                    >
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={field.name}>Name *</Label>
+                        {splitView && <AiFieldTranslateButton fieldPath="name" />}
+                      </div>
+                      <Input
+                        id={field.name}
+                        value={field.state.value}
+                        onChange={(e) => {
+                          field.handleChange(e.target.value);
+                          if (isNew && !slug) setSlug(slugify(e.target.value));
+                        }}
+                        placeholder="Cardamom"
+                      />
+                    </FieldWithSibling>
+                  )}
+                </form.Field>
+
+                <form.Field name="category">
+                  {(field) => (
+                    <div className="space-y-1.5">
+                      <Label>Category *</Label>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(v) => v && field.handleChange(v as Category)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CATEGORIES.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </form.Field>
+
+                <form.Field name="summary">
+                  {(field) => (
+                    <FieldWithSibling
+                      label="Summary"
+                      fieldKey="summary"
+                      siblingValue={siblingData?.data["summary"]}
+                      siblingLocale={siblingLocaleCode}
+                      splitView={splitView}
+                    >
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={field.name}>Summary *</Label>
+                        <div className="flex items-center gap-1.5">
+                          {splitView ? (
+                            <AiFieldTranslateButton fieldPath="summary" />
+                          ) : (
+                            !aiFlow.forField("summary").suggestion && (
+                              <AiFieldSuggestButton fieldPath="summary" />
+                            )
+                          )}
+                        </div>
+                      </div>
+                      <Input
+                        id={field.name}
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        placeholder="One-sentence pitch"
+                      />
+                      <InlineFieldSuggestion
+                        fieldPath="summary"
+                        currentValue={field.state.value}
+                        onApply={(v) => field.handleChange(String(v))}
+                        kind="text"
+                      />
+                    </FieldWithSibling>
+                  )}
+                </form.Field>
+
+                <form.Field name="description">
+                  {(field) => (
+                    <FieldWithSibling
+                      label="Description"
+                      fieldKey="description"
+                      siblingValue={siblingData?.data["description"]}
+                      siblingLocale={siblingLocaleCode}
+                      splitView={splitView}
+                    >
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={field.name}>
+                          Description
+                          <RecommendedHint show={!field.state.value} />
+                        </Label>
+                        <div className="flex items-center gap-1.5">
+                          {splitView ? (
+                            <AiFieldTranslateButton fieldPath="description" />
+                          ) : (
+                            !aiFlow.forField("description").suggestion && (
+                              <AiFieldSuggestButton fieldPath="description" />
+                            )
+                          )}
+                        </div>
+                      </div>
+                      <Textarea
+                        id={field.name}
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        rows={4}
+                        placeholder="Detailed description…"
+                      />
+                      <InlineFieldSuggestion
+                        fieldPath="description"
+                        currentValue={field.state.value}
+                        onApply={(v) => field.handleChange(String(v))}
+                        kind="text"
+                      />
+                    </FieldWithSibling>
+                  )}
+                </form.Field>
+
+                <form.Field name="image">
+                  {(field) => (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={field.name}>
+                          Image URL
+                          <RecommendedHint show={!field.state.value} />
+                        </Label>
+                        <button
+                          type="button"
+                          onClick={() => setImageSearchOpen(true)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Search image…
+                        </button>
+                      </div>
+                      <Input
+                        type="url"
+                        id={field.name}
+                        value={field.state.value}
+                        onChange={(e) => {
+                          field.handleChange(e.target.value);
+                          if (!e.target.value) setImageAttribution(undefined);
+                          setImageBroken(false);
+                          if (e.target.value) {
+                            const img = new window.Image();
+                            img.onerror = () => setImageBroken(true);
+                            img.onload = () => setImageBroken(false);
+                            img.src = e.target.value;
+                          }
+                        }}
+                        placeholder="https://…"
+                        className={imageBroken ? "border-amber-400" : ""}
+                      />
+                      {imageBroken && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          ⚠ Image URL appears broken or unreachable
+                        </p>
+                      )}
+                      {imageAttribution && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {imageAttribution.attribution}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </form.Field>
+
+                {/* Language mismatch warning */}
+                {languageMismatch && detectedLanguage && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2.5 text-xs text-amber-800 dark:text-amber-300">
+                    ⚠ Content appears to be in <strong>{detectedLanguage.toUpperCase()}</strong> but
+                    this file is under the <strong>{locale.toUpperCase()}</strong> locale. Consider
+                    moving it or creating a translation.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* ── Taxonomy ── */}
+          <section id="section-taxonomy" className="scroll-mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Taxonomy</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Common names</Label>
+                  <TagInput
+                    value={commonNames}
+                    onChange={setCommonNames}
+                    placeholder="kala zeera, cilantro…"
+                  />
+                </div>
+
+                <form.Field name="botanicalName">
+                  {(field) => (
+                    <div className="space-y-1.5">
+                      <Label htmlFor={field.name}>
+                        Botanical name
+                        <RecommendedHint show={!field.state.value} />
+                      </Label>
+                      <Input
+                        id={field.name}
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        placeholder="Elettaria cardamomum"
+                      />
+                    </div>
+                  )}
+                </form.Field>
+
+                <form.Field name="family">
+                  {(field) => (
+                    <div className="space-y-1.5">
+                      <Label htmlFor={field.name}>
+                        Family
+                        <RecommendedHint show={!field.state.value} />
+                      </Label>
+                      <Input
+                        id={field.name}
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        placeholder="Zingiberaceae"
+                      />
+                    </div>
+                  )}
+                </form.Field>
+
+                <div className="space-y-1.5">
+                  <Label>
+                    Parts used
+                    <RecommendedHint show={parts.length === 0} />
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {INGREDIENT_PARTS.map((part) => (
+                      <button
+                        key={part}
+                        type="button"
+                        onClick={() => togglePart(part)}
+                        className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                          parts.includes(part)
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        }`}
+                      >
+                        {part}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <form.Field name="seasonality">
+                  {(field) => (
+                    <FieldWithSibling
+                      label="Seasonality"
+                      fieldKey="seasonality"
+                      siblingValue={siblingData?.data["seasonality"]}
+                      siblingLocale={siblingLocaleCode}
+                      splitView={splitView}
+                    >
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={field.name}>Seasonality</Label>
+                        <div className="flex items-center gap-1.5">
+                          {splitView ? (
+                            <AiFieldTranslateButton fieldPath="seasonality" />
+                          ) : (
+                            !aiFlow.forField("seasonality").suggestion && (
+                              <AiFieldSuggestButton fieldPath="seasonality" />
+                            )
+                          )}
+                        </div>
+                      </div>
+                      <Input
+                        id={field.name}
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        placeholder="Spring, late summer…"
+                      />
+                      <InlineFieldSuggestion
+                        fieldPath="seasonality"
+                        currentValue={field.state.value ?? ""}
+                        onApply={(v) => field.handleChange(String(v))}
+                        kind="text"
+                      />
+                    </FieldWithSibling>
+                  )}
+                </form.Field>
+
+                <div className="space-y-1.5">
+                  <Label>
+                    Flavor profile
+                    <RecommendedHint show={flavorProfile.length === 0} />
+                  </Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {INGREDIENT_FLAVOR_PROFILE.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => toggleFlavorProfile(value)}
+                        className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                          flavorProfile.includes(value)
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        }`}
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Safety flags</Label>
+                  <TagInput
+                    value={safetyFlags}
+                    onChange={setSafetyFlags}
+                    placeholder="allergen, contraindication…"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* ── Profile ── */}
+          <section id="section-profile" className="scroll-mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Origin</CardTitle>
+                  <button
+                    type="button"
+                    onClick={runProposeOrigin}
+                    disabled={aiOriginsLoading}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {aiOriginsLoading ? (
+                      <Loader2 size={11} className="animate-spin" />
+                    ) : (
+                      <Sparkles size={11} />
+                    )}
+                    AI suggest
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <TagInput value={origins} onChange={setOrigins} placeholder="Iran, Guatemala…" />
+                {pendingOrigins && pendingOrigins.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {pendingOrigins
+                      .filter((o) => !origins.includes(o))
+                      .map((o) => (
+                        <button
+                          key={o}
+                          type="button"
+                          onClick={() => setOrigins((prev) => [...prev, o])}
+                          className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
+                        >
+                          + {o}
+                        </button>
+                      ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrigins((prev) => [...new Set([...prev, ...pendingOrigins])]);
+                        setPendingOrigins(null);
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground px-1"
+                    >
+                      Add all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingOrigins(null)}
+                      className="text-xs text-muted-foreground hover:text-foreground px-1"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Flavor notes</CardTitle>
+                  <button
+                    type="button"
+                    onClick={runProposeFlavors}
+                    disabled={aiFlavorLoading}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {aiFlavorLoading ? (
+                      <Loader2 size={11} className="animate-spin" />
+                    ) : (
+                      <Sparkles size={11} />
+                    )}
+                    AI suggest
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <TagInput
+                  value={flavorNotes}
+                  onChange={setFlavorNotes}
+                  placeholder="floral, earthy, warm…"
+                />
+                {pendingFlavors && pendingFlavors.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {pendingFlavors
+                      .filter((f) => !flavorNotes.includes(f))
+                      .map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setFlavorNotes((prev) => [...prev, f])}
+                          className="rounded border border-primary/20 bg-primary/5 px-2 py-0.5 text-xs text-primary hover:bg-primary/10"
+                        >
+                          + {f}
+                        </button>
+                      ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFlavorNotes((prev) => [...new Set([...prev, ...pendingFlavors])]);
+                        setPendingFlavors(null);
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground px-1"
+                    >
+                      Add all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingFlavors(null)}
+                      className="text-xs text-muted-foreground hover:text-foreground px-1"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* ── Regions ── */}
+          <section id="section-regions" className="scroll-mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Regions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1.5">
+                <Label>Macro-regions</Label>
+                <EntityMultiCombobox
+                  value={regions}
+                  onChange={(vals) => setRegions(vals as RegionCode[])}
+                  options={REGION_OPTIONS}
+                  placeholder="Select culinary macro-regions…"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Closed enum — different from <span className="font-mono">origin[]</span>{" "}
+                  (free-form, finer) and <span className="font-mono">recipeCuisine</span>{" "}
+                  (schema.org cuisine).
+                </p>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* ── Long-form sections ── */}
+          <section id="section-longform" className="scroll-mt-4 space-y-4">
+            {LONGFORM_SECTIONS.map(({ key, label, placeholder }) => (
+              <form.Field key={key} name={key as never}>
+                {(field) => (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>{label}</CardTitle>
+                        <div className="flex items-center gap-1.5">
+                          {splitView ? (
+                            <AiFieldTranslateButton fieldPath={key} />
+                          ) : (
+                            !aiFlow.forField(key).suggestion && (
+                              <AiFieldSuggestButton fieldPath={key} />
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <FieldWithSibling
+                        label={label}
+                        fieldKey={key}
+                        siblingValue={siblingData?.data[key]}
+                        siblingLocale={siblingLocaleCode}
+                        splitView={splitView}
+                      >
+                        <Textarea
+                          id={field.name}
+                          value={field.state.value as string}
+                          onChange={(e) => field.handleChange(e.target.value as never)}
+                          rows={5}
+                          placeholder={placeholder}
+                          className="font-mono text-sm"
+                        />
+                        <InlineFieldSuggestion
+                          fieldPath={key}
+                          currentValue={(field.state.value as string) ?? ""}
+                          onApply={(v) => field.handleChange(String(v) as never)}
+                          kind="text"
+                        />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Supports inline markdown links: <code>[text](url)</code>
+                        </p>
+                      </FieldWithSibling>
+                    </CardContent>
+                  </Card>
+                )}
+              </form.Field>
+            ))}
+          </section>
+
+          {/* ── Sources ── */}
+          <section id="section-sources" className="scroll-mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Sources</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {sources.map((src, i) => (
+                  <div key={i} className="rounded-md border border-border p-3 space-y-2 relative">
+                    <button
+                      type="button"
+                      onClick={() => setSources((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="absolute right-2 top-2 text-xs text-muted-foreground hover:text-destructive"
+                      aria-label="Remove source"
+                    >
+                      ✕
+                    </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Title *</Label>
+                        <Input
+                          value={src.title}
+                          onChange={(e) =>
+                            setSources((prev) =>
+                              prev.map((s, idx) =>
+                                idx === i ? { ...s, title: e.target.value } : s,
+                              ),
+                            )
+                          }
+                          placeholder="Source title"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">URL *</Label>
+                        <Input
+                          type="url"
+                          value={src.url}
+                          onChange={(e) =>
+                            setSources((prev) =>
+                              prev.map((s, idx) => (idx === i ? { ...s, url: e.target.value } : s)),
+                            )
+                          }
+                          placeholder="https://…"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Author</Label>
+                        <Input
+                          value={src.author ?? ""}
+                          onChange={(e) =>
+                            setSources((prev) =>
+                              prev.map((s, idx) =>
+                                idx === i ? { ...s, author: e.target.value || undefined } : s,
+                              ),
+                            )
+                          }
+                          placeholder="Author name"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Year</Label>
+                        <Input
+                          value={src.year ?? ""}
+                          onChange={(e) =>
+                            setSources((prev) =>
+                              prev.map((s, idx) =>
+                                idx === i ? { ...s, year: e.target.value || undefined } : s,
+                              ),
+                            )
+                          }
+                          placeholder="2024"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setSources((prev) => [...prev, { title: "", url: "" }])}
+                  className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground hover:border-primary/50 hover:text-foreground w-full"
+                >
+                  + Add source
+                </button>
+                {hasLiabilityScope(formValues) && sources.length === 0 && (
+                  <div
+                    data-testid="liability-warning"
+                    className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2.5 text-xs text-amber-800 dark:text-amber-300"
+                  >
+                    ⚠ This ingredient has medicinal, health, or safety content. Add at least one
+                    source to support these claims.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* ── Pairings ── */}
+          <section id="section-pairings" className="scroll-mt-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Pairings</CardTitle>
+                  {visiblePairingProposals.length > 0 && (
+                    <span className="text-xs text-primary">
+                      {visiblePairingProposals.length} AI suggestion
+                      {visiblePairingProposals.length !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* AI pairing suggestions */}
+                {visiblePairingProposals.length > 0 && (
+                  <div className="rounded-md border border-primary/20 bg-primary/5 p-2 space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">
+                      AI suggested pairings
+                    </p>
+                    {visiblePairingProposals.map((p, i) => (
+                      <div key={i} className="flex items-start gap-2 text-xs">
+                        <div className="flex-1 min-w-0">
+                          <span className="text-muted-foreground">{p.otherCollection}: </span>
+                          <span className="font-medium">{p.otherSlug}</span>
+                          {p.rationale && (
+                            <p className="text-muted-foreground mt-0.5 truncate">{p.rationale}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setPendingPairingDialog(p)}
+                            className="flex items-center gap-1 rounded border border-primary/20 px-1.5 py-0.5 text-primary hover:bg-primary/10"
+                          >
+                            Add
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDismissedPairingProposals(
+                                (prev) => new Set([...prev, p.otherSlug]),
+                              )
+                            }
+                            className="rounded border border-border px-1.5 py-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Read-only pairings featuring this entity */}
+                {featuredPairings.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Pairings featuring this entity
+                    </p>
+                    {featuredPairings.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center gap-2 text-xs rounded border border-border px-2 py-1.5"
+                      >
+                        <span className="font-medium font-mono">{p.id}</span>
+                        {p.description && (
+                          <span className="text-muted-foreground truncate">{p.description}</span>
+                        )}
+                        <a
+                          href={`/admin/pairings/${p.id}/edit`}
+                          className="ml-auto shrink-0 text-primary hover:underline"
+                        >
+                          Edit
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!isNew &&
+                  featuredPairings.length === 0 &&
+                  visiblePairingProposals.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No pairings yet.</p>
+                  )}
+              </CardContent>
+            </Card>
+          </section>
+        </EntityFormLayout>
+      </form>
+
+      {/* Enhance dialog */}
+      <IngestDialog
+        open={enhanceOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            clearIngestProposed();
+            setEnhanceOpen(false);
+          }
+        }}
+        title="Enhance ingredient"
+        onRun={onIngestRun}
+        onReviewBack={clearIngestProposed}
+        reviewChildren={
+          ingestProposed ? (
+            <div className="space-y-4">
+              <div className="max-h-[50vh] overflow-y-auto">
+                {ingestWarnings.length > 0 && (
+                  <div className="mb-3 space-y-0.5">
+                    {ingestWarnings.map((w, i) => (
+                      <p key={i} className="text-xs text-amber-700 dark:text-amber-400">
+                        ⚠ {w}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                <IngredientDiff existing={buildIngredientSnapshot()} proposed={ingestProposed} />
+              </div>
+              <DialogFooter>
+                <Button onClick={handleApplyEnhancement}>
+                  <Check size={14} className="mr-1" />
+                  Apply changes
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : undefined
+        }
+        generateLabel="Generate enhanced version"
+        className="sm:max-w-4xl"
+      />
+
+      <Dialog open={translateOpen} onOpenChange={(o) => !o && setTranslateOpen(false)}>
+        <DialogContent className="sm:max-w-lg">
+          <TranslateEntityDialog
+            contract={AI_CONTRACT}
+            sourceRef={{ kind: "ingredient", id: slug }}
+            sourceLocale={locale}
+            sourceData={buildIngredientSnapshot()}
+            availableLocales={locale === "en" ? ["de"] : ["en"]}
+            onCreate={async (targetLocale, _slug, fields, meta) => {
+              translationTargetLocaleRef.current = targetLocale;
+              const { error } = await actions.aiCreateIngredientTranslation({
+                slug,
+                sourceLocale: locale,
+                targetLocale: targetLocale as "en" | "de",
+                fields,
+                meta: meta as unknown as Record<string, unknown>,
+              });
+              if (error) throw new Error(error.message);
+              return { kind: "ingredient", id: slug };
+            }}
+            onComplete={() => {
+              const tl = translationTargetLocaleRef.current;
+              setTranslateOpen(false);
+              toast.success("Translation created");
+              if (tl) window.open(`/admin/ingredients/${slug}/edit?locale=${tl}`, "_blank");
+            }}
+            aiEventLog={{ read: async () => [], append: async () => {} }}
+            onFill={async (params) => {
+              const ctx = params.sourceContext as {
+                sourceLocale: string;
+                targetLocale: string;
+                sourceData: Record<string, unknown>;
+              };
+              const { data, error } = await actions.aiFillTranslation({
+                kind: "ingredient",
+                sourceRef: { id: slug, kind: "ingredient" },
+                sourceLocale: ctx.sourceLocale as "en" | "de",
+                targetLocale: ctx.targetLocale as "en" | "de",
+                sourceData: ctx.sourceData,
+                target: params.target,
+              });
+              if (error) throw new Error(error.message);
+              return data!;
+            }}
+            origin={{
+              surface: "admin",
+              action: "aiFillTranslation",
+              entityKind: "ingredient",
+              entityRef: slug,
+              userInitiated: true,
+              runId: translateRunId,
+              triggeredBy: "editor" as const,
             }}
           />
-        )}
+        </DialogContent>
+      </Dialog>
 
-        {/* Image search modal */}
-        <ImageSearchModal
-          open={imageSearchOpen}
-          onClose={() => setImageSearchOpen(false)}
-          defaultQuery={form.getFieldValue("name" as never) as string}
-          onSelect={(selected: SelectedImage) => {
-            form.setFieldValue("image" as never, selected.url as never);
-            setImageBroken(false);
-            setImageAttribution(selected.attribution);
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <div className="space-y-4">
+            <p className="text-sm">
+              Delete <strong>{slug}</strong> ({locale.toUpperCase()})? This cannot be undone.
+            </p>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={() => void handleDelete()}>
+                <Trash2 size={14} className="mr-1" />
+                Delete
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create pairing dialog */}
+      <Dialog
+        open={!!pendingPairingDialog}
+        onOpenChange={(o) => !o && setPendingPairingDialog(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          {pendingPairingDialog && (
+            <CreatePairingDialog
+              sourceRef={{ kind: "ingredient", id: slug ?? "" }}
+              aiSuggestion={pendingPairingDialog}
+              locale={locale}
+              onCreate={handleCreatePairing}
+              onComplete={() => {
+                setPendingPairingDialog(null);
+                toast.success("Pairing created");
+              }}
+              aiEventLog={{ read: async () => [], append: async () => {} }}
+              origin={{
+                surface: "admin",
+                action: "createPairing",
+                entityKind: "ingredient",
+                userInitiated: true,
+                runId: pairingRunId,
+                triggeredBy: "editor",
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick create dialog */}
+      {quickCreateCallback && (
+        <QuickCreateDialog
+          open
+          onClose={() => setQuickCreateCallback(null)}
+          kind="ingredient"
+          initialName={quickCreateName}
+          onCreated={(newSlug, newLabel) => {
+            quickCreateCallback(newSlug, newLabel);
+            setQuickCreateCallback(null);
           }}
         />
-      </div>
+      )}
+
+      {/* Image search modal */}
+      <ImageSearchModal
+        open={imageSearchOpen}
+        onClose={() => setImageSearchOpen(false)}
+        defaultQuery={form.getFieldValue("name" as never) as string}
+        onSelect={(selected: SelectedImage) => {
+          form.setFieldValue("image" as never, selected.url as never);
+          setImageBroken(false);
+          setImageAttribution(selected.attribution);
+        }}
+      />
     </SuggestionFlowProvider>
   );
 }
