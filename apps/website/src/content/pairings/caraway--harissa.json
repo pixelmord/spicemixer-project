@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "caraway"
+    },
+    {
+      "collection": "mixtures",
+      "slug": "harissa"
+    }
+  ],
+  "description": "Harissa's spicy and aromatic qualities balance caraway's earthy sweetness, perfect for flavoring North African dishes."
+}

@@ -1,5 +1,33 @@
 {
   "canonicalLocale": "en",
   "draft": false,
-  "canonicalContentHash": "3a305d6947d756c4"
+  "canonicalContentHash": "3a305d6947d756c4",
+  "aiEvents": [
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "fb14b8089318",
+        "summary": "Pairing auto-applied: caraway ↔ cumin"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "8c647252-450b-4ab0-acdd-6d7528fe2dcc",
+      "id": "99ae18ba-a5bd-46fa-a048-d2e75702c136",
+      "at": "2026-05-25T16:39:00.123Z"
+    },
+    {
+      "type": "auto-applied",
+      "field": "pairings",
+      "suggestion": {
+        "hash": "305533b276f1",
+        "summary": "Pairing auto-applied: caraway ↔ harissa"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "8c647252-450b-4ab0-acdd-6d7528fe2dcc",
+      "id": "025e411f-9058-41ea-896b-53bd2f85d84e",
+      "at": "2026-05-25T16:39:00.125Z"
+    }
+  ]
 }
