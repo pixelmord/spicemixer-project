@@ -432,7 +432,6 @@ export default function RecipeForm({
   const [aiKeywordsLoading, setAiKeywordsLoading] = useState(false);
   const [aiLinksLoading, setAiLinksLoading] = useState(false);
 
-  // Split view
   const [splitView, setSplitView] = useSplitViewPreference();
   const [siblingData, setSiblingData] = useState<SiblingLocale | null>(null);
 
@@ -543,7 +542,6 @@ export default function RecipeForm({
     fetchIngredientOptions(language);
   }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch sibling entity when split view is enabled
   const siblingLocale = language === "en" ? "de" : "en";
   useEffect(() => {
     if (!splitView || !slug || !language || isNew) {
@@ -1217,7 +1215,6 @@ export default function RecipeForm({
           siblingLocale={splitView ? siblingLocale : undefined}
           onToggleSplitView={() => setSplitView(!splitView)}
         >
-          {/* Form body */}
           <div className="space-y-8">
             {/* ── Basic info ── */}
             <section id="section-basic" className="scroll-mt-4">
@@ -2128,7 +2125,6 @@ export default function RecipeForm({
                   </div>
                   <div className="space-y-1.5">
                     <Label>Language</Label>
-                    {/* Read-only locale chip — editing affordance moved to header translate control */}
                     <div className="flex items-center gap-2">
                       <span
                         className="inline-flex items-center rounded-md border border-border bg-muted px-2.5 py-1.5 text-sm font-medium text-muted-foreground"
