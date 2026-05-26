@@ -12,6 +12,16 @@
       "pattern": "cardamom",
       "slug": "cardamom",
       "kind": "ingredient"
+    },
+    {
+      "pattern": "koriander",
+      "slug": "koriander",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "paprika",
+      "slug": "paprika",
+      "kind": "ingredient"
     }
   ],
   "sources": [],
@@ -61,5 +71,92 @@
       "attribution": "\"Frying pan\" by JPC24M is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
     }
   ],
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "aiEvents": [
+    {
+      "type": "auto-applied",
+      "field": "ingredientLinks",
+      "suggestion": {
+        "hash": "8448fd0cf45b",
+        "summary": "Link koriander → koriander"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "28959f4c-00e2-4777-b776-da6d64595b76",
+      "id": "82ddf51a-60f4-4533-ac54-fb3b67a7533f",
+      "at": "2026-05-26T06:52:39.578Z"
+    },
+    {
+      "type": "auto-applied",
+      "field": "ingredientLinks",
+      "suggestion": {
+        "hash": "0d130872f1d2",
+        "summary": "Link paprika → paprika"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "28959f4c-00e2-4777-b776-da6d64595b76",
+      "id": "454eb9ed-1ba3-47b6-a430-4b3e18418cb4",
+      "at": "2026-05-26T06:52:39.582Z"
+    }
+  ],
+  "aiSuggestions": {
+    "fingerprint": "b4351e6bb5d8b832bb3d735924bf9f30983e93e431b6495f70e76c8a6c5fa73b",
+    "at": "2026-05-26T06:52:39.583Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": ["spice-blend", "exotic-flavors", "north-african", "aromatic", "culinary-adventure"],
+      "ingredientLinks": [
+        {
+          "pattern": "cumin",
+          "slug": "cumin",
+          "confidence": "high"
+        },
+        {
+          "pattern": "koriander",
+          "slug": "koriander",
+          "confidence": "high"
+        },
+        {
+          "pattern": "paprika",
+          "slug": "paprika",
+          "confidence": "high"
+        },
+        {
+          "pattern": "cardamom",
+          "slug": "cardamom",
+          "confidence": "high"
+        }
+      ],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "harissa",
+          "rationale": "Harissa, a fiery North African chili paste, complements Ras el Hanout perfectly, amplifying its warmth and complexity while adding a spicy kick that enhances both flavor profiles.",
+          "traceId": "52b85d8f-3ccd-40b2-8e39-a30050077e3b"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "preserved-lemon-couscous",
+          "rationale": "Preserved Lemon Couscous pairs beautifully with Ras el Hanout, as the bright acidity of the preserved lemons balances the deep, aromatic spices, creating a refreshing and flavorful combination.",
+          "traceId": "52b85d8f-3ccd-40b2-8e39-a30050077e3b"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "vegetable-beef-skillet",
+          "rationale": "The Earthy flavors of the Vegetable and Beef Skillet are elevated by Ras el Hanout, which adds a warm spice component that harmonizes with the savory elements of the dish.",
+          "traceId": "52b85d8f-3ccd-40b2-8e39-a30050077e3b"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "berbere",
+          "rationale": "Berbere, with its robust spices and heat, aligns well with Ras el Hanout, as both blends share a rich heritage and can be used interchangeably to enhance North African dishes.",
+          "traceId": "52b85d8f-3ccd-40b2-8e39-a30050077e3b"
+        }
+      ]
+    }
+  },
+  "canonicalContentHash": "4be62d00db374d9c"
 }

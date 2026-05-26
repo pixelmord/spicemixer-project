@@ -1,0 +1,95 @@
+{
+  "draft": true,
+  "kind": "sauce",
+  "tags": [],
+  "ingredientLinks": [
+    {
+      "pattern": "caraway",
+      "slug": "caraway",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "cumin",
+      "slug": "cumin",
+      "kind": "ingredient"
+    }
+  ],
+  "sources": [],
+  "variants": [],
+  "language": "de",
+  "locale": "de",
+  "translationOf": "harissa",
+  "translations": {
+    "en": "harissa"
+  },
+  "aiEvents": [
+    {
+      "id": "5c0c41c0-3634-46c0-840a-86aa9f351af2",
+      "type": "ingested",
+      "suggestion": {
+        "hash": "5c0c41c0-3634-46c0-840a-86aa9f351af2",
+        "summary": "Translation to de"
+      },
+      "at": "2026-05-26T07:10:31.817Z",
+      "model": "translation",
+      "traceId": "5c0c41c0-3634-46c0-840a-86aa9f351af2"
+    }
+  ],
+  "canonicalLocale": "en",
+  "canonicalFieldHashes": {
+    "name": "Harissa",
+    "description": "Smoky, fiery North African chile paste. The backbone of Tunisian cooking — use it in dressings, marinades, and anywhere heat and depth are needed.",
+    "recipeCategory": "Sauce",
+    "recipeCuisine": "Tunisian",
+    "slug": "harissa"
+  },
+  "aiSuggestions": {
+    "fingerprint": "759722fcf91163b4a51ca6a346f397a360f9701318e2bfde2e0bd8f1deebe340",
+    "at": "2026-05-26T07:17:56.729Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": ["sauce", "chile-paste", "tunisian-cuisine", "flavorful", "condiment", "homemade"],
+      "ingredientLinks": [
+        {
+          "pattern": "caraway",
+          "slug": "caraway",
+          "confidence": "high"
+        },
+        {
+          "pattern": "cumin",
+          "slug": "cumin",
+          "confidence": "high"
+        }
+      ],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cumin",
+          "rationale": "Cumin is a key spice in harissa, enhancing its earthy and warm flavor profile, making it a natural companion in any dish featuring harissa.",
+          "traceId": "03bb9441-d926-4458-ae94-8e3bdfb29055"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "preserved-lemon-couscous",
+          "rationale": "The bright acidity of preserved lemon complements the smoky heat of harissa, creating a balanced dish that highlights both elements beautifully.",
+          "traceId": "03bb9441-d926-4458-ae94-8e3bdfb29055"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "ras-el-hanout",
+          "rationale": "Ras el Hanout's complex blend of spices, including warm notes of cumin and coriander, pairs well with the fiery nature of harissa, enriching the depth of flavor in various North African dishes.",
+          "traceId": "03bb9441-d926-4458-ae94-8e3bdfb29055"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "vegetable-beef-skillet",
+          "rationale": "The robust flavors of harissa enhance the savory profile of a vegetable and beef skillet, adding a spicy kick and depth that elevates the dish.",
+          "traceId": "03bb9441-d926-4458-ae94-8e3bdfb29055"
+        }
+      ]
+    }
+  },
+  "region": []
+}

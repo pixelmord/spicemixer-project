@@ -9,5 +9,50 @@
   "kind": "recipe",
   "language": "en",
   "locale": "en",
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "aiSuggestions": {
+    "fingerprint": "1886efbd2f3952673ecddd7c6172de84c79af5d382d3035e503abc9f9e4c07fa",
+    "at": "2026-05-26T06:53:52.508Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [
+        "slow-cooked",
+        "jammy-tomatoes",
+        "italian-cuisine",
+        "herb-infused",
+        "olive-oil",
+        "garlic-flavor",
+        "easy-condiment"
+      ],
+      "ingredientLinks": [],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "preserved-lemon-couscous",
+          "rationale": "The bright, tangy flavor of preserved lemon will elevate the sweet, jammy notes of the Slow Tomato Confit, creating a harmonious balance that enhances both dishes.",
+          "traceId": "deddb21e-b7d9-47fa-a1c6-854f935c6886"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "dukkah",
+          "rationale": "Dukkah's nutty, spiced profile complements the mellow sweetness of the confit, adding a crunchy texture and layers of flavor that enhance the overall dish.",
+          "traceId": "deddb21e-b7d9-47fa-a1c6-854f935c6886"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "paprika",
+          "rationale": "The smoky warmth of paprika will accentuate the rich, slow-cooked flavors of the tomato confit, providing depth and a touch of earthiness that fits well within Italian cuisine.",
+          "traceId": "deddb21e-b7d9-47fa-a1c6-854f935c6886"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "mojo-verde",
+          "rationale": "Mojo verde's fresh herbaceousness and subtle heat will contrast beautifully with the sweet tomatoes, creating a vibrant sauce that pairs well with both toast and pasta.",
+          "traceId": "deddb21e-b7d9-47fa-a1c6-854f935c6886"
+        }
+      ]
+    }
+  }
 }

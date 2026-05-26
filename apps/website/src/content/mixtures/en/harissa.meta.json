@@ -10,10 +10,93 @@
       "pattern": "cumin",
       "slug": "cumin",
       "kind": "ingredient"
+    },
+    {
+      "pattern": "coriander",
+      "slug": "koriander",
+      "kind": "ingredient"
     }
   ],
   "language": "en",
   "locale": "en",
   "kind": "sauce",
-  "canonicalLocale": "en"
+  "canonicalLocale": "en",
+  "translations": {
+    "de": "harissa"
+  },
+  "aiEvents": [
+    {
+      "type": "auto-applied",
+      "field": "ingredientLinks",
+      "suggestion": {
+        "hash": "3894c9498336",
+        "summary": "Link coriander → koriander"
+      },
+      "model": "gpt-4o-mini",
+      "confidence": "high",
+      "traceId": "8acb7319-44df-4464-81df-ce6e805e917a",
+      "id": "d25d98c8-5559-4fdd-bd6b-267103f72196",
+      "at": "2026-05-26T07:37:57.069Z"
+    }
+  ],
+  "aiSuggestions": {
+    "fingerprint": "2cce77442a5e8cf4564601551fdcfa5a6d7b1c49f3494fadf859f4cd58848eb6",
+    "at": "2026-05-26T07:37:57.072Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [
+        "chile-paste",
+        "tunisian-cuisine",
+        "smoky-flavor",
+        "fiery-sauce",
+        "marinade-base",
+        "depth-of-flavor"
+      ],
+      "ingredientLinks": [
+        {
+          "pattern": "caraway",
+          "slug": "caraway",
+          "confidence": "high"
+        },
+        {
+          "pattern": "coriander",
+          "slug": "koriander",
+          "confidence": "high"
+        },
+        {
+          "pattern": "cumin",
+          "slug": "cumin",
+          "confidence": "high"
+        }
+      ],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cumin",
+          "rationale": "Cumin's earthy warmth complements the smoky heat of harissa, enhancing its depth. This pairing is commonly found in North African dishes, where both ingredients are staple flavors.",
+          "traceId": "615bf183-080c-49f8-8dd0-4196024ba011"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "preserved-lemon-couscous",
+          "rationale": "The bright acidity of preserved lemon couscous provides a refreshing contrast to the heat of harissa. Together, they create a balanced dish that highlights the vibrant flavors of Tunisian cuisine.",
+          "traceId": "615bf183-080c-49f8-8dd0-4196024ba011"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "ras-el-hanout",
+          "rationale": "Both harissa and ras el hanout are integral to North African cooking, with their robust spices intensifying the overall flavor profile when used together in dishes.",
+          "traceId": "615bf183-080c-49f8-8dd0-4196024ba011"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "vegetable-beef-skillet",
+          "rationale": "The rich, hearty flavors of a vegetable and beef skillet are elevated by the spicy, aromatic kick of harissa, making it a perfect addition to meat-based dishes.",
+          "traceId": "615bf183-080c-49f8-8dd0-4196024ba011"
+        }
+      ]
+    }
+  }
 }
