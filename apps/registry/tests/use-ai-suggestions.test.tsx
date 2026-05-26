@@ -721,3 +721,107 @@ describe("retranslate merge option", () => {
     expect(MERGE_INSTRUCTION.length).toBeGreaterThan(0);
   });
 });
+
+// ── runTranslation ────────────────────────────────────────────────────────────
+
+describe("runTranslation", () => {
+  const siblingLocale = {
+    ref: { kind: "ingredient", id: "basil-en" },
+    data: { name: "Basil", description: "Aromatic herb" },
+    locale: "en",
+    fieldHashes: {},
+  };
+
+  test("does nothing when onFill is not provided", async () => {
+    // Root-cause regression test: RecipeForm previously omitted onFill, causing
+    // AiBulkTranslateButton clicks to silently no-op — no isRunning, no network call.
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput({ siblingLocale })));
+    await act(async () => {
+      await result.current.runTranslation();
+    });
+    expect(result.current.isRunning).toBe(false);
+    expect(result.current.suggestions.size).toBe(0);
+  });
+
+  test("does nothing when siblingLocale is not provided", async () => {
+    const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
+    const { result, act } = await renderHook(() => useAiSuggestions(makeInput({ onFill })));
+    await act(async () => {
+      await result.current.runTranslation();
+    });
+    expect(onFill).not.toHaveBeenCalled();
+  });
+
+  test("calls onFill with sourceContext when both onFill and siblingLocale are provided", async () => {
+    const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
+    const { result, act } = await renderHook(() =>
+      useAiSuggestions(makeInput({ onFill, siblingLocale })),
+    );
+    await act(async () => {
+      await result.current.runTranslation();
+    });
+    expect(onFill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceContext: expect.objectContaining({ kind: "sibling-locale" }),
+      }),
+    );
+  });
+
+  test("passes target fields to onFill when provided", async () => {
+    const onFill = vi.fn().mockResolvedValue({ suggestions: {}, autoApplied: {}, traces: {} });
+    const { result, act } = await renderHook(() =>
+      useAiSuggestions(makeInput({ onFill, siblingLocale })),
+    );
+    await act(async () => {
+      await result.current.runTranslation({ target: ["name", "description"] });
+    });
+    expect(onFill).toHaveBeenCalledWith(
+      expect.objectContaining({ target: ["name", "description"] }),
+    );
+  });
+
+  test("sets isRunning true during call and resets after", async () => {
+    let resolve!: (v: unknown) => void;
+    const blocking = new Promise((r) => {
+      resolve = r;
+    });
+    const onFill = vi.fn().mockReturnValue(blocking);
+    const { result, act } = await renderHook(() =>
+      useAiSuggestions(makeInput({ onFill, siblingLocale })),
+    );
+    await act(() => {
+      void result.current.runTranslation();
+    });
+    expect(result.current.isRunning).toBe(true);
+    await act(async () => {
+      resolve({ suggestions: {}, autoApplied: {}, traces: {} });
+    });
+    expect(result.current.isRunning).toBe(false);
+  });
+
+  test("populates suggestions from onFill result", async () => {
+    const onFill = vi.fn().mockResolvedValue({
+      suggestions: { name: descriptionSuggestion },
+      autoApplied: {},
+      traces: { name: traceDescription },
+    });
+    const { result, act } = await renderHook(() =>
+      useAiSuggestions(makeInput({ onFill, siblingLocale })),
+    );
+    await act(async () => {
+      await result.current.runTranslation({ target: ["name"] });
+    });
+    expect(result.current.suggestions.has("name")).toBe(true);
+  });
+
+  test("resets isRunning to false when onFill throws", async () => {
+    const onFill = vi.fn().mockRejectedValue(new Error("network error"));
+    const { result, act } = await renderHook(() =>
+      useAiSuggestions(makeInput({ onFill, siblingLocale })),
+    );
+    await act(async () => {
+      await result.current.runTranslation().catch(() => void 0);
+    });
+    expect(result.current.isRunning).toBe(false);
+  });
+});

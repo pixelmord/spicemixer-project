@@ -186,6 +186,13 @@ describe("RecipeForm — useAiSuggestions integration verification", () => {
     // RecipeForm imports PublishingSection (which owns the tags field)
     expect(src).toMatch(/PublishingSection/);
   });
+
+  test("wires onFill to aiFillTranslation so AiBulkTranslateButton can call the server", () => {
+    // AiBulkTranslateButton → flow.runTranslation() → onFill(). Without onFill wired,
+    // runTranslation() silently returns (guard: if (!onFill || !siblingLocale) return).
+    expect(src).toMatch(/onFill:/);
+    expect(src).toMatch(/aiFillTranslation/);
+  });
 });
 
 describe("useAiSuggestions hook — module contract", () => {

@@ -750,6 +750,22 @@ export default function RecipeForm({
   const aiFlow = useAiSuggestions({
     contract: RECIPE_AI_CONTRACT,
     siblingLocale: siblingData ?? undefined,
+    onFill: async (params) => {
+      const ctx = params.sourceContext as {
+        sourceLocale: string;
+        sourceData: Record<string, unknown>;
+      };
+      const { data: fillData, error } = await actions.aiFillTranslation({
+        kind: collection === "mixtures" ? "mixture" : "recipe",
+        sourceRef: { id: slug ?? "", kind: collection === "mixtures" ? "mixture" : "recipe" },
+        sourceLocale: ctx.sourceLocale as "en" | "de",
+        targetLocale: (language || "en") as "en" | "de",
+        sourceData: ctx.sourceData,
+        target: params.target,
+      });
+      if (error) throw new Error(error.message);
+      return fillData!;
+    },
     onRefine: async (params) => {
       const snap = buildRecipeSnapshot();
       const metaSnap = buildMetaSnapshot();
@@ -885,7 +901,7 @@ export default function RecipeForm({
   }
 
   function buildRecipeSnapshot(): Record<string, unknown> {
-    return {
+    const snap: Record<string, unknown> = {
       "@context": "https://schema.org",
       "@type": "Recipe",
       name: formValues.name,
@@ -895,7 +911,11 @@ export default function RecipeForm({
       recipeCuisine: formValues.recipeCuisine,
       keywords: formValues.keywords,
       tags: formValues.tags,
+      slug: slug ?? "",
     };
+    // Include image so copy-mode fields in the translation contract can forward it.
+    if (formValues.image) snap.image = formValues.image;
+    return snap;
   }
 
   function buildMetaSnapshot(): Record<string, unknown> {
@@ -1274,6 +1294,11 @@ export default function RecipeForm({
         entityKind={entityKind}
         snapshot={buildRecipeSnapshot()}
         runId={translateRunId}
+        sourceKind={
+          collection === "mixtures"
+            ? kind || (meta.kind as string | undefined) || undefined
+            : "recipe"
+        }
       />
 
       {/* Quick create dialog */}
