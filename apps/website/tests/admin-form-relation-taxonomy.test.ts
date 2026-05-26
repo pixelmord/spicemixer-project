@@ -16,7 +16,7 @@ const COMPONENTS = join(WEBSITE_ROOT, "src", "components", "admin");
 describe("RecipeForm — goesWellWith / usesBase removal", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "RecipeForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "recipe", "RecipeForm.tsx"), "utf-8");
   });
 
   test("no longer has goesWellWith state", () => {
@@ -39,7 +39,7 @@ describe("RecipeForm — goesWellWith / usesBase removal", () => {
 describe("RecipeForm — Variants section", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "RecipeForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "recipe", "RecipeForm.tsx"), "utf-8");
   });
 
   test("has variants state", () => {
@@ -59,7 +59,7 @@ describe("RecipeForm — CreatePairingDialog wiring (delegated to PairingsSectio
   let src: string;
   let pairingsSrc: string;
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "RecipeForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "recipe", "RecipeForm.tsx"), "utf-8");
     pairingsSrc = await readFile(
       join(COMPONENTS, "forms", "_shared", "PairingsSection.tsx"),
       "utf-8",
@@ -82,7 +82,7 @@ describe("RecipeForm — CreatePairingDialog wiring (delegated to PairingsSectio
 describe("RecipeForm — read-only featured pairings section", () => {
   let src: string;
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "RecipeForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "recipe", "RecipeForm.tsx"), "utf-8");
   });
 
   test("calls listPairingsFor to load pairings", () => {

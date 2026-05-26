@@ -12,7 +12,7 @@ const COMPONENTS = join(WEBSITE_ROOT, "src", "components", "admin");
 let src: string;
 
 beforeAll(async () => {
-  src = await readFile(join(COMPONENTS, "RecipeForm.tsx"), "utf-8");
+  src = await readFile(join(COMPONENTS, "forms", "recipe", "RecipeForm.tsx"), "utf-8");
 });
 
 describe("RecipeForm — EntityFormLayout adoption", () => {

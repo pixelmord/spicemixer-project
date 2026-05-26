@@ -11,7 +11,10 @@ let orchestratorSrc: string;
 let enhanceSrc: string;
 
 beforeAll(async () => {
-  orchestratorSrc = await readFile(join(ADMIN_COMPONENTS, "RecipeForm.tsx"), "utf-8");
+  orchestratorSrc = await readFile(
+    join(ADMIN_COMPONENTS, "forms", "recipe", "RecipeForm.tsx"),
+    "utf-8",
+  );
   enhanceSrc = await readFile(join(RECIPE_MODALS, "RecipeEnhanceDialog.tsx"), "utf-8");
 });
 

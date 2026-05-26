@@ -44,40 +44,36 @@ interface AiSuggestions {
   detectedLanguage?: string;
 }
 
-import type { EntityOption } from "./EntityCombobox.tsx";
-import { SourcesSection } from "./forms/recipe/sections/SourcesSection.tsx";
-import { VariantsSection } from "./forms/recipe/sections/VariantsSection.tsx";
-import { PairingsSection } from "./forms/_shared/PairingsSection.tsx";
-import type { PairingProposal, PairingListItem } from "./forms/_shared/pairing-proposals.ts";
-import { PublishingSection } from "./forms/recipe/sections/PublishingSection.tsx";
-import { ClassificationSection } from "./forms/recipe/sections/ClassificationSection.tsx";
-import { TimingYieldSection } from "./forms/recipe/sections/TimingYieldSection.tsx";
-import QuickCreateDialog from "./QuickCreateDialog.tsx";
-import FormActionBar from "./FormActionBar.tsx";
-import { type SectionDef } from "./SectionNav.tsx";
-import CompletenessPanel from "./CompletenessPanel.tsx";
+import type { EntityOption } from "../../EntityCombobox.tsx";
+import { SourcesSection } from "./sections/SourcesSection.tsx";
+import { VariantsSection } from "./sections/VariantsSection.tsx";
+import { PairingsSection } from "../_shared/PairingsSection.tsx";
+import type { PairingProposal, PairingListItem } from "../_shared/pairing-proposals.ts";
+import { PublishingSection } from "./sections/PublishingSection.tsx";
+import { ClassificationSection } from "./sections/ClassificationSection.tsx";
+import { TimingYieldSection } from "./sections/TimingYieldSection.tsx";
+import QuickCreateDialog from "../../QuickCreateDialog.tsx";
+import FormActionBar from "../../FormActionBar.tsx";
+import { type SectionDef } from "../../SectionNav.tsx";
+import CompletenessPanel from "../../CompletenessPanel.tsx";
 import { useIngestAction } from "@/lib/ai/use-ingest-action.ts";
 import { useAiSuggestions, type RunResult, type FieldSuggestion } from "@/hooks/use-ai-suggestions";
-import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
+import { SuggestionFlowProvider } from "../../SuggestionFlowProvider.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
-} from "./ImageSearchModal.tsx";
+} from "../../ImageSearchModal.tsx";
 import type { RegionCode } from "@/lib/regions.ts";
 
 type Collection = RecipeCollection;
 
-import type {
-  HowToStep,
-  IngredientLink,
-  IngredientLinkProposal,
-} from "./forms/recipe/recipe-types.ts";
-import { InstructionsSection } from "./forms/recipe/sections/InstructionsSection.tsx";
-import { IngredientsSection } from "./forms/recipe/sections/IngredientsSection.tsx";
-import { BasicInfoSection } from "./forms/recipe/sections/BasicInfoSection.tsx";
-import { RecipeEnhanceDialog } from "./forms/recipe/sections/modals/RecipeEnhanceDialog.tsx";
-import { RecipeTranslateDialog } from "./forms/recipe/sections/modals/RecipeTranslateDialog.tsx";
-import { RecipeIngredientLinkDialog } from "./forms/recipe/sections/modals/RecipeIngredientLinkDialog.tsx";
+import type { HowToStep, IngredientLink, IngredientLinkProposal } from "./recipe-types.ts";
+import { InstructionsSection } from "./sections/InstructionsSection.tsx";
+import { IngredientsSection } from "./sections/IngredientsSection.tsx";
+import { BasicInfoSection } from "./sections/BasicInfoSection.tsx";
+import { RecipeEnhanceDialog } from "./sections/modals/RecipeEnhanceDialog.tsx";
+import { RecipeTranslateDialog } from "./sections/modals/RecipeTranslateDialog.tsx";
+import { RecipeIngredientLinkDialog } from "./sections/modals/RecipeIngredientLinkDialog.tsx";
 
 interface RecipeData {
   "@context": string;
@@ -182,11 +178,7 @@ const SECTIONS: SectionDef[] = [
 
 const TIME_FIELDS = new Set(["prepTime", "cookTime", "totalTime"]);
 
-import {
-  toIsoDuration,
-  parseDurationMinutes,
-  minutesToIsoDuration,
-} from "./forms/recipe/recipe-duration.ts";
+import { toIsoDuration, parseDurationMinutes, minutesToIsoDuration } from "./recipe-duration.ts";
 
 const RECIPE_AI_CONTRACT = {
   presets: [],

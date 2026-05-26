@@ -138,7 +138,7 @@ describe("RecipeForm — useAiSuggestions integration verification", () => {
   let src: string;
 
   beforeAll(async () => {
-    src = await readFile(join(COMPONENTS, "RecipeForm.tsx"), "utf-8");
+    src = await readFile(join(COMPONENTS, "forms", "recipe", "RecipeForm.tsx"), "utf-8");
   });
 
   test("imports useAiSuggestions", () => {
