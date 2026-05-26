@@ -67,16 +67,14 @@ interface AiSuggestions {
   detectedLanguage?: string;
 }
 
-interface PairingListItem {
-  id: string;
-  endpoints: [{ collection: string; slug: string }, { collection: string; slug: string }];
-  description: string;
-}
 import SortableArrayField from "./SortableArrayField.tsx";
 import TagInput from "./TagInput.tsx";
 import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
 import EntityMultiCombobox from "./EntityMultiCombobox.tsx";
-import { CreatePairingDialog, type PairingAiSuggestion } from "./CreatePairingDialog.tsx";
+import { SourcesSection } from "./forms/recipe/sections/SourcesSection.tsx";
+import { VariantsSection } from "./forms/recipe/sections/VariantsSection.tsx";
+import { PairingsSection } from "./forms/_shared/PairingsSection.tsx";
+import type { PairingProposal, PairingListItem } from "./forms/_shared/pairing-proposals.ts";
 import QuickCreateDialog from "./QuickCreateDialog.tsx";
 import FormActionBar from "./FormActionBar.tsx";
 import { type SectionDef } from "./SectionNav.tsx";
@@ -365,10 +363,13 @@ export default function RecipeForm({
   const [ingredientLinks, setIngredientLinks] = useState<IngredientLink[]>(meta.ingredientLinks);
   const [sources, setSources] = useState(meta.sources);
   const [variants, setVariants] = useState<string[]>(meta.variants ?? []);
-  const [pendingPairingDialog, setPendingPairingDialog] = useState<PairingAiSuggestion | null>(
-    null,
-  );
   const [featuredPairings, setFeaturedPairings] = useState<PairingListItem[]>([]);
+  const [pairingProposals, setPairingProposals] = useState<PairingProposal[]>(
+    () => (initialMeta?.aiSuggestions?.data?.pairings as PairingProposal[] | undefined) ?? [],
+  );
+  const [dismissedPairingProposals, setDismissedPairingProposals] = useState<Set<string>>(
+    new Set(),
+  );
   const [regions, setRegions] = useState<RegionCode[]>(meta.region ?? []);
   const [dietTags, setDietTags] = useState<string[]>(
     Array.isArray(recipe.suitableForDiet) ? recipe.suitableForDiet : [],
@@ -499,6 +500,17 @@ export default function RecipeForm({
     img.onload = () => setImageBroken(false);
     img.src = imageUrl;
   }, []);
+
+  // Sync incoming AI pairing suggestions into proposals state (deduplicate)
+  useEffect(() => {
+    const incoming = (aiSuggestions?.pairings as PairingProposal[] | undefined) ?? [];
+    if (incoming.length === 0) return;
+    setPairingProposals((prev) => {
+      const existingSlugs = new Set(prev.map((p) => p.otherSlug));
+      const fresh = incoming.filter((p) => !existingSlugs.has(p.otherSlug));
+      return fresh.length > 0 ? [...prev, ...fresh] : prev;
+    });
+  }, [aiSuggestions?.pairings]);
 
   // Auto-run AI suggestions on first open if none cached
   useEffect(() => {
@@ -1953,174 +1965,33 @@ export default function RecipeForm({
             </section>
 
             {/* ── Pairings ── */}
-            <section id="section-relations" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Pairings</CardTitle>
-                    {aiSuggestions?.pairings && aiSuggestions.pairings.length > 0 && (
-                      <span className="text-xs text-primary">
-                        {aiSuggestions.pairings.length} AI suggestion
-                        {aiSuggestions.pairings.length !== 1 ? "s" : ""}
-                      </span>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* AI pairing suggestions */}
-                  {aiSuggestions?.pairings && aiSuggestions.pairings.length > 0 && (
-                    <div className="rounded-md border border-primary/20 bg-primary/5 p-2 space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground mb-1">
-                        AI suggested pairings
-                      </p>
-                      {aiSuggestions.pairings.map((p, i) => (
-                        <div key={i} className="flex items-start gap-2 text-xs">
-                          <div className="flex-1 min-w-0">
-                            <span className="text-muted-foreground">{p.otherCollection}: </span>
-                            <span className="font-medium">{p.otherSlug}</span>
-                            {p.rationale && (
-                              <p className="text-muted-foreground mt-0.5 truncate">{p.rationale}</p>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setPendingPairingDialog(p)}
-                            className="shrink-0 flex items-center gap-1 rounded border border-primary/20 px-1.5 py-0.5 text-primary hover:bg-primary/10"
-                          >
-                            <Check size={9} />
-                            Add
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Read-only pairings featuring this entity */}
-                  {featuredPairings.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Pairings featuring this entity
-                      </p>
-                      {featuredPairings.map((p) => (
-                        <div
-                          key={p.id}
-                          className="flex items-center gap-2 text-xs rounded border border-border px-2 py-1.5"
-                        >
-                          <span className="font-medium font-mono">{p.id}</span>
-                          {p.description && (
-                            <span className="text-muted-foreground truncate">{p.description}</span>
-                          )}
-                          <a
-                            href={`/admin/pairings/${p.id}/edit`}
-                            className="ml-auto shrink-0 text-primary hover:underline"
-                          >
-                            Edit
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {!isNew && featuredPairings.length === 0 && (
-                    <p className="text-xs text-muted-foreground">No pairings yet.</p>
-                  )}
-                </CardContent>
-              </Card>
-            </section>
+            <PairingsSection
+              entityKind={collection === "mixtures" ? "recipe" : "recipe"}
+              slug={slug ?? ""}
+              locale={(language || "en") as "en" | "de"}
+              isNew={isNew ?? false}
+              proposals={pairingProposals}
+              setProposals={setPairingProposals}
+              dismissed={dismissedPairingProposals}
+              setDismissed={setDismissedPairingProposals}
+              featuredPairings={featuredPairings}
+              setFeaturedPairings={setFeaturedPairings}
+              onCreatePairing={handleCreatePairing}
+              aiEventLog={aiEventLog}
+              runIdSeed={pairingRunId}
+            />
 
             {/* ── Variants ── */}
-            <section id="section-variants" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Variants</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Co-equal variant members (same kind). Saving updates the closure across all
-                    members.
-                  </p>
-                  <EntityMultiCombobox
-                    value={variants}
-                    onChange={setVariants}
-                    options={recipeOptions
-                      .filter(
-                        (o) =>
-                          o.value.startsWith(`${collection}/`) && !o.value.endsWith(`/${slug}`),
-                      )
-                      .map((o) => ({
-                        ...o,
-                        value: o.value.replace(`${collection}/`, ""),
-                      }))}
-                    placeholder={`Select other ${collection}…`}
-                  />
-                </CardContent>
-              </Card>
-            </section>
+            <VariantsSection
+              collection={collection}
+              slug={slug}
+              value={variants}
+              onChange={setVariants}
+              recipeOptions={recipeOptions}
+            />
 
             {/* ── External sources ── */}
-            <section id="section-sources" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>External sources</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SortableArrayField
-                    items={sources}
-                    onChange={setSources}
-                    onAdd={() => setSources((prev) => [...prev, { title: "", url: "" }])}
-                    addLabel="Add source"
-                    getKey={(_, i) => `src-${i}`}
-                    renderItem={(src, i) => (
-                      <div className="space-y-2 rounded-md border border-border p-3">
-                        <span className="text-xs font-semibold text-muted-foreground">
-                          Source {i + 1}
-                        </span>
-                        <Input
-                          value={src.title}
-                          onChange={(e) =>
-                            setSources((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, title: e.target.value } : s)),
-                            )
-                          }
-                          placeholder="Title"
-                        />
-                        <Input
-                          value={src.url}
-                          onChange={(e) =>
-                            setSources((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, url: e.target.value } : s)),
-                            )
-                          }
-                          type="url"
-                          placeholder="https://…"
-                        />
-                        <Input
-                          value={src.author ?? ""}
-                          onChange={(e) =>
-                            setSources((prev) =>
-                              prev.map((s, j) =>
-                                j === i ? { ...s, author: e.target.value || undefined } : s,
-                              ),
-                            )
-                          }
-                          placeholder="Author / publisher"
-                        />
-                        <Input
-                          value={src.year ?? ""}
-                          onChange={(e) =>
-                            setSources((prev) =>
-                              prev.map((s, j) =>
-                                j === i ? { ...s, year: e.target.value || undefined } : s,
-                              ),
-                            )
-                          }
-                          placeholder="Year"
-                        />
-                      </div>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-            </section>
+            <SourcesSection value={sources} onChange={setSources} />
           </div>
         </EntityFormLayout>
       </form>
@@ -2326,39 +2197,6 @@ export default function RecipeForm({
           }}
         />
       )}
-
-      {/* Create pairing dialog */}
-      <Dialog
-        open={!!pendingPairingDialog}
-        onOpenChange={(o) => !o && setPendingPairingDialog(null)}
-      >
-        <DialogContent className="sm:max-w-md">
-          {pendingPairingDialog && (
-            <CreatePairingDialog
-              sourceRef={{
-                kind: collection === "mixtures" ? "mixture" : "recipe",
-                id: slug ?? "",
-              }}
-              aiSuggestion={pendingPairingDialog}
-              locale={language || "en"}
-              onCreate={handleCreatePairing}
-              onComplete={() => {
-                setPendingPairingDialog(null);
-                toast.success("Pairing created");
-              }}
-              aiEventLog={{ read: async () => [], append: async () => {} }}
-              origin={{
-                surface: "admin",
-                action: "createPairing",
-                entityKind: "recipe",
-                userInitiated: true,
-                runId: pairingRunId,
-                triggeredBy: "editor",
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Image search modal */}
       <ImageSearchModal
