@@ -33,6 +33,19 @@
       "at": "2026-05-26T07:10:31.817Z",
       "model": "translation",
       "traceId": "5c0c41c0-3634-46c0-840a-86aa9f351af2"
+    },
+    {
+      "type": "accepted",
+      "field": "recipeCategory",
+      "suggestion": {
+        "hash": "640904d80ab3",
+        "summary": "recipeCategory: Soße"
+      },
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "dac18606-1a55-41c3-b532-51be36b6c5a5",
+      "id": "6aed25ac-8023-4288-a1bd-278ffdbdd1ad",
+      "at": "2026-05-26T10:31:21.453Z"
     }
   ],
   "canonicalLocale": "en",
