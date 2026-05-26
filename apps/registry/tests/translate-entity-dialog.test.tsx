@@ -171,6 +171,20 @@ describe("setup step — locale picker", () => {
     );
     await expect.element(screen.getByRole("combobox")).not.toBeInTheDocument();
   });
+
+  test("shows target locale in heading when only one locale is available", async () => {
+    const screen = await render(
+      <TranslateEntityDialog {...makeProps({ availableLocales: ["de"] })} />,
+    );
+    await expect.element(screen.getByRole("heading", { name: /translate to de/i })).toBeVisible();
+  });
+
+  test("shows initial selected locale in heading when multiple locales available", async () => {
+    const screen = await render(
+      <TranslateEntityDialog {...makeProps({ availableLocales: ["de", "fr"] })} />,
+    );
+    await expect.element(screen.getByRole("heading", { name: /translate to de/i })).toBeVisible();
+  });
 });
 
 // ── Two-call flow ─────────────────────────────────────────────────────────────
@@ -561,6 +575,18 @@ describe("integration: auto-save after fill", () => {
     expect(meta.aiEvents[0].type).toBe("ingested");
   });
 
+  test("ingested aiEvent in meta has a non-empty id", async () => {
+    const { onCreate } = await runFullFlow();
+    const [, , , meta] = onCreate.mock.calls[0] as [
+      string,
+      string | undefined,
+      Record<string, unknown>,
+      TranslationMeta,
+    ];
+    expect(typeof meta.aiEvents[0].id).toBe("string");
+    expect(meta.aiEvents[0].id.length).toBeGreaterThan(0);
+  });
+
   test("calls onComplete with new entity ref after save", async () => {
     const { onComplete } = await runFullFlow();
     expect(onComplete).toHaveBeenCalledWith(newEntityRef, undefined);
@@ -641,5 +667,80 @@ describe("sourceContext passed to onFill", () => {
     expect(ctx.sourceRef).toEqual({ kind: "ingredient", id: "cardamom" });
     expect(ctx.sourceLocale).toBe("en");
     expect(ctx.targetLocale).toBe("de");
+  });
+});
+
+// ── copy-mode: image URL forwarding ───────────────────────────────────────────
+
+describe("copy-mode: image URL forwarded from source to target fields", () => {
+  const contractWithImage: AiContract = {
+    presets: [],
+    fields: {
+      name: { translation: { mode: "translate" } },
+      description: { translation: { mode: "translate" } },
+      slug: { translation: { mode: "translate" } },
+      image: { translation: { mode: "copy" } },
+    },
+  };
+
+  const sourceDataWithImage = {
+    ...sourceData,
+    image:
+      "https://upload.wikimedia.org/wikipedia/commons/d/d6/Harissa_in_a_jar_%28vertical%29.jpg",
+  };
+
+  test("image URL appears in fields passed to onCreate when marked copy-mode", async () => {
+    const onFill = vi.fn().mockResolvedValue(makeBulkResult());
+    const onCreate = vi.fn().mockResolvedValue(newEntityRef);
+
+    const screen = await render(
+      <TranslateEntityDialog
+        {...makeProps({
+          contract: contractWithImage,
+          sourceData: sourceDataWithImage,
+          onFill,
+          onCreate,
+        })}
+      />,
+    );
+
+    await screen.getByRole("button", { name: /start translation/i }).click();
+
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalled());
+    const [, , fields] = onCreate.mock.calls[0] as [
+      string,
+      string | undefined,
+      Record<string, unknown>,
+      TranslationMeta,
+    ];
+    expect(fields.image).toBe(sourceDataWithImage.image);
+  });
+
+  test("image field absent from fields when not in sourceData (undefined not copied)", async () => {
+    const onFill = vi.fn().mockResolvedValue(makeBulkResult());
+    const onCreate = vi.fn().mockResolvedValue(newEntityRef);
+
+    // sourceData without image
+    const screen = await render(
+      <TranslateEntityDialog
+        {...makeProps({
+          contract: contractWithImage,
+          sourceData: sourceData, // no image
+          onFill,
+          onCreate,
+        })}
+      />,
+    );
+
+    await screen.getByRole("button", { name: /start translation/i }).click();
+
+    await vi.waitFor(() => expect(onCreate).toHaveBeenCalled());
+    const [, , fields] = onCreate.mock.calls[0] as [
+      string,
+      string | undefined,
+      Record<string, unknown>,
+      TranslationMeta,
+    ];
+    expect(fields.image).toBeUndefined();
   });
 });

@@ -34,6 +34,7 @@ import { wrapWithOrigin } from "@pixelmord/content-ai-core/server";
 import { entityMeta } from "@/lib/entity-meta.ts";
 import { SidecarEventLog, metaRefToEntityRef, createAiEventLog } from "@/lib/sidecar-event-log.ts";
 import { createSourceStore } from "@/lib/stores/source-store.ts";
+import { aiLogger } from "@/lib/logger.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 
@@ -967,6 +968,7 @@ export const server = {
         sourceContext: { inventory },
         target: "ingredientLinks",
         config,
+        logger: aiLogger.child({ action: "aiProposeIngredientLinks" }),
       });
       const sugg = suggestions.get("ingredientLinks");
       return sugg?.kind === "single"
@@ -1004,6 +1006,7 @@ export const server = {
         sourceContext: { existingTags: Array.from(tagSet) },
         target: "keywords",
         config,
+        logger: aiLogger.child({ action: "aiProposeTags" }),
       });
       const sugg = suggestions.get("keywords");
       return { tags: sugg?.kind === "single" ? (sugg.value as string[]) : [] };
@@ -1032,6 +1035,7 @@ export const server = {
         currentData: recipe as never,
         target: missingFields,
         config,
+        logger: aiLogger.child({ action: "aiProposeRecipeImprovements" }),
       });
       const fields = missingFields
         .filter((f) => suggestions.has(f))
@@ -1081,6 +1085,7 @@ export const server = {
         sourceContext: { inventory },
         target: "pairings",
         config,
+        logger: aiLogger.child({ action: "aiProposeIngredientPairings" }),
       });
       const sugg = suggestions.get("pairings");
       return sugg?.kind === "single"
@@ -1111,6 +1116,7 @@ export const server = {
         currentData: ingredient as never,
         target: missingFields,
         config,
+        logger: aiLogger.child({ action: "aiProposeIngredientImprovements" }),
       });
       const fields = missingFields
         .filter((f) => suggestions.has(f))
@@ -1536,6 +1542,7 @@ export const server = {
         sourceContext: { locale },
         target: "slug",
         config,
+        logger: aiLogger.child({ action: "aiSuggestSlug" }),
       });
       const slugSugg = suggestions.get("slug");
       const rawSlug =
@@ -1642,16 +1649,21 @@ export const server = {
       await store.put(collection, `${targetLocale}/${translationSlug}`, fields);
       await sidecar.write({ collection, locale: targetLocale, slug: translationSlug }, meta);
 
-      // Back-link original → translation
-      const currentTranslations =
-        typeof meta["translations"] === "object" && meta["translations"] !== null
-          ? (meta["translations"] as Record<string, string>)
+      // Back-link original → translation.
+      // Read the *existing* source meta so we only add the translations entry
+      // and never clobber locale/language/kind/region/ingredientLinks etc.
+      const existingSourceItem = await sidecar.read({ collection, locale: sourceLocale, slug });
+      const existingSourceMeta = (existingSourceItem?.data as Record<string, unknown> | null) ?? {};
+      const existingSourceTranslations =
+        typeof existingSourceMeta["translations"] === "object" &&
+        existingSourceMeta["translations"] !== null
+          ? (existingSourceMeta["translations"] as Record<string, string>)
           : {};
       await sidecar.write(
         { collection, locale: sourceLocale, slug },
         {
-          ...meta,
-          translations: { ...currentTranslations, [targetLocale]: translationSlug },
+          ...existingSourceMeta,
+          translations: { ...existingSourceTranslations, [targetLocale]: translationSlug },
         },
       );
 
@@ -1702,7 +1714,12 @@ export const server = {
         fieldHashes: {} as Record<string, string>,
       };
 
-      const result = await runFill({ contract, sourceContext, config });
+      const result = await runFill({
+        contract,
+        sourceContext,
+        config,
+        logger: aiLogger.child({ action: "aiFillTranslation", kind }),
+      });
 
       let suggestions = Object.fromEntries(result.suggestions);
       if (target && target.length > 0) {

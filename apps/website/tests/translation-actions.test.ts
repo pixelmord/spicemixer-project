@@ -153,6 +153,137 @@ describe("aiCreateTranslation: recipe atomic create", () => {
     const existing = await store.get("recipes", "de/existing-slug");
     expect(existing).not.toBeNull();
   });
+
+  test("back-link: actual handler preserves existing source meta (language, locale, kind, region, ingredientLinks)", async () => {
+    const { store, sidecar } = makeEnv();
+
+    // Wire createStore mock to our in-memory store so the real handler uses it
+    const { createStore } = await import("@/lib/content-store.ts");
+    vi.mocked(createStore).mockResolvedValue(store);
+
+    // Seed EN source with full rich meta that must survive the back-link write
+    await store.put("mixtures", "en/harissa", {
+      "@context": "https://schema.org",
+      "@type": "Recipe",
+      name: "Harissa",
+      recipeCategory: "Sauce",
+    });
+    await sidecar.write(
+      { collection: "mixtures", locale: "en", slug: "harissa" },
+      {
+        language: "en",
+        locale: "en",
+        kind: "sauce",
+        region: ["north-africa"],
+        ingredientLinks: [{ pattern: "cumin", slug: "cumin", kind: "ingredient" }],
+        draft: false,
+        translations: {},
+      },
+    );
+
+    // Import and call the actual action handler
+    const { server } = await import("../src/actions/index.ts");
+    const handler = (
+      server.aiCreateTranslation as unknown as {
+        handler: (args: Record<string, unknown>) => Promise<unknown>;
+      }
+    ).handler as (
+      args: Record<string, unknown>,
+    ) => Promise<{ ok: boolean; translationSlug: string }>;
+
+    await handler({
+      collection: "mixtures",
+      slug: "harissa",
+      sourceLocale: "en",
+      targetLocale: "de",
+      translationSlug: "harissa",
+      fields: { "@context": "https://schema.org", "@type": "Recipe", name: "Harissa" },
+      // target meta the dialog builds — language/locale/kind differ from source
+      meta: {
+        draft: true,
+        kind: "mixture", // source is "sauce" — must NOT clobber source
+        tags: [],
+        ingredientLinks: [], // source has cumin link — must NOT clobber source
+        sources: [],
+        variants: [],
+        language: "de", // source is "en" — must NOT clobber source
+        locale: "de",
+        translationOf: "harissa",
+        translations: {},
+        canonicalLocale: "en",
+        canonicalFieldHashes: {},
+        aiEvents: [],
+      },
+    });
+
+    const sourceItem = await sidecar.read({
+      collection: "mixtures",
+      locale: "en",
+      slug: "harissa",
+    });
+    const sourceMeta = sourceItem?.data as Record<string, unknown>;
+
+    // All original source meta fields must be preserved
+    expect(sourceMeta.language).toBe("en");
+    expect(sourceMeta.locale).toBe("en");
+    expect(sourceMeta.kind).toBe("sauce");
+    expect(sourceMeta.region).toEqual(["north-africa"]);
+    expect((sourceMeta.ingredientLinks as unknown[]).length).toBe(1);
+    expect(sourceMeta.draft).toBe(false);
+    // Translation link must be added
+    expect((sourceMeta.translations as Record<string, string>)["de"]).toBe("harissa");
+  });
+
+  test("back-link: source must not inherit translationOf from the target meta", async () => {
+    const { store, sidecar } = makeEnv();
+
+    const { createStore } = await import("@/lib/content-store.ts");
+    vi.mocked(createStore).mockResolvedValue(store);
+
+    await store.put("recipes", "en/lemon-chicken", { name: "Lemon Chicken" });
+    await sidecar.write(
+      { collection: "recipes", locale: "en", slug: "lemon-chicken" },
+      { language: "en", locale: "en", draft: false, translations: {} },
+    );
+
+    const { server } = await import("../src/actions/index.ts");
+    const handler = (
+      server.aiCreateTranslation as unknown as {
+        handler: (args: Record<string, unknown>) => Promise<unknown>;
+      }
+    ).handler as (args: Record<string, unknown>) => Promise<{ ok: boolean }>;
+
+    await handler({
+      collection: "recipes",
+      slug: "lemon-chicken",
+      sourceLocale: "en",
+      targetLocale: "de",
+      translationSlug: "salzzitrone-haehnchen",
+      fields: { name: "Salzzitrone-Hähnchen" },
+      meta: {
+        draft: true,
+        language: "de",
+        locale: "de",
+        translationOf: "lemon-chicken", // must NOT appear on source
+        translations: {},
+        canonicalLocale: "en",
+        canonicalFieldHashes: {},
+        aiEvents: [],
+      },
+    });
+
+    const sourceItem = await sidecar.read({
+      collection: "recipes",
+      locale: "en",
+      slug: "lemon-chicken",
+    });
+    const sourceMeta = sourceItem?.data as Record<string, unknown>;
+
+    expect(sourceMeta.language).toBe("en");
+    expect(sourceMeta.locale).toBe("en");
+    expect(sourceMeta.translationOf).toBeUndefined();
+    expect((sourceMeta.translations as Record<string, string>)["de"]).toBe("salzzitrone-haehnchen");
+  });
 });
 
 describe("aiCreateIngredientTranslation: ingredient atomic create", () => {

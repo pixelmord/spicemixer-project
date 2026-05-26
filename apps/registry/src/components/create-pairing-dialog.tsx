@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  createAiEvent,
   type AiContract,
   type AiEventLog,
   type AiEvent,
@@ -88,13 +89,12 @@ export function CreatePairingDialog({
     setStep("saving");
     setError(null);
     try {
-      const ingestedEvent: AiEvent = {
+      const ingestedEvent = createAiEvent({
         type: "ingested",
         suggestion: { hash: origin.runId, summary: "Pairing created from AI suggestion" },
-        at: new Date().toISOString(),
         model: "proposer",
         traceId: origin.runId,
-      };
+      });
 
       const meta: PairingCreationMeta = {
         draft: true,

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import {
+  createAiEvent,
   hashFieldValue,
   type AiContract,
   type AiEventLog,
@@ -159,13 +160,12 @@ export function TranslateEntityDialog({
           if (val !== undefined) canonicalFieldHashes[field] = hashFieldValue(val);
         }
 
-        const ingestedEvent: AiEvent = {
+        const ingestedEvent = createAiEvent({
           type: "ingested",
           suggestion: { hash: origin.runId, summary: `Translation to ${targetLocale}` },
-          at: new Date().toISOString(),
           model: "translation",
           traceId: origin.runId,
-        };
+        });
 
         const meta: TranslationMeta = {
           translationOf: sourceRef,
@@ -287,8 +287,10 @@ export function TranslateEntityDialog({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="rounded-lg border bg-background p-6 shadow-sm">
-      <h2 className="mb-4 text-lg font-semibold">Translate to…</h2>
+    <div>
+      <h2 className="mb-4 text-lg font-semibold">
+        Translate to {targetLocale ? targetLocale.toUpperCase() : "…"}
+      </h2>
 
       {error && (
         <p className="mb-3 rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
