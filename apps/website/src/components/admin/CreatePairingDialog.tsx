@@ -68,6 +68,7 @@ export function CreatePairingDialog({
     setError(null);
     try {
       const ingestedEvent: AiEvent = {
+        id: crypto.randomUUID(),
         type: "ingested",
         suggestion: { hash: origin.runId, summary: "Pairing created from AI suggestion" },
         at: new Date().toISOString(),

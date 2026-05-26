@@ -16,9 +16,12 @@ interface RecipeTranslateDialogProps {
   entityKind: EntityKind;
   snapshot: Record<string, unknown>;
   runId: string;
+  /** The specific sub-kind from the source meta (e.g. "sauce", "spicemix").
+   *  For recipes this is always "recipe". For mixtures this is the meta.kind value. */
+  sourceKind?: string;
 }
 
-const RECIPE_TRANSLATE_CONTRACT = {
+export const RECIPE_TRANSLATE_CONTRACT = {
   presets: [],
   fields: {
     name: { translation: { mode: "translate" as const } },
@@ -26,6 +29,8 @@ const RECIPE_TRANSLATE_CONTRACT = {
     recipeCategory: { translation: { mode: "translate" as const } },
     recipeCuisine: { translation: { mode: "translate" as const } },
     slug: { translation: { mode: "translate" as const } },
+    // Image URLs don't need translation — copy them verbatim to the target locale.
+    image: { translation: { mode: "copy" as const } },
   },
 };
 
@@ -38,6 +43,7 @@ export function RecipeTranslateDialog({
   entityKind,
   snapshot,
   runId,
+  sourceKind,
 }: RecipeTranslateDialogProps) {
   const translationSlugRef = useRef<string>("");
   const targetLocale = locale === "en" ? "de" : "en";
@@ -63,7 +69,9 @@ export function RecipeTranslateDialog({
             translationSlugRef.current = translationSlug ?? "";
             const sidecarMeta = {
               draft: true,
-              kind: entityKind,
+              // Use the source's specific sub-kind (e.g. "sauce", "spicemix") rather than
+              // the collection-level entityKind ("mixture") which is not a valid schema value.
+              kind: sourceKind ?? (entityKind === "recipe" ? "recipe" : undefined),
               tags: [] as string[],
               ingredientLinks: [] as unknown[],
               sources: [] as unknown[],
@@ -71,7 +79,9 @@ export function RecipeTranslateDialog({
               language: tLocale,
               locale: tLocale,
               translationOf: slug,
-              translations: {},
+              // Back-reference to source: enables getSiblingEntity to find the EN sibling
+              // when viewing this translation (reads translations[sourceLocale]).
+              translations: { [locale]: slug },
               aiEvents: meta.aiEvents,
               canonicalLocale: meta.canonicalLocale,
               canonicalFieldHashes: meta.canonicalFieldHashes,
