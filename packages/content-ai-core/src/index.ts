@@ -12,6 +12,7 @@ export type {
 
 export {
   aiEventSchema,
+  createAiEvent,
   isPrunable,
   planPrune,
   prune,

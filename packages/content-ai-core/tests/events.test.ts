@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import {
   aiEventSchema,
+  createAiEvent,
   isPrunable,
   planPrune,
   prune,
@@ -330,5 +331,47 @@ describe("hasAutoApplied", () => {
   test("returns false when auto-applied exists for different field", () => {
     const events = [makeEvent("auto-applied", undefined, "tags")];
     expect(hasAutoApplied(events, "name")).toBe(false);
+  });
+});
+
+describe("createAiEvent", () => {
+  const baseParams = {
+    type: "ingested" as const,
+    suggestion: { hash: "run-abc", summary: "Translation to de" },
+    model: "translation",
+    traceId: "run-abc",
+  };
+
+  test("stamps a UUID id", () => {
+    const event = createAiEvent(baseParams);
+    expect(typeof event.id).toBe("string");
+    expect(event.id.length).toBeGreaterThan(0);
+  });
+
+  test("stamps a current ISO at", () => {
+    const before = new Date().toISOString();
+    const event = createAiEvent(baseParams);
+    const after = new Date().toISOString();
+    expect(event.at >= before).toBe(true);
+    expect(event.at <= after).toBe(true);
+  });
+
+  test("passes all other params through unchanged", () => {
+    const event = createAiEvent(baseParams);
+    expect(event.type).toBe("ingested");
+    expect(event.suggestion).toEqual({ hash: "run-abc", summary: "Translation to de" });
+    expect(event.model).toBe("translation");
+    expect(event.traceId).toBe("run-abc");
+  });
+
+  test("each call produces a unique id", () => {
+    const a = createAiEvent(baseParams);
+    const b = createAiEvent(baseParams);
+    expect(a.id).not.toBe(b.id);
+  });
+
+  test("returned event passes aiEventSchema validation", () => {
+    const event = createAiEvent(baseParams);
+    expect(() => aiEventSchema.parse(event)).not.toThrow();
   });
 });

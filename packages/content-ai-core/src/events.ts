@@ -104,8 +104,12 @@ export function appendEvent<M extends { aiEvents?: AiEvent[] }>(
   return { ...meta, aiEvents: prune([...current, event]) } as M & { aiEvents: AiEvent[] };
 }
 
+export function createAiEvent(params: Omit<AiEvent, "id" | "at">): AiEvent {
+  return { ...params, id: crypto.randomUUID(), at: new Date().toISOString() };
+}
+
 export function recordAiEvent(events: AiEvent[], params: Omit<AiEvent, "at" | "id">): AiEvent[] {
-  return prune([...events, { ...params, id: crypto.randomUUID(), at: new Date().toISOString() }]);
+  return prune([...events, createAiEvent(params)]);
 }
 
 export function hasAutoApplied(events: AiEvent[], field: string): boolean {
