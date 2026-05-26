@@ -168,7 +168,7 @@ describe("AiBulkTranslateButton — fill-gaps (default)", () => {
     expect(call.target).not.toContain("name");
   });
 
-  test("fill-gaps with all translatable fields filled does NOT call runTranslation", async () => {
+  test("fill-gaps with all translatable fields filled: button is disabled so runTranslation is never called", async () => {
     const flow = makeFlow();
     // testContract has name + description as translatable; both are provided
     const currentData = { name: "Basil", description: "A fragrant herb" };
@@ -176,8 +176,47 @@ describe("AiBulkTranslateButton — fill-gaps (default)", () => {
       <AiBulkTranslateButton contract={testContract} currentData={currentData} />,
       flow,
     );
-    await screen.getByRole("button", { name: /translate missing fields/i }).click();
+    await expect
+      .element(screen.getByRole("button", { name: /translate missing fields/i }))
+      .toBeDisabled();
     expect(flow.runTranslation).not.toHaveBeenCalled();
+  });
+
+  test("primary button is disabled when all translatable fields are filled (fill-gaps)", async () => {
+    const flow = makeFlow();
+    const currentData = { name: "Basil", description: "A fragrant herb" };
+    const screen = await renderWithFlow(
+      <AiBulkTranslateButton contract={testContract} currentData={currentData} />,
+      flow,
+    );
+    await expect
+      .element(screen.getByRole("button", { name: /translate missing fields/i }))
+      .toBeDisabled();
+  });
+
+  test("primary button has tooltip explaining why it is disabled", async () => {
+    const flow = makeFlow();
+    const currentData = { name: "Basil", description: "A fragrant herb" };
+    const screen = await renderWithFlow(
+      <AiBulkTranslateButton contract={testContract} currentData={currentData} />,
+      flow,
+    );
+    await expect
+      .element(screen.getByRole("button", { name: /translate missing fields/i }))
+      .toHaveAttribute("title", "All translatable fields already have content");
+  });
+
+  test("chevron dropdown still works when primary button is disabled", async () => {
+    const flow = makeFlow();
+    const currentData = { name: "Basil", description: "A fragrant herb" };
+    const screen = await renderWithFlow(
+      <AiBulkTranslateButton contract={testContract} currentData={currentData} />,
+      flow,
+    );
+    await screen.getByRole("button", { name: /translation options/i }).click();
+    await expect
+      .element(screen.getByRole("button", { name: /re-translate all fields/i }))
+      .toBeVisible();
   });
 });
 

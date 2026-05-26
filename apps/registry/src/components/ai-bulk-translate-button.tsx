@@ -64,6 +64,8 @@ export function AiBulkTranslateButton({
   const primaryLabel =
     policy === "fill-gaps" ? "Translate missing fields" : "Re-translate all fields";
 
+  const allFieldsFilled = policy === "fill-gaps" && emptyFields.length === 0;
+
   if (flow.isRunning) {
     return (
       <button
@@ -100,7 +102,9 @@ export function AiBulkTranslateButton({
       <button
         type="button"
         onClick={() => void handleRun()}
-        className="inline-flex items-center rounded-l-md border border-r-0 bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+        disabled={allFieldsFilled}
+        title={allFieldsFilled ? "All translatable fields already have content" : undefined}
+        className="inline-flex items-center rounded-l-md border border-r-0 bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {primaryLabel}
       </button>
