@@ -5,16 +5,6 @@ import { toast } from "sonner";
 import { ArrowLeft, Sparkles, Check, Trash2, ExternalLink } from "lucide-react";
 import LinkButton from "@/components/admin/LinkButton.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
-import { Label } from "@/components/ui/label.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.tsx";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import {
   computeCompletenessFromBlob,
   RECIPE_REQUIRED,
@@ -32,7 +22,6 @@ import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
 import { AiBulkSuggestButton } from "@registry/components/ai-bulk-suggest-button";
 import { AiBulkTranslateButton } from "@registry/components/ai-bulk-translate-button";
 import type { SiblingLocale } from "@registry/components/use-ai-suggestions";
-import { TextField, TextareaField } from "@/components/admin/fields/index.ts";
 interface AiSuggestion {
   field: string;
   suggestion: unknown;
@@ -68,7 +57,6 @@ import QuickCreateDialog from "./QuickCreateDialog.tsx";
 import FormActionBar from "./FormActionBar.tsx";
 import { type SectionDef } from "./SectionNav.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
-import RecommendedHint from "./RecommendedHint.tsx";
 import { IngestDialog } from "./IngestDialog.tsx";
 import RecipeDiff from "./RecipeDiff.tsx";
 import { useIngestAction } from "@/lib/ai/use-ingest-action.ts";
@@ -92,6 +80,7 @@ import type {
 } from "./forms/recipe/recipe-types.ts";
 import { InstructionsSection } from "./forms/recipe/sections/InstructionsSection.tsx";
 import { IngredientsSection } from "./forms/recipe/sections/IngredientsSection.tsx";
+import { BasicInfoSection } from "./forms/recipe/sections/BasicInfoSection.tsx";
 
 interface RecipeData {
   "@context": string;
@@ -332,9 +321,6 @@ export default function RecipeForm({
   );
   const [kind, setKind] = useState<MixtureKind | "">((meta.kind as MixtureKind | undefined) ?? "");
 
-  // Image health check
-  const [imageBroken, setImageBroken] = useState(false);
-
   // Ingredient link modal state
   const [linkModalState, setLinkModalState] = useState<
     | { open: false }
@@ -441,16 +427,6 @@ export default function RecipeForm({
         if (r.data) setFeaturedPairings(r.data as PairingListItem[]);
       });
     }
-  }, []);
-
-  // Check image URL health on mount
-  useEffect(() => {
-    const imageUrl = getFirstImage(initialRecipe?.image);
-    if (!imageUrl) return;
-    const img = new window.Image();
-    img.onerror = () => setImageBroken(true);
-    img.onload = () => setImageBroken(false);
-    img.src = imageUrl;
   }, []);
 
   // Sync incoming AI pairing suggestions into proposals state (deduplicate)
@@ -1158,196 +1134,31 @@ export default function RecipeForm({
         >
           <div className="space-y-8">
             {/* ── Basic info ── */}
-            <section id="section-basic" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Basic info</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {isNew && (
-                    <div className="space-y-1.5">
-                      <Label>Slug</Label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Input
-                            value={slug}
-                            onChange={(e) => setSlug(e.target.value)}
-                            placeholder="my-recipe"
-                          />
-                          {slug && isNew && (
-                            <span
-                              className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium ${
-                                slugChecking
-                                  ? "text-muted-foreground"
-                                  : slugAvailable === true
-                                    ? "text-emerald-600"
-                                    : slugAvailable === false
-                                      ? "text-red-500"
-                                      : ""
-                              }`}
-                            >
-                              {slugChecking
-                                ? "…"
-                                : slugAvailable === true
-                                  ? "✓ available"
-                                  : slugAvailable === false
-                                    ? "✗ taken"
-                                    : ""}
-                            </span>
-                          )}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          title="AI suggest slug"
-                          onClick={async () => {
-                            const name = form.getFieldValue("name" as never) as string;
-                            if (!name) return;
-                            try {
-                              const { data } = await actions.aiSuggestSlug({
-                                name,
-                                locale: language || "en",
-                                collection,
-                              });
-                              if (data) setSlug(data.slug);
-                            } catch {
-                              toast.error("Could not suggest slug");
-                            }
-                          }}
-                        >
-                          <Sparkles size={12} />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  <form.Field name="name">
-                    {(field) => (
-                      <TextField
-                        field={field}
-                        label="Name *"
-                        placeholder="Ras el Hanout"
-                        suggestionPath="name"
-                        splitView={splitView}
-                        siblingValue={siblingData?.data["name"]}
-                        siblingLocale={siblingLocale}
-                        onValueChange={(v) => {
-                          if (isNew && !slug) setSlug(slugify(v));
-                        }}
-                      />
-                    )}
-                  </form.Field>
-
-                  <form.Field name="description">
-                    {(field) => (
-                      <TextareaField
-                        field={field}
-                        label="Description"
-                        rows={3}
-                        placeholder="A warming North African spice blend…"
-                        suggestionPath="description"
-                        splitView={splitView}
-                        siblingValue={siblingData?.data["description"]}
-                        siblingLocale={siblingLocale}
-                        hint={<RecommendedHint show={!field.state.value} />}
-                      />
-                    )}
-                  </form.Field>
-
-                  <form.Field name="image">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor={field.name}>
-                            Image URL
-                            <RecommendedHint show={!field.state.value} />
-                          </Label>
-                          <button
-                            type="button"
-                            onClick={() => setImageSearchTarget("main")}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            Search image…
-                          </button>
-                        </div>
-                        <Input
-                          id={field.name}
-                          type="url"
-                          value={field.state.value}
-                          onChange={(e) => {
-                            field.handleChange(e.target.value);
-                            if (!e.target.value) setImageAttribution(undefined);
-                            // Re-check broken status when URL changes
-                            setImageBroken(false);
-                            if (e.target.value) {
-                              const img = new window.Image();
-                              img.onerror = () => setImageBroken(true);
-                              img.onload = () => setImageBroken(false);
-                              img.src = e.target.value;
-                            }
-                          }}
-                          onBlur={field.handleBlur}
-                          placeholder="https://example.com/image.jpg"
-                          className={imageBroken ? "border-amber-400" : ""}
-                        />
-                        {imageBroken && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                            ⚠ Image URL appears broken or unreachable
-                          </p>
-                        )}
-                        {imageAttribution && (
-                          <p className="text-[11px] text-muted-foreground">
-                            {imageAttribution.attribution}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </form.Field>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <form.Field name="authorName">
-                      {(field) => (
-                        <div className="space-y-1.5">
-                          <Label htmlFor={field.name}>
-                            Author
-                            <RecommendedHint show={!field.state.value} />
-                          </Label>
-                          <Input
-                            id={field.name}
-                            value={field.state.value}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                            placeholder="Jane Smith"
-                          />
-                        </div>
-                      )}
-                    </form.Field>
-                    <form.Field name="authorType">
-                      {(field) => (
-                        <div className="space-y-1.5">
-                          <Label>Author type</Label>
-                          <Select
-                            value={field.state.value}
-                            onValueChange={(v) =>
-                              v && field.handleChange(v as "Person" | "Organization")
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Person">Person</SelectItem>
-                              <SelectItem value="Organization">Organization</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                    </form.Field>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
+            <BasicInfoSection
+              form={form}
+              isNew={isNew ?? false}
+              slug={slug}
+              setSlug={setSlug}
+              slugChecking={slugChecking}
+              slugAvailable={slugAvailable}
+              splitView={splitView}
+              siblingData={siblingData}
+              siblingLocale={siblingLocale}
+              language={language}
+              collection={collection}
+              imageAttribution={imageAttribution}
+              onClearImageAttribution={() => setImageAttribution(undefined)}
+              onOpenImageSearch={() => setImageSearchTarget("main")}
+              onAutoSlug={(v) => setSlug(slugify(v))}
+              onAiSuggestSlug={async (name) => {
+                const { data } = await actions.aiSuggestSlug({
+                  name,
+                  locale: language || "en",
+                  collection,
+                });
+                return data?.slug ?? null;
+              }}
+            />
 
             {/* ── Timing & yield ── */}
             <TimingYieldSection form={form} formValues={formValues} />
@@ -1660,7 +1471,6 @@ export default function RecipeForm({
         onSelect={(selected: SelectedImage) => {
           if (imageSearchTarget === "main") {
             form.setFieldValue("image" as never, selected.url as never);
-            setImageBroken(false);
             setImageAttribution(selected.attribution);
           } else if (typeof imageSearchTarget === "number") {
             const i = imageSearchTarget;
