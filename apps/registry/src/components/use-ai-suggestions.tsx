@@ -49,6 +49,7 @@ export interface TraceSummary {
 }
 
 export interface AiEvent {
+  id: string;
   type: "auto-applied" | "accepted" | "rejected" | "ingested";
   field?: string;
   suggestion: { hash: string; summary: string };
@@ -59,6 +60,10 @@ export interface AiEvent {
   traceId?: string;
 }
 
+export function createAiEvent(params: Omit<AiEvent, "id" | "at">): AiEvent {
+  return { ...params, id: crypto.randomUUID(), at: new Date().toISOString() };
+}
+
 export interface EntityRef {
   kind: string;
   id: string;
@@ -66,7 +71,8 @@ export interface EntityRef {
 
 export interface AiEventLog {
   read(ref: EntityRef): Promise<AiEvent[]>;
-  append(ref: EntityRef, event: AiEvent): Promise<void>;
+  /** Callers omit `id` and `at`; the log implementation stamps both. */
+  append(ref: EntityRef, event: Omit<AiEvent, "id" | "at">): Promise<void>;
 }
 
 export interface Origin {
@@ -404,7 +410,6 @@ export function useAiSuggestions({
               hash,
               summary: suggestion?.kind === "single" ? suggestion.summary : String(value),
             },
-            at: new Date().toISOString(),
             model: trace?.model ?? "unknown",
             confidence: suggestion?.kind === "single" ? suggestion.confidence : undefined,
             traceId: suggestion?.traceId,
@@ -425,7 +430,6 @@ export function useAiSuggestions({
               hash: resolvedHash,
               summary: suggestion?.kind === "single" ? suggestion.summary : "",
             },
-            at: new Date().toISOString(),
             model: trace?.model ?? "unknown",
             traceId: suggestion?.traceId,
           });
@@ -505,7 +509,6 @@ export function useAiSuggestions({
           sug.kind === "single"
             ? { hash: sug.hash, summary: sug.summary }
             : { hash: sug.traceId, summary: "" },
-        at: new Date().toISOString(),
         model: trace?.model ?? "unknown",
         confidence: sug.kind === "single" ? sug.confidence : undefined,
         traceId: sug.traceId,
