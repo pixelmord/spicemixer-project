@@ -65,6 +65,7 @@ import { PairingsSection } from "./forms/_shared/PairingsSection.tsx";
 import type { PairingProposal, PairingListItem } from "./forms/_shared/pairing-proposals.ts";
 import { PublishingSection } from "./forms/recipe/sections/PublishingSection.tsx";
 import { ClassificationSection } from "./forms/recipe/sections/ClassificationSection.tsx";
+import { TimingYieldSection } from "./forms/recipe/sections/TimingYieldSection.tsx";
 import QuickCreateDialog from "./QuickCreateDialog.tsx";
 import FormActionBar from "./FormActionBar.tsx";
 import { type SectionDef } from "./SectionNav.tsx";
@@ -203,33 +204,11 @@ const SECTIONS: SectionDef[] = [
 
 const TIME_FIELDS = new Set(["prepTime", "cookTime", "totalTime"]);
 
-const ISO_DURATION_RE = /^PT(?:\d+H)?(?:\d+M)?(?:\d+S)?$/;
-
-function toIsoDuration(raw: string): string {
-  if (ISO_DURATION_RE.test(raw.trim())) return raw.trim();
-  // Convert plain-English patterns like "30 minutes", "1 hour 15 minutes", "1h30m"
-  const s = raw.toLowerCase().trim();
-  const hours = /(\d+)\s*(?:h(?:ours?)?|hr?)/.exec(s)?.[1];
-  const mins = /(\d+)\s*(?:m(?:in(?:utes?)?)?|min)/.exec(s)?.[1];
-  const h = hours ? parseInt(hours, 10) : 0;
-  const m = mins ? parseInt(mins, 10) : 0;
-  if (h || m) return `PT${h ? `${h}H` : ""}${m ? `${m}M` : ""}`;
-  return raw; // can't parse — return as-is, schema validation will catch it
-}
-
-function parseDurationMinutes(iso: string): number {
-  if (!ISO_DURATION_RE.test((iso ?? "").trim())) return 0;
-  const h = /(\d+)H/.exec(iso)?.[1];
-  const m = /(\d+)M/.exec(iso)?.[1];
-  return (h ? parseInt(h, 10) * 60 : 0) + (m ? parseInt(m, 10) : 0);
-}
-
-function minutesToIsoDuration(min: number): string {
-  if (min <= 0) return "";
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `PT${h ? `${h}H` : ""}${m ? `${m}M` : ""}`;
-}
+import {
+  toIsoDuration,
+  parseDurationMinutes,
+  minutesToIsoDuration,
+} from "./forms/recipe/recipe-duration.ts";
 
 const RECIPE_AI_CONTRACT = {
   presets: [],
@@ -1397,91 +1376,7 @@ export default function RecipeForm({
             </section>
 
             {/* ── Timing & yield ── */}
-            <section id="section-timing" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Timing &amp; yield</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                  {(["prepTime", "cookTime", "totalTime"] as const).map((name, idx) => (
-                    <form.Field key={name} name={name}>
-                      {(field) => {
-                        const hasValue = !!field.state.value;
-                        const invalid = hasValue && !ISO_DURATION_RE.test(field.state.value.trim());
-                        const minTotalMin =
-                          parseDurationMinutes(formValues.prepTime ?? "") +
-                          parseDurationMinutes(formValues.cookTime ?? "");
-                        const totalTooShort =
-                          name === "totalTime" &&
-                          minTotalMin > 0 &&
-                          hasValue &&
-                          !invalid &&
-                          parseDurationMinutes(field.state.value) < minTotalMin;
-                        return (
-                          <div className="space-y-1.5">
-                            <Label htmlFor={field.name}>
-                              {["Prep time", "Cook time", "Total time"][idx]}
-                              <RecommendedHint show={!hasValue} />
-                            </Label>
-                            <Input
-                              id={field.name}
-                              value={field.state.value}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              onBlur={(e) => {
-                                const coerced = toIsoDuration(e.target.value);
-                                if (coerced !== e.target.value) field.handleChange(coerced);
-                                field.handleBlur();
-                                // Auto-fill totalTime when it's empty or below prep+cook sum
-                                if (name !== "totalTime") {
-                                  const prep =
-                                    name === "prepTime" ? coerced : (formValues.prepTime ?? "");
-                                  const cook =
-                                    name === "cookTime" ? coerced : (formValues.cookTime ?? "");
-                                  const sumMin =
-                                    parseDurationMinutes(prep) + parseDurationMinutes(cook);
-                                  if (sumMin > 0) {
-                                    const currentTotal = formValues.totalTime ?? "";
-                                    if (parseDurationMinutes(currentTotal) < sumMin) {
-                                      form.setFieldValue(
-                                        "totalTime" as never,
-                                        minutesToIsoDuration(sumMin) as never,
-                                      );
-                                    }
-                                  }
-                                }
-                              }}
-                              placeholder={["PT15M", "PT30M", "PT45M"][idx]}
-                              className={invalid || totalTooShort ? "border-amber-400" : ""}
-                            />
-                            {invalid && (
-                              <p className="text-xs text-amber-600 dark:text-amber-400">
-                                Use ISO 8601 format, e.g. PT15M or PT1H30M
-                              </p>
-                            )}
-                            {totalTooShort && (
-                              <p className="text-xs text-amber-600 dark:text-amber-400">
-                                Must be at least {minutesToIsoDuration(minTotalMin)} (prep + cook)
-                              </p>
-                            )}
-                          </div>
-                        );
-                      }}
-                    </form.Field>
-                  ))}
-                  <form.Field name="recipeYield">
-                    {(field) => (
-                      <TextField
-                        field={field}
-                        label="Yield / servings"
-                        placeholder="4 servings"
-                        suggestionPath="recipeYield"
-                        hint={<RecommendedHint show={!field.state.value} />}
-                      />
-                    )}
-                  </form.Field>
-                </CardContent>
-              </Card>
-            </section>
+            <TimingYieldSection form={form} formValues={formValues} />
 
             {/* ── Ingredients ── */}
             <section id="section-ingredients" className="scroll-mt-4">
