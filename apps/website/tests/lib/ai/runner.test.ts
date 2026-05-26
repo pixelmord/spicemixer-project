@@ -267,6 +267,151 @@ describe("runAiRefresh recipe: fingerprint cache", () => {
   });
 });
 
+// ── Recipe kind: tags and keywords are independent fields ────────────────────
+
+describe("runAiRefresh recipe: tags and keywords independence", () => {
+  test("target:tags calls runRefine with tags (not keywords)", async () => {
+    const refine = await import("@pixelmord/content-ai-refine");
+    vi.mocked(refine.runRefine).mockClear();
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "tags",
+          {
+            kind: "single" as const,
+            value: ["weeknight", "make-ahead"],
+            confidence: "high" as const,
+            summary: "tags: [2 items]",
+            hash: "tags-abc",
+            traceId: "trace-tags",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
+
+    const { store, sidecar, eventLog } = makeEnv();
+    const metaRef = { collection: "recipes" as const, locale: "en", slug: "dukkah" };
+
+    await runAiRefresh({
+      kind: "recipe",
+      metaRef,
+      payload: { name: "Dukkah" },
+      missingFields: [],
+      locale: "en",
+      store,
+      sidecar,
+      eventLog,
+      config: CONFIG,
+      existingMeta: {},
+      target: ["tags"],
+      force: true,
+    });
+
+    const [callArgs] = vi.mocked(refine.runRefine).mock.calls;
+    expect(callArgs).toBeDefined();
+    const passedTarget = (callArgs![0] as { target?: string[] }).target;
+    expect(passedTarget).toContain("tags");
+    expect(passedTarget).not.toContain("keywords");
+  });
+
+  test("target:tags returns tags improvement (not keywords)", async () => {
+    const refine = await import("@pixelmord/content-ai-refine");
+    vi.mocked(refine.runRefine).mockClear();
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "tags",
+          {
+            kind: "single" as const,
+            value: ["weeknight", "make-ahead"],
+            confidence: "high" as const,
+            summary: "tags: [2 items]",
+            hash: "tags-abc",
+            traceId: "trace-tags",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
+
+    const { store, sidecar, eventLog } = makeEnv();
+    const metaRef = { collection: "recipes" as const, locale: "en", slug: "dukkah" };
+
+    const result = await runAiRefresh({
+      kind: "recipe",
+      metaRef,
+      payload: { name: "Dukkah" },
+      missingFields: [],
+      locale: "en",
+      store,
+      sidecar,
+      eventLog,
+      config: CONFIG,
+      existingMeta: {},
+      target: ["tags"],
+      force: true,
+    });
+
+    const suggestions = result.aiSuggestions as { improvements?: Array<{ field: string }> };
+    const fields = (suggestions.improvements ?? []).map((i) => i.field);
+    expect(fields).toContain("tags");
+    expect(fields).not.toContain("keywords");
+  });
+
+  test("target:keywords does not affect tags", async () => {
+    const refine = await import("@pixelmord/content-ai-refine");
+    vi.mocked(refine.runRefine).mockClear();
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "keywords",
+          {
+            kind: "single" as const,
+            value: ["spicy", "quick-dinner"],
+            confidence: "high" as const,
+            summary: "keywords: [2 items]",
+            hash: "kw-abc",
+            traceId: "trace-kw",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
+
+    const { store, sidecar, eventLog } = makeEnv();
+    const metaRef = { collection: "recipes" as const, locale: "en", slug: "dukkah" };
+
+    const result = await runAiRefresh({
+      kind: "recipe",
+      metaRef,
+      payload: { name: "Dukkah" },
+      missingFields: [],
+      locale: "en",
+      store,
+      sidecar,
+      eventLog,
+      config: CONFIG,
+      existingMeta: {},
+      target: ["keywords"],
+      force: true,
+    });
+
+    const suggestions = result.aiSuggestions as {
+      improvements?: Array<{ field: string }>;
+      tags?: string[];
+    };
+    const fields = (suggestions.improvements ?? []).map((i) => i.field);
+    expect(fields).toContain("keywords");
+    expect(fields).not.toContain("tags");
+    // keywords must NOT bleed into aiSuggestions.tags
+    expect(suggestions.tags ?? []).toHaveLength(0);
+  });
+});
+
 // ── Recipe kind: auto-apply ───────────────────────────────────────────────────
 
 describe("runAiRefresh recipe: auto-apply ingredient links", () => {

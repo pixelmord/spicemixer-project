@@ -238,16 +238,6 @@ function adaptAiSuggestionsToRunResult(data: AiSuggestions | undefined): RunResu
       traceId: imp.traceId ?? "legacy",
     };
   }
-  if (data.tags && data.tags.length > 0) {
-    suggestions.tags = {
-      kind: "single",
-      value: data.tags,
-      confidence: "medium",
-      summary: `${data.tags.length} AI-suggested tags`,
-      hash: `tags-${counter++}`,
-      traceId: "legacy",
-    };
-  }
   return { suggestions, autoApplied: {}, traces: {} };
 }
 

@@ -396,9 +396,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     rawImprovements as Array<{ field: string; suggestion: unknown }>,
   );
 
-  const keywordsSugg = suggestions.get("keywords");
-  const tags =
-    keywordsSugg?.kind === "single" ? (keywordsSugg.value as string[]) : ([] as string[]);
+  const tags: string[] = [];
 
   const linksSugg = suggestions.get("ingredientLinks");
   const ingredientLinks =

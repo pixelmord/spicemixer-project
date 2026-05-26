@@ -116,6 +116,23 @@ describe("recipeContract field configs", () => {
     expect(prompt).toContain("spicy");
   });
 
+  test("tags field prompt contains full language name for de locale", () => {
+    const ctxDe = { ...ctx, sourceContext: { locale: "de" } };
+    const prompt = recipeContract.fields.tags.systemPrompt!(ctxDe as never);
+    expect(prompt).toContain("German");
+  });
+
+  test("tags field prompt contains full language name for en fallback", () => {
+    const prompt = recipeContract.fields.tags.systemPrompt!(ctx as never);
+    expect(prompt).toContain("English");
+  });
+
+  test("keywords field prompt contains full language name for de locale", () => {
+    const ctxDe = { ...ctx, sourceContext: { locale: "de" } };
+    const prompt = recipeContract.fields.keywords.systemPrompt!(ctxDe as never);
+    expect(prompt).toContain("German");
+  });
+
   test("ingredientLinks field generates empty string when inventory is empty", () => {
     const ctxNoInventory = { ...ctx, sourceContext: { inventory: [] } };
     const prompt = recipeContract.fields.ingredientLinks.systemPrompt!(ctxNoInventory as never);

@@ -17,6 +17,23 @@ export interface RecipeRefineContext {
   locale?: string;
 }
 
+// Maps BCP-47 locale codes to full language names for stronger model instructions.
+// The model reliably respects "German" far more than the bare two-letter code "de".
+const LOCALE_LANGUAGE_NAMES: Record<string, string> = {
+  en: "English",
+  de: "German",
+  fr: "French",
+  es: "Spanish",
+  it: "Italian",
+  pt: "Portuguese",
+  nl: "Dutch",
+  pl: "Polish",
+  sv: "Swedish",
+};
+function localeToLanguageName(locale: string): string {
+  return LOCALE_LANGUAGE_NAMES[locale] ?? locale;
+}
+
 // Rule reused across string[] fields so suggestions don't echo back values
 // the user has already accepted. Without this the model parrots existing items.
 function excludeExistingValuesRule(existing: string[] | undefined): string {
@@ -119,22 +136,41 @@ export const recipeContract: AiContract<RecipeSchema, RecipeRefineContext> = {
     ),
     name: textFieldConfig("Write a clear, appealing name for this recipe."),
 
-    // Tags / keywords (replaces proposeTags)
+    // Schema.org keywords field — searchable/SEO-oriented tags on the recipe content
     keywords: {
       systemPrompt: ({ currentData, sourceContext }) => {
         const ctx = buildRecipeCtx(currentData);
+        const locale = sourceContext?.locale ?? "en";
+        const languageName = localeToLanguageName(locale);
         const existingTags = sourceContext?.existingTags ?? [];
         const tagHints = existingTags.length
           ? `Prefer tags from this existing vocabulary where applicable:\n${existingTags.slice(0, 60).join(", ")}`
           : "";
         const existing = Array.isArray(currentData?.keywords) ? currentData.keywords : [];
         const exclude = excludeExistingValuesRule(existing);
-        return `Suggest 3–8 concise tags for this recipe. Tags should be lowercase, hyphenated if multi-word (e.g. "quick-dinner", "vegan", "spicy").
+        return `Suggest 3–8 concise Schema.org keywords for this recipe. Keywords should be lowercase, hyphenated if multi-word. Focus on searchability and schema.org markup.
+IMPORTANT: All keywords MUST be in ${languageName}. Do not use any other language.
 
 ${ctx}
 ${tagHints}
 
 ${exclude}`;
+      },
+      outputSchema: tagsOutputSchema,
+      autoApply: { policy: "never" },
+      translation: { mode: "localize" },
+    },
+
+    // Editorial tags field — SpiceMixer metadata tags for categorisation and browsing
+    tags: {
+      systemPrompt: ({ currentData, sourceContext }) => {
+        const ctx = buildRecipeCtx(currentData);
+        const locale = sourceContext?.locale ?? "en";
+        const languageName = localeToLanguageName(locale);
+        return `Suggest 3–5 editorial tags for categorising this recipe in SpiceMixer. Focus on meal occasion, cooking style, and dietary preferences. Tags should be lowercase, hyphenated if multi-word.
+IMPORTANT: All tags MUST be in ${languageName}. Do not use any other language.
+
+${ctx}`;
       },
       outputSchema: tagsOutputSchema,
       autoApply: { policy: "never" },
