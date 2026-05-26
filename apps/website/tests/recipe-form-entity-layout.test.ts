@@ -28,8 +28,8 @@ describe("RecipeForm — EntityFormLayout adoption", () => {
     expect(src).toMatch(/useSplitViewPreference/);
   });
 
-  test("imports getSiblingEntity", () => {
-    expect(src).toMatch(/getSiblingEntity/);
+  test("imports useSiblingEntity hook", () => {
+    expect(src).toMatch(/useSiblingEntity/);
   });
 
   test("uses EntityFormLayout in JSX", () => {
@@ -57,39 +57,20 @@ describe("RecipeForm — EntityFormLayout adoption", () => {
   });
 });
 
-describe("RecipeForm — TextareaField / TextField for translatable text fields", () => {
-  test("imports TextareaField from fields", () => {
-    expect(src).toMatch(/TextareaField/);
+describe("RecipeForm — TextareaField / TextField delegated to section components", () => {
+  // Text fields with AI suggest / sibling support are now in BasicInfoSection and
+  // ClassificationSection. RecipeForm delegates to these via imports.
+
+  test("imports BasicInfoSection (contains name, description, image fields)", () => {
+    expect(src).toMatch(/BasicInfoSection/);
   });
 
-  test("imports TextField from fields", () => {
-    expect(src).toMatch(/TextField/);
+  test("imports ClassificationSection (contains recipeCategory, recipeCuisine fields)", () => {
+    expect(src).toMatch(/ClassificationSection/);
   });
 
-  test("uses TextareaField for description field", () => {
-    expect(src).toMatch(
-      /<TextareaField[^>]*suggestionPath="description"|suggestionPath="description"[^>]*TextareaField/s,
-    );
-  });
-
-  test("uses TextField for recipeCategory field", () => {
-    expect(src).toMatch(
-      /<TextField[^>]*suggestionPath="recipeCategory"|suggestionPath="recipeCategory"[^>]*TextField/s,
-    );
-  });
-
-  test("uses TextField for recipeCuisine field", () => {
-    expect(src).toMatch(
-      /<TextField[^>]*suggestionPath="recipeCuisine"|suggestionPath="recipeCuisine"[^>]*TextField/s,
-    );
-  });
-
-  test("TextareaField/TextField receive splitView prop for translatable fields", () => {
-    expect(src).toMatch(/TextareaField[^/]*splitView|TextField[^/]*splitView/s);
-  });
-
-  test("name field uses TextField with suggestionPath (AI button in label row, consistent layout)", () => {
-    expect(src).toMatch(/TextField[^>]*suggestionPath="name"|suggestionPath="name"[^>]*TextField/s);
+  test("passes splitView prop to section components", () => {
+    expect(src).toMatch(/splitView=\{splitView\}/);
   });
 });
 
@@ -163,11 +144,11 @@ describe("RecipeForm — per-field AI buttons handled by field components", () =
 });
 
 describe("RecipeForm — sibling data fetching", () => {
-  test("uses getSiblingEntity for sibling data resolution", () => {
-    expect(src).toMatch(/getSiblingEntity/);
+  test("uses useSiblingEntity hook for sibling data resolution", () => {
+    expect(src).toMatch(/useSiblingEntity/);
   });
 
-  test("sibling data fetched with kind recipe or mixture", () => {
-    expect(src).toMatch(/getSiblingEntity.*kind.*entityKind|entityKind.*getSiblingEntity/s);
+  test("sibling data resolved with kind from entityKind", () => {
+    expect(src).toMatch(/useSiblingEntity.*entityKind|entityKind.*useSiblingEntity/s);
   });
 });

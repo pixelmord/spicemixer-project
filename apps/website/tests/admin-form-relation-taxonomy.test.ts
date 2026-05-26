@@ -55,22 +55,27 @@ describe("RecipeForm — Variants section", () => {
   });
 });
 
-describe("RecipeForm — CreatePairingDialog wiring", () => {
+describe("RecipeForm — CreatePairingDialog wiring (delegated to PairingsSection)", () => {
   let src: string;
+  let pairingsSrc: string;
   beforeAll(async () => {
     src = await readFile(join(COMPONENTS, "RecipeForm.tsx"), "utf-8");
+    pairingsSrc = await readFile(
+      join(COMPONENTS, "forms", "_shared", "PairingsSection.tsx"),
+      "utf-8",
+    );
   });
 
-  test("imports CreatePairingDialog", () => {
-    expect(src).toMatch(/CreatePairingDialog/);
+  test("RecipeForm imports PairingsSection", () => {
+    expect(src).toMatch(/PairingsSection/);
   });
 
-  test("has state for pending pairing dialog", () => {
-    expect(src).toMatch(/pendingPairingDialog/);
+  test("PairingsSection owns CreatePairingDialog", () => {
+    expect(pairingsSrc).toMatch(/CreatePairingDialog/);
   });
 
-  test("renders aiSuggestions pairings section", () => {
-    expect(src).toMatch(/aiSuggestions.*pairings|pairings.*aiSuggestions/s);
+  test("RecipeForm wires pairingProposals to PairingsSection", () => {
+    expect(src).toMatch(/pairingProposals/);
   });
 });
 

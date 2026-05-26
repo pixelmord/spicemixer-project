@@ -15,21 +15,34 @@ const PAGES = join(WEBSITE_ROOT, "src", "pages", "admin");
 
 describe("admin-dispatch: RecipeForm kind dropdown gated on mixtures collection", () => {
   let src: string;
+  let classificationSrc: string;
   beforeAll(async () => {
     src = await readFile(join(COMPONENTS, "RecipeForm.tsx"), "utf-8");
+    classificationSrc = await readFile(
+      join(COMPONENTS, "forms", "recipe", "sections", "ClassificationSection.tsx"),
+      "utf-8",
+    );
   });
 
-  test("RecipeForm imports MIXTURE_KINDS and uses it as dropdown options", () => {
-    expect(src).toContain('from "@/lib/mixture-schema.ts"');
-    expect(src).toContain("MIXTURE_KINDS");
-    expect(src).toContain("MIXTURE_KINDS.map");
+  test("RecipeForm delegates kind dropdown to ClassificationSection", () => {
+    // Kind state is managed in RecipeForm, ClassificationSection handles the dropdown UI
+    expect(src).toMatch(/ClassificationSection/);
+    expect(src).toMatch(/\bkind\b.*setKind|setKind.*\bkind\b/);
   });
 
-  test("kind dropdown is rendered only when collection === 'mixtures'", () => {
-    expect(src).toContain('collection === "mixtures"');
-    const kindDropdownIdx = src.indexOf("mixture-kind-select");
+  test("ClassificationSection imports MIXTURE_KINDS and uses it as dropdown options", () => {
+    expect(classificationSrc).toContain("MIXTURE_KINDS");
+    expect(classificationSrc).toContain("MIXTURE_KINDS.map");
+  });
+
+  test("kind dropdown is gated on mixtures collection in ClassificationSection", () => {
+    expect(classificationSrc).toContain('collection === "mixtures"');
+    const kindDropdownIdx = classificationSrc.indexOf("mixture-kind-select");
     expect(kindDropdownIdx, "data-testid=mixture-kind-select not found").toBeGreaterThan(-1);
-    const collectionCheckIdx = src.lastIndexOf('collection === "mixtures"', kindDropdownIdx);
+    const collectionCheckIdx = classificationSrc.lastIndexOf(
+      'collection === "mixtures"',
+      kindDropdownIdx,
+    );
     expect(
       collectionCheckIdx,
       "kind dropdown must be inside a collection === 'mixtures' branch",

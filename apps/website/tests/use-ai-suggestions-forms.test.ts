@@ -165,14 +165,26 @@ describe("RecipeForm — useAiSuggestions integration verification", () => {
     expect(src).toMatch(/aiFlow\.run\(\)/);
   });
 
-  test("uses TextareaField with suggestionPath for description (InlineFieldSuggestion delegated to field component)", () => {
-    // InlineFieldSuggestion is now internal to TextareaField; the form passes suggestionPath.
-    expect(src).toMatch(/suggestionPath="description"/);
+  test("description field with suggestionPath delegated to BasicInfoSection", async () => {
+    // InlineFieldSuggestion is internal to TextareaField; the form passes suggestionPath via BasicInfoSection.
+    const basicSrc = await readFile(
+      join(COMPONENTS, "forms", "recipe", "sections", "BasicInfoSection.tsx"),
+      "utf-8",
+    );
+    expect(basicSrc).toMatch(/suggestionPath="description"/);
+    // RecipeForm imports BasicInfoSection (which owns the description field)
+    expect(src).toMatch(/BasicInfoSection/);
   });
 
-  test("uses TagInputField with suggestionPath for tags (InlineFieldSuggestion delegated to field component)", () => {
-    // InlineFieldSuggestion is now internal to TagInputField; the form passes suggestionPath.
-    expect(src).toMatch(/suggestionPath="tags"/);
+  test("tags field with suggestionPath delegated to PublishingSection", async () => {
+    // InlineFieldSuggestion is internal to TagInputField; the form passes suggestionPath via PublishingSection.
+    const publishingSrc = await readFile(
+      join(COMPONENTS, "forms", "recipe", "sections", "PublishingSection.tsx"),
+      "utf-8",
+    );
+    expect(publishingSrc).toMatch(/suggestionPath="tags"/);
+    // RecipeForm imports PublishingSection (which owns the tags field)
+    expect(src).toMatch(/PublishingSection/);
   });
 });
 
