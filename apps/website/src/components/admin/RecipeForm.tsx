@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, type Dispatch, type SetStateActio
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, Check, Trash2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Sparkles, Trash2, ExternalLink } from "lucide-react";
 import LinkButton from "@/components/admin/LinkButton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import {
@@ -57,12 +57,7 @@ import QuickCreateDialog from "./QuickCreateDialog.tsx";
 import FormActionBar from "./FormActionBar.tsx";
 import { type SectionDef } from "./SectionNav.tsx";
 import CompletenessPanel from "./CompletenessPanel.tsx";
-import { IngestDialog } from "./IngestDialog.tsx";
-import RecipeDiff from "./RecipeDiff.tsx";
 import { useIngestAction } from "@/lib/ai/use-ingest-action.ts";
-import { TranslateEntityDialog } from "./TranslateEntityDialog.tsx";
-import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog.tsx";
-import IngredientLinkModal from "./IngredientLinkModal.tsx";
 import { useAiSuggestions, type RunResult, type FieldSuggestion } from "@/hooks/use-ai-suggestions";
 import { SuggestionFlowProvider } from "./SuggestionFlowProvider.tsx";
 import ImageSearchModal, {
@@ -81,6 +76,9 @@ import type {
 import { InstructionsSection } from "./forms/recipe/sections/InstructionsSection.tsx";
 import { IngredientsSection } from "./forms/recipe/sections/IngredientsSection.tsx";
 import { BasicInfoSection } from "./forms/recipe/sections/BasicInfoSection.tsx";
+import { RecipeEnhanceDialog } from "./forms/recipe/sections/modals/RecipeEnhanceDialog.tsx";
+import { RecipeTranslateDialog } from "./forms/recipe/sections/modals/RecipeTranslateDialog.tsx";
+import { RecipeIngredientLinkDialog } from "./forms/recipe/sections/modals/RecipeIngredientLinkDialog.tsx";
 
 interface RecipeData {
   "@context": string;
@@ -373,7 +371,6 @@ export default function RecipeForm({
   const [enhanceOpen, setEnhanceOpen] = useState(false);
   const [translateOpen, setTranslateOpen] = useState(false);
   const [translateRunId] = useState(() => crypto.randomUUID());
-  const translationSlugRef = useRef<string>("");
   const entityKind = collection === "mixtures" ? "mixture" : "recipe";
 
   // Entity options
@@ -1260,147 +1257,39 @@ export default function RecipeForm({
       </form>
 
       {/* Enhance dialog */}
-      <IngestDialog
+      <RecipeEnhanceDialog
         open={enhanceOpen}
         onOpenChange={(o) => {
           if (!o) clearIngestProposed();
           setEnhanceOpen(o);
         }}
-        title="Enhance recipe"
         flow={aiFlow}
         onRun={ingestOnRun}
         onReviewBack={clearIngestProposed}
-        reviewChildren={
-          ingestProposed ? (
-            <div className="space-y-4">
-              <div className="max-h-[50vh] overflow-y-auto">
-                {ingestWarnings.length > 0 && (
-                  <div className="mb-3 space-y-0.5">
-                    {ingestWarnings.map((w, i) => (
-                      <p key={i} className="text-xs text-amber-700 dark:text-amber-400">
-                        ⚠ {w}
-                      </p>
-                    ))}
-                  </div>
-                )}
-                <RecipeDiff existing={buildRecipeSnapshot()} proposed={ingestProposed} />
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    applyProposedToForm(ingestProposed);
-                    clearIngestProposed();
-                    setEnhanceOpen(false);
-                    toast.success("Recipe enhanced!");
-                  }}
-                >
-                  <Check size={14} className="mr-1" />
-                  Apply changes
-                </Button>
-              </DialogFooter>
-            </div>
-          ) : undefined
-        }
-        generateLabel="Generate enhanced version"
-        className="sm:max-w-4xl"
+        snapshot={buildRecipeSnapshot()}
+        proposed={ingestProposed}
+        warnings={ingestWarnings}
+        onApply={() => {
+          if (ingestProposed) {
+            applyProposedToForm(ingestProposed);
+            clearIngestProposed();
+            setEnhanceOpen(false);
+            toast.success("Recipe enhanced!");
+          }
+        }}
       />
 
       {/* Translate dialog */}
-      <Dialog open={translateOpen} onOpenChange={(o) => !o && setTranslateOpen(false)}>
-        <DialogContent className="sm:max-w-lg">
-          <TranslateEntityDialog
-            contract={{
-              presets: [],
-              fields: {
-                name: { translation: { mode: "translate" } },
-                description: { translation: { mode: "translate" } },
-                recipeCategory: { translation: { mode: "translate" } },
-                recipeCuisine: { translation: { mode: "translate" } },
-                slug: { translation: { mode: "translate" } },
-              },
-            }}
-            sourceRef={{
-              kind: entityKind,
-              id: slug ?? "",
-            }}
-            sourceLocale={language || "en"}
-            sourceData={buildRecipeSnapshot()}
-            availableLocales={(language || "en") === "en" ? ["de"] : ["en"]}
-            onCheckSlugAvailable={async (_kind, candidateSlug) => {
-              const { data } = await actions.checkSlugAvailable({
-                collection,
-                slug: candidateSlug,
-                locale: (language || "en") === "en" ? "de" : "en",
-              });
-              return data?.available ?? false;
-            }}
-            onCreate={async (targetLocale, translationSlug, fields, meta) => {
-              translationSlugRef.current = translationSlug ?? "";
-              const sidecarMeta = {
-                draft: true,
-                kind: entityKind,
-                tags: [] as string[],
-                ingredientLinks: [] as unknown[],
-                sources: [] as unknown[],
-                variants: [] as string[],
-                language: targetLocale,
-                locale: targetLocale,
-                translationOf: slug ?? "",
-                translations: {},
-                aiEvents: meta.aiEvents,
-                canonicalLocale: meta.canonicalLocale,
-                canonicalFieldHashes: meta.canonicalFieldHashes,
-              };
-              const { error } = await actions.aiCreateTranslation({
-                collection,
-                slug: slug ?? "",
-                sourceLocale: (language || "en") as "en" | "de",
-                targetLocale: targetLocale as "en" | "de",
-                translationSlug: translationSlug ?? "",
-                fields,
-                meta: sidecarMeta as Record<string, unknown>,
-              });
-              if (error) throw new Error(error.message);
-              return { kind: entityKind, id: translationSlug ?? "" };
-            }}
-            onComplete={() => {
-              const ts = translationSlugRef.current;
-              const tl = (language || "en") === "en" ? "de" : "en";
-              setTranslateOpen(false);
-              toast.success("Translation created");
-              if (ts) window.open(`/admin/${collection}/${ts}/edit?locale=${tl}`, "_blank");
-            }}
-            aiEventLog={{ read: async () => [], append: async () => {} }}
-            onFill={async (params) => {
-              const ctx = params.sourceContext as {
-                sourceLocale: string;
-                targetLocale: string;
-                sourceData: Record<string, unknown>;
-              };
-              const { data, error } = await actions.aiFillTranslation({
-                kind: entityKind,
-                sourceRef: { id: slug ?? "", kind: entityKind },
-                sourceLocale: ctx.sourceLocale as "en" | "de",
-                targetLocale: ctx.targetLocale as "en" | "de",
-                sourceData: ctx.sourceData,
-                target: params.target,
-              });
-              if (error) throw new Error(error.message);
-              return data!;
-            }}
-            origin={{
-              surface: "admin",
-              action: "aiFillTranslation",
-              entityKind,
-              entityRef: slug ?? "",
-              userInitiated: true,
-              runId: translateRunId,
-              triggeredBy: "editor" as const,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+      <RecipeTranslateDialog
+        open={translateOpen}
+        onOpenChange={setTranslateOpen}
+        slug={slug ?? ""}
+        locale={language || "en"}
+        collection={collection}
+        entityKind={entityKind}
+        snapshot={buildRecipeSnapshot()}
+        runId={translateRunId}
+      />
 
       {/* Quick create dialog */}
       {quickCreateKind && (
@@ -1417,49 +1306,16 @@ export default function RecipeForm({
       )}
 
       {/* Ingredient link modal */}
-      {linkModalState.open && linkModalState.mode === "view" && (
-        <IngredientLinkModal
-          open
-          onClose={() => setLinkModalState({ open: false })}
-          mode="view"
-          slug={linkModalState.slug}
-          locale={language || "en"}
-          onUnlink={() => {
-            const idx = linkModalState.ingredientIndex;
-            const ing = ingredients[idx] ?? "";
-            setIngredientLinks((prev) =>
-              prev.filter((l) => !ing.toLowerCase().includes(l.pattern.toLowerCase())),
-            );
-            setLinkModalState({ open: false });
-          }}
-        />
-      )}
-      {linkModalState.open && linkModalState.mode === "link" && (
-        <IngredientLinkModal
-          open
-          onClose={() => setLinkModalState({ open: false })}
-          mode="link"
-          ingredientString={linkModalState.ingredientString}
-          aiSuggestion={linkModalState.aiSuggestion}
-          ingredientOptions={ingredientOptions}
-          locale={language || "en"}
-          collection={collection}
-          onLinked={(newSlug, pattern) => {
-            setIngredientLinks((prev) => {
-              if (prev.some((l) => l.pattern === pattern)) return prev;
-              return [...prev, { pattern, slug: newSlug, kind: "ingredient" as const }];
-            });
-            // Also add to ingredientOptions cache if not present
-            if (!ingredientOptions.some((o) => o.value === newSlug)) {
-              setIngredientOptions((prev) => [
-                ...prev,
-                { value: newSlug, label: newSlug, sublabel: newSlug },
-              ]);
-            }
-            setLinkModalState({ open: false });
-          }}
-        />
-      )}
+      <RecipeIngredientLinkDialog
+        state={linkModalState}
+        onClose={() => setLinkModalState({ open: false })}
+        locale={language || "en"}
+        collection={collection}
+        ingredients={ingredients}
+        ingredientOptions={ingredientOptions}
+        setIngredientLinks={setIngredientLinks}
+        setIngredientOptions={setIngredientOptions}
+      />
 
       {/* Image search modal */}
       <ImageSearchModal
