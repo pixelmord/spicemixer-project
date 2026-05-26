@@ -90,7 +90,34 @@ export async function getSiblingEntity({
       : {};
 
   const siblingSlug = translations[locale];
-  if (!siblingSlug) return null;
+  if (!siblingSlug) {
+    // Symmetric fallback: the current entity's translations map may be missing the forward link
+    // (e.g. if it was wiped by a stale form save after aiCreateTranslation wrote the back-link).
+    // Try fetching the sibling at the same base slug and verify it carries a back-reference to us.
+    const { data: fallbackResult, error: fallbackError } = await actions.getItem({
+      collection: collection as "recipes",
+      id: `${locale}/${baseSlug}`,
+    });
+    if (!fallbackError && fallbackResult?.item) {
+      const fallbackMeta = fallbackResult.meta as Record<string, unknown> | null;
+      const fallbackTranslations =
+        fallbackMeta &&
+        typeof fallbackMeta["translations"] === "object" &&
+        fallbackMeta["translations"] !== null
+          ? (fallbackMeta["translations"] as Record<string, string>)
+          : {};
+      if (fallbackTranslations[resolvedCurrentLocale] === baseSlug) {
+        const siblingItemData = fallbackResult.item.data as Record<string, unknown>;
+        return {
+          ref: { kind, id: `${locale}/${baseSlug}` },
+          data: siblingItemData,
+          locale,
+          fieldHashes: computeFieldHashes(siblingItemData),
+        };
+      }
+    }
+    return null;
+  }
 
   const { data: siblingResult, error: siblingError } = await actions.getItem({
     collection: collection as "recipes",

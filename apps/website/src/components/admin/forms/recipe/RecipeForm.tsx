@@ -1062,7 +1062,9 @@ export default function RecipeForm({
     void navigate(`/admin/${collection}/${slug}/edit?locale=${siblingLocale}`);
   }
 
-  const hasExistingTranslation = !!meta.translations?.[siblingLocale];
+  // Derive from form-state translations map OR from a loaded sibling — whichever confirms first.
+  // siblingData (async) covers the case where meta.translations was stale at page load.
+  const hasExistingTranslation = !!meta.translations?.[siblingLocale] || siblingData != null;
 
   const headerAuxiliary =
     !isNew && slug ? (

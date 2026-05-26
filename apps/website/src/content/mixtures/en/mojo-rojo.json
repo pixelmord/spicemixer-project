@@ -1,0 +1,59 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "Mojo Rojo for Potato Wedges",
+  "recipeIngredient": [
+    "4 tbsp oil",
+    "salt and pepper",
+    "1.5 tsp sweet paprika powder",
+    "0.5 tsp ground coriander",
+    "800 g waxy potatoes",
+    "200 g roasted bell pepper (from a jar)",
+    "1 chili pepper (or 2, depending on desired spiciness)",
+    "2 cloves of garlic",
+    "1 tsp ground cumin",
+    "100 ml olive oil"
+  ],
+  "recipeInstructions": [
+    {
+      "@type": "HowToStep",
+      "text": "Preheat the oven and baking tray in the middle rack to 220 degrees Celsius (top/bottom heat). Mix 4 tbsp oil, a little salt and pepper, 1/2 tsp sweet paprika powder, and 1/2 tsp ground coriander. Peel the potatoes, cut into long wedges, and toss with the seasoned oil. Then line the hot baking tray with parchment paper and distribute the potatoes on top. Bake for 30 minutes."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Remove the roasted bell peppers from the jar and let them drain well. Cut 1-2 chili peppers lengthwise, deseed them, and chop roughly with the garlic cloves. Puree with cumin, 1 tsp sweet paprika powder, and 1/2 tsp salt until fine, gradually adding 100 ml olive oil while continuously mixing."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Taste again and serve with the potato wedges."
+    }
+  ],
+  "description": "Mojo rojo for potato wedges - Spicy paprika-chili dip for oven-baked potatoes. ",
+  "image": "https://img.chefkoch-cdn.de/rezepte/3043981457086610/bilder/883833/crop-960x540/mojo-rojo-zu-kartoffelspalten.jpg",
+  "author": {
+    "@type": "Person",
+    "name": "Chefkoch-Video"
+  },
+  "recipeYield": "4 servings",
+  "recipeCategory": "Potatoes",
+  "recipeCuisine": "Spanish",
+  "keywords": [
+    "main dish",
+    "baking",
+    "Europe",
+    "vegetarian",
+    "sauces",
+    "dips",
+    "party",
+    "easy",
+    "paste",
+    "oil",
+    "spices",
+    "vinegar",
+    "basic recipes",
+    "Paleo"
+  ],
+  "prepTime": "PT10M",
+  "cookTime": "PT30M",
+  "totalTime": "PT40M"
+}

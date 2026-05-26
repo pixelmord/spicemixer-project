@@ -69,9 +69,17 @@ export async function saveEntity(
       (meta["locale"] as string | undefined) ??
       ref.locale;
 
+    // Merge translations bidirectionally: a stale form payload (translations: {}) must not
+    // clobber back-links that aiCreateTranslation wrote to the sidecar after the form loaded.
+    const mergedTranslations: Record<string, string> = {
+      ...(existingData["translations"] as Record<string, string> | undefined),
+      ...(meta["translations"] as Record<string, string> | undefined),
+    };
+
     const mergedMeta: Record<string, unknown> = {
       ...existingData,
       ...meta,
+      translations: mergedTranslations,
       ...(canonicalLocale !== undefined && { canonicalLocale }),
     };
 
@@ -87,6 +95,10 @@ export async function saveEntity(
 
     await sidecar.write(ref, mergedMeta);
   } else {
-    await sidecar.write(ref, { ...existingData, ...meta });
+    const mergedTranslations: Record<string, string> = {
+      ...(existingData["translations"] as Record<string, string> | undefined),
+      ...(meta["translations"] as Record<string, string> | undefined),
+    };
+    await sidecar.write(ref, { ...existingData, ...meta, translations: mergedTranslations });
   }
 }

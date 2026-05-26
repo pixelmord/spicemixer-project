@@ -28,7 +28,7 @@ function makeRecipeItem(
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 // ── Ingredient (shared-slug path) ─────────────────────────────────────────────
@@ -146,11 +146,13 @@ describe("getSiblingEntity — recipe (translations-map path)", () => {
     expect(result?.locale).toBe("de");
   });
 
-  test("returns null when no translation exists for sibling locale", async () => {
+  test("returns null when no translation exists for sibling locale and fallback also misses", async () => {
     const sourceMeta = { translations: {} }; // no German translation
     const sourceData = { name: "Cardamom Cake" };
 
-    mockGetItem.mockResolvedValueOnce(makeRecipeItem(sourceData, sourceMeta));
+    mockGetItem
+      .mockResolvedValueOnce(makeRecipeItem(sourceData, sourceMeta)) // source
+      .mockResolvedValueOnce({ data: null, error: null }); // fallback: de/cardamom-cake not found
 
     const result = await getSiblingEntity({
       kind: "recipe",
@@ -160,7 +162,7 @@ describe("getSiblingEntity — recipe (translations-map path)", () => {
     });
 
     expect(result).toBeNull();
-    expect(mockGetItem).toHaveBeenCalledTimes(1);
+    expect(mockGetItem).toHaveBeenCalledTimes(2); // source + symmetric fallback attempt
   });
 
   test("returns null when source entity is not found", async () => {
@@ -208,6 +210,78 @@ describe("getSiblingEntity — recipe (translations-map path)", () => {
       expect.objectContaining({ id: "en/cardamom-cake" }),
     );
     expect(result?.ref).toEqual({ kind: "recipe", id: "de/kardamom-kuchen-de" });
+  });
+});
+
+// ── Recipe (symmetric fallback path) ─────────────────────────────────────────
+
+describe("getSiblingEntity — recipe (symmetric fallback when forward link is missing)", () => {
+  test("finds EN sibling via reverse lookup when DE source has no translations.en", async () => {
+    // DE source has no forward link to EN
+    const sourceMeta = { translations: {} };
+    const sourceData = { name: "Mojo Rojo" };
+    // EN entity at same slug has translations.de = "mojo-rojo" (back-reference written at creation)
+    const siblingMeta = { translations: { de: "mojo-rojo" } };
+    const siblingData = { name: "Mojo Rojo EN" };
+
+    mockGetItem
+      .mockResolvedValueOnce(makeRecipeItem(sourceData, sourceMeta)) // source: de/mojo-rojo
+      .mockResolvedValueOnce(makeRecipeItem(siblingData, siblingMeta)); // fallback: en/mojo-rojo
+
+    const result = await getSiblingEntity({
+      kind: "recipe",
+      slug: "mojo-rojo",
+      locale: "en",
+      currentLocale: "de",
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.ref).toEqual({ kind: "recipe", id: "en/mojo-rojo" });
+    expect(result?.data).toEqual(siblingData);
+    expect(result?.locale).toBe("en");
+    expect(mockGetItem).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ collection: "recipes", id: "en/mojo-rojo" }),
+    );
+  });
+
+  test("symmetric fallback returns null when sibling lacks a matching back-reference", async () => {
+    const sourceMeta = { translations: {} };
+    const sourceData = { name: "Mojo Rojo" };
+    // EN entity exists but its translations.de points to a different slug
+    const siblingMeta = { translations: { de: "some-other-slug" } };
+    const siblingData = { name: "Different EN recipe" };
+
+    mockGetItem
+      .mockResolvedValueOnce(makeRecipeItem(sourceData, sourceMeta))
+      .mockResolvedValueOnce(makeRecipeItem(siblingData, siblingMeta));
+
+    const result = await getSiblingEntity({
+      kind: "recipe",
+      slug: "mojo-rojo",
+      locale: "en",
+      currentLocale: "de",
+    });
+
+    expect(result).toBeNull();
+  });
+
+  test("symmetric fallback returns null when no entity exists at sibling locale / same slug", async () => {
+    const sourceMeta = { translations: {} };
+    const sourceData = { name: "Unique Recipe" };
+
+    mockGetItem
+      .mockResolvedValueOnce(makeRecipeItem(sourceData, sourceMeta)) // source
+      .mockResolvedValueOnce({ data: null, error: null }); // fallback: en/unique-recipe not found
+
+    const result = await getSiblingEntity({
+      kind: "recipe",
+      slug: "unique-recipe",
+      locale: "en",
+      currentLocale: "de",
+    });
+
+    expect(result).toBeNull();
   });
 });
 

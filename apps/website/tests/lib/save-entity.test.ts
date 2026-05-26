@@ -93,6 +93,53 @@ describe("saveEntity — meta write", () => {
   });
 });
 
+describe("saveEntity — translations back-link preservation", () => {
+  test("saving a recipe with empty translations does not wipe an existing back-link", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    // Simulate the state after aiCreateTranslation wrote translations.en to DE's sidecar
+    await store.put("meta", "recipes/de/mojo-rojo", {
+      language: "de",
+      locale: "de",
+      translations: { en: "mojo-rojo" }, // back-link written by aiCreateTranslation
+    });
+    // Form was loaded *before* translation was created — meta.translations is stale {}
+    await saveEntity(store, sidecar, {
+      ref: { collection: "recipes", locale: "de", slug: "mojo-rojo" },
+      content: { name: "Mojo Rojo" },
+      meta: { language: "de", locale: "de", translations: {}, draft: false },
+    });
+    const meta = await store.get("meta", "recipes/de/mojo-rojo");
+    expect((meta!.data as Record<string, unknown>)["translations"]).toEqual({ en: "mojo-rojo" });
+  });
+
+  test("saving a recipe with a new translation entry merges it with existing back-links", async () => {
+    const store = new InMemoryStore();
+    const sidecar = createMetaSidecar(store);
+    await store.put("meta", "recipes/en/cardamom-cake", {
+      language: "en",
+      locale: "en",
+      translations: { de: "kardamom-kuchen" },
+    });
+    // Now a new FR translation is being saved
+    await saveEntity(store, sidecar, {
+      ref: { collection: "recipes", locale: "en", slug: "cardamom-cake" },
+      content: { name: "Cardamom Cake" },
+      meta: {
+        language: "en",
+        locale: "en",
+        translations: { fr: "gateau-cardamome" },
+        draft: false,
+      },
+    });
+    const meta = await store.get("meta", "recipes/en/cardamom-cake");
+    expect((meta!.data as Record<string, unknown>)["translations"]).toEqual({
+      de: "kardamom-kuchen",
+      fr: "gateau-cardamome",
+    });
+  });
+});
+
 describe("saveEntity — canonicalLocale (translatable kinds)", () => {
   test("stamps canonicalLocale from ref.locale on first ingredient save", async () => {
     const store = new InMemoryStore();

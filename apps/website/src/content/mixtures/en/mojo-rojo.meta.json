@@ -1,0 +1,130 @@
+{
+  "draft": false,
+  "kind": "sauce",
+  "tags": [],
+  "ingredientLinks": [
+    {
+      "pattern": "sweet paprika powder",
+      "slug": "paprika",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "ground coriander",
+      "slug": "koriander",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "ground cumin",
+      "slug": "cumin",
+      "kind": "ingredient"
+    }
+  ],
+  "sources": [],
+  "variants": [],
+  "language": "en",
+  "locale": "en",
+  "translationOf": "mojo-rojo",
+  "translations": {
+    "de": "mojo-rojo"
+  },
+  "aiEvents": [
+    {
+      "type": "ingested",
+      "suggestion": {
+        "hash": "1597175d-fc84-4e39-a18f-3f0d800a3c6b",
+        "summary": "Translation to en"
+      },
+      "model": "translation",
+      "traceId": "1597175d-fc84-4e39-a18f-3f0d800a3c6b",
+      "id": "42f3a6eb-6dfb-4789-a059-344c2c436afe",
+      "at": "2026-05-26T19:44:38.322Z"
+    }
+  ],
+  "canonicalLocale": "de",
+  "canonicalFieldHashes": {
+    "name": "Mojo rojo zu Kartoffelspalten von Chefkoch-Video",
+    "description": "Mojo rojo zu Kartoffelspalten - Würziger Paprika-Chili-Dip zu Ofenkartoffeln. Über 43 Bewertungen und für mega befunden. Mit ► Portionsrechner ► Kochbuch ► Video-Tipps!",
+    "recipeCategory": "Kartoffeln",
+    "recipeCuisine": "Spanien",
+    "slug": "mojo-rojo",
+    "recipeYield": "4 Portionen",
+    "keywords": "[\"Hauptspeise\",\"Backen\",\"Europa\",\"Vegetarisch\",\"Saucen\",\"Dips\",\"Party\",\"einfach\",\"Pasten\",\"öl\",\"gewürze\",\"Essig\",\"Grundrezepte\",\"Paleo\"]",
+    "tags": "[]",
+    "recipeIngredient": "[\"4 EL Öl\",\"Salz und Pfeffer\",\"1.5 TL Paprikapulver, edelsüßes\",\"0.5 TL Korianderpulver\",\"800 g Kartoffeln, festkochende\",\"200 g Paprikaschote(n) (geröstete, aus dem Glas)\",\"1 Chilischote(n) (oder 2, je nach gewünschter Schärfe)\",\"2 Knoblauchzehe(n)\",\"1 TL Kreuzkümmelpulver\",\"100 ml Olivenöl\"]",
+    "recipeInstructions": "[{\"@type\":\"HowToStep\",\"text\":\"Backofen und Blech auf der mittleren Schiene auf 220 Grad Ober-/Unterhitze vorheizen. 4 EL Öl, etwas Salz und Pfeffer, 1⁄2 TL edelsüßes Paprikapulver und 1⁄2 TL gemahlenen Koriander mischen. Die Kartoffeln schälen, in lange Spalten schneiden und mit dem Würzöl vermengen. Anschließend das heiße Blech mit Backpapier auslegen und die Kartoffeln darauf verteilen. Für 30 Min. wandern sie in den Ofen.\"},{\"@type\":\"HowToStep\",\"text\":\"Geröstete Paprika ohne Haut aus dem Glas nehmen und gut abtropfen lassen. 1 - 2 Chilischoten längs einschneiden, entkernen und mit den Knoblauchzehen grob hacken. Mit Kreuzkümmel, 1 TL edelsüßem Paprikapulver, 1⁄2 TL Salz fein pürieren Nach und nach 100 ml Olivenöl unter ständigem Mixen hinzufügen.\"},{\"@type\":\"HowToStep\",\"text\":\"Jetzt noch einmal abschmecken und mit den Kartoffelspalten servieren.\"}]",
+    "image": "https://img.chefkoch-cdn.de/rezepte/3043981457086610/bilder/883833/crop-960x540/mojo-rojo-zu-kartoffelspalten.jpg",
+    "prepTime": "PT10M",
+    "cookTime": "PT30M",
+    "totalTime": "PT40M",
+    "author": "{\"@type\":\"Person\",\"name\":\"Chefkoch-Video\"}",
+    "region": "[\"western-europe\"]"
+  },
+  "translationStaleSince": "2026-05-26T19:45:05.731Z",
+  "aiSuggestions": {
+    "fingerprint": "467cffd4c22ea9c6363fbcaa2df2e028704c009f533c00b40e578c31a217dcbe",
+    "at": "2026-05-26T19:45:22.044Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [
+        "mojo-rojo",
+        "spicy-dip",
+        "oven-baked-potatoes",
+        "spanish-dip",
+        "paprika-chili",
+        "potato-wedges",
+        "vegetarian-dip"
+      ],
+      "ingredientLinks": [
+        {
+          "pattern": "sweet paprika powder",
+          "slug": "paprika",
+          "confidence": "high"
+        },
+        {
+          "pattern": "ground coriander",
+          "slug": "koriander",
+          "confidence": "high"
+        },
+        {
+          "pattern": "ground cumin",
+          "slug": "cumin",
+          "confidence": "high"
+        },
+        {
+          "pattern": "chili pepper",
+          "slug": "chili-powder",
+          "confidence": "low"
+        }
+      ],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "harissa",
+          "rationale": "Harissa's complex blend of spices and heat complements the spicy paprika and chili in the mojo rojo, enhancing the overall flavor experience of the potato wedges.",
+          "traceId": "ae5c747c-14da-43b2-8fab-955fc0da6b05"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "mojo-verde",
+          "rationale": "The bright and herbal notes of mojo verde provide a refreshing counterpoint to the rich and spicy mojo rojo, making it an excellent dipping option alongside the potato wedges.",
+          "traceId": "ae5c747c-14da-43b2-8fab-955fc0da6b05"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cumin",
+          "rationale": "Cumin's earthy flavor pairs well with the smoky paprika and spices in the mojo rojo, enhancing the depth of flavor in the dish.",
+          "traceId": "ae5c747c-14da-43b2-8fab-955fc0da6b05"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "preserved-lemon-couscous",
+          "rationale": "The tangy brightness of preserved lemon couscous serves as a perfect side, balancing the rich and spicy notes of the mojo rojo and potatoes.",
+          "traceId": "ae5c747c-14da-43b2-8fab-955fc0da6b05"
+        }
+      ]
+    }
+  },
+  "region": []
+}
