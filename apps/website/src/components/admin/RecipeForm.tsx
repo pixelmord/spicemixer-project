@@ -18,10 +18,9 @@ import { buildPayload } from "@/lib/entity-form-payload.ts";
 import { readSSE } from "@/lib/sse.ts";
 import { EntityFormLayout, type OverflowMenuItem } from "@/components/admin/EntityFormLayout.tsx";
 import { useSplitViewPreference } from "@/hooks/use-split-view-preference.ts";
-import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
+import { useSiblingEntity } from "@/hooks/use-sibling-entity.ts";
 import { AiBulkSuggestButton } from "@registry/components/ai-bulk-suggest-button";
 import { AiBulkTranslateButton } from "@registry/components/ai-bulk-translate-button";
-import type { SiblingLocale } from "@registry/components/use-ai-suggestions";
 interface AiSuggestion {
   field: string;
   suggestion: unknown;
@@ -365,7 +364,6 @@ export default function RecipeForm({
   const [aiLinksLoading, setAiLinksLoading] = useState(false);
 
   const [splitView, setSplitView] = useSplitViewPreference();
-  const [siblingData, setSiblingData] = useState<SiblingLocale | null>(null);
 
   // Modals
   const [enhanceOpen, setEnhanceOpen] = useState(false);
@@ -475,18 +473,13 @@ export default function RecipeForm({
   }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const siblingLocale = language === "en" ? "de" : "en";
-  useEffect(() => {
-    if (!splitView || !slug || !language || isNew) {
-      setSiblingData(null);
-      return;
-    }
-    void getSiblingEntity({
-      kind: entityKind,
-      slug,
-      locale: siblingLocale,
-      currentLocale: language,
-    }).then((result) => setSiblingData(result));
-  }, [splitView, slug, language]); // eslint-disable-line react-hooks/exhaustive-deps
+  const siblingData = useSiblingEntity({
+    kind: entityKind,
+    slug: slug ?? "",
+    locale: siblingLocale,
+    currentLocale: language,
+    enabled: splitView && !!slug && !!language && !isNew,
+  });
 
   const form = useForm({
     defaultValues: {
