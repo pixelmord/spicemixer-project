@@ -268,7 +268,7 @@ const hreflang = await hreflangTags(slug, "recipes", Astro.site?.toString().repl
             </ul>
           </section>
         )}
-        <ExternalSourceList heading={t("section.externalRecipes")} sources={meta.externalSources} />
+        <ExternalSourceList heading={t("section.externalRecipes")} sources={meta.sources} />
 
         {
           tags.length > 0 && (

@@ -310,11 +310,11 @@ const hreflang = mix ? await hreflangTags(mixSlug, "mixtures", Astro.site?.toStr
           </div>
         </section>
 
-        {(meta?.externalSources.length ?? 0) > 0 && (
+        {(meta?.sources.length ?? 0) > 0 && (
           <section slot="encyclopedia" data-cook="hide" class="mb-10">
             <ExternalSourceList
               heading={t("section.externalRecipes")}
-              sources={meta!.externalSources}
+              sources={meta!.sources}
             />
           </section>
         )}
