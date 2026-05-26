@@ -2,17 +2,7 @@ import { useState, useEffect, useMemo, useRef, type Dispatch, type SetStateActio
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  Sparkles,
-  Link2,
-  Loader2,
-  Languages,
-  Check,
-  X,
-  Trash2,
-  ExternalLink,
-} from "lucide-react";
+import { ArrowLeft, Sparkles, Link2, Loader2, Check, X, Trash2, ExternalLink } from "lucide-react";
 import LinkButton from "@/components/admin/LinkButton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
@@ -33,7 +23,7 @@ import {
 } from "@/lib/completeness.ts";
 import { slugify } from "@/lib/slugify.ts";
 import type { RecipeCollection } from "@/lib/content-store.ts";
-import { MIXTURE_KINDS, type MixtureKind } from "@/lib/mixture-schema.ts";
+import type { MixtureKind } from "@/lib/mixture-schema.ts";
 import { useEntityFormState } from "@/hooks/useEntityFormState.ts";
 import { buildPayload } from "@/lib/entity-form-payload.ts";
 import { readSSE } from "@/lib/sse.ts";
@@ -43,7 +33,7 @@ import { getSiblingEntity } from "@/lib/get-sibling-entity.ts";
 import { AiBulkSuggestButton } from "@registry/components/ai-bulk-suggest-button";
 import { AiBulkTranslateButton } from "@registry/components/ai-bulk-translate-button";
 import type { SiblingLocale } from "@registry/components/use-ai-suggestions";
-import { TextField, TextareaField, TagInputField } from "@/components/admin/fields/index.ts";
+import { TextField, TextareaField } from "@/components/admin/fields/index.ts";
 interface AiSuggestion {
   field: string;
   suggestion: unknown;
@@ -68,13 +58,13 @@ interface AiSuggestions {
 }
 
 import SortableArrayField from "./SortableArrayField.tsx";
-import TagInput from "./TagInput.tsx";
 import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
-import EntityMultiCombobox from "./EntityMultiCombobox.tsx";
 import { SourcesSection } from "./forms/recipe/sections/SourcesSection.tsx";
 import { VariantsSection } from "./forms/recipe/sections/VariantsSection.tsx";
 import { PairingsSection } from "./forms/_shared/PairingsSection.tsx";
 import type { PairingProposal, PairingListItem } from "./forms/_shared/pairing-proposals.ts";
+import { PublishingSection } from "./forms/recipe/sections/PublishingSection.tsx";
+import { ClassificationSection } from "./forms/recipe/sections/ClassificationSection.tsx";
 import QuickCreateDialog from "./QuickCreateDialog.tsx";
 import FormActionBar from "./FormActionBar.tsx";
 import { type SectionDef } from "./SectionNav.tsx";
@@ -92,7 +82,7 @@ import ImageSearchModal, {
   type ImageAttribution,
   type SelectedImage,
 } from "./ImageSearchModal.tsx";
-import { REGION_OPTIONS, type RegionCode } from "@/lib/regions.ts";
+import type { RegionCode } from "@/lib/regions.ts";
 
 type Collection = RecipeCollection;
 
@@ -240,11 +230,6 @@ function minutesToIsoDuration(min: number): string {
   const m = min % 60;
   return `PT${h ? `${h}H` : ""}${m ? `${m}M` : ""}`;
 }
-
-const LANGUAGES = [
-  { value: "en", label: "English" },
-  { value: "de", label: "German" },
-];
 
 const RECIPE_AI_CONTRACT = {
   presets: [],
@@ -1781,188 +1766,31 @@ export default function RecipeForm({
             </section>
 
             {/* ── Classification ── */}
-            <section id="section-classification" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Classification</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                  {collection === "mixtures" && (
-                    <div className="col-span-2 space-y-1.5">
-                      <Label>
-                        Kind <span className="text-destructive">*</span>
-                      </Label>
-                      <Select value={kind} onValueChange={(v) => v && setKind(v as MixtureKind)}>
-                        <SelectTrigger data-testid="mixture-kind-select">
-                          <SelectValue placeholder="Select mixture kind…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {MIXTURE_KINDS.map((k) => (
-                            <SelectItem key={k} value={k}>
-                              {k}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  <form.Field name="recipeCategory">
-                    {(field) => (
-                      <TextField
-                        field={field}
-                        label="Category"
-                        placeholder="Main Course"
-                        suggestionPath="recipeCategory"
-                        splitView={splitView}
-                        siblingValue={siblingData?.data["recipeCategory"]}
-                        siblingLocale={siblingLocale}
-                        hint={<RecommendedHint show={!field.state.value} />}
-                      />
-                    )}
-                  </form.Field>
-                  <form.Field name="recipeCuisine">
-                    {(field) => (
-                      <TextField
-                        field={field}
-                        label="Cuisine"
-                        placeholder="Moroccan"
-                        suggestionPath="recipeCuisine"
-                        splitView={splitView}
-                        siblingValue={siblingData?.data["recipeCuisine"]}
-                        siblingLocale={siblingLocale}
-                        hint={<RecommendedHint show={!field.state.value} />}
-                      />
-                    )}
-                  </form.Field>
-                  <div className="col-span-2">
-                    <form.Field name="keywords">
-                      {(field) => (
-                        <TagInputField
-                          field={field}
-                          label={
-                            <>
-                              Keywords
-                              <RecommendedHint show={(field.state.value ?? []).length === 0} />
-                            </>
-                          }
-                          placeholder="vegan, pantry, quick"
-                          suggestions={tagSuggestions}
-                          suggestionPath="keywords"
-                        />
-                      )}
-                    </form.Field>
-                  </div>
-                  <div className="col-span-2 space-y-1.5">
-                    <Label>Suitable for diet</Label>
-                    <TagInput
-                      value={dietTags}
-                      onChange={setDietTags}
-                      suggestions={[
-                        "VegetarianDiet",
-                        "VeganDiet",
-                        "GlutenFreeDiet",
-                        "LowCalorieDiet",
-                      ]}
-                      placeholder="VegetarianDiet, VeganDiet"
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-1.5">
-                    <Label>Regions</Label>
-                    <EntityMultiCombobox
-                      value={regions}
-                      onChange={(vals) => setRegions(vals as RegionCode[])}
-                      options={REGION_OPTIONS}
-                      placeholder="Select culinary macro-regions…"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Closed enum — different from <span className="font-mono">recipeCuisine</span>{" "}
-                      (schema.org cuisine).
-                    </p>
-                  </div>
-                  <form.Field name="datePublished">
-                    {(field) => (
-                      <div className="space-y-1.5">
-                        <Label htmlFor={field.name}>
-                          Date published
-                          <RecommendedHint show={!field.state.value} />
-                        </Label>
-                        <Input
-                          type="date"
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                        />
-                      </div>
-                    )}
-                  </form.Field>
-                </CardContent>
-              </Card>
-            </section>
+            <ClassificationSection
+              form={form}
+              collection={collection}
+              splitView={splitView}
+              siblingData={siblingData}
+              siblingLocale={siblingLocale}
+              tagSuggestions={tagSuggestions}
+              kind={kind}
+              setKind={setKind}
+              dietTags={dietTags}
+              setDietTags={setDietTags}
+              regions={regions}
+              setRegions={setRegions}
+            />
 
             {/* ── Publishing ── */}
-            <section id="section-publishing" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Publishing</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <form.Field name="tags">
-                    {(field) => (
-                      <TagInputField
-                        field={field}
-                        label="Tags"
-                        placeholder="weeknight, make-ahead"
-                        suggestions={tagSuggestions}
-                        suggestionPath="tags"
-                      />
-                    )}
-                  </form.Field>
-                  <div className="space-y-1.5">
-                    <Label>Language</Label>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="inline-flex items-center rounded-md border border-border bg-muted px-2.5 py-1.5 text-sm font-medium text-muted-foreground"
-                        aria-label="Current language (read-only)"
-                      >
-                        {language
-                          ? (LANGUAGES.find((l) => l.value === language)?.label ?? language)
-                          : "—"}
-                      </span>
-                      {language && (
-                        <span className="text-xs font-mono text-muted-foreground/60 select-none">
-                          {language.toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    {/* Show detected language suggestion */}
-                    {!language && aiSuggestions?.detectedLanguage && (
-                      <button
-                        type="button"
-                        onClick={() => setLanguage(aiSuggestions.detectedLanguage!)}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        ✦ AI detected: {aiSuggestions.detectedLanguage}
-                      </button>
-                    )}
-                    {/* Show linked translations */}
-                    {meta.translations && Object.entries(meta.translations).length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {Object.entries(meta.translations).map(([locale, tSlug]) => (
-                          <a
-                            key={locale}
-                            href={`/admin/${collection}/${tSlug}/edit`}
-                            className="flex items-center gap-1 rounded border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30"
-                          >
-                            <Languages size={9} />
-                            {locale}: {tSlug}
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
+            <PublishingSection
+              form={form}
+              tagSuggestions={tagSuggestions}
+              language={language ?? undefined}
+              setLanguage={setLanguage}
+              detectedLanguage={aiSuggestions?.detectedLanguage}
+              translations={meta.translations as Record<string, string> | undefined}
+              collection={collection}
+            />
 
             {/* ── Pairings ── */}
             <PairingsSection
