@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { navigate } from "astro:transitions/client";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
@@ -366,7 +367,7 @@ export default function IngredientForm({
       toast.success("Saved");
 
       if (isNew) {
-        window.location.href = `/admin/ingredients/${slug}/edit?locale=${locale}`;
+        void navigate(`/admin/ingredients/${slug}/edit?locale=${locale}`);
         return;
       }
     },
@@ -672,7 +673,7 @@ export default function IngredientForm({
       return;
     }
     toast.success("Ingredient deleted");
-    window.location.href = "/admin/ingredients";
+    void navigate("/admin/ingredients");
   }
 
   const overflowMenuItems = useMemo(() => {
@@ -693,7 +694,7 @@ export default function IngredientForm({
 
   function handleSwapLanguage() {
     if (!slug) return;
-    window.location.href = `/admin/ingredients/${slug}/edit?locale=${siblingLocaleCode}`;
+    void navigate(`/admin/ingredients/${slug}/edit?locale=${siblingLocaleCode}`);
   }
 
   const headerAuxiliary =

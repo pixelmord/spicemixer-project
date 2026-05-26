@@ -10,14 +10,24 @@ import {
   minutesToIsoDuration,
 } from "../recipe-duration.ts";
 import type { AnyForm } from "@/components/admin/forms/_shared/form-types.ts";
+import type { SiblingLocale } from "@/hooks/use-ai-suggestions";
 
 interface TimingYieldSectionProps {
   form: AnyForm;
   /** Current form values snapshot — needed for totalTime auto-fill. */
   formValues: { prepTime?: string; cookTime?: string; totalTime?: string };
+  splitView?: boolean;
+  siblingData?: SiblingLocale | null;
+  siblingLocale?: string;
 }
 
-export function TimingYieldSection({ form, formValues }: TimingYieldSectionProps) {
+export function TimingYieldSection({
+  form,
+  formValues,
+  splitView,
+  siblingData,
+  siblingLocale,
+}: TimingYieldSectionProps) {
   return (
     <section id="section-timing" className="scroll-mt-4">
       <Card>
@@ -30,6 +40,7 @@ export function TimingYieldSection({ form, formValues }: TimingYieldSectionProps
               {(field: any) => {
                 const hasValue = !!field.state.value;
                 const invalid = hasValue && !ISO_DURATION_RE.test(field.state.value.trim());
+                const siblingTimeValue = siblingData?.data[name] as string | undefined;
                 const minTotalMin =
                   parseDurationMinutes(formValues.prepTime ?? "") +
                   parseDurationMinutes(formValues.cookTime ?? "");
@@ -82,6 +93,20 @@ export function TimingYieldSection({ form, formValues }: TimingYieldSectionProps
                         Must be at least {minutesToIsoDuration(minTotalMin)} (prep + cook)
                       </p>
                     )}
+                    {splitView && siblingTimeValue && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {siblingLocale?.toUpperCase()}: {siblingTimeValue}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => field.handleChange(siblingTimeValue)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               }}
@@ -94,6 +119,9 @@ export function TimingYieldSection({ form, formValues }: TimingYieldSectionProps
                 label="Yield / servings"
                 placeholder="4 servings"
                 suggestionPath="recipeYield"
+                splitView={splitView}
+                siblingValue={siblingData?.data["recipeYield"]}
+                siblingLocale={siblingLocale}
                 hint={<RecommendedHint show={!field.state.value} />}
               />
             )}

@@ -12,6 +12,9 @@ interface InstructionsSectionProps {
   stepAttributions: Map<number, ImageAttribution>;
   setStepAttributions: Dispatch<SetStateAction<Map<number, ImageAttribution>>>;
   onRequestImageSearch: (stepIndex: number) => void;
+  splitView?: boolean;
+  siblingInstructions?: HowToStep[];
+  siblingLocale?: string;
 }
 
 export function InstructionsSection({
@@ -20,6 +23,9 @@ export function InstructionsSection({
   stepAttributions,
   setStepAttributions,
   onRequestImageSearch,
+  splitView,
+  siblingInstructions,
+  siblingLocale,
 }: InstructionsSectionProps) {
   return (
     <section id="section-instructions" className="scroll-mt-4">
@@ -28,6 +34,22 @@ export function InstructionsSection({
           <CardTitle>Instructions</CardTitle>
         </CardHeader>
         <CardContent>
+          {splitView && siblingInstructions && siblingInstructions.length > 0 && (
+            <details className="mb-3 rounded-md border border-border p-2" open>
+              <summary className="cursor-pointer select-none text-xs font-medium text-muted-foreground">
+                {siblingLocale?.toUpperCase()} reference ({siblingInstructions.length} steps)
+              </summary>
+              <ol className="mt-1.5 space-y-1.5">
+                {siblingInstructions.map((step, i) => (
+                  <li key={i} className="text-xs text-muted-foreground pl-2">
+                    <span className="font-semibold">{i + 1}.</span>
+                    {step.name && <span className="font-medium"> {step.name} — </span>}
+                    {step.text}
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )}
           <SortableArrayField
             items={instructions}
             onChange={setInstructions}

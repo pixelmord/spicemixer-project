@@ -4,27 +4,13 @@ import AdminLayout from "@/layouts/AdminLayout.astro";
 import ContentTable from "@/components/admin/ContentTable.tsx";
 import { createStore } from "@/lib/content-store.ts";
 import { scoreIngredient } from "@/lib/completeness.ts";
+import { groupBySlug } from "@/lib/admin-list-rows.ts";
 
 const store = await createStore();
 const allItems = await store.list("ingredients");
 
-const slugMap = new Map<string, typeof allItems[number][]>();
-for (const item of allItems) {
-  const slash = item.id.indexOf("/");
-  if (slash === -1) continue;
-  const slug = item.id.slice(slash + 1);
-  if (!slugMap.has(slug)) slugMap.set(slug, []);
-  slugMap.get(slug)!.push(item);
-}
-
-const rows = Array.from(slugMap.entries()).map(([slug, localeItems]) => {
-  const primary =
-    localeItems.find((i) => i.id.startsWith("en/")) ?? localeItems[0]!;
+const rows = groupBySlug(allItems).map(({ slug, primary, translations }) => {
   const completeness = scoreIngredient(primary.data as never);
-  const translations = localeItems
-    .map((i) => i.id.slice(0, i.id.indexOf("/")))
-    .filter(Boolean)
-    .sort();
   return {
     type: "ingredient" as const,
     collection: "ingredients",

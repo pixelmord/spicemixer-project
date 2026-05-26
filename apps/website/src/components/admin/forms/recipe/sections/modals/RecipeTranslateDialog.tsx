@@ -29,8 +29,20 @@ export const RECIPE_TRANSLATE_CONTRACT = {
     recipeCategory: { translation: { mode: "translate" as const } },
     recipeCuisine: { translation: { mode: "translate" as const } },
     slug: { translation: { mode: "translate" as const } },
-    // Image URLs don't need translation — copy them verbatim to the target locale.
+    // Localizable fields — same meaning, adapted phrasing (e.g. "4 servings" → "4 Portionen")
+    recipeYield: { translation: { mode: "localize" as const } },
+    keywords: { translation: { mode: "localize" as const } },
+    tags: { translation: { mode: "localize" as const } },
+    // Translatable array fields
+    recipeIngredient: { translation: { mode: "translate" as const } },
+    recipeInstructions: { translation: { mode: "translate" as const } },
+    // Copy-mode: verbatim from source locale, no AI needed
     image: { translation: { mode: "copy" as const } },
+    prepTime: { translation: { mode: "copy" as const } },
+    cookTime: { translation: { mode: "copy" as const } },
+    totalTime: { translation: { mode: "copy" as const } },
+    author: { translation: { mode: "copy" as const } },
+    region: { translation: { mode: "copy" as const } },
   },
 };
 

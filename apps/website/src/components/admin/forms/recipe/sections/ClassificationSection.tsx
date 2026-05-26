@@ -120,6 +120,9 @@ export function ClassificationSection({
                   placeholder="vegan, pantry, quick"
                   suggestions={tagSuggestions}
                   suggestionPath="keywords"
+                  splitView={splitView}
+                  siblingValue={siblingData?.data["keywords"] as string[] | undefined}
+                  siblingLocale={siblingLocale}
                 />
               )}
             </form.Field>
@@ -145,6 +148,14 @@ export function ClassificationSection({
               Closed enum — different from <span className="font-mono">recipeCuisine</span>{" "}
               (schema.org cuisine).
             </p>
+            {splitView &&
+              Array.isArray(siblingData?.data["region"]) &&
+              (siblingData!.data["region"] as string[]).length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {siblingLocale?.toUpperCase()}:{" "}
+                  {(siblingData!.data["region"] as string[]).join(", ")}
+                </p>
+              )}
           </div>
           <form.Field name="datePublished">
             {(field: any) => (

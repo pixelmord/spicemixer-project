@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { navigate } from "astro:transitions/client";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
 import { Link, Loader2, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
@@ -72,7 +73,7 @@ export default function ImportFromUrl() {
       ...(result.language ? { meta: { language: result.language } } : {}),
     };
     sessionStorage.setItem("import-recipe", JSON.stringify(payload));
-    window.location.href = `/admin/${collection}/new?import=1`;
+    void navigate(`/admin/${collection}/new?import=1`);
   }
 
   return (

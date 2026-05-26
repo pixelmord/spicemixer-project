@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { navigate } from "astro:transitions/client";
 import { toast } from "sonner";
 import {
   Upload,
@@ -148,13 +149,13 @@ export default function AiImportPage() {
           sourceMeta: sourceMeta ?? undefined,
         }),
       );
-      window.location.href = `/admin/${collection}/new?import=1`;
+      void navigate(`/admin/${collection}/new?import=1`);
     } else if (contentType === "pairing") {
       sessionStorage.setItem("import-pairing", JSON.stringify({ pairing: result }));
-      window.location.href = `/admin/pairings/new?import=1&locale=${locale}`;
+      void navigate(`/admin/pairings/new?import=1&locale=${locale}`);
     } else {
       sessionStorage.setItem("import-ingredient", JSON.stringify({ ingredient: result, locale }));
-      window.location.href = `/admin/ingredients/new?import=1&locale=${locale}`;
+      void navigate(`/admin/ingredients/new?import=1&locale=${locale}`);
     }
   }
 

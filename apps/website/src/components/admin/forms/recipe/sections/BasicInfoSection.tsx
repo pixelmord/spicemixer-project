@@ -122,40 +122,79 @@ export function BasicInfoSection({
 
           <div className="grid grid-cols-2 gap-4">
             <form.Field name="authorName">
-              {(field: any) => (
-                <div className="space-y-1.5">
-                  <Label htmlFor={field.name}>
-                    Author
-                    <RecommendedHint show={!field.state.value} />
-                  </Label>
-                  <Input
-                    id={field.name}
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    placeholder="Jane Smith"
-                  />
-                </div>
-              )}
+              {(field: any) => {
+                const siblingAuthor = siblingData?.data["author"] as { name?: string } | undefined;
+                return (
+                  <div className="space-y-1.5">
+                    <Label htmlFor={field.name}>
+                      Author
+                      <RecommendedHint show={!field.state.value} />
+                    </Label>
+                    <Input
+                      id={field.name}
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                      placeholder="Jane Smith"
+                    />
+                    {splitView && siblingAuthor?.name && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">
+                          {siblingLocale?.toUpperCase()}: {siblingAuthor.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => field.handleChange(siblingAuthor.name!)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }}
             </form.Field>
             <form.Field name="authorType">
-              {(field: any) => (
-                <div className="space-y-1.5">
-                  <Label>Author type</Label>
-                  <Select
-                    value={field.state.value}
-                    onValueChange={(v) => v && field.handleChange(v as "Person" | "Organization")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Person">Person</SelectItem>
-                      <SelectItem value="Organization">Organization</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              {(field: any) => {
+                const siblingAuthor = siblingData?.data["author"] as
+                  | { "@type"?: string }
+                  | undefined;
+                const siblingType = siblingAuthor?.["@type"];
+                return (
+                  <div className="space-y-1.5">
+                    <Label>Author type</Label>
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(v) => v && field.handleChange(v as "Person" | "Organization")}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Person">Person</SelectItem>
+                        <SelectItem value="Organization">Organization</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {splitView && siblingType && siblingType !== field.state.value && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">
+                          {siblingLocale?.toUpperCase()}: {siblingType}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            field.handleChange(siblingType as "Person" | "Organization")
+                          }
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }}
             </form.Field>
           </div>
         </CardContent>

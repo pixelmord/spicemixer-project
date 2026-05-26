@@ -36,6 +36,10 @@ interface IngredientsSectionProps {
     name: string,
     cb: (slug: string, label: string) => void,
   ) => void;
+
+  splitView?: boolean;
+  siblingIngredients?: string[];
+  siblingLocale?: string;
 }
 
 export function IngredientsSection({
@@ -53,6 +57,9 @@ export function IngredientsSection({
   onRequestViewLink,
   onRequestLinkIngredient,
   onOpenQuickCreate,
+  splitView,
+  siblingIngredients,
+  siblingLocale,
 }: IngredientsSectionProps) {
   // Derived look-up helpers (pure, re-computed from props)
   function findLinkForIngredient(ing: string): IngredientLink | undefined {
@@ -93,6 +100,20 @@ export function IngredientsSection({
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
+          {splitView && siblingIngredients && siblingIngredients.length > 0 && (
+            <details className="rounded-md border border-border p-2" open>
+              <summary className="cursor-pointer select-none text-xs font-medium text-muted-foreground">
+                {siblingLocale?.toUpperCase()} reference ({siblingIngredients.length} ingredients)
+              </summary>
+              <ol className="mt-1.5 space-y-0.5">
+                {siblingIngredients.map((ing, i) => (
+                  <li key={i} className="text-xs text-muted-foreground font-mono pl-2">
+                    {i + 1}. {ing}
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )}
           <SortableArrayField
             items={ingredients}
             onChange={setIngredients}

@@ -1714,8 +1714,12 @@ export const server = {
         fieldHashes: {} as Record<string, string>,
       };
 
+      // Cast: runFill is generic and TypeScript can't resolve its schema parameter
+      // from a union of three structurally-incompatible contract types. The lookup
+      // by `kind` is logically correct at runtime.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await runFill({
-        contract,
+        contract: contract as any,
         sourceContext,
         config,
         logger: aiLogger.child({ action: "aiFillTranslation", kind }),

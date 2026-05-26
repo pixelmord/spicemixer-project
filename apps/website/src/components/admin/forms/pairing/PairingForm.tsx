@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { navigate } from "astro:transitions/client";
 import { useForm, useStore } from "@tanstack/react-form";
 import { TextareaField } from "@/components/admin/fields/index.ts";
 import { actions } from "astro:actions";
@@ -176,7 +177,7 @@ export default function PairingForm({
         setDraft(effectiveDraft);
         toast.success("Saved");
         if (isNew) {
-          window.location.href = `/admin/pairings/${encodeURIComponent(id)}/edit?locale=${locale}`;
+          void navigate(`/admin/pairings/${encodeURIComponent(id)}/edit?locale=${locale}`);
         }
       } catch (e) {
         toast.error(e instanceof Error ? e.message : String(e));
@@ -306,7 +307,7 @@ export default function PairingForm({
       return;
     }
     toast.success("Deleted");
-    window.location.href = "/admin/pairings";
+    void navigate("/admin/pairings");
   }
 
   const proposedDescription = ingestAction.proposed
@@ -439,7 +440,7 @@ export default function PairingForm({
 
   function handleSwapLanguage() {
     if (!initialId) return;
-    window.location.href = `/admin/pairings/${encodeURIComponent(initialId)}/edit?locale=${siblingLoc}`;
+    void navigate(`/admin/pairings/${encodeURIComponent(initialId)}/edit?locale=${siblingLoc}`);
   }
 
   const title = isNew ? "New pairing" : `${formValues.endpoint1Slug} ↔ ${formValues.endpoint2Slug}`;

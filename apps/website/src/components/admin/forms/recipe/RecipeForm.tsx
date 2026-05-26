@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
+import { navigate } from "astro:transitions/client";
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
@@ -187,6 +188,9 @@ const RECIPE_AI_CONTRACT = {
     description: { translation: { mode: "translate" as const } },
     recipeCategory: { translation: { mode: "translate" as const } },
     recipeCuisine: { translation: { mode: "translate" as const } },
+    recipeYield: { translation: { mode: "localize" as const } },
+    keywords: { translation: { mode: "localize" as const } },
+    tags: { translation: { mode: "localize" as const } },
   },
 };
 
@@ -606,7 +610,7 @@ export default function RecipeForm({
       toast.success("Saved");
 
       if (isNew) {
-        window.location.href = `/admin/${collection}/${slug}/edit`;
+        void navigate(`/admin/${collection}/${slug}/edit`);
         return;
       }
 
@@ -907,14 +911,22 @@ export default function RecipeForm({
       name: formValues.name,
       description: formValues.description,
       recipeIngredient: ingredients.filter(Boolean),
+      recipeInstructions: instructions.filter((s) => s.text.trim()),
       recipeCategory: formValues.recipeCategory,
       recipeCuisine: formValues.recipeCuisine,
       keywords: formValues.keywords,
       tags: formValues.tags,
       slug: slug ?? "",
+      region: regions,
     };
-    // Include image so copy-mode fields in the translation contract can forward it.
+    // Include copy-mode fields so the translate dialog can forward them verbatim.
     if (formValues.image) snap.image = formValues.image;
+    if (formValues.recipeYield) snap.recipeYield = formValues.recipeYield;
+    if (formValues.prepTime) snap.prepTime = formValues.prepTime;
+    if (formValues.cookTime) snap.cookTime = formValues.cookTime;
+    if (formValues.totalTime) snap.totalTime = formValues.totalTime;
+    if (formValues.authorName)
+      snap.author = { "@type": formValues.authorType, name: formValues.authorName };
     return snap;
   }
 
@@ -1039,7 +1051,7 @@ export default function RecipeForm({
         if (error) {
           toast.error("Delete failed: " + error.message);
         } else {
-          window.location.href = `/admin/${collection}`;
+          void navigate(`/admin/${collection}`);
         }
       },
     },
@@ -1047,7 +1059,7 @@ export default function RecipeForm({
 
   function handleSwapLanguage() {
     if (!slug || !language) return;
-    window.location.href = `/admin/${collection}/${slug}/edit?locale=${siblingLocale}`;
+    void navigate(`/admin/${collection}/${slug}/edit?locale=${siblingLocale}`);
   }
 
   const hasExistingTranslation = !!meta.translations?.[siblingLocale];
@@ -1163,7 +1175,13 @@ export default function RecipeForm({
             />
 
             {/* ── Timing & yield ── */}
-            <TimingYieldSection form={form} formValues={formValues} />
+            <TimingYieldSection
+              form={form}
+              formValues={formValues}
+              splitView={splitView}
+              siblingData={siblingData}
+              siblingLocale={siblingLocale}
+            />
 
             {/* ── Ingredients ── */}
             <IngredientsSection
@@ -1191,6 +1209,9 @@ export default function RecipeForm({
                 })
               }
               onOpenQuickCreate={openQuickCreate}
+              splitView={splitView}
+              siblingIngredients={siblingData?.data["recipeIngredient"] as string[] | undefined}
+              siblingLocale={siblingLocale}
             />
 
             {/* ── Instructions ── */}
@@ -1200,6 +1221,11 @@ export default function RecipeForm({
               stepAttributions={stepAttributions}
               setStepAttributions={setStepAttributions}
               onRequestImageSearch={(i) => setImageSearchTarget(i)}
+              splitView={splitView}
+              siblingInstructions={
+                siblingData?.data["recipeInstructions"] as HowToStep[] | undefined
+              }
+              siblingLocale={siblingLocale}
             />
 
             {/* ── Classification ── */}
@@ -1227,6 +1253,9 @@ export default function RecipeForm({
               detectedLanguage={aiSuggestions?.detectedLanguage}
               translations={meta.translations as Record<string, string> | undefined}
               collection={collection}
+              splitView={splitView}
+              siblingData={siblingData}
+              siblingLocale={siblingLocale}
             />
 
             {/* ── Pairings ── */}

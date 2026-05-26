@@ -236,8 +236,10 @@ describe("TagInputField — AI button integration", () => {
     expect(tagSrc).toMatch(/AiFieldSuggestButton/);
   });
 
-  test("does not import AiFieldTranslateButton (tags are not translatable)", () => {
-    expect(tagSrc).not.toMatch(/AiFieldTranslateButton/);
+  test("imports AiFieldTranslateButton from @registry (keywords/tags are localizable)", () => {
+    // TagInputField shows AiFieldTranslateButton in split view so keywords and tags
+    // can be localized alongside the other translatable recipe fields.
+    expect(tagSrc).toMatch(/AiFieldTranslateButton/);
   });
 
   test("renders AiFieldSuggestButton when suggestionPath provided", () => {
@@ -259,15 +261,18 @@ describe("TagInputField — AI button integration", () => {
   });
 });
 
-describe("TagInputField — locale-agnostic", () => {
+describe("TagInputField — split view + translate", () => {
   let tagSrc: string;
 
   beforeAll(async () => {
     tagSrc = await readFile(join(FIELDS, "TagInputField.tsx"), "utf-8");
   });
 
-  test("no splitView — tags are locale-agnostic", () => {
-    expect(tagSrc).not.toMatch(/splitView/);
+  test("supports splitView prop for translation mode", () => {
+    // Keywords and tags are localizable: in split view the field shows
+    // AiFieldTranslateButton and a sibling-locale reference row.
+    expect(tagSrc).toMatch(/splitView/);
+    expect(tagSrc).toMatch(/AiFieldTranslateButton/);
   });
 
   test("no dead pendingItems wiring", () => {

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.t
 import { Label } from "@/components/ui/label.tsx";
 import { TagInputField } from "@/components/admin/fields/index.ts";
 import type { AnyForm } from "@/components/admin/forms/_shared/form-types.ts";
+import type { SiblingLocale } from "@/hooks/use-ai-suggestions";
 
 const LANGUAGES = [
   { value: "en", label: "English" },
@@ -17,6 +18,9 @@ interface PublishingSectionProps {
   detectedLanguage?: string;
   translations?: Record<string, string>;
   collection: string;
+  splitView?: boolean;
+  siblingData?: SiblingLocale | null;
+  siblingLocale?: string;
 }
 
 export function PublishingSection({
@@ -27,6 +31,9 @@ export function PublishingSection({
   detectedLanguage,
   translations,
   collection,
+  splitView,
+  siblingData,
+  siblingLocale,
 }: PublishingSectionProps) {
   return (
     <section id="section-publishing" className="scroll-mt-4">
@@ -44,6 +51,9 @@ export function PublishingSection({
                 placeholder="weeknight, make-ahead"
                 suggestions={tagSuggestions}
                 suggestionPath="tags"
+                splitView={splitView}
+                siblingValue={siblingData?.data["tags"] as string[] | undefined}
+                siblingLocale={siblingLocale}
               />
             )}
           </form.Field>
