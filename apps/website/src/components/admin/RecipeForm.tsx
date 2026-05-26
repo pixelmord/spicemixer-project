@@ -2,12 +2,11 @@ import { useState, useEffect, useMemo, useRef, type Dispatch, type SetStateActio
 import { useForm, useStore } from "@tanstack/react-form";
 import { actions } from "astro:actions";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, Link2, Loader2, Check, X, Trash2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Sparkles, Check, Trash2, ExternalLink } from "lucide-react";
 import LinkButton from "@/components/admin/LinkButton.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import { Textarea } from "@/components/ui/textarea.tsx";
 import {
   Select,
   SelectContent,
@@ -57,8 +56,7 @@ interface AiSuggestions {
   detectedLanguage?: string;
 }
 
-import SortableArrayField from "./SortableArrayField.tsx";
-import EntityCombobox, { type EntityOption } from "./EntityCombobox.tsx";
+import type { EntityOption } from "./EntityCombobox.tsx";
 import { SourcesSection } from "./forms/recipe/sections/SourcesSection.tsx";
 import { VariantsSection } from "./forms/recipe/sections/VariantsSection.tsx";
 import { PairingsSection } from "./forms/_shared/PairingsSection.tsx";
@@ -87,12 +85,13 @@ import type { RegionCode } from "@/lib/regions.ts";
 
 type Collection = RecipeCollection;
 
-interface HowToStep {
-  "@type": "HowToStep";
-  text: string;
-  name?: string;
-  image?: string;
-}
+import type {
+  HowToStep,
+  IngredientLink,
+  IngredientLinkProposal,
+} from "./forms/recipe/recipe-types.ts";
+import { InstructionsSection } from "./forms/recipe/sections/InstructionsSection.tsx";
+import { IngredientsSection } from "./forms/recipe/sections/IngredientsSection.tsx";
 
 interface RecipeData {
   "@context": string;
@@ -112,13 +111,6 @@ interface RecipeData {
   datePublished?: string;
   recipeIngredient: string[];
   recipeInstructions: (string | HowToStep)[];
-}
-
-interface IngredientLink {
-  pattern: string;
-  slug: string;
-  kind?: "ingredient" | "recipe";
-  collection?: string;
 }
 
 interface MetaData {
@@ -385,11 +377,7 @@ export default function RecipeForm({
   const [imageSearchTarget, setImageSearchTarget] = useState<"main" | number | null>(null);
 
   // Per-section AI state
-  const [pendingLinks, setPendingLinks] = useState<Array<{
-    pattern: string;
-    slug: string;
-    confidence: "high" | "medium" | "low";
-  }> | null>(null);
+  const [pendingLinks, setPendingLinks] = useState<IngredientLinkProposal[] | null>(null);
   const [aiLinksLoading, setAiLinksLoading] = useState(false);
 
   const [splitView, setSplitView] = useSplitViewPreference();
@@ -1051,20 +1039,6 @@ export default function RecipeForm({
 
   const pairingRunId = useMemo(() => `recipe-pairing-${slug ?? "new"}`, [slug]);
 
-  const linkedPatterns = new Map(ingredientLinks.map((l) => [l.pattern.toLowerCase(), l]));
-  function findLinkForIngredient(ing: string): IngredientLink | undefined {
-    const lower = ing.toLowerCase();
-    for (const [pattern, link] of linkedPatterns.entries()) {
-      if (lower.includes(pattern)) return link;
-    }
-    return undefined;
-  }
-  function findAiLinkSuggestion(ing: string) {
-    if (!pendingLinks) return undefined;
-    const lower = ing.toLowerCase();
-    return pendingLinks.find((l) => lower.includes(l.pattern.toLowerCase()));
-  }
-
   const overflowMenuItems: OverflowMenuItem[] = [
     ...(slug
       ? [
@@ -1379,286 +1353,41 @@ export default function RecipeForm({
             <TimingYieldSection form={form} formValues={formValues} />
 
             {/* ── Ingredients ── */}
-            <section id="section-ingredients" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Ingredients</CardTitle>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={runProposeLinks}
-                      disabled={aiLinksLoading || ingredients.filter(Boolean).length === 0}
-                      className="h-7 text-xs gap-1"
-                    >
-                      {aiLinksLoading ? (
-                        <Loader2 size={11} className="animate-spin" />
-                      ) : (
-                        <Link2 size={11} />
-                      )}
-                      Auto-link
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <SortableArrayField
-                    items={ingredients}
-                    onChange={setIngredients}
-                    onAdd={() => setIngredients((prev) => [...prev, ""])}
-                    addLabel="Add ingredient"
-                    renderItem={(ing, i) => {
-                      const existingLink = findLinkForIngredient(ing);
-                      const aiSuggestion = findAiLinkSuggestion(ing);
-                      return (
-                        <div className="flex items-center gap-1.5 flex-1">
-                          <Input
-                            value={ing}
-                            onChange={(e) =>
-                              setIngredients((prev) =>
-                                prev.map((v, j) => (j === i ? e.target.value : v)),
-                              )
-                            }
-                            placeholder="2 tsp cumin seeds"
-                            className="flex-1"
-                          />
-                          {/* Link button — always shown, opens IngredientLinkModal */}
-                          {existingLink ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setLinkModalState({
-                                  open: true,
-                                  mode: "view",
-                                  slug: existingLink.slug,
-                                  ingredientIndex: i,
-                                })
-                              }
-                              className="shrink-0 flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 text-[10px] text-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-950/40"
-                              title={`Linked → ${existingLink.slug} · click to view`}
-                            >
-                              <Link2 size={9} />
-                              {existingLink.slug}
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setLinkModalState({
-                                  open: true,
-                                  mode: "link",
-                                  ingredientIndex: i,
-                                  ingredientString: ing,
-                                  aiSuggestion: aiSuggestion ?? undefined,
-                                })
-                              }
-                              className={
-                                aiSuggestion
-                                  ? "shrink-0 flex items-center gap-1 rounded border border-amber-200 bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 text-[10px] text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-950/40"
-                                  : "shrink-0 flex items-center gap-1 rounded border border-dashed border-border px-1.5 py-0.5 text-[10px] text-muted-foreground/50 hover:text-muted-foreground hover:border-border/80"
-                              }
-                              title={
-                                aiSuggestion
-                                  ? `AI suggests → ${aiSuggestion.slug} · click to link`
-                                  : "Click to link ingredient"
-                              }
-                            >
-                              {aiSuggestion ? (
-                                <>
-                                  <Sparkles size={9} />
-                                  {aiSuggestion.slug}
-                                </>
-                              ) : (
-                                <Link2 size={9} />
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    }}
-                  />
-
-                  {/* Pending link suggestions summary */}
-                  {pendingLinks && pendingLinks.length > 0 && (
-                    <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-2 space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-amber-800 dark:text-amber-300">
-                          {pendingLinks.length} link{pendingLinks.length !== 1 ? "s" : ""} suggested
-                        </span>
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              pendingLinks.forEach(applyLinkSuggestion);
-                              setPendingLinks(null);
-                            }}
-                            className="flex items-center gap-1 rounded bg-amber-700 px-2 py-0.5 text-white hover:opacity-90"
-                          >
-                            <Check size={9} />
-                            Apply all
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setPendingLinks(null)}
-                            className="flex items-center gap-1 rounded px-2 py-0.5 text-amber-700 hover:bg-amber-100"
-                          >
-                            <X size={9} />
-                            Dismiss
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Manual link management */}
-                  <details className="group">
-                    <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground select-none list-none flex items-center gap-1 pt-1">
-                      <Link2 size={11} />
-                      Ingredient links ({ingredientLinks.length})
-                      <span className="ml-auto group-open:rotate-180 transition-transform">▾</span>
-                    </summary>
-                    <div className="mt-2">
-                      <SortableArrayField
-                        items={ingredientLinks}
-                        onChange={setIngredientLinks}
-                        onAdd={() =>
-                          setIngredientLinks((prev) => [
-                            ...prev,
-                            { pattern: "", slug: "", kind: "ingredient" },
-                          ])
-                        }
-                        addLabel="Add link"
-                        getKey={(_, i) => `ilink-${i}`}
-                        renderItem={(link, i) => (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={link.pattern}
-                              onChange={(e) =>
-                                setIngredientLinks((prev) =>
-                                  prev.map((l, j) =>
-                                    j === i ? { ...l, pattern: e.target.value } : l,
-                                  ),
-                                )
-                              }
-                              placeholder="cumin seeds"
-                              className="flex-1"
-                            />
-                            <span className="shrink-0 text-sm text-muted-foreground">→</span>
-                            <EntityCombobox
-                              value={link.slug}
-                              onChange={(v) =>
-                                setIngredientLinks((prev) =>
-                                  prev.map((l, j) => (j === i ? { ...l, slug: v } : l)),
-                                )
-                              }
-                              options={ingredientOptions}
-                              placeholder="ingredient"
-                              className="flex-1"
-                              onCreateNew={(name) =>
-                                openQuickCreate("ingredient", name, (newSlug, newLabel) => {
-                                  setIngredientOptions((prev) => [
-                                    ...prev,
-                                    { value: newSlug, label: newLabel, sublabel: newSlug },
-                                  ]);
-                                  setIngredientLinks((prev) =>
-                                    prev.map((l, j) => (j === i ? { ...l, slug: newSlug } : l)),
-                                  );
-                                })
-                              }
-                            />
-                          </div>
-                        )}
-                      />
-                    </div>
-                  </details>
-                </CardContent>
-              </Card>
-            </section>
+            <IngredientsSection
+              ingredients={ingredients}
+              setIngredients={setIngredients}
+              ingredientLinks={ingredientLinks}
+              setIngredientLinks={setIngredientLinks}
+              ingredientOptions={ingredientOptions}
+              setIngredientOptions={setIngredientOptions}
+              pendingLinks={pendingLinks}
+              setPendingLinks={setPendingLinks}
+              aiLinksLoading={aiLinksLoading}
+              onRunProposeLinks={runProposeLinks}
+              onApplyLinkSuggestion={applyLinkSuggestion}
+              onRequestViewLink={(slug, ingredientIndex) =>
+                setLinkModalState({ open: true, mode: "view", slug, ingredientIndex })
+              }
+              onRequestLinkIngredient={(ingredientIndex, ingredientString, aiSuggestion) =>
+                setLinkModalState({
+                  open: true,
+                  mode: "link",
+                  ingredientIndex,
+                  ingredientString,
+                  aiSuggestion,
+                })
+              }
+              onOpenQuickCreate={openQuickCreate}
+            />
 
             {/* ── Instructions ── */}
-            <section id="section-instructions" className="scroll-mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Instructions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SortableArrayField
-                    items={instructions}
-                    onChange={setInstructions}
-                    onAdd={() =>
-                      setInstructions((prev) => [...prev, { "@type": "HowToStep", text: "" }])
-                    }
-                    addLabel="Add step"
-                    getKey={(_, i) => `step-${i}`}
-                    renderItem={(step, i) => (
-                      <div className="space-y-2 rounded-md border border-border p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-muted-foreground">
-                            Step {i + 1}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setImageSearchTarget(i)}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            {step.image ? "Change image" : "Add image"}
-                          </button>
-                        </div>
-                        <Input
-                          value={step.name ?? ""}
-                          onChange={(e) =>
-                            setInstructions((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, name: e.target.value } : s)),
-                            )
-                          }
-                          placeholder="Step name (optional)"
-                        />
-                        <Textarea
-                          value={step.text}
-                          onChange={(e) =>
-                            setInstructions((prev) =>
-                              prev.map((s, j) => (j === i ? { ...s, text: e.target.value } : s)),
-                            )
-                          }
-                          rows={2}
-                          placeholder="Description of this step…"
-                        />
-                        {step.image && (
-                          <div className="flex items-center gap-2">
-                            <img
-                              src={step.image}
-                              alt=""
-                              className="h-12 w-12 rounded object-cover border border-border"
-                            />
-                            {stepAttributions.get(i) && (
-                              <p className="text-[11px] text-muted-foreground flex-1 truncate">
-                                {stepAttributions.get(i)?.attribution}
-                              </p>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setInstructions((prev) =>
-                                  prev.map((s, j) => (j === i ? { ...s, image: undefined } : s)),
-                                );
-                                setStepAttributions((prev) => {
-                                  const next = new Map(prev);
-                                  next.delete(i);
-                                  return next;
-                                });
-                              }}
-                              className="text-xs text-muted-foreground hover:text-destructive shrink-0"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-            </section>
+            <InstructionsSection
+              instructions={instructions}
+              setInstructions={setInstructions}
+              stepAttributions={stepAttributions}
+              setStepAttributions={setStepAttributions}
+              onRequestImageSearch={(i) => setImageSearchTarget(i)}
+            />
 
             {/* ── Classification ── */}
             <ClassificationSection
