@@ -107,7 +107,11 @@ export function TextField({
         className={className}
       />
       {suggestionPath && (
-        <InlineTextSuggestion fieldPath={suggestionPath} onApply={(v) => field.handleChange(v)} />
+        <InlineTextSuggestion
+          fieldPath={suggestionPath}
+          currentValue={field.state.value ?? ""}
+          onApply={(v) => field.handleChange(v)}
+        />
       )}
       {hint}
     </>

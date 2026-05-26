@@ -167,6 +167,18 @@ describe("AiBulkTranslateButton — fill-gaps (default)", () => {
     const call = flow.runTranslation.mock.calls[0][0];
     expect(call.target).not.toContain("name");
   });
+
+  test("fill-gaps with all translatable fields filled does NOT call runTranslation", async () => {
+    const flow = makeFlow();
+    // testContract has name + description as translatable; both are provided
+    const currentData = { name: "Basil", description: "A fragrant herb" };
+    const screen = await renderWithFlow(
+      <AiBulkTranslateButton contract={testContract} currentData={currentData} />,
+      flow,
+    );
+    await screen.getByRole("button", { name: /translate missing fields/i }).click();
+    expect(flow.runTranslation).not.toHaveBeenCalled();
+  });
 });
 
 describe("AiBulkTranslateButton — replace-all policy", () => {

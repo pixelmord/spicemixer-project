@@ -356,6 +356,49 @@ describe("Retranslate affordance (via InlineTextSuggestion)", () => {
   });
 });
 
+// ── InlineTextSuggestion — currentValue filtering ────────────────────────────
+
+describe("InlineTextSuggestion — currentValue filtering", () => {
+  test("renders nothing when suggestion value matches currentValue", async () => {
+    const sameSuggestion: FieldSuggestion = {
+      kind: "single",
+      value: "Sauce",
+      confidence: "high",
+      summary: "Category translation",
+      hash: "hash-same",
+      traceId: "trace-same",
+    };
+    const flow = makeFlow({ recipeCategory: sameSuggestion });
+    const { container } = await renderWithFlow(
+      <InlineTextSuggestion fieldPath="recipeCategory" currentValue="Sauce" onApply={vi.fn()} />,
+      flow,
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
+  test("renders suggestion normally when value differs from currentValue", async () => {
+    const flow = makeFlow({ description: textSuggestion });
+    const screen = await renderWithFlow(
+      <InlineTextSuggestion
+        fieldPath="description"
+        currentValue="old description"
+        onApply={vi.fn()}
+      />,
+      flow,
+    );
+    await expect.element(screen.getByText(String(textSuggestion.value))).toBeVisible();
+  });
+
+  test("renders suggestion normally when currentValue is undefined", async () => {
+    const flow = makeFlow({ description: textSuggestion });
+    const screen = await renderWithFlow(
+      <InlineTextSuggestion fieldPath="description" onApply={vi.fn()} />,
+      flow,
+    );
+    await expect.element(screen.getByText(String(textSuggestion.value))).toBeVisible();
+  });
+});
+
 // ── sourceSlot layout (via InlineTextSuggestion) ──────────────────────────────
 
 describe("sourceSlot layout", () => {

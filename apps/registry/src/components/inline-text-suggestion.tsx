@@ -9,6 +9,11 @@ export interface InlineTextSuggestionProps {
   onApply: (value: string) => void;
   /** Read-only sibling-locale value rendered alongside in translation flows. */
   sourceSlot?: React.ReactNode;
+  /**
+   * Current field value. When provided, a suggestion whose value is identical
+   * to this is suppressed (same behaviour as TagsSuggestionRow for arrays).
+   */
+  currentValue?: string;
   className?: string;
 }
 
@@ -16,6 +21,7 @@ export function InlineTextSuggestion({
   fieldPath,
   onApply,
   sourceSlot,
+  currentValue,
   className,
 }: InlineTextSuggestionProps) {
   const { suggestion, accessor, showRetranslate } = useFieldSuggestion(fieldPath);
@@ -31,6 +37,24 @@ export function InlineTextSuggestion({
   ) : null;
 
   if (!suggestion) {
+    if (!showRetranslate) return null;
+    return (
+      <div className={className}>
+        <RetranslateButton
+          sourceLocale={accessor.sourceLocale!}
+          isStale={accessor.isStale}
+          onRetranslate={() => void accessor.retranslate()}
+        />
+      </div>
+    );
+  }
+
+  // Suppress single-value suggestion when it matches the current field value.
+  if (
+    suggestion.kind === "single" &&
+    currentValue !== undefined &&
+    String(suggestion.value ?? "") === currentValue
+  ) {
     if (!showRetranslate) return null;
     return (
       <div className={className}>

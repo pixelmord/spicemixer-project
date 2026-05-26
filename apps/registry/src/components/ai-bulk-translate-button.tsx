@@ -57,6 +57,7 @@ export function AiBulkTranslateButton({
   async function handleRun() {
     setDropdownOpen(false);
     const target = policy === "fill-gaps" ? emptyFields : allTranslatableFields;
+    if (target.length === 0) return;
     await flow.runTranslation({ target });
   }
 
