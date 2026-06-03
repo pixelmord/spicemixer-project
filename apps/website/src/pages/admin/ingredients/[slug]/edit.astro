@@ -21,6 +21,8 @@ const otherLocale = locale === "en" ? "de" : "en";
 const otherItem = await store.get("ingredients", `${otherLocale}/${slug}`);
 const existingTranslationLocales = otherItem ? [otherLocale] : [];
 
+const initialSplitView = Astro.cookies.get("spicemixer.splitViewEnabled")?.value === "true";
+
 const title = `${String((item.data as Record<string, unknown>).name ?? slug)} [${locale}] · Edit · Admin`;
 ---
 
@@ -31,6 +33,7 @@ const title = `${String((item.data as Record<string, unknown>).name ?? slug)} [$
     initialData={item.data as never}
     initialMeta={metaItem?.data as never ?? {}}
     existingTranslationLocales={existingTranslationLocales}
+    initialSplitView={initialSplitView}
     client:load
   />
 </AdminLayout>

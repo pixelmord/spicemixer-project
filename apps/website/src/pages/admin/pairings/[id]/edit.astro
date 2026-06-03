@@ -39,6 +39,8 @@ const otherLocale = locale === "en" ? "de" : "en";
 const otherItem = await store.get("pairings", `${otherLocale}/${pairingId}`);
 const existingTranslationLocales = otherItem ? [otherLocale] : [];
 
+const initialSplitView = Astro.cookies.get("spicemixer.splitViewEnabled")?.value === "true";
+
 ---
 <AdminLayout title={`${endpoints.map(e => e.slug).join(" ↔ ")} [${locale}] · Pairing · Admin`}>
       <PairingForm
@@ -51,6 +53,7 @@ const existingTranslationLocales = otherItem ? [otherLocale] : [];
         initialImageAttribution={imageAttribution}
         initialTranslationOf={initialTranslationOf}
         existingTranslationLocales={existingTranslationLocales}
+        initialSplitView={initialSplitView}
         client:load
       />
 </AdminLayout>

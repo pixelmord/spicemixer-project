@@ -44,6 +44,8 @@ interface Props {
   isNew?: boolean;
   /** Set when this locale is a translation of another locale's pairing */
   initialTranslationOf?: string;
+  /** SSR-known split-view preference (from cookie) to avoid hydration flash. */
+  initialSplitView?: boolean;
 }
 
 const ALL_LOCALES = ["en", "de"] as const;
@@ -85,6 +87,7 @@ export default function PairingForm({
   existingTranslationLocales = [],
   isNew,
   initialTranslationOf,
+  initialSplitView = false,
 }: Props) {
   const { draft, setDraft, saving, setSaving } = useEntityFormState({
     kind: "pairing",
@@ -103,7 +106,7 @@ export default function PairingForm({
   const [translateRunId] = useState(() => crypto.randomUUID());
   const pendingTranslationRef = useRef<{ locale: string; desc: string } | null>(null);
 
-  const [splitView, setSplitView] = useSplitViewPreference();
+  const [splitView, setSplitView] = useSplitViewPreference(initialSplitView);
   const siblingLoc = locale === "en" ? "de" : "en";
 
   useEffect(() => {

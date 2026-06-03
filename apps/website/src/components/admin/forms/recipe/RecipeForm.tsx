@@ -124,6 +124,8 @@ interface Props {
   initialRecipe?: Partial<RecipeData>;
   initialMeta?: Partial<MetaData>;
   isNew?: boolean;
+  /** SSR-known split-view preference (from cookie) to avoid hydration flash. */
+  initialSplitView?: boolean;
 }
 
 function emptyRecipe(): RecipeData {
@@ -247,6 +249,7 @@ export default function RecipeForm({
   initialRecipe,
   initialMeta,
   isNew,
+  initialSplitView = false,
 }: Props) {
   const recipe = { ...emptyRecipe(), ...initialRecipe } as RecipeData;
   const meta = { ...emptyMeta(), ...initialMeta } as MetaData;
@@ -349,7 +352,7 @@ export default function RecipeForm({
   const [pendingLinks, setPendingLinks] = useState<IngredientLinkProposal[] | null>(null);
   const [aiLinksLoading, setAiLinksLoading] = useState(false);
 
-  const [splitView, setSplitView] = useSplitViewPreference();
+  const [splitView, setSplitView] = useSplitViewPreference(initialSplitView);
 
   // Modals
   const [enhanceOpen, setEnhanceOpen] = useState(false);
