@@ -1646,7 +1646,15 @@ export const server = {
         });
       }
 
-      await store.put(collection, `${targetLocale}/${translationSlug}`, fields);
+      // Recipes/mixtures must carry schema.org boilerplate to pass the collection
+      // schema. The translate dialog only emits fields listed in the contract, so
+      // @context/@type get dropped — re-inject here.
+      const fieldsToStore =
+        collection === "recipes" || collection === "mixtures"
+          ? { "@context": "https://schema.org", "@type": "Recipe", ...fields }
+          : fields;
+
+      await store.put(collection, `${targetLocale}/${translationSlug}`, fieldsToStore);
       await sidecar.write({ collection, locale: targetLocale, slug: translationSlug }, meta);
 
       // Back-link original → translation.

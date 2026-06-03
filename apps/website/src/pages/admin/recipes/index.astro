@@ -10,7 +10,11 @@ const store = await createStore();
 const [items, metas] = await Promise.all([store.list("recipes"), store.list("meta")]);
 const metaMap = new Map(metas.map((m) => [m.id, m.data as Record<string, unknown>]));
 
-const rows = groupBySlug(items).map(({ slug, primary, translations }) => {
+const rows = groupBySlug(items, (item) => {
+  const meta = metaMap.get(`recipes/${item.id}`);
+  const t = meta?.["translations"];
+  return t && typeof t === "object" ? (t as Record<string, string>) : undefined;
+}).map(({ slug, primary, translations }) => {
   const meta = (metaMap.get(`recipes/${primary.id}`) ?? {}) as Record<string, unknown>;
   const completeness = scoreRecipe(primary.data as never, meta as never);
   return {

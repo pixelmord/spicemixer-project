@@ -1,0 +1,44 @@
+{
+  "draft": true,
+  "kind": "recipe",
+  "tags": [],
+  "ingredientLinks": [],
+  "sources": [],
+  "variants": [],
+  "language": "de",
+  "locale": "de",
+  "translationOf": "vegetable-beef-skillet",
+  "translations": {
+    "en": "vegetable-beef-skillet"
+  },
+  "aiEvents": [
+    {
+      "type": "ingested",
+      "suggestion": {
+        "hash": "4dcb6055-aca2-4128-ac58-744cf58817aa",
+        "summary": "Translation to de"
+      },
+      "model": "translation",
+      "traceId": "4dcb6055-aca2-4128-ac58-744cf58817aa",
+      "id": "96ac9b66-ad23-4a61-b0fe-7cfe6e441617",
+      "at": "2026-06-03T13:07:46.529Z"
+    }
+  ],
+  "canonicalLocale": "en",
+  "canonicalFieldHashes": {
+    "name": "Vegetable and Beef Skillet",
+    "description": "A hearty and nutritious meal featuring lean ground beef, rice, and a variety of vegetables, topped with melted cheese.",
+    "recipeCategory": "Main Dish",
+    "recipeCuisine": "American",
+    "slug": "vegetable-beef-skillet",
+    "recipeYield": "8 cups",
+    "keywords": "[\"beef\",\"skillet\",\"vegetables\",\"rice\",\"meal prep\"]",
+    "tags": "[\"hearty\",\"main-dish\",\"one-pan\",\"quick-dinner\",\"pantry\",\"spicy\",\"vegetable\",\"beef\"]",
+    "recipeIngredient": "[\"½ pound lean ground beef (15% fat)\",\"¾ cup chopped onion (¾ medium onion)\",\"1 cup uncooked white rice\",\"1 can (15 ounces) diced tomatoes (about 2 medium fresh tomatoes)\",\"1½ cups vegetables, fresh, frozen, or canned and drained (zucchini, bell pepper, broccoli, corn, cauliflower)\",\"1¾ cups water\",\"1½ teaspoons chili powder\",\"1 tablespoon oregano\",\"1 teaspoon salt\",\"½ cup (2 ounces) shredded cheese\"]",
+    "recipeInstructions": "[{\"@type\":\"HowToStep\",\"text\":\"Cook beef in a large skillet over medium-high heat until no longer pink. Drain fat.\",\"name\":\"Cook the beef\"},{\"@type\":\"HowToStep\",\"text\":\"Add onion and cook until soft, about 3 to 5 minutes.\",\"name\":\"Add the onion\"},{\"@type\":\"HowToStep\",\"text\":\"Add rice, tomatoes, vegetables, water and spices. Stir and bring to a boil.\",\"name\":\"Combine ingredients\"},{\"@type\":\"HowToStep\",\"text\":\"Reduce heat to medium low. Cover, and simmer for 20 minutes or until rice is cooked. Add more water if needed.\",\"name\":\"Simmer the mixture\"},{\"@type\":\"HowToStep\",\"text\":\"Remove from heat. Sprinkle with cheese and cover for 1 to 2 minutes to allow cheese to melt. Serve warm.\",\"name\":\"Add cheese\"}]",
+    "prepTime": "PT10M",
+    "cookTime": "PT40M",
+    "totalTime": "PT50M",
+    "region": "[\"north-america\"]"
+  }
+}

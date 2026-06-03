@@ -1,0 +1,63 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "Gemüse- und Rinderpfanne",
+  "description": "Eine herzhaften und nahrhaften Mahlzeit mit magerem Rinderhack, Reis und einer Vielzahl von Gemüse, überbacken mit geschmolzenem Käse.",
+  "recipeCategory": "Hauptgericht",
+  "recipeCuisine": "Amerikanisch",
+  "recipeYield": 8,
+  "keywords": ["Rindfleisch", "Pfanne", "Gemüse", "Reis", "Mahlzeit Vorbereitung"],
+  "recipeIngredient": [
+    "½ Pfund mageres Rinderhack (15% Fett)",
+    "¾ Tasse gehackte Zwiebel (¾ mittelgroße Zwiebel)",
+    "1 Tasse ungekochter weißer Reis",
+    "1 Dose (15 Unzen) gewürfelte Tomaten (ca. 2 mittelgroße frische Tomaten)",
+    "1½ Tassen frisches, gefrorenes oder abgetropftes Gemüse (Zucchini, Paprika, Brokkoli, Mais, Blumenkohl)",
+    "1¾ Tassen Wasser",
+    "1½ Teelöffel Chilipulver",
+    "1 Esslöffel Oregano",
+    "1 Teelöffel Salz",
+    "½ Tasse (2 Unzen) geriebener Käse"
+  ],
+  "recipeInstructions": [
+    {
+      "@type": "HowToStep",
+      "text": "Das Rinderhack in einer großen Pfanne bei mittelhoher Hitze braten, bis es nicht mehr rosa ist. Fett abgießen.",
+      "name": "Rinderhack braten"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Zwiebel hinzufügen und braten, bis sie weich ist, etwa 3 bis 5 Minuten.",
+      "name": "Die Zwiebel hinzufügen"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Reis, Tomaten, Gemüse, Wasser und Gewürze hinzufügen. Umrühren und zum Kochen bringen.",
+      "name": "Zutaten kombinieren"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Hitze auf mittlere, niedrige Stufe reduzieren. Abdecken und 20 Minuten köcheln lassen, oder bis der Reis gekocht ist. Bei Bedarf mehr Wasser hinzufügen.",
+      "name": "Die Mischung köcheln lassen"
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Vom Herd nehmen. Mit Käse bestreuen und 1 bis 2 Minuten abdecken, damit der Käse schmelzen kann. Warm servieren.",
+      "name": "Käse hinzufügen"
+    }
+  ],
+  "tags": [
+    "herzhaft",
+    "hauptgericht",
+    "ein-Topf",
+    "schnelles Abendessen",
+    "Speisekammer",
+    "würzig",
+    "Gemüse",
+    "Rindfleisch"
+  ],
+  "prepTime": "PT10M",
+  "cookTime": "PT40M",
+  "totalTime": "PT50M",
+  "region": ["north-america"]
+}

@@ -61,6 +61,40 @@ describe("groupBySlug", () => {
     expect(groupBySlug([])).toEqual([]);
   });
 
+  test("merges groups whose meta.translations cross-reference each other", () => {
+    const en = { id: "en/vegetable-beef-skillet", data: {} };
+    const de = { id: "de/gemuese-rindfleisch-pfanne", data: {} };
+    const translations: Record<string, Record<string, string>> = {
+      "en/vegetable-beef-skillet": { de: "gemuese-rindfleisch-pfanne" },
+      "de/gemuese-rindfleisch-pfanne": { en: "vegetable-beef-skillet" },
+    };
+    const groups = groupBySlug([en, de], (item) => translations[item.id]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.translations).toEqual(["de", "en"]);
+    expect(groups[0]!.primary).toBe(en);
+    expect(groups[0]!.slug).toBe("vegetable-beef-skillet");
+  });
+
+  test("one-sided meta.translations linkage is enough to merge", () => {
+    const en = { id: "en/vegetable-beef-skillet", data: {} };
+    const de = { id: "de/gemuese-rindfleisch-pfanne", data: {} };
+    const translations: Record<string, Record<string, string>> = {
+      "en/vegetable-beef-skillet": { de: "gemuese-rindfleisch-pfanne" },
+    };
+    const groups = groupBySlug([en, de], (item) => translations[item.id]);
+    expect(groups).toHaveLength(1);
+  });
+
+  test("stale translations pointer to non-existent slug doesn't merge with anything else", () => {
+    const en = { id: "en/harissa", data: {} };
+    const berbere = { id: "en/berbere", data: {} };
+    const translations: Record<string, Record<string, string>> = {
+      "en/harissa": { de: "missing-slug" },
+    };
+    const groups = groupBySlug([en, berbere], (item) => translations[item.id]);
+    expect(groups).toHaveLength(2);
+  });
+
   test("localeItems contains all variants for a slug", () => {
     const de = { id: "de/ras-el-hanout", data: {} };
     const en = { id: "en/ras-el-hanout", data: {} };
