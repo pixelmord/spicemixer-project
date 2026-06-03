@@ -1,6 +1,6 @@
 {
   "name": "recipe-ingestion",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Fetch and normalize schema.org Recipe JSON-LD from third-party websites.",
   "license": "MIT",
   "files": [

@@ -1,6 +1,6 @@
 {
   "name": "@pixelmord/content-ai-ingest",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "runFill runner — source-context typed AI fill for content entities.",
   "license": "MIT",
   "files": [

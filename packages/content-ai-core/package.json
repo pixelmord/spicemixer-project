@@ -1,6 +1,6 @@
 {
   "name": "@pixelmord/content-ai-core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI contract types, event log interface, trace sink, Origin/ALS, fingerprinting, suppression rules, and presentation helpers.",
   "license": "MIT",
   "files": [
