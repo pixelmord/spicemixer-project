@@ -39,21 +39,12 @@
     }
   ],
   "aiSuggestions": {
-    "fingerprint": "9a93b5d3218a335e7a5586e7cf6d675a57ab9515d893a3d78f54b2b4f658e622",
-    "at": "2026-05-25T15:19:23.091Z",
+    "fingerprint": "720e42de59b8b8a52aaeb96392e673f4b2c0c0f4acb3c7cca13ca14c331ddfe1",
+    "at": "2026-06-03T14:04:11.088Z",
     "model": "gpt-4o-mini",
     "data": {
       "improvements": [],
-      "tags": [
-        "beef-skillet",
-        "vegetable-dish",
-        "one-pan-meal",
-        "easy-dinner",
-        "american-cuisine",
-        "healthy-recipe",
-        "cheesy-dinner",
-        "quick-meal"
-      ],
+      "tags": [],
       "ingredientLinks": [
         {
           "pattern": "chili powder",
@@ -64,33 +55,34 @@
       "relations": [],
       "pairings": [
         {
+          "otherCollection": "ingredients",
+          "otherSlug": "chili-powder",
+          "rationale": "Chili powder complements the spicy notes in the Vegetable and Beef Skillet, enhancing its flavor profile with warmth and depth.",
+          "traceId": "f89fc83c-8c74-4760-a73c-24e3ba4ec01d"
+        },
+        {
           "otherCollection": "mixtures",
           "otherSlug": "berbere",
-          "rationale": "The warm spices in berbere complement the hearty flavors of the lean beef and vegetables, enhancing the overall depth of the dish while adding a unique Ethiopian flair.",
-          "traceId": "d62a7245-b0d0-4701-9608-80143c25a1a3"
-        },
-        {
-          "otherCollection": "ingredients",
-          "otherSlug": "cumin",
-          "rationale": "Cumin's earthy and warm profile harmonizes beautifully with the chili powder and oregano in the skillet, rounding out the savory notes of the beef and veggies.",
-          "traceId": "d62a7245-b0d0-4701-9608-80143c25a1a3"
-        },
-        {
-          "otherCollection": "ingredients",
-          "otherSlug": "paprika",
-          "rationale": "Paprika adds a subtle smokiness and vibrant color to the dish, enhancing the flavors of the tomatoes and cheese, making the skillet even more appetizing.",
-          "traceId": "d62a7245-b0d0-4701-9608-80143c25a1a3"
+          "rationale": "Berbere adds a complex, aromatic spice blend that can elevate the dish, bringing additional layers of flavor that pair well with the beef and vegetables.",
+          "traceId": "f89fc83c-8c74-4760-a73c-24e3ba4ec01d"
         },
         {
           "otherCollection": "mixtures",
           "otherSlug": "harissa",
-          "rationale": "Harissa provides a spicy kick that can elevate the dish, adding complexity and richness that works well with the other ingredients, especially the beef.",
-          "traceId": "d62a7245-b0d0-4701-9608-80143c25a1a3"
+          "rationale": "Harissa provides a spicy and smoky contrast that pairs beautifully with the hearty elements of the skillet, enriching the overall taste experience.",
+          "traceId": "f89fc83c-8c74-4760-a73c-24e3ba4ec01d"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "gemuese-rindfleisch-pfanne",
+          "rationale": "This similar recipe offers a cultural connection, using comparable ingredients to create a comforting, savory dish that resonates well with the flavors of the skillet.",
+          "traceId": "f89fc83c-8c74-4760-a73c-24e3ba4ec01d"
         }
       ]
     }
   },
   "translations": {
     "de": "gemuese-rindfleisch-pfanne"
-  }
+  },
+  "locale": "en"
 }
