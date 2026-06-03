@@ -2,8 +2,38 @@
   "@context": "https://schema.org",
   "@type": "Recipe",
   "name": "Harissa",
-  "recipeIngredient": [],
-  "recipeInstructions": [],
+  "recipeIngredient": [
+    "150 g getrocknete rote Chilischoten (Ancho oder New-Mexico-Sorte)",
+    "4 Knoblauchzehen",
+    "1 TL Kümmelsamen",
+    "1 TL gemahlene Korianderkörner",
+    "1 TL Kreuzkümmel",
+    "3 EL Olivenöl extra vergine",
+    "1 TL Salz",
+    "Saft einer halben Zitrone"
+  ],
+  "recipeInstructions": [
+    {
+      "@type": "HowToStep",
+      "name": "Einweichen",
+      "text": "Stiele und Kerne der getrockneten Chilis entfernen. 20 Minuten in kochendem Wasser einweichen, bis sie vollständig weich sind."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Rösten",
+      "text": "Kümmelsamen in einer kleinen Pfanne bei mittlerer Hitze 1 Minute lang trocken anrösten, bis sie aromatisch duften."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Pürieren",
+      "text": "Chilis abtropfen lassen und mit Knoblauch, Kümmel, Koriander, Kreuzkümmel, Olivenöl, Salz und Zitronensaft glatt pürieren."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Aufbewahren",
+      "text": "In ein Glas füllen und mit einer dünnen Schicht Olivenöl bedecken, um es zu versiegeln. Im Kühlschrank bis zu 2 Wochen haltbar."
+    }
+  ],
   "description": "Rauchige, feurige nordafrikanische Chilipaste. Das Rückgrat der tunesischen Küche — verwenden Sie sie in Dressings, Marinaden und überall dort, wo Wärme und Tiefe benötigt werden.",
   "image": "https://upload.wikimedia.org/wikipedia/commons/d/d6/Harissa_in_a_jar_%28vertical%29.jpg",
   "recipeCategory": "Soße",
