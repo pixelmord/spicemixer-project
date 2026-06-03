@@ -34,6 +34,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Workspace packages export only built artifacts (e.g. entity-kind →
+      # dist/index.mjs); tests fail to resolve them on a cold CI checkout
+      # unless we build first.
+      - name: Build workspace packages
+        run: pnpm exec vp run -r build
+
       # Cache Playwright browsers by resolved @playwright/test version, not by
       # lockfile hash — otherwise any unrelated dep change invalidates the
       # (~150MB) browser download. Version is read after install so it
@@ -101,6 +107,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm exec vp run -r build
 
       - name: Cache Playwright browsers
         id: pw-cache
