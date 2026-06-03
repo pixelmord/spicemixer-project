@@ -9,6 +9,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const sharedAlias = {
   "@": fileURLToPath(new URL("./src", import.meta.url)),
   "@registry": join(__dirname, "../registry/src"),
+  // Astro virtual modules don't exist outside an Astro build. Stub them so
+  // Vitest can resolve any transitive import; tests that hit actions should
+  // mock specific handlers via vi.mock("astro:actions", …).
+  "astro:actions": join(__dirname, "./tests/stubs/astro-actions.ts"),
   "@pixelmord/content-ai-ingest": join(__dirname, "../../packages/content-ai-ingest/src/index.ts"),
   "@pixelmord/content-ai-refine": join(__dirname, "../../packages/content-ai-refine/src/index.ts"),
   "@pixelmord/content-ai-core/server": join(
