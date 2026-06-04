@@ -1,6 +1,6 @@
 {
   "name": "@pixelmord/content-ai-refine",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "runRefine runner — contract-driven per-field AI refine for content entities.",
   "license": "MIT",
   "files": [

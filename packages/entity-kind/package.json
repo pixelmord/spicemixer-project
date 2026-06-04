@@ -1,6 +1,6 @@
 {
   "name": "entity-kind",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "EntityKind discriminator and per-kind config registry for SpiceMixer.",
   "license": "MIT",
   "files": [
