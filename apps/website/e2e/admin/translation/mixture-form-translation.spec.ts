@@ -19,6 +19,7 @@ import {
 } from "./shared.ts";
 
 const EDIT_URL = "/admin/mixtures/e2e-blend/edit";
+const BILINGUAL_URL = "/admin/mixtures/e2e-mix-bilingual/edit";
 
 test.describe("MixtureForm split-view: toggle + persistence", () => {
   test.beforeEach(async ({ page }) => {
@@ -124,6 +125,7 @@ test.describe("MixtureForm split-view: per-field translate buttons", () => {
   test("MixtureForm per-field translate (no merge) runs AI and shows suggestion", async ({
     page,
   }) => {
+    await page.goto(BILINGUAL_URL, { waitUntil: "networkidle" });
     const translateBtn = page.getByRole("button", { name: /translate from/i }).first();
     await translateBtn.click();
     await expect(page.getByRole("button", { name: /apply|accept/i }).first()).toBeVisible({
@@ -132,6 +134,7 @@ test.describe("MixtureForm split-view: per-field translate buttons", () => {
   });
 
   test("MixtureForm per-field translate with 'Merge with existing' enabled", async ({ page }) => {
+    await page.goto(BILINGUAL_URL, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Merge options" }).first().click();
     await page.getByRole("checkbox", { name: /merge with existing/i }).check();
     const translateBtn = page.getByRole("button", { name: /translate from/i }).first();
@@ -172,7 +175,7 @@ test.describe("MixtureForm: bulk translate (split view)", () => {
 
   test("MixtureForm bulk translate 'fill-gaps' only targets empty fields", async ({ page }) => {
     await page.getByRole("button", { name: "Translation options" }).click();
-    await page.getByRole("button", { name: "Translate missing fields" }).click();
+    await page.getByRole("button", { name: "Translate missing fields" }).nth(1).click();
     await expect(
       page.getByRole("button", { name: "Translate missing fields" }).first(),
     ).toBeVisible();
@@ -180,7 +183,7 @@ test.describe("MixtureForm: bulk translate (split view)", () => {
 
   test("MixtureForm bulk translate 'replace-all' overwrites all fields", async ({ page }) => {
     await page.getByRole("button", { name: "Translation options" }).click();
-    await page.getByRole("button", { name: "Re-translate all fields" }).click();
+    await page.getByRole("button", { name: "Re-translate all fields" }).nth(1).click();
     await expect(
       page.getByRole("button", { name: "Re-translate all fields" }).first(),
     ).toBeVisible();
@@ -190,11 +193,11 @@ test.describe("MixtureForm: bulk translate (split view)", () => {
     page,
   }) => {
     await page.getByRole("button", { name: "Translation options" }).click();
-    await page.getByRole("button", { name: "Re-translate all fields" }).click();
+    await page.getByRole("button", { name: "Re-translate all fields" }).nth(1).click();
     expect(await getBulkWritePolicy(page)).toBe("replace-all");
 
     await page.getByRole("button", { name: "Translation options" }).click();
-    await page.getByRole("button", { name: "Translate missing fields" }).click();
+    await page.getByRole("button", { name: "Translate missing fields" }).nth(1).click();
     expect(await getBulkWritePolicy(page)).toBe("fill-gaps");
   });
 
@@ -254,7 +257,7 @@ test.describe("MixtureForm: translate dialog + slug picker", () => {
     page,
   }) => {
     await page.goto(EDIT_URL, { waitUntil: "networkidle" });
-    const translateBtn = page.getByRole("button", { name: /^translate$/i });
+    const translateBtn = page.getByRole("button", { name: /^add de$/i });
     await expect(translateBtn).toBeVisible({ timeout: 3000 });
     await translateBtn.click();
     await expect(page.getByRole("dialog")).toBeVisible({ timeout: 3000 });

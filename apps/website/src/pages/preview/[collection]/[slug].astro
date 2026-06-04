@@ -13,6 +13,7 @@ import {
 } from "../../../lib/recipe-augment.ts";
 import { createStore } from "@/lib/content-store.ts";
 import type { RecipeCollection } from "@/lib/content-store.ts";
+import "../../../styles/global.css";
 
 const VALID_COLLECTIONS: RecipeCollection[] = ["recipes", "mixtures"];
 
@@ -63,7 +64,6 @@ const lightboxSteps = steps.map((step) => ({
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="/src/styles/global.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <title>[Preview] {String(data.name ?? slug)}</title>

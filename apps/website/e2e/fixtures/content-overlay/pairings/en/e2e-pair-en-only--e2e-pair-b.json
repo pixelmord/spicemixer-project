@@ -1,0 +1,7 @@
+{
+  "endpoints": [
+    { "collection": "ingredients", "slug": "e2e-spice" },
+    { "collection": "ingredients", "slug": "e2e-untranslated" }
+  ],
+  "description": "An EN-only pairing used only by the e2e translation suite to exercise the 'Add DE' flow."
+}

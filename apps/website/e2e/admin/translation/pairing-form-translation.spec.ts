@@ -70,7 +70,6 @@ test.describe("PairingForm split-view: completeness rail", () => {
 
   test("PairingForm completeness rail collapses to icon in split view", async ({ page }) => {
     await expect(completenessToggleBtn(page)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Toggle completeness panel" })).toBeVisible();
   });
 
   test("PairingForm completeness rail popover renders from icon", async ({ page }) => {
@@ -193,8 +192,8 @@ test.describe("PairingForm: per-field AI suggest", () => {
 test.describe("PairingForm: section navigation", () => {
   test("PairingForm section anchors exist inside EntityFormLayout", async ({ page }) => {
     await page.goto(EN_URL, { waitUntil: "networkidle" });
-    await expect(page.getByRole("link", { name: /endpoints/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /description/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /endpoints/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /description/i })).toBeVisible();
   });
 });
 
@@ -207,10 +206,9 @@ test.describe("PairingForm: swap language", () => {
   });
 
   test("PairingForm swap language button navigates to sibling locale", async ({ page }) => {
-    await expect(page.getByRole("button", { name: "Swap language" })).toBeVisible({
-      timeout: 5000,
-    });
-    await page.getByRole("button", { name: "Swap language" }).click();
+    const swapBtn = page.getByRole("button", { name: /^en\s+de$|^de\s+en$/i });
+    await expect(swapBtn).toBeVisible({ timeout: 5000 });
+    await swapBtn.click();
     await page.waitForURL(/locale=de/, { timeout: 5000 });
     expect(page.url()).toContain("locale=de");
   });
@@ -241,10 +239,12 @@ test.describe("PairingForm: header overflow delete", () => {
 
 test.describe("PairingForm: translate dialog + slug picker", () => {
   test("PairingForm slug picker absent in Phase 1 (pairings use shared slug)", async ({ page }) => {
-    await page.goto(EN_URL, { waitUntil: "networkidle" });
-    await openOverflowMenu(page);
-    const translateBtn = page.getByRole("button", { name: /translate/i });
-    await translateBtn.click();
+    await page.goto("/admin/pairings/e2e-pair-en-only--e2e-pair-b/edit", {
+      waitUntil: "networkidle",
+    });
+    const addDeBtn = page.getByRole("button", { name: /^add de$/i });
+    await expect(addDeBtn).toBeVisible({ timeout: 3000 });
+    await addDeBtn.click();
     await expect(page.getByRole("dialog")).toBeVisible({ timeout: 3000 });
     await expect(page.getByLabel(/slug/i)).toHaveCount(0);
   });

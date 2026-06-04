@@ -1,0 +1,11 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "E2E Bilingual Dish",
+  "description": "A recipe used only by the e2e translation suite. Has a DE sibling — exercises per-field and bulk translate flows.",
+  "recipeIngredient": ["1 cup e2e test spice", "2 tbsp olive oil"],
+  "recipeInstructions": [
+    { "@type": "HowToStep", "text": "Mix all ingredients in a bowl." },
+    { "@type": "HowToStep", "text": "Serve immediately." }
+  ]
+}

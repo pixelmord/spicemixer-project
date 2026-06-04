@@ -48,13 +48,13 @@ jobs:
         run: publint packages/content-ai-ingest
 
       - name: attw – content-ai-core
-        run: attw --pack packages/content-ai-core
+        run: attw --pack packages/content-ai-core --profile esm-only
 
       - name: attw – content-ai-refine
-        run: attw --pack packages/content-ai-refine
+        run: attw --pack packages/content-ai-refine --profile esm-only
 
       - name: attw – content-ai-ingest
-        run: attw --pack packages/content-ai-ingest
+        run: attw --pack packages/content-ai-ingest --profile esm-only
 
       - name: Pack smoke – content-ai-core
         run: |

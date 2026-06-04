@@ -1,0 +1,11 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "E2E Bilingual Blend",
+  "description": "A mixture used only by the e2e translation suite. Has a DE sibling — exercises per-field and bulk translate flows.",
+  "recipeIngredient": ["1 tsp e2e test spice", "1 tsp salt"],
+  "recipeInstructions": [
+    { "@type": "HowToStep", "text": "Combine ingredients in a small bowl." },
+    { "@type": "HowToStep", "text": "Store in an airtight jar." }
+  ]
+}
