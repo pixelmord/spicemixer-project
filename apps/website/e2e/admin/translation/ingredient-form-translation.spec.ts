@@ -203,7 +203,7 @@ test.describe("IngredientForm: bulk translate (split view)", () => {
   test("IngredientForm bulk translate 'fill-gaps' only targets empty fields", async ({ page }) => {
     const dropdown = page.getByRole("button", { name: "Translation options" });
     await dropdown.click();
-    await page.getByRole("button", { name: "Translate missing fields" }).nth(1).click();
+    await page.getByRole("button", { name: "Translate missing fields" }).last().click();
     await expect(
       page.getByRole("button", { name: "Translate missing fields" }).first(),
     ).toBeVisible();
@@ -212,7 +212,7 @@ test.describe("IngredientForm: bulk translate (split view)", () => {
   test("IngredientForm bulk translate 'replace-all' overwrites all fields", async ({ page }) => {
     const dropdown = page.getByRole("button", { name: "Translation options" });
     await dropdown.click();
-    await page.getByRole("button", { name: "Re-translate all fields" }).nth(1).click();
+    await page.getByRole("button", { name: "Re-translate all fields" }).last().click();
     await expect(
       page.getByRole("button", { name: "Re-translate all fields" }).first(),
     ).toBeVisible();
@@ -223,12 +223,12 @@ test.describe("IngredientForm: bulk translate (split view)", () => {
   }) => {
     const dropdown = page.getByRole("button", { name: "Translation options" });
     await dropdown.click();
-    await page.getByRole("button", { name: "Re-translate all fields" }).nth(1).click();
+    await page.getByRole("button", { name: "Re-translate all fields" }).last().click();
     const stored = await getBulkWritePolicy(page);
     expect(stored).toBe("replace-all");
 
     await dropdown.click();
-    await page.getByRole("button", { name: "Translate missing fields" }).nth(1).click();
+    await page.getByRole("button", { name: "Translate missing fields" }).last().click();
     const storedAfter = await getBulkWritePolicy(page);
     expect(storedAfter).toBe("fill-gaps");
   });
