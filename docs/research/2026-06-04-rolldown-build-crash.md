@@ -23,7 +23,7 @@ Bumping the following catalog versions in `pnpm-workspace.yaml` made the build p
 | `vite-plus` (catalog)            | `^0.1.21`              | `^0.1.24`              |
 | `@vitejs/plugin-react` (website) | `^5.2.0` (direct)      | `catalog:` (5.2.0)     |
 
-Notably **`@voidzero-dev/vite-plus-core@0.1.24` and `@rolldown/binding-*@1.0.0-rc.17` are unchanged** before/after — the crash is fixed without touching the bundler layer. Suspected fix: **astro 6.2.2 → 6.4.3** (most likely candidate; 6.3.x/6.4.x astro release notes mention vite-plus/rolldown integration fixes). The exact patch hasn't been bisected — if you need to know which specific bump fixed it, bisect that version range.
+`vite-plus` (the toolchain CLI) went `0.1.21 → 0.1.24`. The underlying `@voidzero-dev/vite-plus-core` reads `0.1.24` in node_modules both before and after the upgrade — but only because the catalog had `vite: npm:@voidzero-dev/vite-plus-core@latest` resolving to 0.1.24, while the pinned `vite-plus@0.1.21` brought along older internals via its own deps. The 0.1.24 bump of `vite-plus` is a plausible primary suspect alongside **astro 6.2.2 → 6.4.3**. `@rolldown/binding-*@1.0.0-rc.17` is unchanged before/after. The exact culprit bump hasn't been bisected.
 
 The diagnosis below is preserved for reference. Most of the partial-fix attempts (re-aliasing `/server`, simplifying `provider.ts`, etc.) turned out to be irrelevant — the bug was in the toolchain, not application code.
 
