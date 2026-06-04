@@ -112,6 +112,8 @@ interface Props {
   isNew?: boolean;
   /** Locale codes for which a translation already exists (e.g. ["de"] if de/slug.json exists) */
   existingTranslationLocales?: string[];
+  /** SSR-known split-view preference (from cookie) to avoid hydration flash. */
+  initialSplitView?: boolean;
 }
 
 const SECTIONS: SectionDef[] = [
@@ -191,6 +193,7 @@ export default function IngredientForm({
   initialMeta,
   isNew,
   existingTranslationLocales = [],
+  initialSplitView = false,
 }: Props) {
   const data = { ...emptyIngredient(), ...initialData } as IngredientData;
 
@@ -253,7 +256,7 @@ export default function IngredientForm({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   // Split view
-  const [splitView, setSplitView] = useSplitViewPreference();
+  const [splitView, setSplitView] = useSplitViewPreference(initialSplitView);
   const siblingLocaleCode = locale === "en" ? "de" : "en";
 
   // Auto-enable split view when editing a translation

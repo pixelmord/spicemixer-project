@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@ai-hero/sandcastle": "catalog:",
-    "@changesets/cli": "^2.27.12",
+    "@changesets/cli": "^2.31.0",
     "@vitest/coverage-v8": "catalog:",
     "vite-plus": "catalog:"
   },

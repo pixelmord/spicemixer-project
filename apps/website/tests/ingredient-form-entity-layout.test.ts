@@ -54,7 +54,7 @@ describe("IngredientForm — EntityFormLayout migration", () => {
   });
 
   test("calls useSplitViewPreference hook", () => {
-    expect(src).toMatch(/useSplitViewPreference\(\)/);
+    expect(src).toMatch(/useSplitViewPreference\(/);
   });
 
   // ── Sibling data fetch ───────────────────────────────────────────────────

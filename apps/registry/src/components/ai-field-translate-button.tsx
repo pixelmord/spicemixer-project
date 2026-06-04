@@ -77,10 +77,7 @@ export function AiFieldTranslateButton({ fieldPath, className }: AiFieldTranslat
             <input
               type="checkbox"
               checked={mergeEnabled}
-              onChange={(e) => {
-                setMergeEnabled(e.target.checked);
-                setDropdownOpen(false);
-              }}
+              onChange={(e) => setMergeEnabled(e.target.checked)}
               className="rounded"
             />
             Merge with existing

@@ -34,6 +34,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Workspace packages export only built artifacts (e.g. entity-kind →
+      # dist/index.mjs); tests fail to resolve them on a cold CI checkout
+      # unless we build first.
+      - name: Build workspace packages
+        # Only library packages — apps (e.g. registry's astro build) aren't
+        # needed by tests and have their own build pipelines.
+        run: pnpm --filter "./packages/**" run build
+
       # Cache Playwright browsers by resolved @playwright/test version, not by
       # lockfile hash — otherwise any unrelated dep change invalidates the
       # (~150MB) browser download. Version is read after install so it
@@ -102,12 +110,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace packages
+        # Only library packages — apps (e.g. registry's astro build) aren't
+        # needed by tests and have their own build pipelines.
+        run: pnpm --filter "./packages/**" run build
+
+      - name: Resolve Playwright version
+        id: pw-version
+        run: |
+          version=$(node -p "require('@playwright/test/package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+        working-directory: apps/website
+
       - name: Cache Playwright browsers
         id: pw-cache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-playwright-${{ steps.pw-version.outputs.version }}
 
       - name: Install Playwright chromium
         if: steps.pw-cache.outputs.cache-hit != 'true'

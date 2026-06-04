@@ -1,5 +1,6 @@
 import { pairingSchema } from "entity-kind";
 import type { AiContract, FieldConfig } from "@pixelmord/content-ai-refine";
+import { localeToLanguageName } from "./locale-language.ts";
 
 type PairingSchema = typeof pairingSchema;
 
@@ -47,6 +48,7 @@ export const pairingContract: AiContract<PairingSchema, PairingRefineContext> = 
     description: {
       systemPrompt: ({ currentData, sourceContext }) => {
         const locale = sourceContext?.locale ?? "en";
+        const languageName = localeToLanguageName(locale);
         const endpoints = Array.isArray(currentData?.endpoints) ? currentData.endpoints : [];
         const ep1 = (endpoints[0] as { slug?: string } | null | undefined)?.slug ?? "";
         const ep2 = (endpoints[1] as { slug?: string } | null | undefined)?.slug ?? "";
@@ -58,10 +60,8 @@ export const pairingContract: AiContract<PairingSchema, PairingRefineContext> = 
 Pairing: ${ep1} ↔ ${ep2}
 ${currentDesc ? `Current description: ${currentDesc}` : ""}
 
-Locale: ${locale}
-
 Rules:
-- Write in ${locale} if locale is not "en"
+- Write the output in ${languageName}. Do not use any other language.
 - Focus on WHY these ingredients pair well — flavor harmony, culinary tradition, texture contrast
 - Keep it to 1-2 sentences, vivid and informative
 - Do not suggest image URLs`;

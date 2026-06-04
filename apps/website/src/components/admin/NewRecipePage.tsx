@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import RecipeForm from "./forms/recipe/RecipeForm.tsx";
 import type { RecipeCollection } from "@/lib/content-store.ts";
-import { hashSuggestion, type AiEvent } from "@pixelmord/content-ai-core";
+import { hashSuggestion, createAiEvent, type AiEvent } from "@pixelmord/content-ai-core";
 import type { SourceMeta } from "./AiImportPage.tsx";
 
 interface Props {
@@ -38,11 +38,10 @@ export default function NewRecipePage({ collection }: Props) {
         const recipeName =
           typeof parsed.recipe.name === "string" ? parsed.recipe.name : "Imported recipe";
 
-        const at = new Date().toISOString();
         let aiEvents: AiEvent[];
         if (parsed.sourceMeta) {
           aiEvents = [
-            {
+            createAiEvent({
               type: "ingested",
               source: parsed.sourceMeta,
               suggestion: {
@@ -51,19 +50,17 @@ export default function NewRecipePage({ collection }: Props) {
               },
               model: "ai-extraction",
               traceId: parsed.sourceMeta.traceId,
-              at,
-            } as AiEvent,
+            }),
           ];
         } else if (sourceUrl.trim()) {
           // Legacy string-source format; new code should use structured sourceMeta
           aiEvents = [
-            {
+            createAiEvent({
               type: "ingested",
               source: sourceUrl,
               suggestion: { hash: hashSuggestion({ url: sourceUrl }), summary: recipeName },
               model: "recipe-ingestion",
-              at,
-            } as AiEvent,
+            }),
           ];
         } else {
           aiEvents = [];

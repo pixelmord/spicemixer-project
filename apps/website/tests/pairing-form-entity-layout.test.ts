@@ -97,7 +97,7 @@ describe("PairingForm — split view", () => {
   });
 
   test("calls useSplitViewPreference hook", () => {
-    expect(src).toMatch(/useSplitViewPreference\(\)/);
+    expect(src).toMatch(/useSplitViewPreference\(/);
   });
 
   test("auto-enables split view for translation drafts (translationOf)", () => {

@@ -29,8 +29,10 @@ for (const loc of localeOrder) {
 
 if (!item) return Astro.redirect("/admin/mixtures");
 
+const initialSplitView = Astro.cookies.get("spicemixer.splitViewEnabled")?.value === "true";
+
 const title = `${String((item.data as Record<string, unknown>).name ?? slug)} · Edit · Admin`;
 ---
 <AdminLayout title={title}>
-  <RecipeForm collection="mixtures" slug={slug} initialRecipe={item.data as never} initialMeta={metaItem?.data as never} client:load />
+  <RecipeForm collection="mixtures" slug={slug} initialRecipe={item.data as never} initialMeta={metaItem?.data as never} initialSplitView={initialSplitView} client:load />
 </AdminLayout>
