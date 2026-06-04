@@ -189,14 +189,6 @@ test.describe("PairingForm: per-field AI suggest", () => {
   });
 });
 
-test.describe("PairingForm: section navigation", () => {
-  test.fixme("PairingForm section anchors exist inside EntityFormLayout", async () => {
-    // PairingForm does not pass `sections` to EntityFormLayout (the form is
-    // short enough that the SectionNav is unnecessary), so there are no
-    // anchor buttons to assert against.
-  });
-});
-
 test.describe("PairingForm: swap language", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(EN_URL, { waitUntil: "domcontentloaded" });
