@@ -8,6 +8,7 @@
   "translations": {},
   "aiEvents": [
     {
+      "id": "fe512c2b-934e-4650-8f5b-1adb3ed4fd6c",
       "type": "ingested",
       "source": {
         "kind": "pdf",
