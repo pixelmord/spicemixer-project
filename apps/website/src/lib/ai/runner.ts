@@ -345,11 +345,17 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     : [
         ...fieldsForAi,
         "keywords",
+        "tags",
         ...(recipeIngredients.length ? ["ingredientLinks"] : []),
         ...(existingRecipes.length ? ["relations"] : []),
         ...(hasPairableEntities ? ["pairings"] : []),
         ...(!meta["language"] ? ["language"] : []),
       ];
+
+  // Fields surfaced through aiSuggestions.improvements (inline UI cards). Anything
+  // not here is either a side-effect proposer (ingredientLinks/pairings/relations
+  // — extracted to dedicated top-level keys below) or the language detector.
+  const IMPROVEMENT_FIELDS = new Set([...fieldsForAi, "keywords", "tags"]);
 
   const {
     suggestions,
@@ -378,7 +384,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     );
   }
 
-  const rawImprovements = fieldsForAi
+  const rawImprovements = [...IMPROVEMENT_FIELDS]
     .filter((f) => suggestions.has(f))
     .map((f) => {
       const sugg = suggestions.get(f)!;
@@ -395,8 +401,6 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
   const filteredImprovements = filterImprovements(
     rawImprovements as Array<{ field: string; suggestion: unknown }>,
   );
-
-  const tags: string[] = [];
 
   const linksSugg = suggestions.get("ingredientLinks");
   const ingredientLinks =
@@ -436,7 +440,6 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
 
   const aiSuggestions = {
     improvements: filteredImprovements,
-    tags,
     ingredientLinks,
     relations,
     pairings,

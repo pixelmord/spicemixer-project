@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ingredientSchema } from "entity-kind";
 import type { AiContract, FieldConfig } from "@pixelmord/content-ai-refine";
+import { localeToLanguageName } from "./locale-language.ts";
 
 type IngredientSchema = typeof ingredientSchema;
 
@@ -61,8 +62,10 @@ const presets = [
 const textFieldConfig = (
   instruction: string,
 ): FieldConfig<IngredientSchema, IngredientRefineContext> => ({
-  systemPrompt: ({ currentData }) => {
+  systemPrompt: ({ currentData, sourceContext }) => {
     const ctx = buildIngredientCtx(currentData);
+    const locale = sourceContext?.locale ?? "en";
+    const languageName = localeToLanguageName(locale);
     return `You are a culinary encyclopedia editor specializing in spices and ingredients.
 
 Ingredient context:
@@ -71,6 +74,7 @@ ${ctx}
 ${instruction}
 
 Rules:
+- Write the output in ${languageName}. Do not use any other language.
 - Be specific and informative, drawing on culinary knowledge
 - Avoid placeholder or generic content
 - Do NOT suggest image URLs`;
