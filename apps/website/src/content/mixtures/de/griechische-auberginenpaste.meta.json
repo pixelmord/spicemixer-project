@@ -1,0 +1,166 @@
+{
+  "draft": true,
+  "region": [],
+  "tags": ["meze", "vegetarisch", "vorspeise", "griechisch", "einfach"],
+  "ingredientLinks": [],
+  "sources": [],
+  "variants": [],
+  "translations": {},
+  "aiEvents": [
+    {
+      "type": "ingested",
+      "source": {
+        "kind": "pdf",
+        "mime": "application/pdf",
+        "sizeBytes": 18250,
+        "filename": "Griechische Auberginenpaste.pdf",
+        "hash": "09506e97a7160fe25ea9bc806cda24cbb47eac78c74ce907aa3b8fb508f529e5",
+        "ingestedAt": "2026-06-04T07:38:19.906Z",
+        "traceId": "fe512c2b-934e-4650-8f5b-1adb3ed4fd6c"
+      },
+      "suggestion": {
+        "hash": "8ed34722ef8c",
+        "summary": "Griechische Auberginenpaste"
+      },
+      "model": "ai-extraction",
+      "traceId": "fe512c2b-934e-4650-8f5b-1adb3ed4fd6c",
+      "at": "2026-06-04T07:38:27.956Z"
+    },
+    {
+      "type": "accepted",
+      "field": "description",
+      "suggestion": {
+        "hash": "9e7ed105c5c7",
+        "summary": "description: Die Griechische Auberginenpaste, auch bekannt als Melitzanosalata, ist ein köstl"
+      },
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "dfe9a88e-ac9a-4f29-876f-5bfdfe58b05c",
+      "id": "45f6febb-8376-47f6-b37b-fbe69b1c6f03",
+      "at": "2026-06-04T07:40:27.914Z"
+    },
+    {
+      "type": "accepted",
+      "field": "keywords",
+      "suggestion": {
+        "hash": "347dce4fef6c",
+        "summary": "keywords: [7 items]"
+      },
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "1a9acb0a-110f-40e7-b773-84e224893ab7",
+      "id": "00b0bda2-3dbb-462a-939e-6ea5a85ad343",
+      "at": "2026-06-04T07:50:12.713Z"
+    },
+    {
+      "type": "accepted",
+      "field": "tags",
+      "suggestion": {
+        "hash": "515d60d1a021",
+        "summary": "tags: [5 items]"
+      },
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "fde05dab-ea15-4b7b-95e1-81c44ceebdce",
+      "id": "0b6f9316-183e-4bd0-99b7-73b3ed076915",
+      "at": "2026-06-04T08:24:09.058Z"
+    },
+    {
+      "type": "rejected",
+      "field": "keywords",
+      "suggestion": {
+        "hash": "7ea527b46ba7",
+        "summary": "keywords: [7 items]"
+      },
+      "model": "unknown",
+      "traceId": "dc1f8524-ca97-4ddb-b34f-5f32283099e7",
+      "id": "4dbd1f04-908f-4fdb-8db2-60d598146fc3",
+      "at": "2026-06-04T08:24:09.058Z"
+    },
+    {
+      "type": "accepted",
+      "field": "recipeCategory",
+      "suggestion": {
+        "hash": "d91ceb3a087c",
+        "summary": "recipeCategory: Vorspeise"
+      },
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "d6328432-4da0-433e-ae7c-f7c39fa1a17f",
+      "id": "55b0bee1-bba7-42e6-a23d-1bf5e06c382d",
+      "at": "2026-06-04T08:24:09.058Z"
+    },
+    {
+      "type": "accepted",
+      "field": "recipeCuisine",
+      "suggestion": {
+        "hash": "c1fd0b32d557",
+        "summary": "recipeCuisine: Griechisch"
+      },
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "863128c6-6654-4163-be63-188ebd7a1f7d",
+      "id": "6ae683ca-22c4-4ddb-ad56-872a0986bf62",
+      "at": "2026-06-04T08:24:09.059Z"
+    }
+  ],
+  "language": "de",
+  "locale": "de",
+  "kind": "sauce",
+  "canonicalLocale": "de",
+  "canonicalContentHash": "06ce06f2e1f341ed",
+  "aiSuggestions": {
+    "fingerprint": "3b17d45775a32d1da89f14b8d034f06fdefa04a41adde79bda19fb3d31fd6846",
+    "at": "2026-06-04T08:14:28.144Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [
+        {
+          "field": "recipeCategory",
+          "suggestion": "Vorspeise",
+          "summary": "recipeCategory: Vorspeise",
+          "hash": "d91ceb3a087c",
+          "traceId": "c0c7be5e-62d0-42a4-8202-9a11a132cf6f",
+          "confidence": "medium"
+        },
+        {
+          "field": "recipeCuisine",
+          "suggestion": "Griechisch",
+          "summary": "recipeCuisine: Griechisch",
+          "hash": "c1fd0b32d557",
+          "traceId": "5d0299c6-0065-4ada-afcd-7cbc3952da52",
+          "confidence": "medium"
+        }
+      ],
+      "tags": [],
+      "ingredientLinks": [],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "dukkah",
+          "rationale": "Dukkah's blend of nuts and spices complements the smoky, creamy profile of the Griechische Auberginenpaste, enhancing its flavors and adding a delightful crunch.",
+          "traceId": "f556e81b-54f4-4251-ab16-12c7a1d222ac"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "harissa",
+          "rationale": "The spicy, aromatic qualities of harissa can elevate the earthy notes of the aubergine dip, creating a harmonious balance of heat and creaminess that enhances the overall tasting experience.",
+          "traceId": "f556e81b-54f4-4251-ab16-12c7a1d222ac"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "preserved-lemon-couscous",
+          "rationale": "Preserved Lemon Couscous offers a bright contrast to the rich and smoky flavors of the Griechische Auberginenpaste, making for a refreshing and balanced combination in a mezze platter.",
+          "traceId": "f556e81b-54f4-4251-ab16-12c7a1d222ac"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "tomato-confit",
+          "rationale": "Tomato Confit's sweet and tangy profile pairs beautifully with the robust, smoky flavors of the aubergine paste, adding depth and a contrasting texture to the creamy dip.",
+          "traceId": "f556e81b-54f4-4251-ab16-12c7a1d222ac"
+        }
+      ]
+    }
+  }
+}
