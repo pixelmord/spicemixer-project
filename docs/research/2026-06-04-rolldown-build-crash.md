@@ -1,9 +1,33 @@
 # Rolldown server-entrypoints build crash — diagnosis log
 
 **Date:** 2026-06-04
-**Status:** Unresolved — root cause masked by rolldown error reporting
+**Status:** **Resolved** by upgrading build-toolchain dependencies (see Resolution below). Original root cause never positively identified — bypassed by the upgrade.
 **Affects:** `apps/website` build on CI (e2e tests can't start the webserver)
-**Reproduces:** `pnpm exec astro build` in `apps/website` at HEAD on `fix/ci-build-workspace-packages-before-tests`
+**Reproduces:** `pnpm exec astro build` in `apps/website` at HEAD on `fix/ci-build-workspace-packages-before-tests` **before** the dependency upgrade
+
+## Resolution
+
+Bumping the following catalog versions in `pnpm-workspace.yaml` made the build pass:
+
+| Package                          | Before                 | After                  |
+| -------------------------------- | ---------------------- | ---------------------- |
+| `astro`                          | `^6.2.2`               | `^6.4.3`               |
+| `@astrojs/react`                 | `^5.0.4`               | `^5.0.7`               |
+| `@types/node`                    | `^24`                  | `^25.9.1`              |
+| `@types/react`                   | `^19.2.14`             | `^19.2.16`             |
+| `react`/`react-dom`              | `^19.2.5`              | `^19.2.7`              |
+| `@sentry/node`                   | `^9.0.0`               | `^10.56.0`             |
+| `@ai-hero/sandcastle`            | `^0.5.7`               | `^0.5.12`              |
+| `@vitest/coverage-v8`            | `^4.1.5`               | `^4.1.8`               |
+| `@typescript/native-preview`     | `7.0.0-dev.20260427.1` | `7.0.0-dev.20260603.1` |
+| `vite-plus` (catalog)            | `^0.1.21`              | `^0.1.24`              |
+| `@vitejs/plugin-react` (website) | `^5.2.0` (direct)      | `catalog:` (5.2.0)     |
+
+Notably **`@voidzero-dev/vite-plus-core@0.1.24` and `@rolldown/binding-*@1.0.0-rc.17` are unchanged** before/after — the crash is fixed without touching the bundler layer. Suspected fix: **astro 6.2.2 → 6.4.3** (most likely candidate; 6.3.x/6.4.x astro release notes mention vite-plus/rolldown integration fixes). The exact patch hasn't been bisected — if you need to know which specific bump fixed it, bisect that version range.
+
+The diagnosis below is preserved for reference. Most of the partial-fix attempts (re-aliasing `/server`, simplifying `provider.ts`, etc.) turned out to be irrelevant — the bug was in the toolchain, not application code.
+
+---
 
 ## Symptom
 
