@@ -1,13 +1,26 @@
 import { Loader2, Sparkles } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useSuggestionFlowContext } from "./suggestion-flow-provider";
+import { SuggestionsOverview, type OverviewField } from "./suggestions-overview";
 
 interface AiBulkSuggestButtonProps {
   className?: string;
+  /**
+   * When provided, the button becomes a suggestions overview dropdown over
+   * these fields — listing which got new suggestions (with a link to each) and
+   * which did not — instead of a bare "Accept all" badge. This is the
+   * preferred surface: it never hides a run that only produced array-field or
+   * all-duplicate suggestions.
+   */
+  overviewFields?: OverviewField[];
 }
 
-export function AiBulkSuggestButton({ className }: AiBulkSuggestButtonProps) {
+export function AiBulkSuggestButton({ className, overviewFields }: AiBulkSuggestButtonProps) {
   const flow = useSuggestionFlowContext();
+
+  if (overviewFields) {
+    return <SuggestionsOverview fields={overviewFields} className={className} />;
+  }
 
   const pendingCount = flow.suggestions.size;
 

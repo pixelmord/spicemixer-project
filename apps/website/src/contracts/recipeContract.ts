@@ -159,6 +159,7 @@ ${exclude}`;
       outputSchema: tagsOutputSchema,
       autoApply: { policy: "never" },
       translation: { mode: "localize" },
+      bulk: true,
     },
 
     // Editorial tags field — SpiceMixer metadata tags for categorisation and browsing
@@ -175,6 +176,7 @@ ${ctx}`;
       outputSchema: tagsOutputSchema,
       autoApply: { policy: "never" },
       translation: { mode: "localize" },
+      bulk: true,
     },
 
     // Ingredient links (replaces proposeIngredientLinks)
@@ -210,6 +212,7 @@ Valid slugs: ${[...inventorySet].join(", ")}`;
       outputSchema: ingredientLinksOutputSchema,
       autoApply: { policy: "never" },
       translation: { mode: "copy" },
+      bulk: true,
     },
 
     // Language detection (replaces detectLanguage)
@@ -229,6 +232,7 @@ Text: "${text}"`;
       autoApply: { policy: "high-confidence", threshold: 0.0 },
       translation: { mode: "copy" },
       writePolicy: "fill-if-empty",
+      bulk: true,
     },
 
     // Slug proposal (replaces proposeSlug)
@@ -279,6 +283,7 @@ Only suggest pairings with clear culinary logic. Return empty array if nothing f
       outputSchema: pairingsOutputSchema,
       autoApply: { policy: "never" },
       translation: { mode: "copy" },
+      bulk: true,
     },
   },
 };

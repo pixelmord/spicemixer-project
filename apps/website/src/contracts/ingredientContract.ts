@@ -180,6 +180,7 @@ Text: "${text}"`;
       autoApply: { policy: "high-confidence" as const, threshold: 0.0 },
       translation: { mode: "copy" as const },
       writePolicy: "fill-if-empty" as const,
+      bulk: true,
     },
 
     // outputSchema differs from entity schema; rationale becomes the new Pairing's description.
@@ -209,6 +210,7 @@ Return up to 6 pairings. For each:
       outputSchema: pairingsOutputSchema,
       autoApply: { policy: "never" },
       translation: { mode: "copy" },
+      bulk: true,
     },
   },
 };

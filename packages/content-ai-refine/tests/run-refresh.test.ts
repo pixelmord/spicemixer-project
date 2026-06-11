@@ -15,12 +15,20 @@ const { runRefine } = await import("../src/run-refine.ts");
 const { runRefresh } = await import("../src/run-refresh.ts");
 
 const CONFIG = { baseUrl: "http://localhost", apiKey: "test", model: "gpt-4o-mini" };
-const contract = { schema: z.object({ name: z.string() }), presets: [], fields: {} };
+// Bulk target is derived from the contract: fields flagged `bulk: true`.
+const contract = {
+  schema: z.object({ name: z.string() }),
+  presets: [],
+  fields: {
+    summary: { systemPrompt: () => "s" },
+    pairings: { systemPrompt: () => "p", bulk: true },
+    language: { systemPrompt: () => "l", bulk: true },
+  },
+};
 
 function makeStrategy(over: Record<string, unknown> = {}) {
   return {
     contract,
-    extraTargetFields: ["pairings", "language"],
     currentData: { name: "x" },
     assemble: vi.fn().mockResolvedValue("RESULT"),
     ...over,
@@ -38,7 +46,7 @@ beforeEach(() => {
 });
 
 describe("runRefresh: target composition", () => {
-  test("full run targets baseFields + extraTargetFields", async () => {
+  test("full run targets baseFields + contract bulk fields", async () => {
     const result = await runRefresh(makeStrategy(), {
       baseFields: ["summary"],
       isPerField: false,
@@ -49,7 +57,17 @@ describe("runRefresh: target composition", () => {
     expect(callArg.target).toEqual(["summary", "pairings", "language"]);
   });
 
-  test("per-field run targets baseFields only — no side-effect proposers", async () => {
+  test("full run dedupes a base field that is also flagged bulk", async () => {
+    await runRefresh(makeStrategy(), {
+      baseFields: ["summary", "pairings"],
+      isPerField: false,
+      config: CONFIG,
+    });
+    const callArg = vi.mocked(runRefine).mock.calls[0]![0] as { target?: string[] };
+    expect(callArg.target).toEqual(["summary", "pairings", "language"]);
+  });
+
+  test("per-field run targets baseFields only — no bulk fields", async () => {
     await runRefresh(makeStrategy(), {
       baseFields: ["summary"],
       isPerField: true,

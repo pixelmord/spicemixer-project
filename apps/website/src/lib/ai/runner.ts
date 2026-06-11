@@ -7,7 +7,11 @@ import { metaRefToEntityRef } from "@/lib/sidecar-event-log.ts";
 import type { AiEventSidecar, MetaRef, SidecarEventLog } from "@/lib/sidecar-event-log.ts";
 import type { EndpointRef, EntityKind } from "entity-kind";
 import { runRefine, runRefresh } from "@pixelmord/content-ai-refine";
-import type { AiEvent as RefineAiEvent, RawImprovement } from "@pixelmord/content-ai-refine";
+import type {
+  AiEvent as RefineAiEvent,
+  FieldSuggestion,
+  RawImprovement,
+} from "@pixelmord/content-ai-refine";
 import { ingredientContract } from "@/contracts/ingredientContract.ts";
 import { recipeContract } from "@/contracts/recipeContract.ts";
 import { pairingContract } from "@/contracts/pairingContract.ts";
@@ -67,6 +71,86 @@ export interface AiRefreshResult {
   errors?: Array<{ field: string; message: string }>;
 }
 
+/**
+ * A per-field, entity-agnostic view of one refine suggestion. Carried over SSE
+ * so the editor's suggestion overview and badge are driven by whatever the
+ * contract actually produced — never a hand-maintained per-form field list.
+ * `newCount`/`hasNew` reflect dedup against the entity's current value, so the
+ * UI can flag "model only echoed values you already have".
+ */
+export interface FieldSuggestionSummary {
+  field: string;
+  /** Items the model returned (1 for scalar fields, n for array fields). */
+  total: number;
+  /** Items not already present on the entity. */
+  newCount: number;
+  /** Whether anything new is worth surfacing. */
+  hasNew: boolean;
+  summary: string;
+  confidence: "high" | "medium" | "low";
+  traceId: string;
+  /** Suggestion fingerprint — needed to record accept/reject for inline fields. */
+  hash: string;
+  /** The suggested value, so an inline field can apply it without a re-run. */
+  value: unknown;
+}
+
+/** Stable identity for dedup: strings case-fold; objects key on slug/pattern. */
+function suggestionItemKey(value: unknown): string {
+  if (typeof value === "string") return value.trim().toLowerCase();
+  if (value && typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    if (typeof o["otherSlug"] === "string") {
+      const coll = typeof o["otherCollection"] === "string" ? o["otherCollection"] : "";
+      return `${coll}/${o["otherSlug"]}`.toLowerCase();
+    }
+    if (typeof o["slug"] === "string") return String(o["slug"]).toLowerCase();
+    if (typeof o["pattern"] === "string") return String(o["pattern"]).toLowerCase();
+    return JSON.stringify(o);
+  }
+  return String(value);
+}
+
+/**
+ * Reduce the raw per-field suggestion map into entity-agnostic summaries,
+ * deduping array values against what the entity already holds. This is the
+ * single surfacing seam: every refineable field that produced a value appears
+ * here, so the editor never silently drops a field (the keywords/tags bug).
+ */
+function buildFieldSummaries(
+  suggestions: Map<string, FieldSuggestion>,
+  currentData: Record<string, unknown>,
+): Record<string, FieldSuggestionSummary> {
+  const out: Record<string, FieldSuggestionSummary> = {};
+  for (const [field, sugg] of suggestions) {
+    if (sugg.kind !== "single") continue;
+    const value = sugg.value;
+    let total: number;
+    let newCount: number;
+    if (Array.isArray(value)) {
+      total = value.length;
+      const existing = Array.isArray(currentData[field]) ? (currentData[field] as unknown[]) : [];
+      const existingKeys = new Set(existing.map(suggestionItemKey));
+      newCount = value.filter((v) => !existingKeys.has(suggestionItemKey(v))).length;
+    } else {
+      total = 1;
+      newCount = currentData[field] === value ? 0 : 1;
+    }
+    out[field] = {
+      field,
+      total,
+      newCount,
+      hasNew: newCount > 0,
+      summary: sugg.summary,
+      confidence: sugg.confidence,
+      traceId: sugg.traceId,
+      hash: sugg.hash,
+      value,
+    };
+  }
+  return out;
+}
+
 const PLACEHOLDER_PATTERNS =
   /example\.|placeholder\.|picsum\.|via\.placeholder\.|lorempixel\.|dummyimage\./i;
 
@@ -85,7 +169,6 @@ const events = (raw: unknown): RefineAiEvent[] => raw as unknown as RefineAiEven
 
 async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshResult> {
   const { metaRef, payload, missingFields, target, locale, store, eventLog, config } = input;
-  const existingMeta = input.existingMeta ?? {};
   const isPerField = target !== undefined;
 
   const entityRef = metaRefToEntityRef(metaRef);
@@ -122,9 +205,6 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
   ];
 
   const fieldsForAi = (isPerField ? target : missingFields).filter((f) => f !== "image");
-  const extraTargetFields = isPerField
-    ? []
-    : [...(inventory.length ? ["pairings"] : []), ...(!existingMeta["locale"] ? ["language"] : [])];
 
   return runRefresh(
     {
@@ -133,7 +213,6 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
       sourceContext: { inventory, locale },
       events: events(existingEvents),
       logger: aiLogger.child({ kind: "ingredient", slug: metaRef.slug }),
-      extraTargetFields,
       assemble: async ({ suggestions, autoApplied, rawImprovements, errors }) => {
         const ingredientErrors = [...errors.values()].map((e) => ({
           field: e.field,
@@ -161,6 +240,7 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
 
         const aiSuggestions = {
           improvements: filteredImprovements,
+          fields: buildFieldSummaries(suggestions, payload as Record<string, unknown>),
           pairings: proposedPairings.map((p) => ({
             otherCollection: p.otherCollection,
             otherSlug: p.otherSlug,
@@ -281,20 +361,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
     }),
   ].filter((r) => r.slug !== metaRef.slug);
 
-  const recipeIngredients = Array.isArray(payload["recipeIngredient"])
-    ? (payload["recipeIngredient"] as string[])
-    : [];
   const fieldsForAi = (isPerField ? target : missingFields).filter((f) => f !== "image");
-  const hasPairableEntities = inventory.length > 0 || existingRecipes.length > 0;
-  const extraTargetFields = isPerField
-    ? []
-    : [
-        "keywords",
-        ...(recipeIngredients.length ? ["ingredientLinks"] : []),
-        ...(existingRecipes.length ? ["relations"] : []),
-        ...(hasPairableEntities ? ["pairings"] : []),
-        ...(!meta["language"] ? ["language"] : []),
-      ];
 
   return withProgress("refine", () =>
     runRefresh(
@@ -304,15 +371,12 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
         sourceContext: { inventory, existingTags: [], existingRecipes, locale },
         events: events(existingEvents),
         logger: aiLogger.child({ kind: "recipe", slug: metaRef.slug }),
-        extraTargetFields,
         assemble: async ({ suggestions, autoApplied, rawImprovements, errors }) => {
           const recipeErrors = [...errors.values()].map((e) => ({
             field: e.field,
             message: e.message,
           }));
           const filteredImprovements = filterImprovements(rawImprovements);
-
-          const tags: string[] = [];
 
           const linksSugg = suggestions.get("ingredientLinks");
           const ingredientLinks =
@@ -356,7 +420,11 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
 
           const aiSuggestions = {
             improvements: filteredImprovements,
-            tags,
+            // Entity-agnostic per-field summary for the editor overview/badge —
+            // covers every refineable field the model produced, so nothing is
+            // silently dropped. Specialized slices below remain for the
+            // dedicated section UIs (pairings, ingredient links).
+            fields: buildFieldSummaries(suggestions, payload as Record<string, unknown>),
             ingredientLinks,
             relations,
             pairings,
@@ -486,7 +554,6 @@ async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult
       sourceContext: { locale },
       events: events(existingEvents),
       logger: aiLogger.child({ kind: "pairing", slug: metaRef.slug }),
-      extraTargetFields: [],
       assemble: async ({ suggestions, errors }) => {
         const pairingErrors = [...errors.values()].map((e) => ({
           field: e.field,
@@ -509,7 +576,12 @@ async function runPairingRefresh(input: AiRefreshInput): Promise<AiRefreshResult
           : [];
 
         return {
-          aiSuggestions: { [locale]: { improvements } },
+          aiSuggestions: {
+            [locale]: {
+              improvements,
+              fields: buildFieldSummaries(suggestions, { description }),
+            },
+          },
           autoLinked: 0,
           skipped: false,
           errors: pairingErrors,

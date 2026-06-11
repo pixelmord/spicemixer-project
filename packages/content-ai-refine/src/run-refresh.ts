@@ -36,8 +36,6 @@ export interface RefreshStrategy<S extends ZodSchema, Source, Result> {
   sourceContext?: Source;
   events?: AiEvent[];
   logger?: Logger;
-  /** Extra fields refined on a full run (side-effect proposers). Skipped on per-field runs. */
-  extraTargetFields: string[];
   /** Build the kind-specific result; performs auto-apply side effects unless isPerField. */
   assemble: (args: {
     suggestions: Map<string, FieldSuggestion>;
@@ -95,9 +93,16 @@ export async function runRefresh<S extends ZodSchema, Source, Result>(
   strategy: RefreshStrategy<S, Source, Result>,
   params: RefreshRunParams,
 ): Promise<Result> {
+  // On a full run, the target is the missing recommended fields (baseFields)
+  // plus every field the contract flags `bulk: true` — the contract is the
+  // single source of truth for which enrichment fields a full refresh runs.
+  // Per-field runs target exactly what the caller asked for and skip bulk.
+  const bulkFields = Object.entries(strategy.contract.fields)
+    .filter(([, cfg]) => cfg.bulk)
+    .map(([field]) => field);
   const target = params.isPerField
     ? params.baseFields
-    : [...params.baseFields, ...strategy.extraTargetFields];
+    : [...new Set([...params.baseFields, ...bulkFields])];
 
   const fieldRunner = params.runField ?? runRefine;
   const { suggestions, autoApplied, errors } = await fieldRunner({

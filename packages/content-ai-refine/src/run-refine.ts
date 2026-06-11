@@ -196,6 +196,13 @@ export async function runRefine<S extends ZodSchema, Source = never>(
 
       let systemPromptStr = fieldConfig.systemPrompt(ctx);
 
+      // A field whose prompt resolves to empty for the current context is gated
+      // off — its precondition is unmet (e.g. pairings with no inventory). Skip
+      // it silently so an all-fields run can include every bulk field without
+      // firing wasteful, prompt-less LLM calls. This is what lets the contract
+      // (not a hand-maintained target list) decide which fields actually run.
+      if (!systemPromptStr.trim()) return;
+
       // Append preset instruction if applicable
       if (presetObj) {
         const presetInstruction =

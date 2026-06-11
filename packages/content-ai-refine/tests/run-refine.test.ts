@@ -90,6 +90,34 @@ describe("dispatch by target", () => {
     expect(generateText).toHaveBeenCalledTimes(2);
   });
 
+  test("skips fields whose systemPrompt resolves to an empty string", async () => {
+    const contractWithGatedField = {
+      ...baseContract,
+      fields: {
+        ...baseContract.fields,
+        // Precondition unmet → prompt returns "" → must be skipped (no LLM call).
+        tags: {
+          systemPrompt: () => "",
+          autoApply: { policy: "never" as const },
+        },
+      },
+    };
+
+    vi.mocked(generateText).mockResolvedValue({ output: { value: "result" } } as never);
+
+    const { suggestions } = await runRefine({
+      contract: contractWithGatedField,
+      currentData: { name: "Cumin" },
+      target: ["summary", "tags"],
+      config: MOCK_CONFIG,
+    });
+
+    // 'summary' runs; 'tags' is gated by an empty prompt and never hits the model.
+    expect(generateText).toHaveBeenCalledTimes(1);
+    expect(suggestions.has("tags")).toBe(false);
+    expect(suggestions.has("summary")).toBe(true);
+  });
+
   test("skips fields without systemPrompt", async () => {
     const contractWithTranslationOnly = {
       ...baseContract,
