@@ -6,6 +6,7 @@ import {
   ingredientExtractSchema,
   type IngredientExtract,
 } from "@/contracts/schemas/ingredient-extract.ts";
+import { type AiLocale, mergeLanguageDirective } from "@/lib/ai/language-directive.ts";
 
 export type MergeIngredientSource =
   | { kind: "pdf"; bytes: Uint8Array }
@@ -16,6 +17,8 @@ export type MergeIngredientSource =
 export interface MergeIngredientInput {
   existing: IngredientExtract;
   source: MergeIngredientSource;
+  /** Locale of the existing record — used to lock output language. */
+  existingLocale?: AiLocale;
 }
 
 export interface MergeIngredientResult {
@@ -34,7 +37,8 @@ interface ResolvedMergeIngredientInput {
   source: ResolvedMergeIngredientSource;
 }
 
-const MERGE_SYSTEM_PROMPT = `You are a culinary ingredient data editor merging new content into an existing ingredient record.
+function buildSystemPrompt(existingLocale?: AiLocale): string {
+  return `You are a culinary ingredient data editor merging new content into an existing ingredient record.
 
 CRITICAL — field preservation rules:
 - Copy every field that exists in the existing ingredient into your output, even if the new content does not mention it.
@@ -44,72 +48,76 @@ CRITICAL — field preservation rules:
 - Do NOT include image URLs unless they are real, publicly accessible images.
 - category must be one of: spice, herb, seed, dried-fruit, salt, acid, allium, other
 
+${mergeLanguageDirective(existingLocale)}
+
 The user's prompt describes ONLY what they want changed. Everything else stays exactly as it is.`;
+}
 
-const ingredientMergeContract: IngestContract<
-  typeof ingredientExtractSchema,
-  ResolvedMergeIngredientInput
-> = {
-  schema: ingredientExtractSchema,
-  systemPrompt: MERGE_SYSTEM_PROMPT,
-  buildMessages: async (input) => {
-    const existingJson = JSON.stringify(input.existing, null, 2);
-    const basePrompt = `EXISTING INGREDIENT — copy every field into your output; only change what the request explicitly asks for:\n${existingJson}`;
+function buildContract(
+  existingLocale?: AiLocale,
+): IngestContract<typeof ingredientExtractSchema, ResolvedMergeIngredientInput> {
+  return {
+    schema: ingredientExtractSchema,
+    systemPrompt: buildSystemPrompt(existingLocale),
+    buildMessages: async (input) => {
+      const existingJson = JSON.stringify(input.existing, null, 2);
+      const basePrompt = `EXISTING INGREDIENT — copy every field into your output; only change what the request explicitly asks for:\n${existingJson}`;
 
-    if (input.source.kind === "prompt") {
-      return {
-        prompt: `${basePrompt}\n\nREQUESTED CHANGE:\n${input.source.prompt}`,
-        warnings: [],
-      };
-    }
+      if (input.source.kind === "prompt") {
+        return {
+          prompt: `${basePrompt}\n\nREQUESTED CHANGE:\n${input.source.prompt}`,
+          warnings: [],
+        };
+      }
 
-    if (input.source.kind === "text") {
-      return {
-        prompt: `${basePrompt}\n\nNEW CONTENT TO MERGE IN:\n${input.source.content}`,
-        warnings: [],
-      };
-    }
+      if (input.source.kind === "text") {
+        return {
+          prompt: `${basePrompt}\n\nNEW CONTENT TO MERGE IN:\n${input.source.content}`,
+          warnings: [],
+        };
+      }
 
-    if (input.source.kind === "pdf-vision") {
+      if (input.source.kind === "pdf-vision") {
+        return {
+          messages: [
+            {
+              role: "user" as const,
+              content: [
+                {
+                  type: "file" as const,
+                  data: input.source.bytes,
+                  mediaType: "application/pdf" as const,
+                },
+                {
+                  type: "text" as const,
+                  text: `${basePrompt}\n\nNEW CONTENT TO MERGE IN: (see attached scanned PDF)`,
+                },
+              ],
+            },
+          ],
+          warnings: [],
+        };
+      }
+
+      const imagePart = toImagePart(input.source.bytes, input.source.mimeType);
       return {
         messages: [
           {
             role: "user" as const,
             content: [
-              {
-                type: "file" as const,
-                data: input.source.bytes,
-                mediaType: "application/pdf" as const,
-              },
+              imagePart,
               {
                 type: "text" as const,
-                text: `${basePrompt}\n\nNEW CONTENT TO MERGE IN: (see attached scanned PDF)`,
+                text: `${basePrompt}\n\nNEW CONTENT TO MERGE IN: (see attached image)`,
               },
             ],
           },
         ],
         warnings: [],
       };
-    }
-
-    const imagePart = toImagePart(input.source.bytes, input.source.mimeType);
-    return {
-      messages: [
-        {
-          role: "user" as const,
-          content: [
-            imagePart,
-            {
-              type: "text" as const,
-              text: `${basePrompt}\n\nNEW CONTENT TO MERGE IN: (see attached image)`,
-            },
-          ],
-        },
-      ],
-      warnings: [],
-    };
-  },
-};
+    },
+  };
+}
 
 async function resolveSource(
   source: MergeIngredientSource,
@@ -139,7 +147,7 @@ export async function mergeIngredient(
     };
 
     const result = await runFill({
-      contract: ingredientMergeContract,
+      contract: buildContract(input.existingLocale),
       sourceContext: resolvedInput,
       config,
     });

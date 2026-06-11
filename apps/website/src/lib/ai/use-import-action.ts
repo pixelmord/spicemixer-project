@@ -51,7 +51,11 @@ export function parseActionError(message: string): ParsedActionError {
   }
 }
 
-export function buildFormData(source: SourceShape, debug?: boolean): FormData {
+export function buildFormData(
+  source: SourceShape,
+  debug?: boolean,
+  targetLocale?: Locale,
+): FormData {
   const fd = new FormData();
   if (source.kind === "file") {
     fd.append("file", source.file);
@@ -60,6 +64,7 @@ export function buildFormData(source: SourceShape, debug?: boolean): FormData {
     fd.append("text", source.kind === "text" ? source.content : source.prompt);
   }
   if (debug) fd.append("debug", "1");
+  if (targetLocale) fd.append("targetLocale", targetLocale);
   return fd;
 }
 
@@ -143,8 +148,9 @@ export async function extractContent(
   contentType: ContentType,
   source: SourceShape,
   debug: boolean,
+  targetLocale?: Locale,
 ): Promise<ImportResult> {
-  const formData = buildFormData(source, debug);
+  const formData = buildFormData(source, debug, targetLocale);
   if (contentType === "recipe") {
     const { data, error } = await actions.aiExtractRecipe(formData);
     if (error || !data) throw new Error(error?.message ?? "Extraction failed");
@@ -188,6 +194,6 @@ export function useImportAction(
     if (contentType === "recipe" && source.kind === "prompt") {
       return generateRecipe(source.prompt, locale, collection, onPartial);
     }
-    return extractContent(contentType, source, debug);
+    return extractContent(contentType, source, debug, locale);
   };
 }

@@ -3,6 +3,11 @@ import { debugFromResult, toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts"
 import { toImagePart } from "@/lib/image.ts";
 import { extractPdfContent } from "@/lib/pdf.ts";
 import { recipeExtractSchema, type RecipeExtract } from "@/contracts/schemas/recipe-extract.ts";
+import {
+  type AiLocale,
+  preserveSourceLanguageDirective,
+  targetLanguageDirective,
+} from "@/lib/ai/language-directive.ts";
 
 export type RecipeFileInput =
   | { kind: "pdf"; bytes: Uint8Array }
@@ -11,6 +16,8 @@ export type RecipeFileInput =
 
 export interface ExtractOptions {
   debug?: boolean;
+  /** When set, force the output into this language (translate source if needed). */
+  targetLocale?: AiLocale;
 }
 
 export interface RecipeExtractionResult {
@@ -24,61 +31,70 @@ type ResolvedInput =
   | { kind: "image"; bytes: Uint8Array; mimeType: string }
   | { kind: "pdf-vision"; bytes: Uint8Array };
 
-const RECIPE_SYSTEM_PROMPT = `You are a culinary data extractor. Given text or an image of a recipe, extract it into a structured JSON object.
-
-LANGUAGE — non-negotiable:
-- Preserve the source language exactly. If the source is in German, output German; if French, output French; etc. Never translate.
+function buildSystemPrompt(targetLocale?: AiLocale): string {
+  const languageBlock = targetLocale
+    ? targetLanguageDirective(targetLocale)
+    : `${preserveSourceLanguageDirective}
 - Copy ingredient strings, instruction steps, name, description, and keywords VERBATIM from the source. Do not paraphrase, summarize, shorten, or rewrite. Keep the author's exact wording, including units, brand names, and idiomatic phrasing.
-- The only fields you may normalize are times (to ISO 8601) and structural splitting (one ingredient per array entry, one step per array entry).
+- The only fields you may normalize are times (to ISO 8601) and structural splitting (one ingredient per array entry, one step per array entry).`;
+
+  return `You are a culinary data extractor. Given text or an image of a recipe, extract it into a structured JSON object.
+
+${languageBlock}
 
 Extraction rules:
-- List each ingredient as a separate string in recipeIngredient (e.g. "2 cups flour", "1 tsp salt") — using the source's original wording and units
-- List each instruction step as a separate object in recipeInstructions, preserving the original sentences
+- List each ingredient as a separate string in recipeIngredient (e.g. "2 cups flour", "1 tsp salt")
+- List each instruction step as a separate object in recipeInstructions
 - Times should be in ISO 8601 duration format (e.g. "PT30M", "PT1H15M") if parseable, otherwise leave empty
-- Extract keywords as individual tags, not comma-separated strings — keep them in the source language
+- Extract keywords as individual tags, not comma-separated strings
 - If a field is not present in the source, omit it`;
+}
 
-const recipeIngestContract: IngestContract<typeof recipeExtractSchema, ResolvedInput> = {
-  schema: recipeExtractSchema,
-  systemPrompt: RECIPE_SYSTEM_PROMPT,
-  buildMessages: async (input) => {
-    if (input.kind === "text") {
-      return {
-        prompt: `Extract the recipe from the following text:\n\n${input.content}`,
-        warnings: [],
-      };
-    }
+function buildContract(
+  targetLocale?: AiLocale,
+): IngestContract<typeof recipeExtractSchema, ResolvedInput> {
+  return {
+    schema: recipeExtractSchema,
+    systemPrompt: buildSystemPrompt(targetLocale),
+    buildMessages: async (input) => {
+      if (input.kind === "text") {
+        return {
+          prompt: `Extract the recipe from the following text:\n\n${input.content}`,
+          warnings: [],
+        };
+      }
 
-    if (input.kind === "pdf-vision") {
+      if (input.kind === "pdf-vision") {
+        return {
+          messages: [
+            {
+              role: "user" as const,
+              content: [
+                { type: "file" as const, data: input.bytes, mediaType: "application/pdf" as const },
+                { type: "text" as const, text: "Extract the recipe from this scanned PDF." },
+              ],
+            },
+          ],
+          warnings: [],
+        };
+      }
+
+      const imagePart = toImagePart(input.bytes, input.mimeType);
       return {
         messages: [
           {
             role: "user" as const,
             content: [
-              { type: "file" as const, data: input.bytes, mediaType: "application/pdf" as const },
-              { type: "text" as const, text: "Extract the recipe from this scanned PDF." },
+              imagePart,
+              { type: "text" as const, text: "Extract the recipe from this image." },
             ],
           },
         ],
         warnings: [],
       };
-    }
-
-    const imagePart = toImagePart(input.bytes, input.mimeType);
-    return {
-      messages: [
-        {
-          role: "user" as const,
-          content: [
-            imagePart,
-            { type: "text" as const, text: "Extract the recipe from this image." },
-          ],
-        },
-      ],
-      warnings: [],
-    };
-  },
-};
+    },
+  };
+}
 
 async function resolveInput(
   input: RecipeFileInput,
@@ -111,7 +127,7 @@ export async function extractRecipeFromFile(
     const { resolved, warnings: prepWarnings } = await resolveInput(input);
 
     const result = await runFill({
-      contract: recipeIngestContract,
+      contract: buildContract(options.targetLocale),
       sourceContext: resolved,
       config,
     });

@@ -3,6 +3,7 @@ import { debugFromResult, toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts"
 import { toImagePart } from "@/lib/image.ts";
 import { extractPdfContent } from "@/lib/pdf.ts";
 import { recipeExtractSchema, type RecipeExtract } from "@/contracts/schemas/recipe-extract.ts";
+import { type AiLocale, mergeLanguageDirective } from "@/lib/ai/language-directive.ts";
 
 export type MergeRecipeSource =
   | { kind: "pdf"; bytes: Uint8Array }
@@ -13,6 +14,8 @@ export type MergeRecipeSource =
 export interface MergeRecipeInput {
   existing: RecipeExtract;
   source: MergeRecipeSource;
+  /** Locale of the existing recipe — used to lock output language. */
+  existingLocale?: AiLocale;
 }
 
 export interface MergeRecipeResult {
@@ -36,7 +39,8 @@ interface ResolvedMergeRecipeInput {
   source: ResolvedMergeRecipeSource;
 }
 
-const MERGE_SYSTEM_PROMPT = `You are a recipe editor merging new content into an existing recipe.
+function buildSystemPrompt(existingLocale?: AiLocale): string {
+  return `You are a recipe editor merging new content into an existing recipe.
 
 CRITICAL — field preservation rules:
 - You MUST copy every field that exists in the existing recipe into your output, even if the new content does not mention it.
@@ -46,74 +50,77 @@ CRITICAL — field preservation rules:
 - Combine keywords from both sources; never reduce the keyword list.
 - Do NOT invent or hallucinate values — if the new content does not address a field, copy it verbatim from the existing recipe.
 
-LANGUAGE — non-negotiable:
-- Preserve the language of the existing recipe. If existing fields are in German, keep them in German; never translate them.
-- For new content being merged in, keep it in its original language as well, unless that conflicts with the existing recipe's language — in which case match the existing recipe's language by using its existing wording where overlaps occur.
+${mergeLanguageDirective(existingLocale)}
 - Never paraphrase or summarize existing content. Copy strings verbatim except where the user explicitly asks for a change.
 
 The user's prompt describes ONLY what they want changed. Everything else stays exactly as it is.`;
+}
 
-const recipeMergeContract: IngestContract<typeof recipeExtractSchema, ResolvedMergeRecipeInput> = {
-  schema: recipeExtractSchema,
-  systemPrompt: MERGE_SYSTEM_PROMPT,
-  buildMessages: async (input) => {
-    const existingJson = JSON.stringify(input.existing, null, 2);
-    const basePrompt = `EXISTING RECIPE — copy every field into your output; only change what the request explicitly asks for:\n${existingJson}`;
+function buildContract(
+  existingLocale?: AiLocale,
+): IngestContract<typeof recipeExtractSchema, ResolvedMergeRecipeInput> {
+  return {
+    schema: recipeExtractSchema,
+    systemPrompt: buildSystemPrompt(existingLocale),
+    buildMessages: async (input) => {
+      const existingJson = JSON.stringify(input.existing, null, 2);
+      const basePrompt = `EXISTING RECIPE — copy every field into your output; only change what the request explicitly asks for:\n${existingJson}`;
 
-    if (input.source.kind === "prompt") {
-      return {
-        prompt: `${basePrompt}\n\nREQUESTED CHANGE:\n${input.source.prompt}`,
-        warnings: [],
-      };
-    }
+      if (input.source.kind === "prompt") {
+        return {
+          prompt: `${basePrompt}\n\nREQUESTED CHANGE:\n${input.source.prompt}`,
+          warnings: [],
+        };
+      }
 
-    if (input.source.kind === "text") {
-      return {
-        prompt: `${basePrompt}\n\nNEW CONTENT TO MERGE IN:\n${input.source.content}`,
-        warnings: [],
-      };
-    }
+      if (input.source.kind === "text") {
+        return {
+          prompt: `${basePrompt}\n\nNEW CONTENT TO MERGE IN:\n${input.source.content}`,
+          warnings: [],
+        };
+      }
 
-    if (input.source.kind === "pdf-vision") {
+      if (input.source.kind === "pdf-vision") {
+        return {
+          messages: [
+            {
+              role: "user" as const,
+              content: [
+                {
+                  type: "file" as const,
+                  data: input.source.bytes,
+                  mediaType: "application/pdf" as const,
+                },
+                {
+                  type: "text" as const,
+                  text: `${basePrompt}\n\nNEW CONTENT TO MERGE IN: (see attached scanned PDF)`,
+                },
+              ],
+            },
+          ],
+          warnings: [],
+        };
+      }
+
+      const imagePart = toImagePart(input.source.bytes, input.source.mimeType);
       return {
         messages: [
           {
             role: "user" as const,
             content: [
-              {
-                type: "file" as const,
-                data: input.source.bytes,
-                mediaType: "application/pdf" as const,
-              },
+              imagePart,
               {
                 type: "text" as const,
-                text: `${basePrompt}\n\nNEW CONTENT TO MERGE IN: (see attached scanned PDF)`,
+                text: `${basePrompt}\n\nNEW CONTENT TO MERGE IN: (see attached image)`,
               },
             ],
           },
         ],
         warnings: [],
       };
-    }
-
-    const imagePart = toImagePart(input.source.bytes, input.source.mimeType);
-    return {
-      messages: [
-        {
-          role: "user" as const,
-          content: [
-            imagePart,
-            {
-              type: "text" as const,
-              text: `${basePrompt}\n\nNEW CONTENT TO MERGE IN: (see attached image)`,
-            },
-          ],
-        },
-      ],
-      warnings: [],
-    };
-  },
-};
+    },
+  };
+}
 
 async function resolveSource(
   source: MergeRecipeSource,
@@ -144,7 +151,7 @@ export async function mergeRecipe(
     };
 
     const result = await runFill({
-      contract: recipeMergeContract,
+      contract: buildContract(input.existingLocale),
       sourceContext: resolvedInput,
       config,
     });

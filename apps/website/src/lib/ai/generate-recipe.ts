@@ -4,6 +4,7 @@ import { getCurrentOrigin } from "@pixelmord/content-ai-core/server";
 import { toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts";
 import { publish } from "@/lib/pubsub.ts";
 import { recipeExtractSchema, type RecipeExtract } from "@/contracts/schemas/recipe-extract.ts";
+import { targetLanguageDirective } from "@/lib/ai/language-directive.ts";
 import type { AiConfig } from "@pixelmord/content-ai-core";
 
 export interface GenerateRecipeInput {
@@ -22,13 +23,18 @@ export interface GenerateOptions {
   debug?: boolean;
 }
 
-const GENERATE_SYSTEM_PROMPT = `You are a professional recipe author. Create a complete, detailed, and delicious recipe based on the user's brief.
+function buildSystemPrompt(locale: "en" | "de"): string {
+  return `You are a professional recipe author. Create a complete, detailed, and delicious recipe based on the user's brief.
+
+${targetLanguageDirective(locale)}
+
 - Provide realistic quantities and clear instructions
 - List each ingredient as a separate string (e.g. "2 cups all-purpose flour", "1 tsp kosher salt")
 - Break instructions into clear, numbered steps
 - Include realistic prep and cook times in ISO 8601 duration format (e.g. "PT15M", "PT1H")
 - Suggest a cuisine and category if applicable
 - Add relevant keywords as individual tags`;
+}
 
 export async function generateRecipeFromPrompt(
   input: GenerateRecipeInput,
@@ -39,16 +45,14 @@ export async function generateRecipeFromPrompt(
   const { prompt, locale = "en", style = "recipe" } = input;
 
   const styleHint = style === "mixture" ? "spice blend, sauce, or condiment" : style;
-  const localeHint =
-    locale === "de" ? "Write the recipe in German." : "Write the recipe in English.";
 
   try {
     const stream = streamObject({
       model,
       schema: recipeExtractSchema,
       providerOptions: PROVIDER_OPTIONS,
-      system: GENERATE_SYSTEM_PROMPT,
-      prompt: `Create a complete ${styleHint} for: ${prompt}\n\n${localeHint}`,
+      system: buildSystemPrompt(locale),
+      prompt: `Create a complete ${styleHint} for: ${prompt}`,
     });
 
     const origin = getCurrentOrigin();

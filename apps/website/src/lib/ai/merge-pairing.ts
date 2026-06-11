@@ -3,6 +3,7 @@ import { toAiError } from "@/lib/ai-debug.ts";
 import { toImagePart } from "@/lib/image.ts";
 import { extractPdfContent } from "@/lib/pdf.ts";
 import { pairingExtractSchema, type PairingExtract } from "@/contracts/schemas/pairing-extract.ts";
+import { type AiLocale, mergeLanguageDirective } from "@/lib/ai/language-directive.ts";
 
 export type MergePairingSource =
   | { kind: "pdf"; bytes: Uint8Array }
@@ -31,17 +32,23 @@ interface ResolvedMergePairingInput {
   source: ResolvedMergePairingSource;
 }
 
-const MERGE_SYSTEM_PROMPT = `You are editing a culinary ingredient pairing description.
+function buildSystemPrompt(existingLocale: AiLocale | undefined): string {
+  return `You are editing a culinary ingredient pairing description.
 RULES:
 - Keep ingredient1 and ingredient2 the same unless the new content explicitly corrects them
 - Only update the description if the new content provides a clearly better one
 - Do NOT invent values — copy existing fields if unchanged
-- Description should be 1-2 sentences, vivid, culinary-focused`;
+- Description should be 1-2 sentences, vivid, culinary-focused
 
-const pairingMergeContract: IngestContract<typeof pairingExtractSchema, ResolvedMergePairingInput> =
-  {
+${mergeLanguageDirective(existingLocale)}`;
+}
+
+function buildContract(
+  existingLocale: AiLocale | undefined,
+): IngestContract<typeof pairingExtractSchema, ResolvedMergePairingInput> {
+  return {
     schema: pairingExtractSchema,
-    systemPrompt: MERGE_SYSTEM_PROMPT,
+    systemPrompt: buildSystemPrompt(existingLocale),
     buildMessages: async (input) => {
       const existingJson = JSON.stringify(input.existing, null, 2);
       const base = `EXISTING PAIRING (copy fields unless new content explicitly changes them):\n${existingJson}`;
@@ -94,6 +101,7 @@ const pairingMergeContract: IngestContract<typeof pairingExtractSchema, Resolved
       };
     },
   };
+}
 
 async function resolveSource(
   source: MergePairingSource,
@@ -123,7 +131,11 @@ export async function mergePairing(
     };
 
     const result = await runFill({
-      contract: pairingMergeContract,
+      contract: buildContract(
+        input.existing.locale === "en" || input.existing.locale === "de"
+          ? input.existing.locale
+          : undefined,
+      ),
       sourceContext: resolvedInput,
       config,
     });

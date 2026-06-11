@@ -101,8 +101,8 @@ describe("generateRecipeFromPrompt", () => {
 
     await generateRecipeFromPrompt({ prompt: "curry", locale: "de" }, MOCK_CONFIG);
 
-    const call = vi.mocked(streamObject).mock.calls[0][0] as { prompt: string };
-    expect(call.prompt).toContain("German");
+    const call = vi.mocked(streamObject).mock.calls[0][0] as { system: string };
+    expect(call.system).toContain("German");
   });
 
   test("wraps errors in AiError", async () => {
