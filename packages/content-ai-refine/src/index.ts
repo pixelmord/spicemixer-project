@@ -1,4 +1,6 @@
 export { runRefine } from "./run-refine.ts";
+export { runRefresh } from "./run-refresh.ts";
+export type { RefreshStrategy, RefreshRunParams, RawImprovement } from "./run-refresh.ts";
 
 export type {
   AiConfig,
