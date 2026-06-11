@@ -1265,6 +1265,9 @@ export default function RecipeForm({
               setDismissed={setDismissedPairingProposals}
               featuredPairings={featuredPairings}
               setFeaturedPairings={setFeaturedPairings}
+              onRemovePairing={async (id, pairingLocale) =>
+                actions.deletePairing({ id, locale: pairingLocale })
+              }
               onCreatePairing={handleCreatePairing}
               aiEventLog={aiEventLog}
               runIdSeed={pairingRunId}

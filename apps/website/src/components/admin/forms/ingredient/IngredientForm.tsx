@@ -833,6 +833,9 @@ export default function IngredientForm({
             setDismissed={setDismissedPairingProposals}
             featuredPairings={featuredPairings}
             setFeaturedPairings={setFeaturedPairings}
+            onRemovePairing={async (id, pairingLocale) =>
+              actions.deletePairing({ id, locale: pairingLocale })
+            }
             onSuggestPairings={async () => {
               const { data, error } = await actions.aiProposeIngredientPairings({
                 ingredient: buildIngredientSnapshot(),

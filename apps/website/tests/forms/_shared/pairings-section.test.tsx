@@ -129,7 +129,7 @@ describe("PairingsSection", () => {
     await expect.element(screen.getByText("cardamom--cinnamon")).toBeVisible();
     await expect
       .element(screen.getByRole("link", { name: "Edit" }))
-      .toHaveAttribute("href", "/admin/pairings/cardamom--cinnamon/edit");
+      .toHaveAttribute("href", "/admin/pairings/cardamom--cinnamon/edit?locale=en");
   });
 
   test("Suggest pairings button renders when onSuggestPairings is provided and not isNew", async () => {
