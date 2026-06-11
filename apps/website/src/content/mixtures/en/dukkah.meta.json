@@ -1,0 +1,43 @@
+{
+  "draft": true,
+  "kind": "spicemix",
+  "tags": [],
+  "ingredientLinks": [],
+  "sources": [],
+  "variants": [],
+  "language": "en",
+  "locale": "en",
+  "translationOf": "dukkah",
+  "translations": {
+    "de": "dukkah"
+  },
+  "aiEvents": [
+    {
+      "type": "ingested",
+      "suggestion": {
+        "hash": "0f501b59-baa4-4cdb-8267-89e56043c89f",
+        "summary": "Translation to en"
+      },
+      "model": "translation",
+      "traceId": "0f501b59-baa4-4cdb-8267-89e56043c89f",
+      "id": "d9bc9219-8fb0-4a96-b3c2-2134c5b740e8",
+      "at": "2026-06-06T18:02:02.542Z"
+    }
+  ],
+  "canonicalLocale": "de",
+  "canonicalFieldHashes": {
+    "name": "Dukkah",
+    "description": "Diese aromatische Mischung aus Nüssen und Gewürzen stammt aus Ägypten. Sie eignet sich zum Bestreuen von Blattsalaten, geröstetem Gemüse, Hummus, Reis oder Linsen und verleiht den Speisen eine exotische Note. In einem luftdicht verschlossenen Behälter kann sie etwa einen Monat aufbewahrt werden.",
+    "recipeCategory": "",
+    "recipeCuisine": "",
+    "slug": "dukkah",
+    "keywords": "[\"Dukkah\",\"Gewürzmischung\",\"Nüsse\",\"Ägypten\"]",
+    "tags": "[]",
+    "recipeIngredient": "[\"70 g Haselnusskerne (ungehäutet)\",\"2 EL Sonnenblumenkerne\",\"1 TL Fenchelsamen\",\"1 EL Kreuzkümmelsamen\",\"1 EL getrocknete grüne oder weiße Pfefferkörner\",\"3 EL Koriandersamen\",\"1 EL Sesamsamen\",\"14 TL Schwarzkümmelsamen\",\"15 TL Maldon Sea Salt oder Fleur de Sel\",\"1 TL Paprikapulver edelsüß\"]",
+    "recipeInstructions": "[{\"@type\":\"HowToStep\",\"text\":\"Den Backofen auf 160 °C vorheizen.\"},{\"@type\":\"HowToStep\",\"text\":\"Die Haselnusskerne in einer ofenfesten Form verteilen und für 20 Minuten in den Ofen schieben.\"},{\"@type\":\"HowToStep\",\"text\":\"Nach 10 Minuten die Sonnenblumenkerne dazugeben, jedoch nicht mit den Nüssen mischen.\"},{\"@type\":\"HowToStep\",\"text\":\"Anschließend herausnehmen und abkühlen lassen.\"},{\"@type\":\"HowToStep\",\"text\":\"Eine gusseiserne Pfanne oder eine Pfanne mit schwerem Boden 5 Minuten bei mittlerer Temperatur heiß werden lassen und die Fenchelsamen 30 Sekunden ohne Fett darin rösten.\"},{\"@type\":\"HowToStep\",\"text\":\"Den Kreuzkümmel dazugeben und ebenfalls 50 Sekunden rösten.\"},{\"@type\":\"HowToStep\",\"text\":\"Den Pfanneninhalt danach in eine kleine Schüssel füllen.\"},{\"@type\":\"HowToStep\",\"text\":\"Die Pfefferkörner in die Pfanne geben und etwa 50 Sekunden rösten, bis sie aufplatzen, und in eine zweite Schüssel füllen.\"},{\"@type\":\"HowToStep\",\"text\":\"Die Koriandersamen etwa 1 Minute rösten und danach ebenfalls in eine Schüssel füllen.\"},{\"@type\":\"HowToStep\",\"text\":\"Die Wärmezufuhr verringern und den Sesam mit dem Schwarzkümmel bei geringer Hitze unter gelegentlichem Rühren rösten, bis er leicht gebräunt ist.\"},{\"@type\":\"HowToStep\",\"text\":\"Beides anschließend in eine Schüssel füllen.\"},{\"@type\":\"HowToStep\",\"text\":\"Die Häutchen der Haselnusskerne zwischen den Handflächen etwas abrubbeln.\"},{\"@type\":\"HowToStep\",\"text\":\"Die Nusskerne im Mörser grob zerstoßen und in eine Schüssel geben.\"},{\"@type\":\"HowToStep\",\"text\":\"Kreuzkümmel- und Fenchelsamen leicht zerdrücken und zu den Nusskernen geben.\"},{\"@type\":\"HowToStep\",\"text\":\"Die übrigen Samen ebenfalls leicht zerdrücken und zu den Nusskernen geben.\"},{\"@type\":\"HowToStep\",\"text\":\"Salz und Paprikapulver hinzufügen, das Ganze gut durchmischen und in einen luftdicht schließenden Behälter füllen.\"}]",
+    "image": "https://live.staticflickr.com/2815/11475166614_041a24789b_b.jpg",
+    "cookTime": "PT20M",
+    "totalTime": "PT20M",
+    "region": "[]"
+  }
+}

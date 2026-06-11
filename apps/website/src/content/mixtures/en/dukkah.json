@@ -1,0 +1,92 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "Dukkah",
+  "description": "This aromatic mixture of nuts and spices originates from Egypt. It is suitable for sprinkling on leafy salads, roasted vegetables, hummus, rice, or lentils, giving dishes an exotic touch. When stored in an airtight container, it can be kept for about a month.",
+  "recipeCategory": "",
+  "recipeCuisine": "",
+  "keywords": ["Dukkah", "spice mixture", "nuts", "Egypt"],
+  "recipeIngredient": [
+    "70 g hazelnuts (skin-on)",
+    "2 tablespoons sunflower seeds",
+    "1 teaspoon fennel seeds",
+    "1 tablespoon cumin seeds",
+    "1 tablespoon dried green or white peppercorns",
+    "3 tablespoons coriander seeds",
+    "1 tablespoon sesame seeds",
+    "1/4 teaspoon black cumin seeds",
+    "1/5 teaspoon Maldon sea salt or fleur de sel",
+    "1 teaspoon sweet paprika powder"
+  ],
+  "recipeInstructions": [
+    {
+      "@type": "HowToStep",
+      "text": "Preheat the oven to 160 °C."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Spread the hazelnuts in an oven-safe dish and place in the oven for 20 minutes."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "After 10 minutes, add the sunflower seeds but do not mix with the nuts."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Then remove and let cool."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Heat a cast-iron skillet or a heavy-bottomed pan for 5 minutes over medium heat and toast the fennel seeds for 30 seconds without fat."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Add the cumin and toast for another 50 seconds."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Afterwards, transfer the contents of the pan to a small bowl."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Place the peppercorns in the pan and toast for about 50 seconds until they pop, then transfer to a second bowl."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Toast the coriander seeds for about 1 minute and then transfer to a bowl as well."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Reduce the heat and toast the sesame seeds with the black cumin over low heat, stirring occasionally, until lightly browned."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Then transfer both to a bowl."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Rub the skins off the hazelnuts between your palms."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Crush the nuts roughly in a mortar and place them in a bowl."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Lightly crush the cumin and fennel seeds and add to the nuts."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Lightly crush the remaining seeds and add to the nuts."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Add salt and paprika powder, mix everything well and fill into an airtight container."
+    }
+  ],
+  "tags": [],
+  "image": "https://live.staticflickr.com/2815/11475166614_041a24789b_b.jpg",
+  "cookTime": "PT20M",
+  "totalTime": "PT20M",
+  "region": []
+}

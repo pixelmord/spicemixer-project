@@ -40,5 +40,6 @@
     "cookTime": "PT40M",
     "totalTime": "PT50M",
     "region": "[\"north-america\"]"
-  }
+  },
+  "translationStaleSince": "2026-06-04T16:51:30.558Z"
 }

@@ -1,0 +1,47 @@
+{
+  "draft": false,
+  "translations": {},
+  "canonicalLocale": "en",
+  "canonicalContentHash": "82047006d9a3e69d",
+  "aiEvents": [
+    {
+      "type": "accepted",
+      "field": "description",
+      "suggestion": {
+        "hash": "d33c4e447ad1",
+        "summary": "description: **Turmeric (Curcuma longa)**  \n\n**Category:** Spice  \n**Flavor Notes:** Earthy, "
+      },
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "b137d6c1-d57c-4ee2-95ae-a7c057f76058",
+      "id": "cc3b7d99-1175-47c2-b9d8-8caeb8bee240",
+      "at": "2026-06-06T18:06:50.582Z"
+    },
+    {
+      "type": "accepted",
+      "field": "summary",
+      "suggestion": {
+        "hash": "d9b696277b7f",
+        "summary": "summary: Turmeric, known as Kurkuma, is a vibrant yellow spice that originates from India"
+      },
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "c089deac-5b66-497f-81d3-c2756fdf493d",
+      "id": "bb11d458-6a3b-40a0-825f-a6990bc13efb",
+      "at": "2026-06-06T18:08:19.604Z"
+    },
+    {
+      "type": "accepted",
+      "field": "origin",
+      "suggestion": {
+        "hash": "a8958f8d10dc",
+        "summary": "origin: [5 items]"
+      },
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "bfdbd6cc-90cb-417f-83d9-282ae68029ab",
+      "id": "103edf41-884c-49ad-85c4-f07035e61910",
+      "at": "2026-06-06T18:08:19.605Z"
+    }
+  ]
+}
