@@ -1,7 +1,7 @@
-import { runFill, type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
+import { type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
 import { debugFromResult, toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts";
+import { ingestFields, resolvePdf } from "@/lib/ai/ingest.ts";
 import { toImagePart } from "@/lib/image.ts";
-import { extractPdfContent } from "@/lib/pdf.ts";
 import { pairingExtractSchema, type PairingExtract } from "@/contracts/schemas/pairing-extract.ts";
 import {
   type AiLocale,
@@ -95,18 +95,8 @@ function buildContract(
 async function resolveInput(
   input: PairingFileInput,
 ): Promise<{ resolved: ResolvedInput; warnings: string[] }> {
-  const warnings: string[] = [];
-
-  if (input.kind === "pdf") {
-    const content = await extractPdfContent(input.bytes);
-    if (content.kind === "text") {
-      return { resolved: { kind: "text", content: content.text }, warnings };
-    }
-    warnings.push("PDF appears to be scanned — using vision model.");
-    return { resolved: { kind: "pdf-vision", bytes: input.bytes }, warnings };
-  }
-
-  return { resolved: input as ResolvedInput, warnings };
+  if (input.kind === "pdf") return resolvePdf(input.bytes);
+  return { resolved: input, warnings: [] };
 }
 
 export async function extractPairingFromFile(
@@ -116,21 +106,15 @@ export async function extractPairingFromFile(
 ): Promise<PairingExtractionResult> {
   try {
     const { resolved, warnings: prepWarnings } = await resolveInput(input);
-
-    const result = await runFill({
-      contract: buildContract(options.targetLocale),
-      sourceContext: resolved,
+    const { fields, warnings } = await ingestFields(
+      buildContract(options.targetLocale),
+      resolved,
       config,
-    });
-
-    const pairing: Record<string, unknown> = {};
-    for (const [field, suggestion] of result.suggestions) {
-      if (suggestion.kind === "single") pairing[field] = suggestion.value;
-    }
+    );
 
     const base: PairingExtractionResult = {
-      pairing: pairing as PairingExtract,
-      warnings: [...prepWarnings, ...result.warnings],
+      pairing: fields as PairingExtract,
+      warnings: [...prepWarnings, ...warnings],
     };
 
     if (options.debug) {

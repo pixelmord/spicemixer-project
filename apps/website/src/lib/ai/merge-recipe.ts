@@ -1,7 +1,7 @@
-import { runFill, type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
+import { type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
 import { debugFromResult, toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts";
+import { ingestFields, resolvePdf } from "@/lib/ai/ingest.ts";
 import { toImagePart } from "@/lib/image.ts";
-import { extractPdfContent } from "@/lib/pdf.ts";
 import { recipeExtractSchema, type RecipeExtract } from "@/contracts/schemas/recipe-extract.ts";
 import { type AiLocale, mergeLanguageDirective } from "@/lib/ai/language-directive.ts";
 
@@ -125,16 +125,7 @@ function buildContract(
 async function resolveSource(
   source: MergeRecipeSource,
 ): Promise<{ resolved: ResolvedMergeRecipeSource; warnings: string[] }> {
-  if (source.kind === "pdf") {
-    const content = await extractPdfContent(source.bytes);
-    if (content.kind === "text") {
-      return { resolved: { kind: "text", content: content.text }, warnings: [] };
-    }
-    return {
-      resolved: { kind: "pdf-vision", bytes: source.bytes },
-      warnings: ["PDF appears to be scanned — using vision model for OCR."],
-    };
-  }
+  if (source.kind === "pdf") return resolvePdf(source.bytes);
   return { resolved: source, warnings: [] };
 }
 
@@ -145,25 +136,15 @@ export async function mergeRecipe(
 ): Promise<MergeRecipeResult> {
   try {
     const { resolved: resolvedSource, warnings: prepWarnings } = await resolveSource(input.source);
-    const resolvedInput: ResolvedMergeRecipeInput = {
-      existing: input.existing,
-      source: resolvedSource,
-    };
-
-    const result = await runFill({
-      contract: buildContract(input.existingLocale),
-      sourceContext: resolvedInput,
+    const { fields, warnings } = await ingestFields(
+      buildContract(input.existingLocale),
+      { existing: input.existing, source: resolvedSource } satisfies ResolvedMergeRecipeInput,
       config,
-    });
-
-    const recipe: Record<string, unknown> = {};
-    for (const [field, suggestion] of result.suggestions) {
-      if (suggestion.kind === "single") recipe[field] = suggestion.value;
-    }
+    );
 
     const base: MergeRecipeResult = {
-      recipe: recipe as RecipeExtract,
-      warnings: [...prepWarnings, ...result.warnings],
+      recipe: fields as RecipeExtract,
+      warnings: [...prepWarnings, ...warnings],
     };
 
     if (options.debug) {

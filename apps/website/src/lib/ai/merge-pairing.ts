@@ -1,7 +1,7 @@
-import { runFill, type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
+import { type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
 import { toAiError } from "@/lib/ai-debug.ts";
+import { ingestFields, resolvePdf } from "@/lib/ai/ingest.ts";
 import { toImagePart } from "@/lib/image.ts";
-import { extractPdfContent } from "@/lib/pdf.ts";
 import { pairingExtractSchema, type PairingExtract } from "@/contracts/schemas/pairing-extract.ts";
 import { type AiLocale, mergeLanguageDirective } from "@/lib/ai/language-directive.ts";
 
@@ -106,16 +106,7 @@ function buildContract(
 async function resolveSource(
   source: MergePairingSource,
 ): Promise<{ resolved: ResolvedMergePairingSource; warnings: string[] }> {
-  if (source.kind === "pdf") {
-    const content = await extractPdfContent(source.bytes);
-    if (content.kind === "text") {
-      return { resolved: { kind: "text", content: content.text }, warnings: [] };
-    }
-    return {
-      resolved: { kind: "pdf-vision", bytes: source.bytes },
-      warnings: ["PDF appears scanned — using vision model."],
-    };
-  }
+  if (source.kind === "pdf") return resolvePdf(source.bytes);
   return { resolved: source, warnings: [] };
 }
 
@@ -125,29 +116,19 @@ export async function mergePairing(
 ): Promise<MergePairingResult> {
   try {
     const { resolved: resolvedSource, warnings: prepWarnings } = await resolveSource(input.source);
-    const resolvedInput: ResolvedMergePairingInput = {
-      existing: input.existing,
-      source: resolvedSource,
-    };
-
-    const result = await runFill({
-      contract: buildContract(
+    const { fields, warnings } = await ingestFields(
+      buildContract(
         input.existing.locale === "en" || input.existing.locale === "de"
           ? input.existing.locale
           : undefined,
       ),
-      sourceContext: resolvedInput,
+      { existing: input.existing, source: resolvedSource } satisfies ResolvedMergePairingInput,
       config,
-    });
-
-    const pairing: Record<string, unknown> = {};
-    for (const [field, suggestion] of result.suggestions) {
-      if (suggestion.kind === "single") pairing[field] = suggestion.value;
-    }
+    );
 
     return {
-      pairing: pairing as PairingExtract,
-      warnings: [...prepWarnings, ...result.warnings],
+      pairing: fields as PairingExtract,
+      warnings: [...prepWarnings, ...warnings],
     };
   } catch (e) {
     throw toAiError(e, "Pairing merge failed");

@@ -1,7 +1,7 @@
-import { runFill, type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
+import { type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
 import { debugFromResult, toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts";
+import { ingestFields, resolvePdf } from "@/lib/ai/ingest.ts";
 import { toImagePart } from "@/lib/image.ts";
-import { extractPdfContent } from "@/lib/pdf.ts";
 import { recipeExtractSchema, type RecipeExtract } from "@/contracts/schemas/recipe-extract.ts";
 import {
   type AiLocale,
@@ -99,23 +99,8 @@ function buildContract(
 async function resolveInput(
   input: RecipeFileInput,
 ): Promise<{ resolved: ResolvedInput; warnings: string[] }> {
-  const warnings: string[] = [];
-
-  if (input.kind === "pdf") {
-    const content = await extractPdfContent(input.bytes);
-    if (content.kind === "text") {
-      if (content.pageCount > 20) {
-        warnings.push(`PDF has ${content.pageCount} pages — only first pages were processed`);
-      }
-      return { resolved: { kind: "text", content: content.text }, warnings };
-    }
-    warnings.push(
-      "PDF appears to be a scanned image. Sending to vision model for OCR — requires a vision-capable model (e.g. gpt-4o).",
-    );
-    return { resolved: { kind: "pdf-vision", bytes: input.bytes }, warnings };
-  }
-
-  return { resolved: input as ResolvedInput, warnings };
+  if (input.kind === "pdf") return resolvePdf(input.bytes, { warnLargePdf: true });
+  return { resolved: input, warnings: [] };
 }
 
 export async function extractRecipeFromFile(
@@ -125,21 +110,15 @@ export async function extractRecipeFromFile(
 ): Promise<RecipeExtractionResult> {
   try {
     const { resolved, warnings: prepWarnings } = await resolveInput(input);
-
-    const result = await runFill({
-      contract: buildContract(options.targetLocale),
-      sourceContext: resolved,
+    const { fields, warnings } = await ingestFields(
+      buildContract(options.targetLocale),
+      resolved,
       config,
-    });
-
-    const recipe: Record<string, unknown> = {};
-    for (const [field, suggestion] of result.suggestions) {
-      if (suggestion.kind === "single") recipe[field] = suggestion.value;
-    }
+    );
 
     const base: RecipeExtractionResult = {
-      recipe: recipe as RecipeExtract,
-      warnings: [...prepWarnings, ...result.warnings],
+      recipe: fields as RecipeExtract,
+      warnings: [...prepWarnings, ...warnings],
     };
 
     if (options.debug) {
