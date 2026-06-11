@@ -1,0 +1,101 @@
+{
+  "draft": true,
+  "region": [],
+  "tags": [],
+  "ingredientLinks": [
+    {
+      "pattern": "chili powder",
+      "slug": "chili-powder",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "cumin",
+      "slug": "cumin",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "cardamom",
+      "slug": "cardamom",
+      "kind": "ingredient"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Mango Chutney Recipe",
+      "url": "https://www.indianhealthyrecipes.com/mango-chutney/"
+    }
+  ],
+  "variants": [],
+  "translations": {},
+  "aiEvents": [
+    {
+      "id": "3661c70a-c4be-4cb4-b3ce-cef47f995cd1",
+      "type": "ingested",
+      "source": "https://www.indianhealthyrecipes.com/mango-chutney/",
+      "suggestion": {
+        "hash": "54ecc20df4c6",
+        "summary": "Mango Chutney Recipe"
+      },
+      "model": "recipe-ingestion",
+      "at": "2026-06-04T17:19:06.658Z"
+    }
+  ],
+  "language": "en",
+  "locale": "en",
+  "kind": "chutney",
+  "canonicalLocale": "en",
+  "canonicalContentHash": "2bf270454b0d880c",
+  "aiSuggestions": {
+    "fingerprint": "9ff49454d419c22dc1ffc50a1d9dd8c21b82d4d44f782c98e2a1f97b14055d34",
+    "at": "2026-06-04T17:19:43.336Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [],
+      "ingredientLinks": [
+        {
+          "pattern": "chili powder",
+          "slug": "chili-powder",
+          "confidence": "high"
+        },
+        {
+          "pattern": "cumin",
+          "slug": "cumin",
+          "confidence": "high"
+        },
+        {
+          "pattern": "cardamom",
+          "slug": "cardamom",
+          "confidence": "high"
+        }
+      ],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cumin",
+          "rationale": "Cumin, with its warm and nutty flavor, complements the sweetness of mango chutney, enhancing its complexity and depth.",
+          "traceId": "1eed5c62-0f71-46c6-b466-03406408a971"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "harissa",
+          "rationale": "Harissa's blend of spices and heat adds a bold contrast to the sweet, tangy profile of mango chutney, creating a delightful balance.",
+          "traceId": "1eed5c62-0f71-46c6-b466-03406408a971"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cardamom",
+          "rationale": "The aromatic notes of cardamom pair beautifully with the fruitiness of mango chutney, adding a layer of fragrance that elevates the dish.",
+          "traceId": "1eed5c62-0f71-46c6-b466-03406408a971"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "vegetable-beef-skillet",
+          "rationale": "Serving mango chutney alongside a hearty vegetable and beef skillet introduces a refreshing contrast, enhancing the meal with sweetness and acidity.",
+          "traceId": "1eed5c62-0f71-46c6-b466-03406408a971"
+        }
+      ]
+    }
+  }
+}
