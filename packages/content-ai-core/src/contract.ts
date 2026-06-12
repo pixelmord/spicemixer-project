@@ -30,14 +30,25 @@ export interface RejectedSuggestion {
   reason?: string;
 }
 
+// The single contract-side prompt context. Fields beyond `currentData` /
+// `sourceContext` / `userPrompt` / `preset` are optional so the field runner
+// (which only has those four) and richer callers (which also supply field,
+// rejectedSuggestions, origin) both satisfy it — this is what lets
+// content-ai-refine re-export these types instead of keeping a divergent copy.
+//
+// `currentData` is a `Partial` of the entity shape: callers routinely refine
+// against a subset of fields (e.g. just `{ name }` for slug suggestion), and
+// prompt builders already read each field defensively. This keeps those subset
+// call sites cast-free; dynamic JSON payloads (`Record<string, unknown>` read
+// from disk) still need an explicit cast since their shape isn't statically known.
 export interface PromptContext<S extends ZodSchema, Source = never> {
-  field: FieldPath<S>;
+  field?: FieldPath<S>;
   currentData?: Partial<z.infer<S>>;
   sourceContext?: Source;
-  preset?: ResolvedPreset;
+  preset?: string | ResolvedPreset;
   userPrompt?: string;
-  rejectedSuggestions: RejectedSuggestion[];
-  origin: Origin;
+  rejectedSuggestions?: RejectedSuggestion[];
+  origin?: Origin;
 }
 
 export interface Preset<S extends ZodSchema = ZodSchema, Source = never> {
@@ -61,6 +72,14 @@ export interface FieldConfig<S extends ZodSchema = ZodSchema, Source = never> {
   presetIds?: string[];
   writePolicy?: FieldWritePolicy<unknown>;
   translation?: TranslationBehavior;
+  // When true, this field is attempted on every all-fields ("bulk") refresh,
+  // not only when it is among the missing recommended fields. This is the
+  // single source of truth for which enrichment fields a full run produces —
+  // the runner derives its bulk target from the contract rather than a
+  // hand-maintained per-entity list. Fields whose `systemPrompt` returns ""
+  // for the current context are skipped by the runner, so preconditions
+  // (e.g. "no inventory → no pairings") belong in the prompt, not here.
+  bulk?: boolean;
 }
 
 export interface AiContract<S extends ZodSchema, Source = never> {

@@ -248,6 +248,7 @@ function IngredientLinkContent({
           source.kind === "text" ? source.content : (source as { prompt: string }).prompt,
         );
       }
+      formData.append("targetLocale", locale);
       const { data, error } = await actions.aiExtractIngredient(formData);
       if (error || !data) throw new Error(error?.message ?? "Extraction failed");
       const ingredient = data.ingredient as Record<string, unknown>;

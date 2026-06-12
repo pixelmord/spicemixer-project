@@ -833,6 +833,9 @@ export default function IngredientForm({
             setDismissed={setDismissedPairingProposals}
             featuredPairings={featuredPairings}
             setFeaturedPairings={setFeaturedPairings}
+            onRemovePairing={async (id, pairingLocale) =>
+              actions.deletePairing({ id, locale: pairingLocale })
+            }
             onSuggestPairings={async () => {
               const { data, error } = await actions.aiProposeIngredientPairings({
                 ingredient: buildIngredientSnapshot(),
@@ -840,11 +843,16 @@ export default function IngredientForm({
               });
               if (error) throw new Error(error.message);
               const items =
-                (data as Array<{ slug: string; description: string; confidence?: string }>) ?? [];
+                (data as Array<{
+                  slug: string;
+                  description: string;
+                  confidence?: "high" | "medium" | "low";
+                }>) ?? [];
               return items.map((it) => ({
                 otherCollection: "ingredients" as const,
                 otherSlug: it.slug,
                 rationale: it.description ?? "",
+                confidence: it.confidence,
               }));
             }}
             onCreatePairing={handleCreatePairing}

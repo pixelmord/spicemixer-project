@@ -412,6 +412,114 @@ describe("runAiRefresh recipe: tags and keywords independence", () => {
   });
 });
 
+describe("runAiRefresh recipe: generic field summaries", () => {
+  test("full run surfaces every bulk field in aiSuggestions.fields, not just baseFields improvements", async () => {
+    const refine = await import("@pixelmord/content-ai-refine");
+    vi.mocked(refine.runRefine).mockClear();
+    // A full run has empty baseFields, so keywords/tags live only in the
+    // suggestions map — the reported bug was that they never reached the UI.
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "keywords",
+          {
+            kind: "single" as const,
+            value: ["weeknight", "vegan", "quick"],
+            confidence: "medium" as const,
+            summary: "keywords: [3 items]",
+            hash: "kw",
+            traceId: "t-kw",
+          },
+        ],
+        [
+          "tags",
+          {
+            kind: "single" as const,
+            value: ["dinner"],
+            confidence: "medium" as const,
+            summary: "tags: [1 items]",
+            hash: "tg",
+            traceId: "t-tg",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
+
+    const { store, sidecar, eventLog } = makeEnv();
+    const metaRef = { collection: "recipes" as const, locale: "en", slug: "ramen" };
+
+    const result = await runAiRefresh({
+      kind: "recipe",
+      metaRef,
+      // "vegan" is already on the recipe → must be excluded from newCount.
+      payload: { name: "Ramen", keywords: ["vegan"] },
+      missingFields: [],
+      locale: "en",
+      store,
+      sidecar,
+      eventLog,
+      config: CONFIG,
+      existingMeta: {},
+      force: true,
+    });
+
+    const fields = (result.aiSuggestions as { fields?: Record<string, unknown> }).fields ?? {};
+    expect(Object.keys(fields)).toEqual(expect.arrayContaining(["keywords", "tags"]));
+    const kw = fields["keywords"] as { total: number; newCount: number; hasNew: boolean };
+    expect(kw.total).toBe(3);
+    expect(kw.newCount).toBe(2); // "vegan" already present
+    expect(kw.hasNew).toBe(true);
+    const tg = fields["tags"] as { newCount: number; hasNew: boolean };
+    expect(tg.newCount).toBe(1);
+    expect(tg.hasNew).toBe(true);
+  });
+
+  test("a field whose items all already exist is surfaced with hasNew=false", async () => {
+    const refine = await import("@pixelmord/content-ai-refine");
+    vi.mocked(refine.runRefine).mockClear();
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "keywords",
+          {
+            kind: "single" as const,
+            value: ["vegan", "quick"],
+            confidence: "medium" as const,
+            summary: "keywords: [2 items]",
+            hash: "kw",
+            traceId: "t-kw",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
+
+    const { store, sidecar, eventLog } = makeEnv();
+    const metaRef = { collection: "recipes" as const, locale: "en", slug: "ramen" };
+
+    const result = await runAiRefresh({
+      kind: "recipe",
+      metaRef,
+      payload: { name: "Ramen", keywords: ["vegan", "quick"] },
+      missingFields: [],
+      locale: "en",
+      store,
+      sidecar,
+      eventLog,
+      config: CONFIG,
+      existingMeta: {},
+      force: true,
+    });
+
+    const fields = (result.aiSuggestions as { fields?: Record<string, { hasNew: boolean }> })
+      .fields;
+    expect(fields?.["keywords"]?.hasNew).toBe(false);
+  });
+});
+
 // ── Recipe kind: auto-apply ───────────────────────────────────────────────────
 
 describe("runAiRefresh recipe: auto-apply ingredient links", () => {
@@ -562,6 +670,55 @@ describe("runAiRefresh ingredient: auto-apply pairings", () => {
     expect(aiEvents?.some((e: unknown) => (e as { type: string }).type === "auto-applied")).toBe(
       true,
     );
+  });
+
+  test("threads per-item confidence into the UI-facing pairings array", async () => {
+    const refine = await import("@pixelmord/content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "pairings",
+          {
+            kind: "single" as const,
+            value: [
+              {
+                otherCollection: "ingredients",
+                otherSlug: "cumin",
+                rationale: "Fragrant pair",
+                confidence: "medium" as const,
+              },
+            ],
+            confidence: "medium" as const,
+            summary: "pairings: [1 items]",
+            hash: "def456",
+            traceId: "trace-2",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
+
+    const { store, sidecar, eventLog } = makeEnv();
+    await store.put("ingredients", "en/cumin", { name: "Cumin" });
+    const metaRef = { collection: "ingredients" as const, locale: "en", slug: "cardamom" };
+
+    const result = await runAiRefresh({
+      kind: "ingredient",
+      metaRef,
+      payload: { name: "Cardamom" },
+      missingFields: [],
+      locale: "en",
+      store,
+      sidecar,
+      eventLog,
+      config: CONFIG,
+      existingMeta: {},
+    });
+
+    const pairings = (result.aiSuggestions as { pairings: Array<{ confidence?: string }> })
+      .pairings;
+    expect(pairings[0]?.confidence).toBe("medium");
   });
 
   test("low-confidence pairings are not auto-applied", async () => {

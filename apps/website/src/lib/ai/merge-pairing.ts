@@ -1,8 +1,10 @@
-import { runFill, type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
+import type { AiConfig } from "@pixelmord/content-ai-core";
+import { type IngestContract } from "@pixelmord/content-ai-ingest";
 import { toAiError } from "@/lib/ai-debug.ts";
+import { ingestFields, resolvePdf } from "@/lib/ai/ingest.ts";
 import { toImagePart } from "@/lib/image.ts";
-import { extractPdfContent } from "@/lib/pdf.ts";
 import { pairingExtractSchema, type PairingExtract } from "@/contracts/schemas/pairing-extract.ts";
+import { type AiLocale, mergeLanguageDirective } from "@/lib/ai/language-directive.ts";
 
 export type MergePairingSource =
   | { kind: "pdf"; bytes: Uint8Array }
@@ -31,17 +33,23 @@ interface ResolvedMergePairingInput {
   source: ResolvedMergePairingSource;
 }
 
-const MERGE_SYSTEM_PROMPT = `You are editing a culinary ingredient pairing description.
+function buildSystemPrompt(existingLocale: AiLocale | undefined): string {
+  return `You are editing a culinary ingredient pairing description.
 RULES:
 - Keep ingredient1 and ingredient2 the same unless the new content explicitly corrects them
 - Only update the description if the new content provides a clearly better one
 - Do NOT invent values — copy existing fields if unchanged
-- Description should be 1-2 sentences, vivid, culinary-focused`;
+- Description should be 1-2 sentences, vivid, culinary-focused
 
-const pairingMergeContract: IngestContract<typeof pairingExtractSchema, ResolvedMergePairingInput> =
-  {
+${mergeLanguageDirective(existingLocale)}`;
+}
+
+function buildContract(
+  existingLocale: AiLocale | undefined,
+): IngestContract<typeof pairingExtractSchema, ResolvedMergePairingInput> {
+  return {
     schema: pairingExtractSchema,
-    systemPrompt: MERGE_SYSTEM_PROMPT,
+    systemPrompt: buildSystemPrompt(existingLocale),
     buildMessages: async (input) => {
       const existingJson = JSON.stringify(input.existing, null, 2);
       const base = `EXISTING PAIRING (copy fields unless new content explicitly changes them):\n${existingJson}`;
@@ -94,20 +102,12 @@ const pairingMergeContract: IngestContract<typeof pairingExtractSchema, Resolved
       };
     },
   };
+}
 
 async function resolveSource(
   source: MergePairingSource,
 ): Promise<{ resolved: ResolvedMergePairingSource; warnings: string[] }> {
-  if (source.kind === "pdf") {
-    const content = await extractPdfContent(source.bytes);
-    if (content.kind === "text") {
-      return { resolved: { kind: "text", content: content.text }, warnings: [] };
-    }
-    return {
-      resolved: { kind: "pdf-vision", bytes: source.bytes },
-      warnings: ["PDF appears scanned — using vision model."],
-    };
-  }
+  if (source.kind === "pdf") return resolvePdf(source.bytes);
   return { resolved: source, warnings: [] };
 }
 
@@ -117,25 +117,33 @@ export async function mergePairing(
 ): Promise<MergePairingResult> {
   try {
     const { resolved: resolvedSource, warnings: prepWarnings } = await resolveSource(input.source);
-    const resolvedInput: ResolvedMergePairingInput = {
-      existing: input.existing,
-      source: resolvedSource,
-    };
-
-    const result = await runFill({
-      contract: pairingMergeContract,
-      sourceContext: resolvedInput,
+    const { fields, warnings } = await ingestFields(
+      buildContract(
+        input.existing.locale === "en" || input.existing.locale === "de"
+          ? input.existing.locale
+          : undefined,
+      ),
+      { existing: input.existing, source: resolvedSource } satisfies ResolvedMergePairingInput,
       config,
-    });
+    );
 
-    const pairing: Record<string, unknown> = {};
-    for (const [field, suggestion] of result.suggestions) {
-      if (suggestion.kind === "single") pairing[field] = suggestion.value;
+    // ingestFields assembles per-field suggestions without validating the whole
+    // object, so a model that drops a required field would slip through the cast.
+    // Validate non-fatally: surface a warning but still return the merge so a
+    // partial result isn't silently lost.
+    const parsed = pairingExtractSchema.safeParse(fields);
+    const mergeWarnings = [...prepWarnings, ...warnings];
+    if (!parsed.success) {
+      mergeWarnings.push(
+        `Merged pairing failed schema validation: ${parsed.error.issues
+          .map((i) => `${i.path.join(".")}: ${i.message}`)
+          .join("; ")}`,
+      );
     }
 
     return {
-      pairing: pairing as PairingExtract,
-      warnings: [...prepWarnings, ...result.warnings],
+      pairing: parsed.success ? parsed.data : (fields as PairingExtract),
+      warnings: mergeWarnings,
     };
   } catch (e) {
     throw toAiError(e, "Pairing merge failed");

@@ -356,7 +356,7 @@ describe("recipeContract pairings proposer shape", () => {
     expect(recipeContract.fields.pairings).toBeDefined();
   });
 
-  test("pairings outputSchema validates {otherCollection, otherSlug, rationale}", () => {
+  test("pairings outputSchema validates {otherCollection, otherSlug, rationale, confidence}", () => {
     const field = recipeContract.fields.pairings;
     expect(field.outputSchema).toBeDefined();
     const result = field.outputSchema!.safeParse([
@@ -364,6 +364,7 @@ describe("recipeContract pairings proposer shape", () => {
         otherCollection: "ingredients",
         otherSlug: "cardamom",
         rationale: "Cardamom is central to this dish.",
+        confidence: "high",
       },
     ]);
     expect(result.success).toBe(true);

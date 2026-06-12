@@ -2,6 +2,7 @@ export type PairingProposal = {
   otherCollection: "ingredients" | "mixtures" | "recipes";
   otherSlug: string;
   rationale: string;
+  confidence?: "high" | "medium" | "low";
   traceId?: string;
 };
 

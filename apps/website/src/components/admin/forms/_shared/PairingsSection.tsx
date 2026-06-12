@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { ConfidenceBadge } from "@/components/ui/confidence-badge.tsx";
 import { Dialog, DialogContent } from "@/components/ui/dialog.tsx";
 import {
   CreatePairingDialog,
@@ -29,6 +30,9 @@ export interface PairingsSectionProps {
   featuredPairings: PairingListItem[];
   setFeaturedPairings?: (next: PairingListItem[]) => void;
 
+  /** Optional — when provided, renders a Remove button on each featured pairing row. */
+  onRemovePairing?: (id: string, locale: string) => Promise<{ error?: { message: string } }>;
+
   /** Optional — when provided, renders a "Suggest pairings" button that calls this. */
   onSuggestPairings?: () => Promise<PairingProposal[]>;
 
@@ -53,6 +57,8 @@ export function PairingsSection({
   dismissed,
   setDismissed,
   featuredPairings,
+  setFeaturedPairings,
+  onRemovePairing,
   onSuggestPairings,
   onCreatePairing,
   aiEventLog,
@@ -82,6 +88,30 @@ export function PairingsSection({
     const next = new Set(dismissed);
     next.add(otherSlug);
     setDismissed(next);
+  }
+
+  function splitPairingId(id: string): { locale: string; slug: string } {
+    const idx = id.indexOf("/");
+    return idx !== -1
+      ? { locale: id.slice(0, idx), slug: id.slice(idx + 1) }
+      : { locale: "en", slug: id };
+  }
+
+  async function handleRemovePairing(p: PairingListItem) {
+    if (!onRemovePairing) return;
+    const { locale: pairingLocale, slug: pairingSlug } = splitPairingId(p.id);
+    if (!window.confirm(`Remove pairing "${pairingSlug}" (${pairingLocale})?`)) return;
+    try {
+      const { error } = await onRemovePairing(pairingSlug, pairingLocale);
+      if (error) {
+        toast.error(`Remove failed: ${error.message}`);
+        return;
+      }
+      setFeaturedPairings?.(featuredPairings.filter((x) => x.id !== p.id));
+      toast.success("Pairing removed");
+    } catch (err) {
+      toast.error(`Remove failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   return (
@@ -125,6 +155,9 @@ export function PairingsSection({
                   <div className="flex-1 min-w-0">
                     <span className="text-muted-foreground">{p.otherCollection}: </span>
                     <span className="font-medium">{p.otherSlug}</span>
+                    {p.confidence && (
+                      <ConfidenceBadge confidence={p.confidence} className="ml-1.5 align-middle" />
+                    )}
                     {p.rationale && (
                       <p className="text-muted-foreground mt-0.5 truncate">{p.rationale}</p>
                     )}
@@ -157,23 +190,34 @@ export function PairingsSection({
               <p className="text-xs font-medium text-muted-foreground">
                 Pairings featuring this entity
               </p>
-              {featuredPairings.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center gap-2 text-xs rounded border border-border px-2 py-1.5"
-                >
-                  <span className="font-medium font-mono">{p.id}</span>
-                  {p.description && (
-                    <span className="text-muted-foreground truncate">{p.description}</span>
-                  )}
-                  <a
-                    href={`/admin/pairings/${p.id}/edit`}
-                    className="ml-auto shrink-0 text-primary hover:underline"
+              {featuredPairings.map((p) => {
+                const { locale: pairingLocale, slug: pairingSlug } = splitPairingId(p.id);
+                const editHref = `/admin/pairings/${encodeURIComponent(pairingSlug)}/edit?locale=${pairingLocale}`;
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-2 text-xs rounded border border-border px-2 py-1.5"
                   >
-                    Edit
-                  </a>
-                </div>
-              ))}
+                    <span className="font-medium font-mono">{p.id}</span>
+                    {p.description && (
+                      <span className="text-muted-foreground truncate">{p.description}</span>
+                    )}
+                    <a href={editHref} className="ml-auto shrink-0 text-primary hover:underline">
+                      Edit
+                    </a>
+                    {onRemovePairing && (
+                      <button
+                        type="button"
+                        aria-label={`Remove pairing ${p.id}`}
+                        onClick={() => void handleRemovePairing(p)}
+                        className="shrink-0 rounded border border-border p-1 text-muted-foreground hover:text-destructive hover:bg-muted"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 

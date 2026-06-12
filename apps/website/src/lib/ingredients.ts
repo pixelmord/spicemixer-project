@@ -31,19 +31,6 @@ export async function quickCreateIngredient(
   return { slug: input.slug };
 }
 
-export async function deleteIngredient(
-  store: ContentStore,
-  sidecar: MetaSidecar,
-  input: { id: string },
-): Promise<void> {
-  await store.delete("ingredients", input.id);
-  // id is "locale/slug" — parse for the sidecar ref
-  const slash = input.id.indexOf("/");
-  const locale = input.id.slice(0, slash);
-  const slug = input.id.slice(slash + 1);
-  await sidecar.remove({ collection: "ingredients", locale, slug });
-}
-
 export interface SaveIngredientMetaInput {
   locale: Locale;
   slug: string;
@@ -56,32 +43,4 @@ export async function saveIngredientMeta(
 ): Promise<void> {
   const ref = { collection: "ingredients" as const, locale: input.locale, slug: input.slug };
   await entityMeta.merge(sidecar, ref, input.patch);
-}
-
-export interface IngredientPublishStateInput {
-  locale: Locale;
-  slug: string;
-}
-
-async function setIngredientDraft(
-  sidecar: MetaSidecar,
-  input: IngredientPublishStateInput,
-  draft: boolean,
-): Promise<void> {
-  const ref = { collection: "ingredients" as const, locale: input.locale, slug: input.slug };
-  await entityMeta.merge(sidecar, ref, { draft });
-}
-
-export async function publishIngredient(
-  sidecar: MetaSidecar,
-  input: IngredientPublishStateInput,
-): Promise<void> {
-  await setIngredientDraft(sidecar, input, false);
-}
-
-export async function unpublishIngredient(
-  sidecar: MetaSidecar,
-  input: IngredientPublishStateInput,
-): Promise<void> {
-  await setIngredientDraft(sidecar, input, true);
 }

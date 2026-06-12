@@ -7,14 +7,14 @@ vi.mock("ai", () => ({
   Output: { object: vi.fn().mockReturnValue({}) },
 }));
 
-vi.mock("../src/provider.ts", () => ({
+vi.mock("@pixelmord/content-ai-core/server", () => ({
   createProvider: vi.fn().mockReturnValue({}),
   PROVIDER_OPTIONS: { openai: { strictJsonSchema: false } },
 }));
 
 const { generateText } = await import("ai");
 const { runRefine } = await import("../src/run-refine.ts");
-const { createProvider } = await import("../src/provider.ts");
+const { createProvider } = await import("@pixelmord/content-ai-core/server");
 
 const MOCK_CONFIG = { baseUrl: "http://localhost", apiKey: "test", model: "gpt-4o-mini" };
 
@@ -88,6 +88,34 @@ describe("dispatch by target", () => {
 
     expect(suggestions.size).toBe(2);
     expect(generateText).toHaveBeenCalledTimes(2);
+  });
+
+  test("skips fields whose systemPrompt resolves to an empty string", async () => {
+    const contractWithGatedField = {
+      ...baseContract,
+      fields: {
+        ...baseContract.fields,
+        // Precondition unmet → prompt returns "" → must be skipped (no LLM call).
+        tags: {
+          systemPrompt: () => "",
+          autoApply: { policy: "never" as const },
+        },
+      },
+    };
+
+    vi.mocked(generateText).mockResolvedValue({ output: { value: "result" } } as never);
+
+    const { suggestions } = await runRefine({
+      contract: contractWithGatedField,
+      currentData: { name: "Cumin" },
+      target: ["summary", "tags"],
+      config: MOCK_CONFIG,
+    });
+
+    // 'summary' runs; 'tags' is gated by an empty prompt and never hits the model.
+    expect(generateText).toHaveBeenCalledTimes(1);
+    expect(suggestions.has("tags")).toBe(false);
+    expect(suggestions.has("summary")).toBe(true);
   });
 
   test("skips fields without systemPrompt", async () => {
@@ -246,6 +274,45 @@ describe("suggestion shape", () => {
     });
 
     expect(suggestions.size).toBe(0);
+  });
+});
+
+// ── Confidence source ─────────────────────────────────────────────────────────
+
+describe("confidence source", () => {
+  test("reads the model's self-reported confidence into the suggestion", async () => {
+    vi.mocked(generateText).mockResolvedValue({
+      output: { value: "A summary", confidence: "high" },
+    } as never);
+
+    const { suggestions } = await runRefine({
+      contract: baseContract,
+      currentData: { name: "Cumin" },
+      target: "summary",
+      config: MOCK_CONFIG,
+    });
+
+    const suggestion = suggestions.get("summary");
+    expect(suggestion?.kind).toBe("single");
+    if (suggestion?.kind === "single") {
+      expect(suggestion.confidence).toBe("high");
+    }
+  });
+
+  test("falls back to medium when the model omits confidence", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { value: "A summary" } } as never);
+
+    const { suggestions } = await runRefine({
+      contract: baseContract,
+      currentData: { name: "Cumin" },
+      target: "summary",
+      config: MOCK_CONFIG,
+    });
+
+    const suggestion = suggestions.get("summary");
+    if (suggestion?.kind === "single") {
+      expect(suggestion.confidence).toBe("medium");
+    }
   });
 });
 

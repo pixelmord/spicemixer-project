@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import RecipeForm from "./forms/recipe/RecipeForm.tsx";
 import type { RecipeCollection } from "@/lib/content-store.ts";
-import { hashSuggestion, createAiEvent, type AiEvent } from "@pixelmord/content-ai-core";
+import { createAiEvent, hashSuggestion, type AiEvent } from "@pixelmord/content-ai-core";
 import type { SourceMeta } from "./AiImportPage.tsx";
 
 interface Props {

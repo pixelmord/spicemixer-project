@@ -39,8 +39,8 @@
     }
   ],
   "aiSuggestions": {
-    "fingerprint": "720e42de59b8b8a52aaeb96392e673f4b2c0c0f4acb3c7cca13ca14c331ddfe1",
-    "at": "2026-06-03T14:04:11.088Z",
+    "fingerprint": "33baa90f7531bf7c813af0223800ffc04e5fd6a0ecb15522c66a8009f7930c94",
+    "at": "2026-06-11T14:51:38.412Z",
     "model": "gpt-4o-mini",
     "data": {
       "improvements": [],
@@ -57,26 +57,26 @@
         {
           "otherCollection": "ingredients",
           "otherSlug": "chili-powder",
-          "rationale": "Chili powder complements the spicy notes in the Vegetable and Beef Skillet, enhancing its flavor profile with warmth and depth.",
-          "traceId": "f89fc83c-8c74-4760-a73c-24e3ba4ec01d"
-        },
-        {
-          "otherCollection": "mixtures",
-          "otherSlug": "berbere",
-          "rationale": "Berbere adds a complex, aromatic spice blend that can elevate the dish, bringing additional layers of flavor that pair well with the beef and vegetables.",
-          "traceId": "f89fc83c-8c74-4760-a73c-24e3ba4ec01d"
+          "rationale": "Chili powder enhances the spice profile of the Vegetable and Beef Skillet, deepening its flavor and complementing the beef and vegetables.",
+          "traceId": "c33a2b03-d858-4c55-a70d-e1aa380ca149"
         },
         {
           "otherCollection": "mixtures",
           "otherSlug": "harissa",
-          "rationale": "Harissa provides a spicy and smoky contrast that pairs beautifully with the hearty elements of the skillet, enriching the overall taste experience.",
-          "traceId": "f89fc83c-8c74-4760-a73c-24e3ba4ec01d"
+          "rationale": "Harissa adds a bold, smoky heat that pairs well with the richness of the beef and the freshness of the vegetables, bringing an exciting depth to the dish.",
+          "traceId": "c33a2b03-d858-4c55-a70d-e1aa380ca149"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "mojo-rojo",
+          "rationale": "Mojo rojo, with its vibrant flavors, can elevate the dish, adding a zesty complement to the savory components of the skillet.",
+          "traceId": "c33a2b03-d858-4c55-a70d-e1aa380ca149"
         },
         {
           "otherCollection": "recipes",
           "otherSlug": "gemuese-rindfleisch-pfanne",
-          "rationale": "This similar recipe offers a cultural connection, using comparable ingredients to create a comforting, savory dish that resonates well with the flavors of the skillet.",
-          "traceId": "f89fc83c-8c74-4760-a73c-24e3ba4ec01d"
+          "rationale": "This recipe is a German version of a vegetable and beef skillet, highlighting a similar preparation and flavor profile, providing an interesting cultural twist to the meal.",
+          "traceId": "c33a2b03-d858-4c55-a70d-e1aa380ca149"
         }
       ]
     }
@@ -84,5 +84,15 @@
   "translations": {
     "de": "gemuese-rindfleisch-pfanne"
   },
-  "locale": "en"
+  "locale": "en",
+  "imageAttribution": {
+    "source": "flickr",
+    "sourceUrl": "https://www.flickr.com/photos/55768440@N00/5437661326",
+    "creator": "TheGirlsNY",
+    "creatorUrl": "https://www.flickr.com/photos/55768440@N00",
+    "license": "by-sa",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+    "attribution": "\"Beef Short Ribs\" by TheGirlsNY is licensed under CC BY-SA 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/2.0/."
+  },
+  "canonicalContentHash": "a15e2ba66f25b402"
 }

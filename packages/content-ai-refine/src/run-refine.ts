@@ -2,7 +2,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import type { ZodObject, ZodRawShape, ZodSchema } from "zod";
 import { noopLogger } from "@pixelmord/content-ai-core";
-import { createProvider, PROVIDER_OPTIONS } from "./provider.ts";
+import { createProvider, PROVIDER_OPTIONS } from "@pixelmord/content-ai-core/server";
 import { fingerprintHash } from "./hash.ts";
 import type {
   AiEvent,
@@ -196,6 +196,13 @@ export async function runRefine<S extends ZodSchema, Source = never>(
 
       let systemPromptStr = fieldConfig.systemPrompt(ctx);
 
+      // A field whose prompt resolves to empty for the current context is gated
+      // off — its precondition is unmet (e.g. pairings with no inventory). Skip
+      // it silently so an all-fields run can include every bulk field without
+      // firing wasteful, prompt-less LLM calls. This is what lets the contract
+      // (not a hand-maintained target list) decide which fields actually run.
+      if (!systemPromptStr.trim()) return;
+
       // Append preset instruction if applicable
       if (presetObj) {
         const presetInstruction =
@@ -215,7 +222,12 @@ export async function runRefine<S extends ZodSchema, Source = never>(
 
       try {
         const model = createProvider(config, sinks?.length ? { sinks } : undefined);
-        const wrappedSchema = z.object({ value: outputSchema });
+        // Ask the model to self-report confidence alongside the value. This is a
+        // soft, uncalibrated hint — see ADR / issue #160 — not a logprob score.
+        const wrappedSchema = z.object({
+          value: outputSchema,
+          confidence: z.enum(["high", "medium", "low"]).optional(),
+        });
 
         // Reinforce the wrapper-key contract in the user prompt as
         // defense-in-depth — the system prompt mentions the field name, so
@@ -237,6 +249,8 @@ export async function runRefine<S extends ZodSchema, Source = never>(
         });
 
         const value = (output as { value: unknown }).value;
+        const reportedConfidence = (output as { confidence?: "high" | "medium" | "low" })
+          .confidence;
         const runtimeMs = Date.now() - start;
 
         if (value == null) {
@@ -254,7 +268,7 @@ export async function runRefine<S extends ZodSchema, Source = never>(
 
         const hash = fingerprintHash({ field, value });
         const summary = summarizeValue(field, value);
-        const confidence: "high" | "medium" | "low" = "medium";
+        const confidence: "high" | "medium" | "low" = reportedConfidence ?? "medium";
 
         const traceSummary: TraceSummary = {
           traceId,

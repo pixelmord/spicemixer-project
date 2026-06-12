@@ -1,0 +1,89 @@
+{
+  "draft": true,
+  "region": [],
+  "tags": [],
+  "ingredientLinks": [
+    {
+      "pattern": "cumin",
+      "slug": "cumin",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "coriander",
+      "slug": "koriander",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "koriander",
+      "slug": "koriander",
+      "kind": "ingredient"
+    },
+    {
+      "pattern": "turmeric",
+      "slug": "turmeric",
+      "kind": "ingredient"
+    }
+  ],
+  "sources": [],
+  "variants": [],
+  "translations": {},
+  "aiEvents": [],
+  "language": "en",
+  "locale": "en",
+  "kind": "chutney",
+  "canonicalLocale": "en",
+  "canonicalContentHash": "48ae2cfd84f315a4",
+  "aiSuggestions": {
+    "fingerprint": "265e5ac35d6b68683d452ce234ccda8ba8503bc7ad11e3b0640e8c88cb1887c4",
+    "at": "2026-06-06T18:05:51.542Z",
+    "model": "gpt-4o-mini",
+    "data": {
+      "improvements": [],
+      "tags": [],
+      "ingredientLinks": [
+        {
+          "pattern": "cumin",
+          "slug": "cumin",
+          "confidence": "high"
+        },
+        {
+          "pattern": "koriander",
+          "slug": "koriander",
+          "confidence": "high"
+        },
+        {
+          "pattern": "turmeric",
+          "slug": "turmeric",
+          "confidence": "high"
+        }
+      ],
+      "relations": [],
+      "pairings": [
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "berbere",
+          "rationale": "The warm spices in berbere, such as paprika and chili, complement the sweetness of mango chutney, enhancing its depth and creating a harmonious balance of flavors.",
+          "traceId": "e52f9a31-327c-407d-8ac7-c09b27bb36f0"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "gemuese-rindfleisch-pfanne",
+          "rationale": "This hearty vegetable and beef skillet dish can benefit from the sweet and tangy notes of mango chutney, adding brightness and complexity to the savory elements.",
+          "traceId": "e52f9a31-327c-407d-8ac7-c09b27bb36f0"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cardamom",
+          "rationale": "Cardamom's aromatic and slightly sweet profile pairs beautifully with the mango chutney, intensifying its fragrant qualities and making it a great addition in various dishes.",
+          "traceId": "e52f9a31-327c-407d-8ac7-c09b27bb36f0"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "harissa",
+          "rationale": "The spicy and smoky notes of harissa contrast wonderfully with the sweet mango chutney, allowing for a bold layering of flavors that can elevate grilled meats or vegetables.",
+          "traceId": "e52f9a31-327c-407d-8ac7-c09b27bb36f0"
+        }
+      ]
+    }
+  }
+}

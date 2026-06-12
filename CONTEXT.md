@@ -279,6 +279,42 @@ suggestion-only rule). Replaces the originally-proposed `mode` enum on
 the refine runner — there is no top-level mode, only preset id + optional
 free-text amendment.
 
+### Refresh runner & RefreshStrategy
+
+The entity-level orchestration that drives a full AI refresh of one entity:
+read events → optional fingerprint short-circuit → build source context →
+compose target fields → `runRefine` → error-check → extract improvements →
+apply side effects → assemble result. The shared template is **deep and
+portable** — it lives in `@pixelmord/content-ai-refine` as `runRefresh`,
+beside the field-level `runRefine` it wraps, and never imports a
+`ContentStore` (ADR 0017's "two real consumers" justify the seam; pixelmord-hq
+reuses the runner with its own strategies).
+
+The per-kind variance sits behind the seam as a **RefreshStrategy** — an
+adapter `runRefresh` consumes. Each strategy supplies the AI `contract`, the
+`currentData` to refine, an optional `sourceContext`, the prior `events`, a
+`logger`, and an `assemble` callback (executes auto-apply side effects when not
+a per-field run, then builds the kind-specific result shape). A separate run
+params object carries `baseFields`, `isPerField`, `config`, and the injectable
+`runField` runner. Target composition lives in `runRefresh`: a per-field run
+targets exactly `baseFields`; a full run unions `baseFields` with every field
+the contract flags `bulk: true` (the contract is the single source of truth for
+which enrichment fields a full refresh runs). Fingerprint short-circuiting,
+event reads, and context construction stay in the app-side orchestration around
+`runRefresh`. Concrete strategies (`ingredient`, `recipe`, `pairing`) stay in
+`apps/website` because they hold the `ContentStore` and the Spicemixer-specific
+auto-apply targets (pairings → store, ingredientLinks + language → meta).
+`runAiRefresh(kind, …)` is the thin app-side dispatcher that selects a strategy
+and calls `runRefresh`.
+
+The auto-apply **decision** is a pure, exported function per target
+(`planPairingAutoApply`, `planLinkAutoApply`) — confidence filter + dedup, no
+I/O. The strategy calls plan-then-execute. The pure functions are the test
+surface; executing the plan against store + eventLog is a thin wrapper. This
+realizes ADR 0008's mandated collapse of the three `run*Refresh` bodies onto
+the EntityKind seam (issue #64). The runner's home (refine, not core) and the
+strategy-seam shape are decided in ADR 0020.
+
 ### AiEventLog
 
 The module that owns the read-modify-write cycle for the per-entity AI

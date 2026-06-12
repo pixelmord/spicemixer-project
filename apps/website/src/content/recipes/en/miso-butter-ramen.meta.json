@@ -1,59 +1,127 @@
 {
   "draft": false,
   "region": ["east-asia"],
-  "tags": ["quick-recipe", "japanese-cuisine", "easy-dinner"],
+  "tags": ["quick-recipe", "japanese-cuisine", "easy-dinner", "vegetarian"],
   "ingredientLinks": [],
   "sources": [],
   "variants": [],
-  "translations": {},
+  "translations": {
+    "de": "miso-butter-ramen"
+  },
   "language": "en",
   "locale": "en",
   "kind": "recipe",
   "canonicalLocale": "en",
   "aiSuggestions": {
-    "fingerprint": "361e3e945db3958f06190dfe13393a5ee4e6128a481194fe45a53a063fa36a97",
-    "at": "2026-05-24T20:39:47.201Z",
+    "fingerprint": "312ff7c761ae0732d22e88b6d0c6c9852548cb661b38ab892e92559885205e8c",
+    "at": "2026-06-11T16:13:50.246Z",
     "model": "gpt-4o-mini",
     "data": {
       "improvements": [],
-      "tags": [
-        "miso-butter-ramen",
-        "quick-recipe",
-        "japanese-cuisine",
-        "30-minute-meal",
-        "comfort-food",
-        "pantry-ingredients",
-        "easy-dinner",
-        "vegetarian"
-      ],
+      "fields": {
+        "ingredientLinks": {
+          "field": "ingredientLinks",
+          "total": 0,
+          "newCount": 0,
+          "hasNew": false,
+          "summary": "ingredientLinks: [0 items]",
+          "confidence": "medium",
+          "traceId": "eb377657-9db6-4775-9ef3-688b72d90420",
+          "hash": "52437dccd324",
+          "value": []
+        },
+        "tags": {
+          "field": "tags",
+          "total": 5,
+          "newCount": 5,
+          "hasNew": true,
+          "summary": "tags: [5 items]",
+          "confidence": "medium",
+          "traceId": "a635d8d5-5e13-44e1-b6bc-fbec3aa7ee67",
+          "hash": "43ac3fa6382d",
+          "value": ["quick-meal", "weeknight-dinner", "vegetarian", "one-pot", "asian-cuisine"]
+        },
+        "keywords": {
+          "field": "keywords",
+          "total": 7,
+          "newCount": 7,
+          "hasNew": true,
+          "summary": "keywords: [7 items]",
+          "confidence": "medium",
+          "traceId": "ce954adc-53de-4020-85a7-315bf8cfcaf3",
+          "hash": "45d897f5745c",
+          "value": [
+            "miso-butter-ramen",
+            "soft-boiled-eggs",
+            "scallions",
+            "vegetable-stock",
+            "quick-meal",
+            "japanese-cuisine",
+            "ramen-noodles"
+          ]
+        },
+        "pairings": {
+          "field": "pairings",
+          "total": 4,
+          "newCount": 4,
+          "hasNew": true,
+          "summary": "pairings: [4 items]",
+          "confidence": "medium",
+          "traceId": "14a59bbe-2387-49c6-8a33-0a8c88b87daa",
+          "hash": "17af7e763cfa",
+          "value": [
+            {
+              "otherCollection": "ingredients",
+              "otherSlug": "cardamom",
+              "rationale": "Cardamom adds a warm, aromatic quality that enhances the umami of the miso-butter broth, creating a deeper, more complex flavor profile in the ramen."
+            },
+            {
+              "otherCollection": "mixtures",
+              "otherSlug": "dukkah",
+              "rationale": "Dukkah provides a crunchy texture and nutty flavor that contrasts beautifully with the creamy miso-butter, adding depth and an interesting textural element to the dish."
+            },
+            {
+              "otherCollection": "mixtures",
+              "otherSlug": "mojo-verde",
+              "rationale": "The bright, herbal notes of mojo verde can complement the rich broth, adding a refreshing lift that cuts through the richness of the miso-butter."
+            },
+            {
+              "otherCollection": "recipes",
+              "otherSlug": "preserved-lemon-couscous",
+              "rationale": "Preserved lemon couscous offers a flavorful, zesty side that pairs well with the savory broth, providing a balanced meal experience."
+            }
+          ]
+        }
+      },
       "ingredientLinks": [],
       "relations": [],
       "pairings": [
         {
-          "otherCollection": "recipes",
-          "otherSlug": "preserved-lemon-couscous",
-          "rationale": "The bright acidity of preserved lemon couscous complements the rich and savory miso-butter broth, offering a refreshing contrast that enhances the overall meal experience.",
-          "traceId": "03f09878-87d1-4fc1-b5bd-ed9e61f0fd1d"
+          "otherCollection": "ingredients",
+          "otherSlug": "cardamom",
+          "rationale": "Cardamom adds a warm, aromatic quality that enhances the umami of the miso-butter broth, creating a deeper, more complex flavor profile in the ramen.",
+          "traceId": "14a59bbe-2387-49c6-8a33-0a8c88b87daa"
         },
         {
           "otherCollection": "mixtures",
           "otherSlug": "dukkah",
-          "rationale": "Adding dukkah to the miso butter ramen introduces a nutty crunch and aromatic spices that elevate the dish's texture and flavor complexity.",
-          "traceId": "03f09878-87d1-4fc1-b5bd-ed9e61f0fd1d"
+          "rationale": "Dukkah provides a crunchy texture and nutty flavor that contrasts beautifully with the creamy miso-butter, adding depth and an interesting textural element to the dish.",
+          "traceId": "14a59bbe-2387-49c6-8a33-0a8c88b87daa"
         },
         {
-          "otherCollection": "ingredients",
-          "otherSlug": "chili-powder",
-          "rationale": "A sprinkle of chili powder can add a gentle heat to the ramen, balancing the creamy miso-butter with a bit of spice to enhance its depth.",
-          "traceId": "03f09878-87d1-4fc1-b5bd-ed9e61f0fd1d"
+          "otherCollection": "mixtures",
+          "otherSlug": "mojo-verde",
+          "rationale": "The bright, herbal notes of mojo verde can complement the rich broth, adding a refreshing lift that cuts through the richness of the miso-butter.",
+          "traceId": "14a59bbe-2387-49c6-8a33-0a8c88b87daa"
         },
         {
-          "otherCollection": "ingredients",
-          "otherSlug": "cardamom",
-          "rationale": "Cardamom's subtle sweetness and warmth can enrich the umami flavors of the broth, providing an intriguing flavor layer that complements the dish.",
-          "traceId": "03f09878-87d1-4fc1-b5bd-ed9e61f0fd1d"
+          "otherCollection": "recipes",
+          "otherSlug": "preserved-lemon-couscous",
+          "rationale": "Preserved lemon couscous offers a flavorful, zesty side that pairs well with the savory broth, providing a balanced meal experience.",
+          "traceId": "14a59bbe-2387-49c6-8a33-0a8c88b87daa"
         }
-      ]
+      ],
+      "detectedLanguage": "en"
     }
   },
   "canonicalContentHash": "be9433e57a941fc3"

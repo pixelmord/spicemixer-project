@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ingredientSchema } from "entity-kind";
 import type { AiContract, FieldConfig } from "@pixelmord/content-ai-refine";
+import { commonPresets, excludeExistingValuesRule } from "./_shared.ts";
 import { localeToLanguageName } from "./locale-language.ts";
 
 type IngredientSchema = typeof ingredientSchema;
@@ -15,7 +16,7 @@ export interface IngredientRefineContext {
   locale?: string;
 }
 
-function buildIngredientCtx(currentData: z.infer<IngredientSchema> | undefined): string {
+function buildIngredientCtx(currentData: Partial<z.infer<IngredientSchema>> | undefined): string {
   if (!currentData) return "";
   return [
     `Name: ${currentData.name}`,
@@ -27,36 +28,6 @@ function buildIngredientCtx(currentData: z.infer<IngredientSchema> | undefined):
     .filter(Boolean)
     .join("\n");
 }
-
-// Rule reused across string[] fields so suggestions don't echo back values
-// the user has already accepted. Without this the model treats the field's
-// existing items as informational context and parrots them back verbatim.
-function excludeExistingValuesRule(existing: string[] | undefined): string {
-  if (!existing?.length) return "";
-  return `Existing values already on the entity: ${existing.join(", ")}.
-You MUST NOT include any of these in your output — they are already accepted.
-Return ONLY genuinely new values. If you have nothing new to add, return an empty array [].`;
-}
-
-// Presets available on ingredient fields.
-const presets = [
-  {
-    id: "expand",
-    label: "Expand",
-    description: "Expand the content with more detail.",
-    instruction: "Write in more detail, adding depth and nuance.",
-    appliesTo: "text" as const,
-    autoApplyOverride: { policy: "never" as const },
-  },
-  {
-    id: "summarize",
-    label: "Summarize",
-    description: "Shorten the content.",
-    instruction: "Write a concise version without losing key points.",
-    appliesTo: "text" as const,
-    autoApplyOverride: { policy: "never" as const },
-  },
-];
 
 // Prose improvement fields (replacing proposeIngredientImprovements)
 const textFieldConfig = (
@@ -101,7 +72,7 @@ const pairingsOutputSchema = z.array(
 
 export const ingredientContract: AiContract<IngredientSchema, IngredientRefineContext> = {
   schema: ingredientSchema,
-  presets,
+  presets: commonPresets,
   fields: {
     summary: textFieldConfig("Write a concise 1-2 sentence summary of this ingredient."),
     description: textFieldConfig(
@@ -184,6 +155,7 @@ Text: "${text}"`;
       autoApply: { policy: "high-confidence" as const, threshold: 0.0 },
       translation: { mode: "copy" as const },
       writePolicy: "fill-if-empty" as const,
+      bulk: true,
     },
 
     // outputSchema differs from entity schema; rationale becomes the new Pairing's description.
@@ -213,6 +185,7 @@ Return up to 6 pairings. For each:
       outputSchema: pairingsOutputSchema,
       autoApply: { policy: "never" },
       translation: { mode: "copy" },
+      bulk: true,
     },
   },
 };

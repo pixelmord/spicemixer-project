@@ -150,7 +150,7 @@ describe("PromptContext spec", () => {
     expect(ctx.rejectedSuggestions).toHaveLength(1);
   });
 
-  test("PromptContext accepts ResolvedPreset object (not a string id)", () => {
+  test("PromptContext preset accepts a ResolvedPreset object or a string id", () => {
     const resolvedPreset: ResolvedPreset = {
       id: "expand",
       label: "Expand description",
@@ -163,7 +163,13 @@ describe("PromptContext spec", () => {
       rejectedSuggestions: [],
       origin: mockOrigin,
     };
-    expect(ctx.preset?.id).toBe("expand");
-    expect(ctx.preset?.instruction).toBe("Write a detailed description.");
+    // preset is `string | ResolvedPreset` — narrow before reading object fields.
+    const preset = ctx.preset;
+    expect(typeof preset === "object" && preset.id).toBe("expand");
+    expect(typeof preset === "object" && preset.instruction).toBe("Write a detailed description.");
+
+    // The string-id form is also valid.
+    const ctxWithStringPreset: PromptContext<RecipeSchema> = { preset: "expand" };
+    expect(ctxWithStringPreset.preset).toBe("expand");
   });
 });

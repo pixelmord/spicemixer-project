@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { recipeSchema } from "recipe-ingestion";
 import type { AiContract, FieldConfig } from "@pixelmord/content-ai-refine";
+import { commonPresets, excludeExistingValuesRule } from "./_shared.ts";
 import { localeToLanguageName } from "./locale-language.ts";
 
 type RecipeSchema = typeof recipeSchema;
@@ -18,17 +19,8 @@ export interface RecipeRefineContext {
   locale?: string;
 }
 
-// Rule reused across string[] fields so suggestions don't echo back values
-// the user has already accepted. Without this the model parrots existing items.
-function excludeExistingValuesRule(existing: string[] | undefined): string {
-  if (!existing?.length) return "";
-  return `Existing values already on the entity: ${existing.join(", ")}.
-You MUST NOT include any of these in your output — they are already accepted.
-Return ONLY genuinely new values. If you have nothing new to add, return an empty array [].`;
-}
-
 function buildRecipeCtx(
-  currentData: z.infer<RecipeSchema> | undefined,
+  currentData: Partial<z.infer<RecipeSchema>> | undefined,
   maxIngredients = 8,
 ): string {
   if (!currentData) return "";
@@ -44,25 +36,6 @@ function buildRecipeCtx(
     .filter(Boolean)
     .join("\n");
 }
-
-const presets = [
-  {
-    id: "expand",
-    label: "Expand",
-    description: "Expand the content with more detail.",
-    instruction: "Write in more detail, adding depth and nuance.",
-    appliesTo: "text" as const,
-    autoApplyOverride: { policy: "never" as const },
-  },
-  {
-    id: "summarize",
-    label: "Summarize",
-    description: "Shorten the content.",
-    instruction: "Write a concise version without losing key points.",
-    appliesTo: "text" as const,
-    autoApplyOverride: { policy: "never" as const },
-  },
-];
 
 // Text improvement field helper (replaces proposeRecipeImprovements per-field)
 const textFieldConfig = (instruction: string): FieldConfig<RecipeSchema, RecipeRefineContext> => ({
@@ -107,12 +80,13 @@ const pairingsOutputSchema = z.array(
     otherCollection: z.enum(["ingredients", "mixtures", "recipes"]),
     otherSlug: z.string(),
     rationale: z.string(),
+    confidence: z.enum(["high", "medium", "low"]),
   }),
 );
 
 export const recipeContract: AiContract<RecipeSchema, RecipeRefineContext> = {
   schema: recipeSchema,
-  presets,
+  presets: commonPresets,
   fields: {
     description: textFieldConfig("Write a detailed description of this recipe."),
     recipeCategory: textFieldConfig(
@@ -146,6 +120,7 @@ ${exclude}`;
       outputSchema: tagsOutputSchema,
       autoApply: { policy: "never" },
       translation: { mode: "localize" },
+      bulk: true,
     },
 
     // Editorial tags field — SpiceMixer metadata tags for categorisation and browsing
@@ -162,6 +137,7 @@ ${ctx}`;
       outputSchema: tagsOutputSchema,
       autoApply: { policy: "never" },
       translation: { mode: "localize" },
+      bulk: true,
     },
 
     // Ingredient links (replaces proposeIngredientLinks)
@@ -197,6 +173,7 @@ Valid slugs: ${[...inventorySet].join(", ")}`;
       outputSchema: ingredientLinksOutputSchema,
       autoApply: { policy: "never" },
       translation: { mode: "copy" },
+      bulk: true,
     },
 
     // Language detection (replaces detectLanguage)
@@ -216,6 +193,7 @@ Text: "${text}"`;
       autoApply: { policy: "high-confidence", threshold: 0.0 },
       translation: { mode: "copy" },
       writePolicy: "fill-if-empty",
+      bulk: true,
     },
 
     // Slug proposal (replaces proposeSlug)
@@ -260,12 +238,14 @@ Return up to 4 pairings. For each:
 - otherCollection: the collection of the other entity (ingredients / mixtures / recipes)
 - otherSlug: exact slug from the list above
 - rationale: 1-2 sentences explaining the culinary affinity — this becomes the pairing description
+- confidence: high / medium / low
 
 Only suggest pairings with clear culinary logic. Return empty array if nothing fits strongly.`;
       },
       outputSchema: pairingsOutputSchema,
       autoApply: { policy: "never" },
       translation: { mode: "copy" },
+      bulk: true,
     },
   },
 };

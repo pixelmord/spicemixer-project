@@ -8,22 +8,13 @@ import { endpointRefSchema } from "entity-kind";
 import type { EndpointRef } from "entity-kind";
 import { fetchRecipe } from "recipe-ingestion";
 import { computeCompletenessFromBlob } from "@/lib/completeness.ts";
-import {
-  deleteRecipe as libDeleteRecipe,
-  publishRecipe as libPublishRecipe,
-  unpublishRecipe as libUnpublishRecipe,
-} from "@/lib/recipes.ts";
+import { deleteEntity as libDeleteEntity, setPublishState } from "@/lib/entity-crud.ts";
 import {
   quickCreateIngredient as libQuickCreateIngredient,
   saveIngredientMeta as libSaveIngredientMeta,
-  deleteIngredient as libDeleteIngredient,
-  publishIngredient as libPublishIngredient,
-  unpublishIngredient as libUnpublishIngredient,
 } from "@/lib/ingredients.ts";
 import {
   buildPairingData as libBuildPairingData,
-  togglePairingDraft as libTogglePairingDraft,
-  deletePairing as libDeletePairing,
   savePairingMeta as libSavePairingMeta,
 } from "@/lib/pairings.ts";
 import { saveEntity as libSaveEntity } from "@/lib/save-entity.ts";
@@ -44,6 +35,11 @@ const fileOrTextInput = z.object({
   text: z.string().optional(),
   /** When set to "1", the action returns model telemetry alongside the result. */
   debug: z.string().optional(),
+  /**
+   * Locale the caller wants the extracted output in. When set, the model
+   * translates the source if needed instead of preserving its language.
+   */
+  targetLocale: z.enum(["en", "de"]).optional(),
 });
 
 function isDebug(flag?: string): boolean {
@@ -215,6 +211,14 @@ async function persistSourceArtifacts(
 }
 
 const recipeCollectionEnum = z.enum(["recipes", "mixtures"]);
+
+/** Translate a lib-layer NotFoundError into Astro's ActionError. Always throws. */
+function rethrowNotFound(err: unknown): never {
+  if (err instanceof NotFoundError) {
+    throw new ActionError({ code: "NOT_FOUND", message: err.message });
+  }
+  throw err;
+}
 
 // ──────────────────────────────────────────────
 // Helper: build the combined listing used by the content table
@@ -522,12 +526,9 @@ export const server = {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
       try {
-        await libTogglePairingDraft(store, sidecar, { id, locale, draft });
+        await setPublishState(store, sidecar, { collection: "pairings", locale, slug: id }, draft);
       } catch (err) {
-        if (err instanceof NotFoundError) {
-          throw new ActionError({ code: "NOT_FOUND", message: err.message });
-        }
-        throw err;
+        rethrowNotFound(err);
       }
       return { ok: true };
     },
@@ -540,7 +541,7 @@ export const server = {
     handler: async ({ id, locale }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libDeletePairing(store, sidecar, { id, locale });
+      await libDeleteEntity(store, sidecar, { collection: "pairings", locale, slug: id });
       return { ok: true };
     },
   }),
@@ -605,15 +606,11 @@ export const server = {
     handler: async ({ collection, id }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      if (collection === "ingredients") {
-        await libDeleteIngredient(store, sidecar, { id });
-      } else {
-        // id may be "locale/slug" (new format) or bare "slug" (legacy admin, assume "en")
-        const slash = id.indexOf("/");
-        const locale = slash !== -1 ? id.slice(0, slash) : "en";
-        const slug = slash !== -1 ? id.slice(slash + 1) : id;
-        await libDeleteRecipe(store, sidecar, { collection, locale, slug });
-      }
+      // id may be "locale/slug" (new format) or bare "slug" (legacy admin, assume "en")
+      const slash = id.indexOf("/");
+      const locale = slash !== -1 ? id.slice(0, slash) : "en";
+      const slug = slash !== -1 ? id.slice(slash + 1) : id;
+      await libDeleteEntity(store, sidecar, { collection, locale, slug });
       return { ok: true };
     },
   }),
@@ -628,7 +625,11 @@ export const server = {
     handler: async ({ collection, locale, slug }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libPublishRecipe(sidecar, { collection, locale, slug });
+      try {
+        await setPublishState(store, sidecar, { collection, locale, slug }, false);
+      } catch (err) {
+        rethrowNotFound(err);
+      }
       return { ok: true };
     },
   }),
@@ -643,7 +644,11 @@ export const server = {
     handler: async ({ collection, locale, slug }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libUnpublishRecipe(sidecar, { collection, locale, slug });
+      try {
+        await setPublishState(store, sidecar, { collection, locale, slug }, true);
+      } catch (err) {
+        rethrowNotFound(err);
+      }
       return { ok: true };
     },
   }),
@@ -654,7 +659,11 @@ export const server = {
     handler: async ({ locale, slug }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libPublishIngredient(sidecar, { locale, slug });
+      try {
+        await setPublishState(store, sidecar, { collection: "ingredients", locale, slug }, false);
+      } catch (err) {
+        rethrowNotFound(err);
+      }
       return { ok: true };
     },
   }),
@@ -665,7 +674,11 @@ export const server = {
     handler: async ({ locale, slug }) => {
       const store = await createStore();
       const sidecar = createMetaSidecar(store);
-      await libUnpublishIngredient(sidecar, { locale, slug });
+      try {
+        await setPublishState(store, sidecar, { collection: "ingredients", locale, slug }, true);
+      } catch (err) {
+        rethrowNotFound(err);
+      }
       return { ok: true };
     },
   }),
@@ -795,7 +808,10 @@ export const server = {
       );
 
       try {
-        const result = await extractRecipeFromFile(extractionInput, config, { debug });
+        const result = await extractRecipeFromFile(extractionInput, config, {
+          debug,
+          targetLocale: input.targetLocale,
+        });
         const traceId = crypto.randomUUID();
         await sourceStore.putStructured(binaryHash, traceId, result.recipe, {
           capability: "aiExtractRecipe",
@@ -832,7 +848,10 @@ export const server = {
       );
 
       try {
-        const result = await extractIngredientFromFile(extractionInput, config, { debug });
+        const result = await extractIngredientFromFile(extractionInput, config, {
+          debug,
+          targetLocale: input.targetLocale,
+        });
         const traceId = crypto.randomUUID();
         await sourceStore.putStructured(binaryHash, traceId, result.ingredient, {
           capability: "aiExtractIngredient",
@@ -882,6 +901,7 @@ export const server = {
     accept: "form",
     input: z.object({
       existing: z.string(), // JSON-stringified existing recipe
+      locale: z.enum(["en", "de"]).optional(),
       sourceKind: z.enum(["file", "text", "prompt"]),
       file: z.instanceof(File).optional(),
       mimeType: z.string().optional(),
@@ -895,7 +915,7 @@ export const server = {
       entityKind: "recipe",
       triggeredBy: "editor",
       userInitiated: true,
-    })(async ({ existing, sourceKind, file, mimeType, text, prompt, debug }) => {
+    })(async ({ existing, locale, sourceKind, file, mimeType, text, prompt, debug }) => {
       const config = resolveAiConfig();
       const { mergeRecipe } = await import("@/lib/ai/merge-recipe.ts");
       const existingRecipe = JSON.parse(existing) as Record<string, unknown>;
@@ -907,9 +927,11 @@ export const server = {
       }
 
       try {
-        const result = await mergeRecipe({ existing: existingRecipe as never, source }, config, {
-          debug: isDebug(debug),
-        });
+        const result = await mergeRecipe(
+          { existing: existingRecipe as never, source, existingLocale: locale },
+          config,
+          { debug: isDebug(debug) },
+        );
         let traceId: string | undefined;
         let binaryHash: string | undefined;
         if (artifacts) {
@@ -964,7 +986,7 @@ export const server = {
       const { recipeContract } = await import("@/contracts/index.ts");
       const { suggestions } = await runRefine({
         contract: recipeContract,
-        currentData: { recipeIngredient: recipeIngredients } as never,
+        currentData: { recipeIngredient: recipeIngredients },
         sourceContext: { inventory },
         target: "ingredientLinks",
         config,
@@ -1133,6 +1155,7 @@ export const server = {
     accept: "form",
     input: z.object({
       existing: z.string(), // JSON-stringified existing ingredient
+      locale: z.enum(["en", "de"]).optional(),
       sourceKind: z.enum(["file", "text", "prompt"]),
       file: z.instanceof(File).optional(),
       mimeType: z.string().optional(),
@@ -1145,13 +1168,13 @@ export const server = {
       entityKind: "ingredient",
       triggeredBy: "editor",
       userInitiated: true,
-    })(async ({ existing, sourceKind, file, mimeType, text, prompt }) => {
+    })(async ({ existing, locale, sourceKind, file, mimeType, text, prompt }) => {
       const config = resolveAiConfig();
       const { mergeIngredient } = await import("@/lib/ai/merge-ingredient.ts");
       const existingIngredient = JSON.parse(existing) as Record<string, unknown>;
       const source = await resolveMergeSource({ sourceKind, file, mimeType, text, prompt });
       const result = await mergeIngredient(
-        { existing: existingIngredient as never, source },
+        { existing: existingIngredient as never, source, existingLocale: locale },
         config,
       );
       return { ...result, model: config.model };
@@ -1273,7 +1296,10 @@ export const server = {
       );
 
       try {
-        const result = await extractPairingFromFile(extractionInput, config, { debug });
+        const result = await extractPairingFromFile(extractionInput, config, {
+          debug,
+          targetLocale: input.targetLocale,
+        });
         const traceId = crypto.randomUUID();
         await sourceStore.putStructured(binaryHash, traceId, result.pairing, {
           capability: "aiExtractPairing",
@@ -1538,7 +1564,7 @@ export const server = {
 
       const { suggestions } = await runRefine({
         contract: recipeContract,
-        currentData: { name } as never,
+        currentData: { name },
         sourceContext: { locale },
         target: "slug",
         config,

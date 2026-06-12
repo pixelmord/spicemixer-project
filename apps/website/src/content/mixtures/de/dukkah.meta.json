@@ -16,7 +16,9 @@
   ],
   "sources": [],
   "variants": [],
-  "translations": {},
+  "translations": {
+    "en": "dukkah"
+  },
   "aiEvents": [],
   "language": "de",
   "locale": "de",

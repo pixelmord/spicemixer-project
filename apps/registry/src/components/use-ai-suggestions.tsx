@@ -115,10 +115,37 @@ export interface RunParams {
   mergeInstruction?: string;
 }
 
+/**
+ * Entity-agnostic per-field roll-up of one refresh run, used to drive the
+ * suggestions overview and the bulk-button badge. Unlike the `suggestions`
+ * map (which only holds fields with an inline accept UI), this lists *every*
+ * refineable field the run produced — including ones surfaced in dedicated
+ * sections (pairings, ingredient links) — so the editor can show a complete
+ * "what changed" picture and flag fields whose suggestions are all duplicates.
+ */
+export interface FieldSummary {
+  field: string;
+  /** Items the model returned (1 for scalar fields, n for array fields). */
+  total: number;
+  /** Items not already present on the entity. */
+  newCount: number;
+  /** Whether anything new is worth surfacing. */
+  hasNew: boolean;
+  summary: string;
+  confidence: "high" | "medium" | "low";
+  traceId: string;
+  /** Suggestion fingerprint — needed to record accept/reject for inline fields. */
+  hash: string;
+  /** The suggested value, so an inline field can apply it without a re-run. */
+  value: unknown;
+}
+
 export interface RunResult {
   suggestions: Record<FieldPath, FieldSuggestion>;
   autoApplied: Record<FieldPath, AppliedSuggestion>;
   traces: Record<FieldPath, TraceSummary>;
+  /** Per-field roll-up for the overview/badge. Optional for legacy callers. */
+  fieldSummaries?: FieldSummary[];
 }
 
 export interface PerFieldAccessor {
@@ -153,6 +180,8 @@ export interface UseAiSuggestionsReturn {
   traces: Map<FieldPath, TraceSummary>;
   viewedFields: Set<FieldPath>;
   rejectedHidden: Set<FieldPath>;
+  /** Per-field roll-up for the suggestions overview (all refineable fields). */
+  fieldSummaries: FieldSummary[];
   // Controlled-with-default
   preset: string | undefined;
   setPreset(preset: string | undefined): void;
@@ -164,6 +193,12 @@ export interface UseAiSuggestionsReturn {
   forField(field: FieldPath): PerFieldAccessor;
   acceptAll(): { requiresReview: FieldPath[] } | void;
   run(): Promise<void>;
+  /**
+   * Ingest a refresh result produced outside `run()` (e.g. an auto-refresh on
+   * mount or a post-save refresh) so the inline suggestions and the overview
+   * stay in sync regardless of which path triggered the run.
+   */
+  ingestRefresh(result: RunResult): void;
   /** Trigger a fill/translation run via onFill with optional target field list */
   runTranslation(opts?: { target?: FieldPath[] }): Promise<void>;
 }
@@ -230,6 +265,7 @@ export function useAiSuggestions({
   const [traces, setTraces] = useState<Map<FieldPath, TraceSummary>>(new Map());
   const [viewedFields, setViewedFields] = useState<Set<FieldPath>>(new Set());
   const [rejectedHidden, setRejectedHidden] = useState<Set<FieldPath>>(new Set());
+  const [fieldSummaries, setFieldSummaries] = useState<FieldSummary[]>([]);
 
   // Controlled-with-default internal state
   const [presetInternal, setPresetInternal] = useState<string | undefined>(undefined);
@@ -279,12 +315,24 @@ export function useAiSuggestions({
       setSuggestions(new Map(Object.entries(result.suggestions ?? {})));
       setAutoApplied(new Map(Object.entries(result.autoApplied ?? {})));
       setTraces(new Map(Object.entries(result.traces ?? {})));
+      setFieldSummaries(result.fieldSummaries ?? []);
       setViewedFields(new Set());
       setRejectedHidden(new Set());
     } finally {
       setIsRunning(false);
     }
   }, [onRefine, currentData, preset, userPrompt, writePolicy, entityRef, origin]);
+
+  // Adopt a refresh result produced outside run() (mount/post-save paths) so
+  // the inline suggestions and overview reflect it without a second LLM call.
+  const ingestRefresh = useCallback((result: RunResult) => {
+    setSuggestions(new Map(Object.entries(result.suggestions ?? {})));
+    setAutoApplied(new Map(Object.entries(result.autoApplied ?? {})));
+    setTraces(new Map(Object.entries(result.traces ?? {})));
+    setFieldSummaries(result.fieldSummaries ?? []);
+    setViewedFields(new Set());
+    setRejectedHidden(new Set());
+  }, []);
 
   const forField = useCallback(
     (field: FieldPath): PerFieldAccessor => {
@@ -524,6 +572,7 @@ export function useAiSuggestions({
     traces,
     viewedFields,
     rejectedHidden,
+    fieldSummaries,
     preset,
     setPreset,
     userPrompt,
@@ -533,6 +582,7 @@ export function useAiSuggestions({
     forField,
     acceptAll,
     run,
+    ingestRefresh,
     runTranslation,
   };
 }

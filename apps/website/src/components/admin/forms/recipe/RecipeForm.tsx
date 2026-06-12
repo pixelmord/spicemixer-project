@@ -34,7 +34,10 @@ interface AiSuggestion {
 
 interface AiSuggestions {
   improvements: AiSuggestion[];
-  tags: string[];
+  // Entity-agnostic per-field roll-up emitted by the runner — the single
+  // source for the suggestions overview/badge. Covers every refineable field
+  // the run produced, including keywords/tags that earlier shapes dropped.
+  fields?: Record<string, FieldSummary>;
   ingredientLinks: Array<{ pattern: string; slug: string; confidence: "high" | "medium" | "low" }>;
   pairings: Array<{
     otherCollection: string;
@@ -58,7 +61,12 @@ import FormActionBar from "../../FormActionBar.tsx";
 import { type SectionDef } from "../../SectionNav.tsx";
 import CompletenessPanel from "../../CompletenessPanel.tsx";
 import { useIngestAction } from "@/lib/ai/use-ingest-action.ts";
-import { useAiSuggestions, type RunResult, type FieldSuggestion } from "@/hooks/use-ai-suggestions";
+import {
+  useAiSuggestions,
+  type RunResult,
+  type FieldSuggestion,
+  type FieldSummary,
+} from "@/hooks/use-ai-suggestions";
 import { SuggestionFlowProvider } from "../../SuggestionFlowProvider.tsx";
 import ImageSearchModal, {
   type ImageAttribution,
@@ -179,6 +187,20 @@ const SECTIONS: SectionDef[] = [
   { id: "section-sources", label: "External sources" },
 ];
 
+// Refineable recipe fields surfaced in the suggestions overview, mapped to the
+// section each lives in so an entry can scroll the editor to its field. Order
+// matches the form. Keep in sync with recipeContract's refineable fields.
+const RECIPE_OVERVIEW_FIELDS: ReadonlyArray<{ field: string; label: string; anchor?: string }> = [
+  { field: "name", label: "Name", anchor: "section-basic" },
+  { field: "description", label: "Description", anchor: "section-basic" },
+  { field: "recipeCategory", label: "Category", anchor: "section-classification" },
+  { field: "recipeCuisine", label: "Cuisine", anchor: "section-classification" },
+  { field: "keywords", label: "Keywords", anchor: "section-classification" },
+  { field: "tags", label: "Tags", anchor: "section-publishing" },
+  { field: "ingredientLinks", label: "Ingredient links", anchor: "section-ingredients" },
+  { field: "pairings", label: "Pairings", anchor: "section-pairings" },
+];
+
 const TIME_FIELDS = new Set(["prepTime", "cookTime", "totalTime"]);
 
 import { toIsoDuration, parseDurationMinutes, minutesToIsoDuration } from "./recipe-duration.ts";
@@ -223,24 +245,35 @@ function handleRefreshResult(
   }
 }
 
+// Fields rendered by dedicated sections (their own accept UI), so they belong
+// in the overview but must NOT also surface an inline accept on a form field.
+const OVERVIEW_ONLY_FIELDS = new Set(["pairings", "ingredientLinks"]);
+
 function adaptAiSuggestionsToRunResult(data: AiSuggestions | undefined): RunResult {
-  if (!data) return { suggestions: {}, autoApplied: {}, traces: {} };
+  if (!data) return { suggestions: {}, autoApplied: {}, traces: {}, fieldSummaries: [] };
   const suggestions: Record<string, FieldSuggestion> = {};
-  let counter = 0;
-  for (const imp of data.improvements ?? []) {
-    const value = TIME_FIELDS.has(imp.field)
-      ? toIsoDuration(imp.suggestion as string)
-      : imp.suggestion;
-    suggestions[imp.field] = {
+  const fieldSummaries: FieldSummary[] = [];
+
+  // The runner's generic `fields` roll-up is authoritative: it carries every
+  // refineable field the run produced (not just the missing-field subset that
+  // the legacy `improvements` array captured). Drive both the inline Map and
+  // the overview from it so nothing is silently dropped.
+  for (const [field, summary] of Object.entries(data.fields ?? {})) {
+    fieldSummaries.push(summary);
+    if (OVERVIEW_ONLY_FIELDS.has(field)) continue;
+    if (!summary.hasNew) continue; // all-duplicate fields: show in overview, no inline accept
+    const value = TIME_FIELDS.has(field) ? toIsoDuration(summary.value as string) : summary.value;
+    suggestions[field] = {
       kind: "single",
       value,
-      confidence: imp.confidence ?? "medium",
-      summary: imp.summary ?? imp.rationale ?? `AI suggestion for ${imp.field}`,
-      hash: imp.hash ?? `${imp.field}-${counter++}`,
-      traceId: imp.traceId ?? "legacy",
+      confidence: summary.confidence,
+      summary: summary.summary,
+      hash: summary.hash,
+      traceId: summary.traceId,
     };
   }
-  return { suggestions, autoApplied: {}, traces: {} };
+
+  return { suggestions, autoApplied: {}, traces: {}, fieldSummaries };
 }
 
 export default function RecipeForm({
@@ -449,7 +482,10 @@ export default function RecipeForm({
         missingFields: missingKeys,
         locale: initialMeta?.language ?? "en",
       },
-      (data) => handleRefreshResult(data, (s) => setAiSuggestions(s), setIngredientLinks),
+      (data) => {
+        handleRefreshResult(data, (s) => setAiSuggestions(s), setIngredientLinks);
+        aiFlow.ingestRefresh(adaptAiSuggestionsToRunResult(data?.aiSuggestions));
+      },
     )
       .catch(() => {})
       .finally(() => setAiRefreshing(false));
@@ -625,7 +661,10 @@ export default function RecipeForm({
           locale: language || "en",
           force: true,
         },
-        (data) => handleRefreshResult(data, (s) => setAiSuggestions(s), setIngredientLinks),
+        (data) => {
+          handleRefreshResult(data, (s) => setAiSuggestions(s), setIngredientLinks);
+          aiFlow.ingestRefresh(adaptAiSuggestionsToRunResult(data?.aiSuggestions));
+        },
       )
         .catch(() => {})
         .finally(() => setAiRefreshing(false));
@@ -1080,7 +1119,7 @@ export default function RecipeForm({
       {splitView ? (
         <AiBulkTranslateButton contract={RECIPE_AI_CONTRACT} currentData={buildRecipeSnapshot()} />
       ) : (
-        <AiBulkSuggestButton />
+        <AiBulkSuggestButton overviewFields={[...RECIPE_OVERVIEW_FIELDS]} />
       )}
     </div>
   );
@@ -1265,6 +1304,9 @@ export default function RecipeForm({
               setDismissed={setDismissedPairingProposals}
               featuredPairings={featuredPairings}
               setFeaturedPairings={setFeaturedPairings}
+              onRemovePairing={async (id, pairingLocale) =>
+                actions.deletePairing({ id, locale: pairingLocale })
+              }
               onCreatePairing={handleCreatePairing}
               aiEventLog={aiEventLog}
               runIdSeed={pairingRunId}
