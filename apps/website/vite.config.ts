@@ -22,6 +22,14 @@ const sharedAlias = {
   "@pixelmord/content-ai-core": join(__dirname, "../../packages/content-ai-core/src/index.ts"),
 };
 
+// Astro virtual modules don't exist outside an Astro build. Alias them to
+// stubs so Vitest can resolve transitive imports; specific tests should
+// further mock individual handlers via vi.mock("astro:actions", …).
+// Scoped to test projects only — the Astro build provides its own resolution.
+const testOnlyAlias = {
+  "astro:actions": join(__dirname, "./tests/stubs/astro-actions.ts"),
+};
+
 export default defineConfig({
   resolve: {
     alias: sharedAlias,
@@ -31,7 +39,10 @@ export default defineConfig({
     projects: [
       {
         plugins: [react()],
-        resolve: { alias: sharedAlias, dedupe: ["react", "react-dom"] },
+        resolve: {
+          alias: { ...sharedAlias, ...testOnlyAlias },
+          dedupe: ["react", "react-dom"],
+        },
         optimizeDeps: {
           // Pre-bundle React + commonly-touched libs to avoid Vite reloads
           // mid-test on cold runs. Browser-mode discovery is incremental;
@@ -65,7 +76,7 @@ export default defineConfig({
         },
       },
       {
-        resolve: { alias: sharedAlias },
+        resolve: { alias: { ...sharedAlias, ...testOnlyAlias } },
         test: {
           name: "node",
           include: ["tests/**/*.test.ts"],

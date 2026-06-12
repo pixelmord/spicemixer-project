@@ -1,0 +1,68 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "Griechische Auberginenpaste",
+  "recipeIngredient": [
+    "1 große Aubergine",
+    "1-2 geschälte Knoblauchzehen",
+    "ein kleiner Becher Joghurt",
+    "ein paar Esslöffel Olivenöl",
+    "ein gehäufter Esslöffel Oregano (getrocknet)"
+  ],
+  "recipeInstructions": [
+    {
+      "@type": "HowToStep",
+      "text": "Backofen auf 200 Grad vorheizen."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Aubergine rundum einpieksen (mit Gabel, Spiess)."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "30 Minuten im heißen Ofen garen."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Etwas abkühlen lassen."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Aubergine halbieren (Vorsicht, Sauereil), Fruchtfleisch in ein hohes Gefäß löffeln, ein bisschen Schale darf dabei sein."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "1-2 geschälte Knoblauchzehen, ein kleiner Becher Joghurt, ein paar Esslöffel Olivenöl, ein gehäufter Esslöffel Oregano (getrocknet) dazugeben."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Alles mit dem Zerstörer (Pürierstab?) ordentlich kaputt machen."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Nach Geschmack salzen."
+    },
+    {
+      "@type": "HowToStep",
+      "text": "Wenn man Joghurt und Oregano durch Tahini ersetzt (Sesam-Paste), wird aus dem Griechen ein Israeli."
+    }
+  ],
+  "description": "Die Griechische Auberginenpaste, auch bekannt als Melitzanosalata, ist ein köstlicher Dip, der perfekt als Vorspeise oder Beilage zu Mezze-Gerichten geeignet ist. Um dieses aromatische Rezept zuzubereiten, beginnen Sie, indem Sie eine große Aubergine gründlich waschen und auf dem Grill oder im Ofen rösten, bis die Haut blasen wirft und das Fruchtfleisch weich wird. Dieser Röstepunkt ist entscheidend, da er der Paste ein rauchiges Aroma verleiht. Die Aubergine sollte anschließend etwas abkühlen, bevor Sie sie halbieren und das weiche Innere mit einem Löffel herauskratzen.\n\nDanach pürieren Sie das Auberginenfleisch zusammen mit 1-2 geschälten Knoblauchzehen, einem kleinen Becher Joghurt und einigen Esslöffeln Olivenöl in einer Küchenmaschine oder mit einem Pürierstab. Die Menge an Olivenöl kann je nach gewünschter Konsistenz angepasst werden. Fügen Sie einen gehäuften Esslöffel getrockneten Oregano hinzu, um der Paste eine würzige Note zu verleihen.\n\nMischen Sie alles gut, bis die Paste cremig und gut vermischt ist. Abschmecken und gegebenenfalls nach Belieben mit Salz und Pfeffer würzen. Lassen Sie die Pasta dann für mindestens 30 Minuten im Kühlschrank ziehen, damit sich die Aromen entfalten können.\n\nServieren Sie die Griechische Auberginenpaste kalt, garniert mit einem Spritzer Olivenöl und einem zusätzlichen Zweig Oregano, zusammen mit frischem Brot oder Gemüsesticks für einen perfekten Genuss.",
+  "recipeCategory": "Vorspeise",
+  "recipeCuisine": "Griechisch",
+  "keywords": [
+    "Aubergine",
+    "Griechisch",
+    "Dips",
+    "Vegetarisch",
+    "melitzanosalata",
+    "vegetarische-vorspeise",
+    "griechischer-dip",
+    "aromatischer-snack",
+    "obst-und-gemüse",
+    "pasteten-und-pürees",
+    "meze-rezept"
+  ],
+  "cookTime": "PT30M",
+  "totalTime": "PT30M"
+}

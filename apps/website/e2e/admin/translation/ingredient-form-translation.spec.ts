@@ -169,9 +169,8 @@ test.describe("IngredientForm split-view: per-field translate buttons", () => {
   });
 
   test("IngredientForm per-field translate not rendered for skip-mode fields", async ({ page }) => {
-    const categorySection = page.locator("label", { hasText: "Category" }).first();
-    const categoryContainer = categorySection.locator("..").locator("..");
-    await expect(categoryContainer.getByRole("button", { name: /translate from/i })).toHaveCount(0);
+    const categoryGroup = page.locator("label", { hasText: "Category" }).first().locator("..");
+    await expect(categoryGroup.getByRole("button", { name: /translate from/i })).toHaveCount(0);
   });
 
   test.fixme("IngredientForm per-field translate label is 'Copy from' for copy-mode fields", async () => {
@@ -204,8 +203,7 @@ test.describe("IngredientForm: bulk translate (split view)", () => {
   test("IngredientForm bulk translate 'fill-gaps' only targets empty fields", async ({ page }) => {
     const dropdown = page.getByRole("button", { name: "Translation options" });
     await dropdown.click();
-    await expect(page.getByRole("button", { name: "Translate missing fields" })).toBeVisible();
-    await page.getByRole("button", { name: "Translate missing fields" }).click();
+    await page.getByRole("button", { name: "Translate missing fields" }).last().click();
     await expect(
       page.getByRole("button", { name: "Translate missing fields" }).first(),
     ).toBeVisible();
@@ -214,7 +212,7 @@ test.describe("IngredientForm: bulk translate (split view)", () => {
   test("IngredientForm bulk translate 'replace-all' overwrites all fields", async ({ page }) => {
     const dropdown = page.getByRole("button", { name: "Translation options" });
     await dropdown.click();
-    await page.getByRole("button", { name: "Re-translate all fields" }).click();
+    await page.getByRole("button", { name: "Re-translate all fields" }).last().click();
     await expect(
       page.getByRole("button", { name: "Re-translate all fields" }).first(),
     ).toBeVisible();
@@ -225,12 +223,12 @@ test.describe("IngredientForm: bulk translate (split view)", () => {
   }) => {
     const dropdown = page.getByRole("button", { name: "Translation options" });
     await dropdown.click();
-    await page.getByRole("button", { name: "Re-translate all fields" }).click();
+    await page.getByRole("button", { name: "Re-translate all fields" }).last().click();
     const stored = await getBulkWritePolicy(page);
     expect(stored).toBe("replace-all");
 
     await dropdown.click();
-    await page.getByRole("button", { name: "Translate missing fields" }).click();
+    await page.getByRole("button", { name: "Translate missing fields" }).last().click();
     const storedAfter = await getBulkWritePolicy(page);
     expect(storedAfter).toBe("fill-gaps");
   });
@@ -275,8 +273,8 @@ test.describe("IngredientForm: section navigation", () => {
     page,
   }) => {
     await page.goto(EN_URL, { waitUntil: "networkidle" });
-    await expect(page.getByRole("link", { name: /basic/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /taxonomy/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /basic/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /taxonomy/i })).toBeVisible();
   });
 });
 

@@ -33,7 +33,7 @@ export function splitViewToggle(page: Page) {
 }
 
 export function completenessToggleBtn(page: Page) {
-  return page.getByRole("button", { name: "Toggle completeness panel" });
+  return page.getByRole("button", { name: /^completeness:/i });
 }
 
 export async function openOverflowMenu(page: Page) {

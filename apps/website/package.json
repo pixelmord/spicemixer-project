@@ -1,6 +1,6 @@
 {
   "name": "website",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "scripts": {
     "dev": "astro dev",
@@ -53,7 +53,7 @@
   "devDependencies": {
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
-    "@vitejs/plugin-react": "^5.2.0",
+    "@vitejs/plugin-react": "catalog:",
     "devalue": "^5.8.0",
     "pagefind": "catalog:",
     "vitest-browser-react": "^2.2.0"

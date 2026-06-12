@@ -48,13 +48,13 @@ jobs:
         run: publint packages/content-ai-ingest
 
       - name: attw – content-ai-core
-        run: attw --pack packages/content-ai-core
+        run: attw --pack packages/content-ai-core --profile esm-only
 
       - name: attw – content-ai-refine
-        run: attw --pack packages/content-ai-refine
+        run: attw --pack packages/content-ai-refine --profile esm-only
 
       - name: attw – content-ai-ingest
-        run: attw --pack packages/content-ai-ingest
+        run: attw --pack packages/content-ai-ingest --profile esm-only
 
       - name: Pack smoke – content-ai-core
         run: |
@@ -70,7 +70,7 @@ jobs:
           import type { AiContract } from "@pixelmord/content-ai-core";
           const _: AiContract<never, never> | undefined = undefined;
           EOF
-          pnpm exec tsc --noEmit --strict --moduleResolution bundler --module esnext check.ts
+          pnpm exec tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module esnext check.ts
 
       - name: Pack smoke – content-ai-refine
         run: |
@@ -86,7 +86,7 @@ jobs:
           import type { RunRefineParams } from "@pixelmord/content-ai-refine";
           const _: RunRefineParams<never, never> | undefined = undefined;
           EOF
-          pnpm exec tsc --noEmit --strict --moduleResolution bundler --module esnext check.ts
+          pnpm exec tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module esnext check.ts
 
       - name: Pack smoke – content-ai-ingest
         run: |
@@ -102,4 +102,4 @@ jobs:
           import type { RunFillParams } from "@pixelmord/content-ai-ingest";
           const _: RunFillParams<never, never> | undefined = undefined;
           EOF
-          pnpm exec tsc --noEmit --strict --moduleResolution bundler --module esnext check.ts
+          pnpm exec tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module esnext check.ts

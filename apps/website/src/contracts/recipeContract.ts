@@ -2,6 +2,7 @@ import { z } from "zod";
 import { recipeSchema } from "recipe-ingestion";
 import type { AiContract, FieldConfig } from "@pixelmord/content-ai-refine";
 import { commonPresets, excludeExistingValuesRule } from "./_shared.ts";
+import { localeToLanguageName } from "./locale-language.ts";
 
 type RecipeSchema = typeof recipeSchema;
 
@@ -16,23 +17,6 @@ export interface RecipeRefineContext {
     recipeIngredient?: string[];
   }>;
   locale?: string;
-}
-
-// Maps BCP-47 locale codes to full language names for stronger model instructions.
-// The model reliably respects "German" far more than the bare two-letter code "de".
-const LOCALE_LANGUAGE_NAMES: Record<string, string> = {
-  en: "English",
-  de: "German",
-  fr: "French",
-  es: "Spanish",
-  it: "Italian",
-  pt: "Portuguese",
-  nl: "Dutch",
-  pl: "Polish",
-  sv: "Swedish",
-};
-function localeToLanguageName(locale: string): string {
-  return LOCALE_LANGUAGE_NAMES[locale] ?? locale;
 }
 
 function buildRecipeCtx(
@@ -55,8 +39,10 @@ function buildRecipeCtx(
 
 // Text improvement field helper (replaces proposeRecipeImprovements per-field)
 const textFieldConfig = (instruction: string): FieldConfig<RecipeSchema, RecipeRefineContext> => ({
-  systemPrompt: ({ currentData }) => {
+  systemPrompt: ({ currentData, sourceContext }) => {
     const ctx = buildRecipeCtx(currentData);
+    const locale = sourceContext?.locale ?? "en";
+    const languageName = localeToLanguageName(locale);
     return `You are a culinary recipe editor.
 
 Recipe context:
@@ -65,6 +51,7 @@ ${ctx}
 ${instruction}
 
 Rules:
+- Write the output in ${languageName}. Do not use any other language.
 - Be specific and informative
 - For time fields use ISO 8601 duration format (e.g. "PT15M", "PT1H30M")
 - Do NOT suggest image URLs`;

@@ -1,0 +1,11 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "E2E Zweisprachige Mischung",
+  "description": "Eine deutsche Übersetzung der bilingualen E2E-Testmischung. Wird nur von der Playwright-Suite verwendet.",
+  "recipeIngredient": ["1 TL E2E-Testgewürz", "1 TL Salz"],
+  "recipeInstructions": [
+    { "@type": "HowToStep", "text": "Zutaten in einer kleinen Schüssel vermischen." },
+    { "@type": "HowToStep", "text": "In einem luftdichten Glas aufbewahren." }
+  ]
+}

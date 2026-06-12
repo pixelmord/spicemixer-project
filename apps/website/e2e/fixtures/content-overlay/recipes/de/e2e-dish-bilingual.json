@@ -1,0 +1,11 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Recipe",
+  "name": "E2E Zweisprachiges Gericht",
+  "description": "Eine deutsche Übersetzung des bilingualen E2E-Testgerichts. Wird nur von der Playwright-Suite verwendet.",
+  "recipeIngredient": ["1 Tasse E2E-Testgewürz", "2 EL Olivenöl"],
+  "recipeInstructions": [
+    { "@type": "HowToStep", "text": "Alle Zutaten in einer Schüssel vermischen." },
+    { "@type": "HowToStep", "text": "Sofort servieren." }
+  ]
+}
