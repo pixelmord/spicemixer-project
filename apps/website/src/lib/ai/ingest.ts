@@ -1,4 +1,5 @@
-import { runFill, type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
+import type { AiConfig } from "@pixelmord/content-ai-core";
+import { runFill, type IngestContract } from "@pixelmord/content-ai-ingest";
 import type { ZodSchema } from "zod";
 import { extractPdfContent } from "@/lib/pdf.ts";
 

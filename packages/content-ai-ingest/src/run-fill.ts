@@ -1,20 +1,23 @@
 import { generateText, Output } from "ai";
 import type { ZodSchema } from "zod";
 import { noopLogger, type Logger } from "@pixelmord/content-ai-core";
-import type { TraceSink } from "@pixelmord/content-ai-core/server";
+import {
+  createProvider,
+  PROVIDER_OPTIONS,
+  type TraceSink,
+} from "@pixelmord/content-ai-core/server";
 import { hashSuggestion } from "./hash.ts";
-import { createProvider, PROVIDER_OPTIONS } from "./provider.ts";
 import type {
   AiConfig,
   AppliedSuggestion,
   FieldSuggestion,
   FieldWritePolicy,
   IngestAiEvent,
+  IngestTraceSummary,
   MessageSet,
   RunFillParams,
   RunFillResult,
   SiblingLocaleSource,
-  TraceSummary,
   TranslationBehavior,
 } from "./types.ts";
 
@@ -166,7 +169,7 @@ export async function runFill<S extends ZodSchema, Source>(
 
     const suggestions = new Map<string, FieldSuggestion>();
     const autoApplied = new Map<string, AppliedSuggestion>();
-    const traces = new Map<string, TraceSummary>();
+    const traces = new Map<string, IngestTraceSummary>();
     const traceId = crypto.randomUUID();
     const start = Date.now();
     const warnings: string[] = [];
@@ -318,7 +321,7 @@ export async function runFill<S extends ZodSchema, Source>(
 
   const autoApplied = new Map<string, AppliedSuggestion>();
 
-  const traces = new Map<string, TraceSummary>();
+  const traces = new Map<string, IngestTraceSummary>();
   traces.set(traceId, {
     traceId,
     model: config.model,

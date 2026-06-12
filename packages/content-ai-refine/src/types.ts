@@ -1,7 +1,6 @@
 import type { ZodSchema, z } from "zod";
-import type { Logger } from "@pixelmord/content-ai-core";
+import type { AiConfig, Logger } from "@pixelmord/content-ai-core";
 import type { TraceSink } from "@pixelmord/content-ai-core/server";
-import type { AiConfig } from "./provider.ts";
 
 export type { AiConfig };
 

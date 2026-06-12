@@ -1,15 +1,17 @@
 import type { ZodSchema, z } from "zod";
 import type { ModelMessage } from "ai";
-import type { Logger, SourceDescriptor } from "@pixelmord/content-ai-core";
+import type {
+  AiConfig,
+  EntityRef,
+  FieldWritePolicy,
+  Logger,
+  SourceDescriptor,
+  TraceSummary,
+  TranslationBehavior,
+} from "@pixelmord/content-ai-core";
 import type { TraceSink } from "@pixelmord/content-ai-core/server";
 
-// ── AiConfig ─────────────────────────────────────────────────────────────────
-
-export interface AiConfig {
-  baseUrl: string;
-  apiKey: string;
-  model: string;
-}
+export type { AiConfig, EntityRef, FieldWritePolicy, TranslationBehavior };
 
 // ── Source-context message set ─────────────────────────────────────────────────
 
@@ -17,30 +19,6 @@ export interface MessageSet {
   messages?: ModelMessage[];
   prompt?: string;
   warnings?: string[];
-}
-
-// ── FieldWritePolicy ─────────────────────────────────────────────────────────
-
-export type FieldWritePolicy<T = unknown> =
-  | "preserve"
-  | "replace"
-  | "fill-if-empty"
-  | { mode: "merge-function"; merge: (current: T, proposed: T) => T }
-  | { mode: "merge-instructions"; instruction: string };
-
-// ── TranslationBehavior ───────────────────────────────────────────────────────
-
-export type TranslationBehavior =
-  | { mode: "translate" }
-  | { mode: "copy" }
-  | { mode: "localize"; instruction?: string }
-  | { mode: "skip" };
-
-// ── EntityRef ─────────────────────────────────────────────────────────────────
-
-export interface EntityRef {
-  id: string;
-  kind: string;
 }
 
 // ── SiblingLocaleSource ───────────────────────────────────────────────────────
@@ -96,16 +74,13 @@ export interface AppliedSuggestion {
   confidence: "high" | "medium" | "low";
 }
 
-// ── TraceSummary ──────────────────────────────────────────────────────────────
+// ── IngestTraceSummary ─────────────────────────────────────────────────────────
+// Core's TraceSummary plus the ingest-only merge prompt recorded on sibling-locale
+// fills. mergeInstruction is genuinely ingest-specific, so it extends rather than
+// pollutes the shared core type.
 
-export interface TraceSummary {
-  traceId: string;
-  model: string;
-  runtimeMs: number;
-  preset?: string;
-  userPrompt?: string;
+export interface IngestTraceSummary extends TraceSummary {
   mergeInstruction?: string;
-  confidence?: "high" | "medium" | "low";
 }
 
 // ── Minimal AiEvent shape for ingestedEvent ──────────────────────────────────
@@ -148,7 +123,7 @@ export interface RunFillParams<S extends ZodSchema, Source> {
 export interface RunFillResult {
   suggestions: Map<string, FieldSuggestion>;
   autoApplied: Map<string, AppliedSuggestion>;
-  traces: Map<string, TraceSummary>;
+  traces: Map<string, IngestTraceSummary>;
   ingestedEvent: IngestAiEvent;
   warnings: string[];
 }

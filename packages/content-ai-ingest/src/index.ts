@@ -10,7 +10,7 @@ export type {
   SiblingLocaleSource,
   FieldSuggestion,
   AppliedSuggestion,
-  TraceSummary,
+  IngestTraceSummary,
   IngestAiEvent,
   RunFillParams,
   RunFillResult,

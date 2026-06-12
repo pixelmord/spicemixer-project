@@ -1,4 +1,5 @@
-import { type AiConfig, type IngestContract } from "@pixelmord/content-ai-ingest";
+import type { AiConfig } from "@pixelmord/content-ai-core";
+import { type IngestContract } from "@pixelmord/content-ai-ingest";
 import { debugFromResult, toAiError, type AiDebugInfo } from "@/lib/ai-debug.ts";
 import { ingestFields, resolvePdf } from "@/lib/ai/ingest.ts";
 import { toImagePart } from "@/lib/image.ts";

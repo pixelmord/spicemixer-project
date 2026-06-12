@@ -2,7 +2,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import type { ZodObject, ZodRawShape, ZodSchema } from "zod";
 import { noopLogger } from "@pixelmord/content-ai-core";
-import { createProvider, PROVIDER_OPTIONS } from "./provider.ts";
+import { createProvider, PROVIDER_OPTIONS } from "@pixelmord/content-ai-core/server";
 import { fingerprintHash } from "./hash.ts";
 import type {
   AiEvent,

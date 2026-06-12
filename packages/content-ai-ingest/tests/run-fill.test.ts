@@ -8,14 +8,14 @@ vi.mock("ai", () => ({
   Output: { object: vi.fn().mockReturnValue({}) },
 }));
 
-vi.mock("../src/provider.ts", () => ({
+vi.mock("@pixelmord/content-ai-core/server", () => ({
   createProvider: vi.fn().mockReturnValue({}),
   PROVIDER_OPTIONS: { openai: { strictJsonSchema: false } },
 }));
 
 const { generateText } = await import("ai");
 const { runFill } = await import("../src/run-fill.ts");
-const { createProvider } = await import("../src/provider.ts");
+const { createProvider } = await import("@pixelmord/content-ai-core/server");
 
 const MOCK_CONFIG = { baseUrl: "http://localhost", apiKey: "test", model: "gpt-test" };
 
