@@ -1,7 +1,7 @@
 # Entity-level refresh orchestration lives in content-ai-refine, behind a RefreshStrategy seam
 
 Realizing ADR 0008's mandated collapse of the three `run*Refresh` bodies (issue
-#64), the shared orchestration template — read events → optional fingerprint →
+`#64`), the shared orchestration template — read events → optional fingerprint →
 build source context → compose target → `runRefine` → error-check → extract
 improvements → apply side effects → assemble — is extracted as a **deep,
 portable** `runRefresh` runner. Per-kind variance sits behind a

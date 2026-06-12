@@ -16,7 +16,7 @@ export interface IngredientRefineContext {
   locale?: string;
 }
 
-function buildIngredientCtx(currentData: z.infer<IngredientSchema> | undefined): string {
+function buildIngredientCtx(currentData: Partial<z.infer<IngredientSchema>> | undefined): string {
   if (!currentData) return "";
   return [
     `Name: ${currentData.name}`,

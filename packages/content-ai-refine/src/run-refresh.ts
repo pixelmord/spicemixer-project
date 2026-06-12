@@ -32,7 +32,7 @@ export interface RawImprovement {
  */
 export interface RefreshStrategy<S extends ZodSchema, Source, Result> {
   contract: AiContract<S, Source>;
-  currentData: z.infer<S>;
+  currentData: Partial<z.infer<S>>;
   sourceContext?: Source;
   events?: AiEvent[];
   logger?: Logger;

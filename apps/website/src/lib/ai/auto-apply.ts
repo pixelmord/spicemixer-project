@@ -19,16 +19,23 @@ export interface LinkAutoApplyAction {
 
 /**
  * Pure auto-apply decision for ingredient links: keep high-confidence
- * candidates whose pattern is not already present. No I/O — the caller
- * executes the returned plan against the store + event log.
+ * candidates whose pattern is not already present. Deduplicates within the
+ * batch too, so a model that repeats a pattern in one response only yields a
+ * single action. No I/O — the caller executes the plan against store + log.
  */
 export function planLinkAutoApply(
   candidates: LinkCandidate[],
   existingPatterns: Set<string>,
 ): LinkAutoApplyAction[] {
-  return candidates
-    .filter((c) => isHighConfidence(c.confidence) && !existingPatterns.has(c.pattern))
-    .map((c) => ({ pattern: c.pattern, slug: c.slug, confidence: c.confidence }));
+  const seenPatterns = new Set(existingPatterns);
+  const actions: LinkAutoApplyAction[] = [];
+  for (const c of candidates) {
+    if (!isHighConfidence(c.confidence)) continue;
+    if (seenPatterns.has(c.pattern)) continue;
+    seenPatterns.add(c.pattern);
+    actions.push({ pattern: c.pattern, slug: c.slug, confidence: c.confidence });
+  }
+  return actions;
 }
 
 export interface PairingEndpoint {
@@ -53,8 +60,10 @@ export interface PairingAutoApplyAction {
 
 /**
  * Pure auto-apply decision for pairings: keep high-confidence candidates whose
- * canonical id (alphabetically sorted slug pair) is not already present. The
- * endpoints are sorted by slug so the stored pairing is canonical. No I/O.
+ * canonical id (alphabetically sorted slug pair) is not already present. Skips
+ * self-pairings and deduplicates within the batch (a repeated candidate id only
+ * yields one action). The endpoints are sorted by slug so the stored pairing is
+ * canonical. No I/O.
  */
 export function planPairingAutoApply(
   selfSlug: string,
@@ -62,11 +71,14 @@ export function planPairingAutoApply(
   candidates: PairingCandidate[],
   existingIds: Set<string>,
 ): PairingAutoApplyAction[] {
+  const seenIds = new Set(existingIds);
   const actions: PairingAutoApplyAction[] = [];
   for (const c of candidates) {
     if (!isHighConfidence(c.confidence)) continue;
+    if (c.otherSlug === selfSlug) continue;
     const id = [selfSlug, c.otherSlug].sort().join("--");
-    if (existingIds.has(id)) continue;
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
     const endpoints = (
       [
         { collection: selfCollection, slug: selfSlug },

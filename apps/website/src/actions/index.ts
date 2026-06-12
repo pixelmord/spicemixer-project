@@ -986,7 +986,7 @@ export const server = {
       const { recipeContract } = await import("@/contracts/index.ts");
       const { suggestions } = await runRefine({
         contract: recipeContract,
-        currentData: { recipeIngredient: recipeIngredients } as never,
+        currentData: { recipeIngredient: recipeIngredients },
         sourceContext: { inventory },
         target: "ingredientLinks",
         config,
@@ -1564,7 +1564,7 @@ export const server = {
 
       const { suggestions } = await runRefine({
         contract: recipeContract,
-        currentData: { name } as never,
+        currentData: { name },
         sourceContext: { locale },
         target: "slug",
         config,

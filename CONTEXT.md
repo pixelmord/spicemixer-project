@@ -291,16 +291,21 @@ beside the field-level `runRefine` it wraps, and never imports a
 reuses the runner with its own strategies).
 
 The per-kind variance sits behind the seam as a **RefreshStrategy** — an
-adapter the runner consumes. Each strategy supplies the AI contract, a
-`buildContext` (reads the store, returns typed source context + the extra
-side-effect target fields), an optional `fingerprintKey` capability
-(undefined ⇒ no caching — only `recipe` opts in today), and `applyAndAssemble`
-(executes auto-apply side effects when not a per-field run, then builds the
-kind-specific result shape). Concrete strategies (`ingredient`, `recipe`,
-`pairing`) stay in `apps/website` because they hold the `ContentStore` and the
-Spicemixer-specific auto-apply targets (pairings → store, ingredientLinks +
-language → meta). `runAiRefresh(kind, …)` is the thin app-side dispatcher that
-selects a strategy and calls `runRefresh`.
+adapter `runRefresh` consumes. Each strategy supplies the AI `contract`, the
+`currentData` to refine, an optional `sourceContext`, the prior `events`, a
+`logger`, and an `assemble` callback (executes auto-apply side effects when not
+a per-field run, then builds the kind-specific result shape). A separate run
+params object carries `baseFields`, `isPerField`, `config`, and the injectable
+`runField` runner. Target composition lives in `runRefresh`: a per-field run
+targets exactly `baseFields`; a full run unions `baseFields` with every field
+the contract flags `bulk: true` (the contract is the single source of truth for
+which enrichment fields a full refresh runs). Fingerprint short-circuiting,
+event reads, and context construction stay in the app-side orchestration around
+`runRefresh`. Concrete strategies (`ingredient`, `recipe`, `pairing`) stay in
+`apps/website` because they hold the `ContentStore` and the Spicemixer-specific
+auto-apply targets (pairings → store, ingredientLinks + language → meta).
+`runAiRefresh(kind, …)` is the thin app-side dispatcher that selects a strategy
+and calls `runRefresh`.
 
 The auto-apply **decision** is a pure, exported function per target
 (`planPairingAutoApply`, `planLinkAutoApply`) — confidence filter + dedup, no

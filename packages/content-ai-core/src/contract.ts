@@ -35,9 +35,15 @@ export interface RejectedSuggestion {
 // (which only has those four) and richer callers (which also supply field,
 // rejectedSuggestions, origin) both satisfy it — this is what lets
 // content-ai-refine re-export these types instead of keeping a divergent copy.
+//
+// `currentData` is a `Partial` of the entity shape: callers routinely refine
+// against a subset of fields (e.g. just `{ name }` for slug suggestion), and
+// prompt builders already read each field defensively. This keeps those subset
+// call sites cast-free; dynamic JSON payloads (`Record<string, unknown>` read
+// from disk) still need an explicit cast since their shape isn't statically known.
 export interface PromptContext<S extends ZodSchema, Source = never> {
   field?: FieldPath<S>;
-  currentData?: z.infer<S>;
+  currentData?: Partial<z.infer<S>>;
   sourceContext?: Source;
   preset?: string | ResolvedPreset;
   userPrompt?: string;

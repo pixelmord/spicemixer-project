@@ -101,13 +101,17 @@ export function PairingsSection({
     if (!onRemovePairing) return;
     const { locale: pairingLocale, slug: pairingSlug } = splitPairingId(p.id);
     if (!window.confirm(`Remove pairing "${pairingSlug}" (${pairingLocale})?`)) return;
-    const { error } = await onRemovePairing(pairingSlug, pairingLocale);
-    if (error) {
-      toast.error(`Remove failed: ${error.message}`);
-      return;
+    try {
+      const { error } = await onRemovePairing(pairingSlug, pairingLocale);
+      if (error) {
+        toast.error(`Remove failed: ${error.message}`);
+        return;
+      }
+      setFeaturedPairings?.(featuredPairings.filter((x) => x.id !== p.id));
+      toast.success("Pairing removed");
+    } catch (err) {
+      toast.error(`Remove failed: ${err instanceof Error ? err.message : String(err)}`);
     }
-    setFeaturedPairings?.(featuredPairings.filter((x) => x.id !== p.id));
-    toast.success("Pairing removed");
   }
 
   return (

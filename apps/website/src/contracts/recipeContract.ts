@@ -20,7 +20,7 @@ export interface RecipeRefineContext {
 }
 
 function buildRecipeCtx(
-  currentData: z.infer<RecipeSchema> | undefined,
+  currentData: Partial<z.infer<RecipeSchema>> | undefined,
   maxIngredients = 8,
 ): string {
   if (!currentData) return "";

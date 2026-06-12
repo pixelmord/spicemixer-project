@@ -143,9 +143,23 @@ export async function mergeRecipe(
       config,
     );
 
+    // ingestFields assembles per-field suggestions without validating the whole
+    // object, so a model that drops a required field would slip through the cast.
+    // Validate non-fatally: surface a warning but still return the merge so a
+    // partial result isn't silently lost.
+    const parsed = recipeExtractSchema.safeParse(fields);
+    const mergeWarnings = [...prepWarnings, ...warnings];
+    if (!parsed.success) {
+      mergeWarnings.push(
+        `Merged recipe failed schema validation: ${parsed.error.issues
+          .map((i) => `${i.path.join(".")}: ${i.message}`)
+          .join("; ")}`,
+      );
+    }
+
     const base: MergeRecipeResult = {
-      recipe: fields as RecipeExtract,
-      warnings: [...prepWarnings, ...warnings],
+      recipe: parsed.success ? parsed.data : (fields as RecipeExtract),
+      warnings: mergeWarnings,
     };
 
     if (options.debug) {

@@ -84,7 +84,10 @@ export interface AiEvent {
 
 export interface RunRefineParams<S extends ZodSchema, Source = never> {
   contract: AiContract<S, Source>;
-  currentData: z.infer<S>;
+  // Partial of the entity shape: callers routinely refine a subset of fields
+  // (e.g. just `{ name }`). Prompt builders read each field defensively, and the
+  // runner only reads the targeted fields. Dynamic JSON payloads still cast.
+  currentData: Partial<z.infer<S>>;
   sourceContext?: Source;
   target?: string | string[];
   preset?: string;

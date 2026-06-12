@@ -253,7 +253,9 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
         };
 
         let autoLinked = 0;
-        if (proposedPairings.length > 0) {
+        // Per-field runs never persist: writes would create real pairing records
+        // from transient form interactions. Persistence happens on the user's save.
+        if (!isPerField && proposedPairings.length > 0) {
           const existingPairings = await store.list("pairings");
           const existingIds = new Set(existingPairings.map((p) => p.id));
           const plan = planPairingAutoApply(
@@ -444,7 +446,10 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
             ? []
             : planLinkAutoApply(ingredientLinks, existingPatterns);
 
-          const updatedMeta: Record<string, unknown> = { ...meta };
+          // Delta-only: collect just the keys this run changes, then merge them
+          // over the freshly-read sidecar below. Seeding from the stale `meta`
+          // snapshot would re-apply stale values over any concurrent updates.
+          const updatedMeta: Record<string, unknown> = {};
           const runId = getCurrentOrigin()?.runId;
 
           if (toAutoApply.length > 0) {

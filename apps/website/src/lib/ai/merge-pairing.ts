@@ -127,9 +127,23 @@ export async function mergePairing(
       config,
     );
 
+    // ingestFields assembles per-field suggestions without validating the whole
+    // object, so a model that drops a required field would slip through the cast.
+    // Validate non-fatally: surface a warning but still return the merge so a
+    // partial result isn't silently lost.
+    const parsed = pairingExtractSchema.safeParse(fields);
+    const mergeWarnings = [...prepWarnings, ...warnings];
+    if (!parsed.success) {
+      mergeWarnings.push(
+        `Merged pairing failed schema validation: ${parsed.error.issues
+          .map((i) => `${i.path.join(".")}: ${i.message}`)
+          .join("; ")}`,
+      );
+    }
+
     return {
-      pairing: fields as PairingExtract,
-      warnings: [...prepWarnings, ...warnings],
+      pairing: parsed.success ? parsed.data : (fields as PairingExtract),
+      warnings: mergeWarnings,
     };
   } catch (e) {
     throw toAiError(e, "Pairing merge failed");
