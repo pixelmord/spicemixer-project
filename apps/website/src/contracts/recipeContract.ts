@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { recipeSchema } from "recipe-ingestion";
 import type { AiContract, FieldConfig } from "@pixelmord/content-ai-refine";
+import { commonPresets, excludeExistingValuesRule } from "./_shared.ts";
 
 type RecipeSchema = typeof recipeSchema;
 
@@ -34,15 +35,6 @@ function localeToLanguageName(locale: string): string {
   return LOCALE_LANGUAGE_NAMES[locale] ?? locale;
 }
 
-// Rule reused across string[] fields so suggestions don't echo back values
-// the user has already accepted. Without this the model parrots existing items.
-function excludeExistingValuesRule(existing: string[] | undefined): string {
-  if (!existing?.length) return "";
-  return `Existing values already on the entity: ${existing.join(", ")}.
-You MUST NOT include any of these in your output — they are already accepted.
-Return ONLY genuinely new values. If you have nothing new to add, return an empty array [].`;
-}
-
 function buildRecipeCtx(
   currentData: z.infer<RecipeSchema> | undefined,
   maxIngredients = 8,
@@ -60,25 +52,6 @@ function buildRecipeCtx(
     .filter(Boolean)
     .join("\n");
 }
-
-const presets = [
-  {
-    id: "expand",
-    label: "Expand",
-    description: "Expand the content with more detail.",
-    instruction: "Write in more detail, adding depth and nuance.",
-    appliesTo: "text" as const,
-    autoApplyOverride: { policy: "never" as const },
-  },
-  {
-    id: "summarize",
-    label: "Summarize",
-    description: "Shorten the content.",
-    instruction: "Write a concise version without losing key points.",
-    appliesTo: "text" as const,
-    autoApplyOverride: { policy: "never" as const },
-  },
-];
 
 // Text improvement field helper (replaces proposeRecipeImprovements per-field)
 const textFieldConfig = (instruction: string): FieldConfig<RecipeSchema, RecipeRefineContext> => ({
@@ -125,7 +98,7 @@ const pairingsOutputSchema = z.array(
 
 export const recipeContract: AiContract<RecipeSchema, RecipeRefineContext> = {
   schema: recipeSchema,
-  presets,
+  presets: commonPresets,
   fields: {
     description: textFieldConfig("Write a detailed description of this recipe."),
     recipeCategory: textFieldConfig(
