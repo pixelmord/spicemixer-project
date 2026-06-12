@@ -1,7 +1,6 @@
 import type { ContentStore } from "./content-store.ts";
 import type { MetaSidecar } from "./meta-sidecar.ts";
 import type { EndpointRef } from "entity-kind";
-import { NotFoundError } from "./errors.ts";
 import { entityMeta } from "@/lib/entity-meta.ts";
 
 export interface BuildPairingDataInput {
@@ -37,29 +36,6 @@ export async function buildPairingData(
   if (imageValue) data["image"] = imageValue;
   if (imageAttributionValue) data["imageAttribution"] = imageAttributionValue;
   return data;
-}
-
-export async function togglePairingDraft(
-  store: ContentStore,
-  sidecar: MetaSidecar,
-  input: { id: string; locale: string; draft: boolean },
-): Promise<void> {
-  const existing = await store.get("pairings", `${input.locale}/${input.id}`);
-  if (!existing) throw new NotFoundError(`Pairing ${input.locale}/${input.id} not found.`);
-  await savePairingMeta(sidecar, {
-    id: input.id,
-    locale: input.locale,
-    patch: { draft: input.draft },
-  });
-}
-
-export async function deletePairing(
-  store: ContentStore,
-  sidecar: MetaSidecar,
-  input: { id: string; locale: string },
-): Promise<void> {
-  await store.delete("pairings", `${input.locale}/${input.id}`);
-  await sidecar.remove({ collection: "pairings", locale: input.locale, slug: input.id });
 }
 
 export async function savePairingMeta(

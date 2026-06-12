@@ -1,15 +1,9 @@
 import { describe, expect, test } from "vite-plus/test";
 import { InMemoryStore } from "../../src/lib/stores/in-memory.ts";
 import { createMetaSidecar, PAIRING_META } from "../../src/lib/meta-sidecar.ts";
-import {
-  buildPairingData,
-  togglePairingDraft,
-  deletePairing,
-  savePairingMeta,
-} from "../../src/lib/pairings.ts";
+import { buildPairingData, savePairingMeta } from "../../src/lib/pairings.ts";
 import { saveEntity } from "../../src/lib/save-entity.ts";
 import type { EndpointRef } from "entity-kind";
-import { NotFoundError } from "../../src/lib/errors.ts";
 
 const cardamom: EndpointRef = { collection: "ingredients", slug: "cardamom" };
 const anise: EndpointRef = { collection: "ingredients", slug: "anise" };
@@ -131,77 +125,6 @@ describe("buildPairingData + saveEntity", () => {
     });
     const stored = await store.get("pairings", "en/anise--cardamom");
     expect((stored!.data as Record<string, unknown>)["image"]).toBe("https://example.com/img.jpg");
-  });
-
-  test("throws NotFoundError when togglePairingDraft targets missing pairing", async () => {
-    const store = new InMemoryStore();
-    const sidecar = createMetaSidecar(store);
-    await expect(
-      togglePairingDraft(store, sidecar, { id: "ghost", locale: "en", draft: true }),
-    ).rejects.toBeInstanceOf(NotFoundError);
-  });
-
-  test("togglePairingDraft updates draft in pairingMeta sidecar, not content", async () => {
-    const store = new InMemoryStore();
-    const sidecar = createMetaSidecar(store);
-    await store.put("pairings", "en/anise--cardamom", {
-      endpoints: [anise, cardamom],
-      description: "x",
-    });
-    await togglePairingDraft(store, sidecar, { id: "anise--cardamom", locale: "en", draft: true });
-    // draft NOT in content
-    const stored = await store.get("pairings", "en/anise--cardamom");
-    expect((stored!.data as Record<string, unknown>)["draft"]).toBeUndefined();
-    // draft IS in meta at locale-prefixed key
-    const meta = await store.get(PAIRING_META, "en/anise--cardamom");
-    expect((meta!.data as Record<string, unknown>)["draft"]).toBe(true);
-  });
-
-  test("togglePairingDraft for DE locale writes to de/ meta key", async () => {
-    const store = new InMemoryStore();
-    const sidecar = createMetaSidecar(store);
-    await store.put("pairings", "de/anise--cardamom", {
-      endpoints: [anise, cardamom],
-      description: "Warm und lakritzartig.",
-    });
-    await togglePairingDraft(store, sidecar, { id: "anise--cardamom", locale: "de", draft: true });
-    const meta = await store.get(PAIRING_META, "de/anise--cardamom");
-    expect((meta!.data as Record<string, unknown>)["draft"]).toBe(true);
-    // EN meta untouched
-    expect(await store.get(PAIRING_META, "en/anise--cardamom")).toBeNull();
-  });
-
-  test("deletePairing removes the locale-prefixed record and its meta", async () => {
-    const store = new InMemoryStore();
-    const sidecar = createMetaSidecar(store);
-    await store.put("pairings", "en/anise--cardamom", {
-      endpoints: [anise, cardamom],
-      description: "x",
-    });
-    await store.put(PAIRING_META, "en/anise--cardamom", { aiEvents: [] });
-
-    await deletePairing(store, sidecar, { id: "anise--cardamom", locale: "en" });
-
-    expect(await store.get("pairings", "en/anise--cardamom")).toBeNull();
-    expect(await store.get(PAIRING_META, "en/anise--cardamom")).toBeNull();
-  });
-
-  test("deletePairing does not affect other locale records", async () => {
-    const store = new InMemoryStore();
-    const sidecar = createMetaSidecar(store);
-    await store.put("pairings", "en/anise--cardamom", {
-      endpoints: [anise, cardamom],
-      description: "x",
-    });
-    await store.put("pairings", "de/anise--cardamom", {
-      endpoints: [anise, cardamom],
-      description: "y",
-    });
-
-    await deletePairing(store, sidecar, { id: "anise--cardamom", locale: "en" });
-
-    expect(await store.get("pairings", "en/anise--cardamom")).toBeNull();
-    expect(await store.get("pairings", "de/anise--cardamom")).not.toBeNull();
   });
 
   test("savePairingMeta merge-patches existing meta at locale-prefixed key", async () => {
