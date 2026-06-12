@@ -40,7 +40,15 @@
   "recipeYield": "2 servings",
   "recipeCategory": "Main Course",
   "recipeCuisine": "Japanese",
-  "keywords": ["weeknight", "comfort", "quick", "vegetarian", "pantry", "japanese"],
+  "keywords": [
+    "weeknight",
+    "comfort",
+    "quick",
+    "vegetarian",
+    "pantry",
+    "japanese",
+    "quick-ramen-recipe"
+  ],
   "prepTime": "PT5M",
   "cookTime": "PT10M",
   "totalTime": "PT15M",

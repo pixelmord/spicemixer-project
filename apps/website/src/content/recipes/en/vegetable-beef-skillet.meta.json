@@ -40,7 +40,7 @@
   ],
   "aiSuggestions": {
     "fingerprint": "33baa90f7531bf7c813af0223800ffc04e5fd6a0ecb15522c66a8009f7930c94",
-    "at": "2026-06-06T18:01:01.053Z",
+    "at": "2026-06-11T14:51:38.412Z",
     "model": "gpt-4o-mini",
     "data": {
       "improvements": [],
@@ -55,28 +55,28 @@
       "relations": [],
       "pairings": [
         {
-          "otherCollection": "mixtures",
-          "otherSlug": "berbere",
-          "rationale": "The warming spices in berbere complement the savory notes of the ground beef, while adding a layer of depth to the dish. This Ethiopian spice blend enhances the hearty profile of the skillet.",
-          "traceId": "9f2cc80c-6f20-40d8-8489-44ba92caf7a2"
-        },
-        {
           "otherCollection": "ingredients",
-          "otherSlug": "cumin",
-          "rationale": "Cumin's earthy and slightly nutty flavor provides a wonderful contrast to the sweetness of the vegetables and pairs well with the beef.",
-          "traceId": "9f2cc80c-6f20-40d8-8489-44ba92caf7a2"
+          "otherSlug": "chili-powder",
+          "rationale": "Chili powder enhances the spice profile of the Vegetable and Beef Skillet, deepening its flavor and complementing the beef and vegetables.",
+          "traceId": "c33a2b03-d858-4c55-a70d-e1aa380ca149"
         },
         {
           "otherCollection": "mixtures",
           "otherSlug": "harissa",
-          "rationale": "Harissa adds a spicy kick and a complex flavor profile that harmonizes with the ingredients in the skillet, elevating the overall taste experience.",
-          "traceId": "9f2cc80c-6f20-40d8-8489-44ba92caf7a2"
+          "rationale": "Harissa adds a bold, smoky heat that pairs well with the richness of the beef and the freshness of the vegetables, bringing an exciting depth to the dish.",
+          "traceId": "c33a2b03-d858-4c55-a70d-e1aa380ca149"
+        },
+        {
+          "otherCollection": "mixtures",
+          "otherSlug": "mojo-rojo",
+          "rationale": "Mojo rojo, with its vibrant flavors, can elevate the dish, adding a zesty complement to the savory components of the skillet.",
+          "traceId": "c33a2b03-d858-4c55-a70d-e1aa380ca149"
         },
         {
           "otherCollection": "recipes",
           "otherSlug": "gemuese-rindfleisch-pfanne",
-          "rationale": "This German-style vegetable and beef skillet shares similar ingredients and preparation methods, making it a great reference for additional flavor combinations and cooking techniques.",
-          "traceId": "9f2cc80c-6f20-40d8-8489-44ba92caf7a2"
+          "rationale": "This recipe is a German version of a vegetable and beef skillet, highlighting a similar preparation and flavor profile, providing an interesting cultural twist to the meal.",
+          "traceId": "c33a2b03-d858-4c55-a70d-e1aa380ca149"
         }
       ]
     }

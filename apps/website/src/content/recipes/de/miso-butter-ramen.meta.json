@@ -1,0 +1,47 @@
+{
+  "draft": true,
+  "kind": "recipe",
+  "tags": [],
+  "ingredientLinks": [],
+  "sources": [],
+  "variants": [],
+  "language": "de",
+  "locale": "de",
+  "translationOf": "miso-butter-ramen",
+  "translations": {
+    "en": "miso-butter-ramen"
+  },
+  "aiEvents": [
+    {
+      "type": "ingested",
+      "suggestion": {
+        "hash": "d73d2e02-451b-4c78-a1b6-21c7cc90ccb7",
+        "summary": "Translation to de"
+      },
+      "model": "translation",
+      "traceId": "d73d2e02-451b-4c78-a1b6-21c7cc90ccb7",
+      "id": "064abec0-37b5-4ec6-be95-b41b7f58942c",
+      "at": "2026-06-11T16:13:33.836Z"
+    }
+  ],
+  "canonicalLocale": "en",
+  "canonicalFieldHashes": {
+    "name": "Miso Butter Ramen",
+    "description": "A ten-minute pantry ramen with a glossy miso-butter broth, soft egg, and crisp scallions.",
+    "recipeCategory": "Main Course",
+    "recipeCuisine": "Japanese",
+    "slug": "miso-butter-ramen",
+    "recipeYield": "2 servings",
+    "keywords": "[\"weeknight\",\"comfort\",\"quick\",\"vegetarian\",\"pantry\",\"japanese\",\"quick-ramen-recipe\"]",
+    "tags": "[\"quick-recipe\",\"japanese-cuisine\",\"easy-dinner\",\"vegetarian\"]",
+    "recipeIngredient": "[\"2 packs fresh ramen noodles\",\"3 tbsp white miso paste\",\"2 tbsp unsalted butter\",\"1 tbsp soy sauce\",\"1 tsp toasted sesame oil\",\"750ml hot vegetable stock\",\"2 soft-boiled eggs, halved\",\"3 scallions, thinly sliced\",\"1 sheet nori, torn\"]",
+    "recipeInstructions": "[{\"@type\":\"HowToStep\",\"text\":\"Whisk miso, butter, soy and sesame oil into the hot stock until smooth.\"},{\"@type\":\"HowToStep\",\"text\":\"Cook ramen noodles per package instructions, drain, divide between bowls.\"},{\"@type\":\"HowToStep\",\"text\":\"Pour broth over noodles. Top with egg halves, scallions, and nori.\"},{\"@type\":\"HowToStep\",\"text\":\"Eat immediately, while the butter is still glossy on the broth.\"}]",
+    "image": "https://images.unsplash.com/photo-1623341214825-9f4f963727da?w=1200&q=80",
+    "prepTime": "PT5M",
+    "cookTime": "PT10M",
+    "totalTime": "PT15M",
+    "author": "{\"@type\":\"Person\",\"name\":\"Kenji Watari\"}",
+    "region": "[\"east-asia\"]"
+  },
+  "translationStaleSince": "2026-06-11T16:13:45.424Z"
+}
