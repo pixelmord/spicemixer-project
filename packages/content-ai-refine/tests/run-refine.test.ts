@@ -277,6 +277,45 @@ describe("suggestion shape", () => {
   });
 });
 
+// ── Confidence source ─────────────────────────────────────────────────────────
+
+describe("confidence source", () => {
+  test("reads the model's self-reported confidence into the suggestion", async () => {
+    vi.mocked(generateText).mockResolvedValue({
+      output: { value: "A summary", confidence: "high" },
+    } as never);
+
+    const { suggestions } = await runRefine({
+      contract: baseContract,
+      currentData: { name: "Cumin" },
+      target: "summary",
+      config: MOCK_CONFIG,
+    });
+
+    const suggestion = suggestions.get("summary");
+    expect(suggestion?.kind).toBe("single");
+    if (suggestion?.kind === "single") {
+      expect(suggestion.confidence).toBe("high");
+    }
+  });
+
+  test("falls back to medium when the model omits confidence", async () => {
+    vi.mocked(generateText).mockResolvedValue({ output: { value: "A summary" } } as never);
+
+    const { suggestions } = await runRefine({
+      contract: baseContract,
+      currentData: { name: "Cumin" },
+      target: "summary",
+      config: MOCK_CONFIG,
+    });
+
+    const suggestion = suggestions.get("summary");
+    if (suggestion?.kind === "single") {
+      expect(suggestion.confidence).toBe("medium");
+    }
+  });
+});
+
 // ── Pre-mutation ──────────────────────────────────────────────────────────────
 
 describe("pre-mutation", () => {

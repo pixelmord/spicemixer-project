@@ -672,6 +672,55 @@ describe("runAiRefresh ingredient: auto-apply pairings", () => {
     );
   });
 
+  test("threads per-item confidence into the UI-facing pairings array", async () => {
+    const refine = await import("@pixelmord/content-ai-refine");
+    vi.mocked(refine.runRefine).mockResolvedValueOnce({
+      suggestions: new Map([
+        [
+          "pairings",
+          {
+            kind: "single" as const,
+            value: [
+              {
+                otherCollection: "ingredients",
+                otherSlug: "cumin",
+                rationale: "Fragrant pair",
+                confidence: "medium" as const,
+              },
+            ],
+            confidence: "medium" as const,
+            summary: "pairings: [1 items]",
+            hash: "def456",
+            traceId: "trace-2",
+          },
+        ],
+      ]),
+      autoApplied: new Map(),
+      traces: new Map(),
+    });
+
+    const { store, sidecar, eventLog } = makeEnv();
+    await store.put("ingredients", "en/cumin", { name: "Cumin" });
+    const metaRef = { collection: "ingredients" as const, locale: "en", slug: "cardamom" };
+
+    const result = await runAiRefresh({
+      kind: "ingredient",
+      metaRef,
+      payload: { name: "Cardamom" },
+      missingFields: [],
+      locale: "en",
+      store,
+      sidecar,
+      eventLog,
+      config: CONFIG,
+      existingMeta: {},
+    });
+
+    const pairings = (result.aiSuggestions as { pairings: Array<{ confidence?: string }> })
+      .pairings;
+    expect(pairings[0]?.confidence).toBe("medium");
+  });
+
   test("low-confidence pairings are not auto-applied", async () => {
     const refine = await import("@pixelmord/content-ai-refine");
     vi.mocked(refine.runRefine).mockResolvedValueOnce({

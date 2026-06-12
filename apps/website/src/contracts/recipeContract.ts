@@ -93,6 +93,7 @@ const pairingsOutputSchema = z.array(
     otherCollection: z.enum(["ingredients", "mixtures", "recipes"]),
     otherSlug: z.string(),
     rationale: z.string(),
+    confidence: z.enum(["high", "medium", "low"]),
   }),
 );
 
@@ -250,6 +251,7 @@ Return up to 4 pairings. For each:
 - otherCollection: the collection of the other entity (ingredients / mixtures / recipes)
 - otherSlug: exact slug from the list above
 - rationale: 1-2 sentences explaining the culinary affinity — this becomes the pairing description
+- confidence: high / medium / low
 
 Only suggest pairings with clear culinary logic. Return empty array if nothing fits strongly.`;
       },

@@ -61,6 +61,28 @@ describe("PairingsSection", () => {
       .toBeVisible();
   });
 
+  test("renders a confidence badge per proposal that has a confidence value", async () => {
+    const proposals: PairingProposal[] = [
+      {
+        otherCollection: "ingredients",
+        otherSlug: "cumin",
+        rationale: "shared earthiness",
+        confidence: "high",
+      },
+    ];
+    const screen = await render(
+      <PairingsSection
+        {...baseProps}
+        proposals={proposals}
+        setProposals={() => {}}
+        dismissed={new Set()}
+        setDismissed={() => {}}
+        featuredPairings={[]}
+      />,
+    );
+    await expect.element(screen.getByLabelText("high confidence")).toBeVisible();
+  });
+
   test("dismissing a proposal calls setDismissed with the slug added", async () => {
     const setDismissed = vi.fn();
     const proposals: PairingProposal[] = [

@@ -245,6 +245,7 @@ async function runIngredientRefresh(input: AiRefreshInput): Promise<AiRefreshRes
             otherCollection: p.otherCollection,
             otherSlug: p.otherSlug,
             rationale: p.rationale,
+            confidence: p.confidence,
             traceId: pairingsTraceId,
           })),
           detectedLanguage,
@@ -409,6 +410,7 @@ async function runRecipeRefresh(input: AiRefreshInput): Promise<AiRefreshResult>
                     otherCollection: EndpointRef["collection"];
                     otherSlug: string;
                     rationale: string;
+                    confidence: Confidence;
                   }>
                 ).map((p) => ({ ...p, traceId: pairingsTraceId }))
               : [];

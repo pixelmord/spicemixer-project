@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { ConfidenceBadge } from "@/components/ui/confidence-badge.tsx";
 import { Dialog, DialogContent } from "@/components/ui/dialog.tsx";
 import {
   CreatePairingDialog,
@@ -150,6 +151,9 @@ export function PairingsSection({
                   <div className="flex-1 min-w-0">
                     <span className="text-muted-foreground">{p.otherCollection}: </span>
                     <span className="font-medium">{p.otherSlug}</span>
+                    {p.confidence && (
+                      <ConfidenceBadge confidence={p.confidence} className="ml-1.5 align-middle" />
+                    )}
                     {p.rationale && (
                       <p className="text-muted-foreground mt-0.5 truncate">{p.rationale}</p>
                     )}

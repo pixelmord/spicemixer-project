@@ -222,7 +222,12 @@ export async function runRefine<S extends ZodSchema, Source = never>(
 
       try {
         const model = createProvider(config, sinks?.length ? { sinks } : undefined);
-        const wrappedSchema = z.object({ value: outputSchema });
+        // Ask the model to self-report confidence alongside the value. This is a
+        // soft, uncalibrated hint — see ADR / issue #160 — not a logprob score.
+        const wrappedSchema = z.object({
+          value: outputSchema,
+          confidence: z.enum(["high", "medium", "low"]).optional(),
+        });
 
         // Reinforce the wrapper-key contract in the user prompt as
         // defense-in-depth — the system prompt mentions the field name, so
@@ -244,6 +249,8 @@ export async function runRefine<S extends ZodSchema, Source = never>(
         });
 
         const value = (output as { value: unknown }).value;
+        const reportedConfidence = (output as { confidence?: "high" | "medium" | "low" })
+          .confidence;
         const runtimeMs = Date.now() - start;
 
         if (value == null) {
@@ -261,7 +268,7 @@ export async function runRefine<S extends ZodSchema, Source = never>(
 
         const hash = fingerprintHash({ field, value });
         const summary = summarizeValue(field, value);
-        const confidence: "high" | "medium" | "low" = "medium";
+        const confidence: "high" | "medium" | "low" = reportedConfidence ?? "medium";
 
         const traceSummary: TraceSummary = {
           traceId,
