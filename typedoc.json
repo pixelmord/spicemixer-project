@@ -1,0 +1,27 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "packages/content-ai-core/src/index.ts",
+    "packages/content-ai-core/src/server.ts",
+    "packages/content-ai-core/src/testing/index.ts",
+    "packages/content-ai-core/src/presentation/index.ts",
+    "packages/content-ai-ingest/src/index.ts",
+    "packages/content-ai-refine/src/index.ts"
+  ],
+  "entryPointStrategy": "resolve",
+  "tsconfig": "tsconfig.typedoc.json",
+  "out": "docs/content-ai/api",
+  "name": "content-ai API reference",
+  "readme": "none",
+  "excludeInternal": true,
+  "excludePrivate": true,
+  "hideGenerator": true,
+  "navigationLinks": {
+    "← Guides": "../index.html"
+  },
+  "validation": {
+    "notExported": false,
+    "invalidLink": true,
+    "notDocumented": false
+  }
+}

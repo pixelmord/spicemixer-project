@@ -46,6 +46,7 @@ export interface RefreshStrategy<S extends ZodSchema, Source, Result> {
   }) => Promise<Result>;
 }
 
+/** The field-level runner {@link runRefresh} drives — {@link runRefine} by default; injectable for tests. */
 export type FieldRunner = typeof runRefine;
 
 export interface RefreshRunParams {

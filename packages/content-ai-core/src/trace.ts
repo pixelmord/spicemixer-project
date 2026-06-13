@@ -6,6 +6,7 @@ import type {
 import { getCurrentOrigin } from "./origin.ts";
 import type { Origin } from "./origin.ts";
 
+/** Normalized reason an LLM call ended, as recorded on a {@link TraceEvent}. */
 export type TraceFinishReason =
   | "stop"
   | "length"
@@ -15,6 +16,12 @@ export type TraceFinishReason =
   | "other"
   | "unknown";
 
+/**
+ * One fully-resolved LLM call captured by {@link tracingMiddleware}: the
+ * {@link Origin} that triggered it, model, finish reason, token usage, duration,
+ * and the request/response payloads. Emitted to every configured
+ * {@link TraceSink} for observability (ADR 0011).
+ */
 export interface TraceEvent {
   traceId: string;
   runId: string;
@@ -40,10 +47,16 @@ export interface TraceEvent {
   };
 }
 
+/**
+ * A destination for {@link TraceEvent}s. Implement `emit` to forward traces to
+ * a file, Sentry, a store, etc. Sinks are fanned out with `Promise.allSettled`,
+ * so a throwing sink never breaks the LLM call.
+ */
 export interface TraceSink {
   emit(event: TraceEvent): Promise<void> | void;
 }
 
+/** A fresh trace id (`crypto.randomUUID()`) for one LLM call. */
 export function generateTraceId(): string {
   return crypto.randomUUID();
 }
@@ -82,6 +95,14 @@ async function fan(sinks: TraceSink[], event: TraceEvent): Promise<void> {
   await Promise.allSettled(sinks.map((s) => Promise.resolve(s.emit(event))));
 }
 
+/**
+ * AI-SDK middleware that emits a {@link TraceEvent} to every `sink` for each
+ * `generate`/`stream` call, tagged with the ambient {@link Origin}. When no
+ * origin is set the call passes through untraced. Wire it via
+ * {@link createProvider}'s `sinks` option rather than by hand.
+ *
+ * Server-only (`node:async_hooks`).
+ */
 export function tracingMiddleware(sinks: TraceSink[]): LanguageModelV3Middleware {
   return {
     specificationVersion: "v3",

@@ -73,6 +73,16 @@ export default defineConfig({
         cwd: "apps/website",
         input: ["apps/website/src/content/**", "apps/website/src/lib/content-validators.ts"],
       },
+      "docs:api": {
+        command: "typedoc",
+        input: [
+          "packages/content-ai-core/src/**",
+          "packages/content-ai-ingest/src/**",
+          "packages/content-ai-refine/src/**",
+          "typedoc.json",
+          "tsconfig.typedoc.json",
+        ],
+      },
     },
   },
   test: {

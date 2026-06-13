@@ -115,6 +115,23 @@ function isSiblingLocaleSource(ctx: unknown): boolean {
   );
 }
 
+/**
+ * Generate or improve entity fields from existing data and prompts — the
+ * prompt-driven counterpart to `runFill`.
+ *
+ * Runs the target fields concurrently. Per field it: skips if a write policy
+ * preserves an existing value, resolves the output schema, builds the system
+ * prompt from the contract (an empty prompt gates the field off), asks the
+ * model for `{ value, confidence }`, fingerprints the result, drops it if a
+ * matching suggestion was previously rejected, then either auto-applies it
+ * (confidence ≥ the field's threshold) or queues it as a suggestion.
+ *
+ * Rejects sibling-locale source contexts — use `runFill` for translation.
+ * Side-effect free: persisting writes/events is the caller's job.
+ *
+ * @typeParam S - The entity's Zod schema.
+ * @typeParam Source - The prompt-context source type, or `never`.
+ */
 export async function runRefine<S extends ZodSchema, Source = never>(
   params: RunRefineParams<S, Source>,
 ): Promise<RunRefineResult> {

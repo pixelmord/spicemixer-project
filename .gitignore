@@ -44,3 +44,6 @@ packages/*/src/**/*.d.ts
 
 # Source artifact store (content-addressed, copyrighted binaries, not for git)
 **/data/sources/
+
+# Generated typedoc API reference (regenerated via `vp run docs:api` / CI)
+docs/content-ai/api/

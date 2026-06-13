@@ -129,6 +129,23 @@ async function callLlm(
   }
 }
 
+/**
+ * Fill an entity's fields from an external source in one model call.
+ *
+ * The source-driven entry point of the substrate: given an {@link IngestContract}
+ * and a `sourceContext` (extracted PDF/image/text, or a {@link SiblingLocaleSource}
+ * for translation), it builds the contract's messages, runs the LLM, and splits
+ * the extracted per-field values into `autoApplied` writes and pending
+ * `suggestions` according to each field's write policy. Returns an
+ * `ingestedEvent` for the caller to persist as source attribution.
+ *
+ * Use this when content comes from outside the entity; use `runRefine` (in
+ * content-ai-refine) to generate/improve fields from existing data and prompts.
+ * Side-effect free: writing values and appending the event is the caller's job.
+ *
+ * @typeParam S - The entity's Zod schema.
+ * @typeParam Source - The source-context type the contract consumes.
+ */
 export async function runFill<S extends ZodSchema, Source>(
   params: RunFillParams<S, Source>,
 ): Promise<RunFillResult> {
