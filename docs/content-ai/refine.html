@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>content-ai-refine — runRefine / runRefresh</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam {
+        stroke-dasharray: 5 4;
+      }
+      .deep {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+      }
+      .font-serif {
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans antialiased">
+    <div class="flex min-h-screen">
+      <aside
+        class="hidden md:flex flex-col w-60 shrink-0 border-r border-slate-200 bg-white/60 px-5 py-8 sticky top-0 h-screen"
+      >
+        <p class="font-serif text-lg font-semibold"><a href="index.html">content-ai</a></p>
+        <p class="text-xs text-slate-400 mb-6">AI content substrate</p>
+        <nav class="text-sm space-y-1">
+          <a href="index.html" class="block px-2 py-1 rounded text-slate-600">Overview</a>
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">Guides</p>
+          <a href="core.html" class="block px-2 py-1 rounded text-slate-600">core — substrate</a>
+          <a href="ingest.html" class="block px-2 py-1 rounded text-slate-600">ingest — runFill</a>
+          <a
+            href="refine.html"
+            aria-current="page"
+            class="block px-2 py-1 rounded font-semibold text-slate-900 bg-slate-100"
+            >refine — runRefine / runRefresh</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">Flow</p>
+          <a href="control-flow.html" class="block px-2 py-1 rounded text-slate-600"
+            >End-to-end control flow</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">
+            Reference
+          </p>
+          <a
+            href="api/modules/content-ai-refine_src.html"
+            class="block px-2 py-1 rounded text-slate-600"
+            >refine API ↗</a
+          >
+        </nav>
+      </aside>
+
+      <main class="flex-1 max-w-4xl mx-auto px-6 py-12 space-y-14">
+        <header class="space-y-3">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Guide · package</p>
+          <h1 class="text-4xl font-serif font-semibold">content-ai-refine</h1>
+          <p class="text-lg text-slate-600 max-w-2xl">
+            Two functions. <code>runRefine</code> generates or improves fields from existing data
+            and prompts — one model call per field. <code>runRefresh</code> orchestrates a full or
+            per-field refresh on top of it, writing results back through a per-kind strategy you
+            supply.
+          </p>
+        </header>
+
+        <!-- runRefine -->
+        <section class="space-y-4">
+          <h2 class="text-2xl font-serif font-semibold">runRefine — the per-field funnel</h2>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            Targets run concurrently. Each field passes through the same funnel; anywhere it drops
+            out, the field is simply absent from the result.
+          </p>
+          <div class="rounded-lg border border-slate-200 bg-white p-4">
+            <pre class="mermaid">
+flowchart TB
+  A["field in target set"] --> B{"writePolicy preserves<br/>an existing value?"}
+  B -->|yes| X1["skip"]
+  B -->|no| C["systemPrompt(ctx)"]
+  C --> D{"prompt empty?"}
+  D -->|yes — gated off| X2["skip"]
+  D -->|no| E["LLM → { value, confidence }"]
+  E --> F["fingerprintHash(value)"]
+  F --> G{"previously rejected?<br/>(suppression)"}
+  G -->|yes| X3["drop"]
+  G -->|no| H{"confidence ≥<br/>autoApply threshold?"}
+  H -->|yes| I["autoApplied"]
+  H -->|no| J["suggestions"]
+  classDef deep fill:#0f172a,color:#e2e8f0,stroke:#0f172a;
+  class E deep
+            </pre>
+          </div>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            Confidence is the model's self-report (high=1.0, medium=0.5, low=0.0) — an uncalibrated
+            hint, not a logprob. The result is
+            <code>{ suggestions, autoApplied, traces, errors }</code>, each keyed by field.
+            Per-field errors are collected by default; pass <code>errorMode: "throw"</code> for
+            single-field editor calls that should surface failure.
+          </p>
+        </section>
+
+        <!-- runRefresh -->
+        <section class="space-y-4">
+          <h2 class="text-2xl font-serif font-semibold">
+            runRefresh — orchestration + the assemble seam
+          </h2>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            <code>runRefresh</code> computes the target field set (a full run = the missing
+            recommended fields plus every <code>bulk</code> field the contract declares; a per-field
+            run = exactly what you asked for), drives <code>runRefine</code>, gates on errors, then
+            hands everything to your <code>assemble</code>.
+            <strong>All store and event-log I/O lives in <code>assemble</code></strong> — the runner
+            stays portable across consumers.
+          </p>
+          <div class="rounded-lg border border-slate-200 bg-white p-4">
+            <pre class="mermaid">
+flowchart LR
+  P["params: baseFields,<br/>isPerField, config"] --> T["compute target<br/>(+ bulk fields)"]
+  S["RefreshStrategy<br/>contract · currentData ·<br/>sourceContext · events"] --> T
+  T --> RF["runField (= runRefine)"]
+  RF --> EG{"errors &amp; no<br/>suggestions?"}
+  EG -->|yes| TH["throw"]
+  EG -->|no| EX["extract rawImprovements"]
+  EX --> AS["strategy.assemble(...)"]
+  AS --> RES["your Result<br/><span style='font-size:11px'>writes store + events</span>"]
+  classDef deep fill:#0f172a,color:#e2e8f0,stroke:#0f172a;
+  classDef seam fill:#fff,stroke:#475569,stroke-dasharray:5 4;
+  class RF deep
+  class AS seam
+            </pre>
+          </div>
+          <pre
+            class="rounded-lg bg-slate-900 text-slate-100 text-xs p-4 overflow-x-auto"
+          ><code>import { runRefresh } from "@pixelmord/content-ai-refine";
+
+return runRefresh(
+  {
+    contract: ingredientContract,
+    currentData: payload,
+    sourceContext: { inventory, locale },
+    events: existingEvents,
+    logger,
+    // assemble owns every side effect — store writes, event appends, filtering:
+    assemble: async ({ suggestions, autoApplied, rawImprovements, errors }) =&gt; {
+      const improvements = filterImprovements(rawImprovements);
+      // ...write autoApplied values, append events, shape your response
+      return { improvements, /* ... */ };
+    },
+  },
+  { baseFields: missingFields, isPerField: false, config },
+);</code></pre>
+          <p class="text-xs text-slate-500 max-w-3xl">
+            Adapted from <code>apps/website/src/lib/ai/runner.ts</code>. The
+            <code>runField</code> collaborator is injectable — pass a test double to exercise
+            <code>assemble</code> without an LLM.
+          </p>
+        </section>
+
+        <!-- presets & suppression -->
+        <section class="grid md:grid-cols-2 gap-4">
+          <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2">
+            <p class="font-serif text-lg font-semibold">Presets</p>
+            <p class="text-sm text-slate-600">
+              Selecting a <code>preset</code> appends its instruction to the system prompt of every
+              field that opted in via <code>presetIds</code>, and can override that field's
+              auto-apply policy. Fields that didn't opt in are skipped for that run.
+            </p>
+          </div>
+          <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2">
+            <p class="font-serif text-lg font-semibold">The suppression loop</p>
+            <p class="text-sm text-slate-600">
+              Pass the entity's <code>events</code> so a suggestion a human already rejected — same
+              field, same fingerprint — is dropped before it reaches the UI again. Reject events are
+              never pruned, so suppression is durable.
+            </p>
+          </div>
+        </section>
+
+        <footer class="pt-8 border-t border-slate-200 text-xs text-slate-400">
+          Full symbol reference:
+          <a href="api/modules/content-ai-refine_src.html" class="underline underline-offset-2"
+            >content-ai-refine API</a
+          >
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

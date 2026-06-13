@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>content-ai — substrate for AI-assisted content</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam {
+        stroke-dasharray: 5 4;
+      }
+      .deep {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+      }
+      .font-serif {
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      }
+      [x-nav]:hover {
+        color: #0f172a;
+      }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans antialiased">
+    <div class="flex min-h-screen">
+      <!-- ============ SIDEBAR ============ -->
+      <aside
+        class="hidden md:flex flex-col w-60 shrink-0 border-r border-slate-200 bg-white/60 px-5 py-8 sticky top-0 h-screen"
+      >
+        <p class="font-serif text-lg font-semibold">content-ai</p>
+        <p class="text-xs text-slate-400 mb-6">AI content substrate</p>
+        <nav class="text-sm space-y-1">
+          <a
+            x-nav
+            href="index.html"
+            aria-current="page"
+            class="block px-2 py-1 rounded font-semibold text-slate-900 bg-slate-100"
+            >Overview</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">Guides</p>
+          <a x-nav href="core.html" class="block px-2 py-1 rounded text-slate-600"
+            >core — substrate</a
+          >
+          <a x-nav href="ingest.html" class="block px-2 py-1 rounded text-slate-600"
+            >ingest — runFill</a
+          >
+          <a x-nav href="refine.html" class="block px-2 py-1 rounded text-slate-600"
+            >refine — runRefine / runRefresh</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">Flow</p>
+          <a x-nav href="control-flow.html" class="block px-2 py-1 rounded text-slate-600"
+            >End-to-end control flow</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">
+            Reference
+          </p>
+          <a x-nav href="api/index.html" class="block px-2 py-1 rounded text-slate-600"
+            >API reference ↗</a
+          >
+        </nav>
+      </aside>
+
+      <!-- ============ MAIN ============ -->
+      <main class="flex-1 max-w-4xl mx-auto px-6 py-12 space-y-14">
+        <header class="space-y-4">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Consumer documentation</p>
+          <h1 class="text-4xl font-serif font-semibold">content-ai</h1>
+          <p class="text-lg text-slate-600 max-w-2xl">
+            A pluggable substrate for AI-assisted content suggestion: fill entities from sources,
+            refine them field-by-field, and orchestrate full refreshes — while your app keeps
+            ownership of storage, review, and side effects.
+          </p>
+          <div class="flex flex-wrap gap-2 text-xs pt-1">
+            <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 font-mono"
+              >@pixelmord/content-ai-core</span
+            >
+            <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 font-mono"
+              >@pixelmord/content-ai-ingest</span
+            >
+            <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 font-mono"
+              >@pixelmord/content-ai-refine</span
+            >
+          </div>
+        </header>
+
+        <!-- ============ THE SEAM (lead) ============ -->
+        <section class="space-y-5">
+          <h2 class="text-2xl font-serif font-semibold">
+            The seam: what you supply, what the substrate owns
+          </h2>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            This is the one idea to hold onto. The runners are <strong>pure orchestration</strong> —
+            they never touch your store or event log. You hand them a description of your entity and
+            a strategy for writing results back; they hand you suggestions, auto-applied values, and
+            trace records. Every I/O boundary stays in your code (ADR&nbsp;0017, ADR&nbsp;0020).
+          </p>
+          <div class="rounded-lg border border-slate-200 bg-white p-4">
+            <pre class="mermaid">
+flowchart LR
+  subgraph you["YOUR APP — owns I/O & review"]
+    direction TB
+    C["AiContract / IngestContract<br/><span style='font-size:11px'>schema · fields · presets</span>"]
+    CFG["AiConfig<br/><span style='font-size:11px'>provider · model</span>"]
+    AS["assemble()<br/><span style='font-size:11px'>store + event-log writes</span>"]
+    EV["events + sinks<br/><span style='font-size:11px'>suppression · tracing</span>"]
+  end
+  subgraph sub["content-ai — owns orchestration, NO I/O"]
+    direction TB
+    R["runFill · runRefine · runRefresh"]
+  end
+  C --> R
+  CFG --> R
+  EV --> R
+  R --> AS
+  R -->|"suggestions · autoApplied · traces"| OUT["review UI / persistence"]
+  classDef deep fill:#0f172a,color:#e2e8f0,stroke:#0f172a;
+  class R deep
+            </pre>
+          </div>
+          <p class="text-xs text-slate-500">
+            Read the full picture on the
+            <a href="control-flow.html" class="text-slate-900 underline underline-offset-2"
+              >control-flow page</a
+            >.
+          </p>
+        </section>
+
+        <!-- ============ WHEN TO USE WHICH ============ -->
+        <section class="space-y-5">
+          <h2 class="text-2xl font-serif font-semibold">Which entry point?</h2>
+          <div class="rounded-lg border border-slate-200 bg-white p-4">
+            <pre class="mermaid">
+flowchart TD
+  Q{"Where does the<br/>content come from?"}
+  Q -->|"an external source<br/>(PDF, image, text, URL)"| FILL["runFill<br/><span style='font-size:11px'>content-ai-ingest</span>"]
+  Q -->|"a sibling-locale entity<br/>(translation)"| FILL
+  Q -->|"existing data + a prompt<br/>(generate / improve a field)"| REF["runRefine<br/><span style='font-size:11px'>content-ai-refine</span>"]
+  Q -->|"orchestrated full or per-field<br/>refresh, written back via a strategy"| RR["runRefresh<br/><span style='font-size:11px'>content-ai-refine</span>"]
+  RR -.drives.-> REF
+            </pre>
+          </div>
+          <div class="grid sm:grid-cols-3 gap-3 text-sm">
+            <div class="rounded-lg border border-slate-200 p-4 bg-white">
+              <p class="font-mono text-xs text-slate-400 mb-1">source-driven</p>
+              <p class="font-semibold"><code>runFill</code></p>
+              <p class="text-slate-600 text-xs mt-1">
+                Populate many fields from one artifact in a single call. Also the path for
+                translation.
+              </p>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 bg-white">
+              <p class="font-mono text-xs text-slate-400 mb-1">prompt-driven</p>
+              <p class="font-semibold"><code>runRefine</code></p>
+              <p class="text-slate-600 text-xs mt-1">
+                Generate or improve specific fields from current data + prompts. One LLM call per
+                field.
+              </p>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 bg-white">
+              <p class="font-mono text-xs text-slate-400 mb-1">orchestrated</p>
+              <p class="font-semibold"><code>runRefresh</code></p>
+              <p class="text-slate-600 text-xs mt-1">
+                Compute targets, drive <code>runRefine</code>, and write back through your
+                <code>assemble</code> strategy.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ PACKAGES ============ -->
+        <section class="space-y-5">
+          <h2 class="text-2xl font-serif font-semibold">The three packages</h2>
+          <div class="space-y-3">
+            <a
+              href="core.html"
+              class="block rounded-xl border border-slate-200 bg-white p-5 hover:border-slate-300 transition"
+            >
+              <div class="flex items-baseline justify-between gap-3 flex-wrap">
+                <p class="font-serif text-lg font-semibold">content-ai-core</p>
+                <span class="font-mono text-xs text-slate-400">imported by everything</span>
+              </div>
+              <p class="text-sm text-slate-600 mt-1">
+                The shared substrate: contract types, the append-only event log + suppression,
+                fingerprinting, the provider factory + tracing middleware (<code>/server</code>),
+                and presentation helpers. No runner of its own.
+              </p>
+            </a>
+            <a
+              href="ingest.html"
+              class="block rounded-xl border border-slate-200 bg-white p-5 hover:border-slate-300 transition"
+            >
+              <div class="flex items-baseline justify-between gap-3 flex-wrap">
+                <p class="font-serif text-lg font-semibold">content-ai-ingest</p>
+                <span class="font-mono text-xs text-slate-400">runFill</span>
+              </div>
+              <p class="text-sm text-slate-600 mt-1">
+                Source-driven fill. Turns a PDF, image, text, URL, or sibling-locale entity into
+                per-field suggestions in one model call.
+              </p>
+            </a>
+            <a
+              href="refine.html"
+              class="block rounded-xl border border-slate-200 bg-white p-5 hover:border-slate-300 transition"
+            >
+              <div class="flex items-baseline justify-between gap-3 flex-wrap">
+                <p class="font-serif text-lg font-semibold">content-ai-refine</p>
+                <span class="font-mono text-xs text-slate-400">runRefine · runRefresh</span>
+              </div>
+              <p class="text-sm text-slate-600 mt-1">
+                Prompt-driven per-field refinement and the refresh orchestration that drives it
+                through your per-kind strategy.
+              </p>
+            </a>
+          </div>
+        </section>
+
+        <!-- ============ INSTALL ============ -->
+        <section class="space-y-3">
+          <h2 class="text-2xl font-serif font-semibold">Install</h2>
+          <p class="text-sm text-slate-600">
+            Published to the GitHub Packages registry under the <code>@pixelmord</code> scope.
+          </p>
+          <pre
+            class="rounded-lg bg-slate-900 text-slate-100 text-sm p-4 overflow-x-auto"
+          ><code># .npmrc → @pixelmord:registry=https://npm.pkg.github.com
+pnpm add @pixelmord/content-ai-core \
+         @pixelmord/content-ai-ingest \
+         @pixelmord/content-ai-refine</code></pre>
+          <p class="text-xs text-slate-500">
+            <code>core</code> is a peer of both runners — install it alongside. Server-only entry
+            points (<code>/server</code>, <code>/testing</code>) use
+            <code>node:async_hooks</code> and must not be bundled for the browser.
+          </p>
+        </section>
+
+        <footer class="pt-8 border-t border-slate-200 text-xs text-slate-400">
+          content-ai · consumer docs · see also
+          <a href="api/index.html" class="underline underline-offset-2">API reference</a> and the
+          per-package READMEs for contributors.
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

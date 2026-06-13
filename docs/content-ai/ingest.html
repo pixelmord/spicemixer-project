@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>content-ai-ingest — runFill</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam {
+        stroke-dasharray: 5 4;
+      }
+      .deep {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+      }
+      .font-serif {
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans antialiased">
+    <div class="flex min-h-screen">
+      <aside
+        class="hidden md:flex flex-col w-60 shrink-0 border-r border-slate-200 bg-white/60 px-5 py-8 sticky top-0 h-screen"
+      >
+        <p class="font-serif text-lg font-semibold"><a href="index.html">content-ai</a></p>
+        <p class="text-xs text-slate-400 mb-6">AI content substrate</p>
+        <nav class="text-sm space-y-1">
+          <a href="index.html" class="block px-2 py-1 rounded text-slate-600">Overview</a>
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">Guides</p>
+          <a href="core.html" class="block px-2 py-1 rounded text-slate-600">core — substrate</a>
+          <a
+            href="ingest.html"
+            aria-current="page"
+            class="block px-2 py-1 rounded font-semibold text-slate-900 bg-slate-100"
+            >ingest — runFill</a
+          >
+          <a href="refine.html" class="block px-2 py-1 rounded text-slate-600"
+            >refine — runRefine / runRefresh</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">Flow</p>
+          <a href="control-flow.html" class="block px-2 py-1 rounded text-slate-600"
+            >End-to-end control flow</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">
+            Reference
+          </p>
+          <a
+            href="api/modules/content-ai-ingest_src.html"
+            class="block px-2 py-1 rounded text-slate-600"
+            >ingest API ↗</a
+          >
+        </nav>
+      </aside>
+
+      <main class="flex-1 max-w-4xl mx-auto px-6 py-12 space-y-14">
+        <header class="space-y-3">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Guide · package</p>
+          <h1 class="text-4xl font-serif font-semibold">content-ai-ingest</h1>
+          <p class="text-lg text-slate-600 max-w-2xl">
+            One function — <code>runFill</code> — populates an entity's fields from an external
+            source in a single model call. Use it when content arrives from <em>outside</em> the
+            entity: a PDF, image, pasted text, a URL, or a sibling-locale entity to translate from.
+          </p>
+        </header>
+
+        <!-- WHEN -->
+        <section class="space-y-3">
+          <h2 class="text-2xl font-serif font-semibold">When to reach for it</h2>
+          <ul class="text-sm text-slate-700 list-disc pl-5 space-y-1 max-w-3xl">
+            <li>Importing a recipe from a scanned PDF or a photo of a label.</li>
+            <li>Seeding a draft entity from pasted text or a source URL.</li>
+            <li>Translating an entity into a new locale (a <code>SiblingLocaleSource</code>).</li>
+          </ul>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            If instead you want to generate or improve a field from data already on the entity, use
+            <a href="refine.html" class="text-slate-900 underline underline-offset-2">runRefine</a>.
+          </p>
+        </section>
+
+        <!-- CONTRACT -->
+        <section class="space-y-4">
+          <h2 class="text-2xl font-serif font-semibold">The IngestContract</h2>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            An <code>IngestContract</code> is the source-driven analogue of an
+            <code>AiContract</code>: a Zod <code>schema</code>, a <code>systemPrompt</code>, and a
+            <code>buildMessages</code> that turns your source context into model input (plain prompt
+            or multimodal message parts). Optional <code>fieldPolicies</code> /
+            <code>fieldConfigs</code> set per-field write and translation behavior.
+          </p>
+          <pre
+            class="rounded-lg bg-slate-900 text-slate-100 text-xs p-4 overflow-x-auto"
+          ><code>import type { IngestContract, MessageSet } from "@pixelmord/content-ai-ingest";
+
+const recipeIngest: IngestContract&lt;typeof recipeSchema, RecipeSource&gt; = {
+  schema: recipeSchema,
+  systemPrompt: "Extract a structured recipe from the supplied source.",
+  buildMessages: async (src): Promise&lt;MessageSet&gt; =&gt;
+    src.kind === "pdf-vision"
+      ? { messages: [{ role: "user", content: [{ type: "file", data: src.bytes, mediaType: "application/pdf" }] }] }
+      : { prompt: src.content },
+  fieldPolicies: { title: "fill-if-empty" },
+};</code></pre>
+        </section>
+
+        <!-- FLOW -->
+        <section class="space-y-4">
+          <h2 class="text-2xl font-serif font-semibold">What runFill does</h2>
+          <div class="rounded-lg border border-slate-200 bg-white p-4">
+            <pre class="mermaid">
+flowchart TB
+  A["runFill(params)"] --> B["contract.buildMessages(source)"]
+  B --> C["createProvider(config, sinks)"]
+  C --> D["generateText — structured output<br/>over contract.schema"]
+  D --> E["for each extracted field"]
+  E --> F{"write policy vs<br/>currentData"}
+  F -->|"may write & confident"| G["autoApplied"]
+  F -->|"needs review"| H["suggestions"]
+  E --> I["ingestedEvent<br/><span style='font-size:11px'>source attribution</span>"]
+  G --> R["RunFillResult"]
+  H --> R
+  I --> R
+  classDef deep fill:#0f172a,color:#e2e8f0,stroke:#0f172a;
+  class A,D deep
+            </pre>
+          </div>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            <code>runFill</code> is side-effect free. It returns <code>suggestions</code> and
+            <code>autoApplied</code> (both keyed by field), per-call <code>traces</code>, any
+            <code>warnings</code> from message-building (e.g. a truncated PDF), and an
+            <code>ingestedEvent</code> for <em>you</em> to persist to the entity's event log.
+          </p>
+        </section>
+
+        <!-- USAGE -->
+        <section class="space-y-4">
+          <h2 class="text-2xl font-serif font-semibold">Reading the result</h2>
+          <pre
+            class="rounded-lg bg-slate-900 text-slate-100 text-xs p-4 overflow-x-auto"
+          ><code>import { runFill } from "@pixelmord/content-ai-ingest";
+
+const result = await runFill({ contract: recipeIngest, sourceContext, config });
+
+// Collapse single-valued suggestions into a draft fields record:
+const fields: Record&lt;string, unknown&gt; = {};
+for (const [field, s] of result.suggestions) {
+  if (s.kind === "single") fields[field] = s.value;
+}
+
+// Persist provenance (your I/O — the runner never writes):
+await eventLog.append(entityRef, result.ingestedEvent);</code></pre>
+          <p class="text-xs text-slate-500 max-w-3xl">
+            Adapted from <code>apps/website/src/lib/ai/ingest.ts</code>, the Spicemixer adapter.
+          </p>
+        </section>
+
+        <!-- TRANSLATION -->
+        <section class="space-y-3">
+          <h2 class="text-2xl font-serif font-semibold">Translation is a source kind</h2>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            A <code>SiblingLocaleSource</code> carries the source-locale entity, the target locale,
+            and per-field hashes. Pass <code>mergeInstruction</code> (or the exported
+            <code>MERGE_INSTRUCTION</code>) to blend new translation into existing target-language
+            text rather than overwriting editor changes. <code>runRefine</code> deliberately
+            <em>rejects</em> sibling-locale sources — translation always goes through
+            <code>runFill</code>.
+          </p>
+        </section>
+
+        <footer class="pt-8 border-t border-slate-200 text-xs text-slate-400">
+          Full symbol reference:
+          <a href="api/modules/content-ai-ingest_src.html" class="underline underline-offset-2"
+            >content-ai-ingest API</a
+          >
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>
