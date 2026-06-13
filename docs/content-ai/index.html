@@ -9,6 +9,19 @@
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
       mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
     </script>
+    <script type="module">
+      // Syntax-highlight every code block with Shiki (loads langs/themes on demand).
+      // Mermaid blocks are `pre.mermaid` with no <code> child, so they're skipped.
+      import { codeToHtml } from "https://esm.sh/shiki@3.0.0";
+      for (const code of document.querySelectorAll("pre:not(.mermaid) > code")) {
+        const text = code.textContent ?? "";
+        const firstLine = text.trimStart().split("\n", 1)[0];
+        const lang = firstLine.startsWith("#") || /\bpnpm add\b/.test(text) ? "bash" : "tsx";
+        const html = await codeToHtml(text, { lang, theme: "github-dark" });
+        const inner = new DOMParser().parseFromString(html, "text/html").querySelector("code");
+        if (inner) code.innerHTML = inner.innerHTML;
+      }
+    </script>
     <style>
       .seam {
         stroke-dasharray: 5 4;
@@ -53,6 +66,12 @@
           <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">Flow</p>
           <a x-nav href="control-flow.html" class="block px-2 py-1 rounded text-slate-600"
             >End-to-end control flow</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">
+            Integrate
+          </p>
+          <a x-nav href="integration.html" class="block px-2 py-1 rounded text-slate-600"
+            >Integration walkthrough</a
           >
           <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">
             Reference
