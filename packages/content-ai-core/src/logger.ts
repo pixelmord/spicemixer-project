@@ -1,11 +1,14 @@
-// Structural logger interface — pino-compatible, no runtime dependency.
-// Consumers pass any logger that matches this shape (pino, bunyan, custom).
-
+/** A single log method: accepts a message, or a structured object + message. */
 export interface LogFn {
   (msg: string): void;
   (obj: unknown, msg?: string): void;
 }
 
+/**
+ * Structural logger interface — pino-compatible, no runtime dependency.
+ * Consumers pass any logger matching this shape (pino, bunyan, custom); the
+ * runners default to {@link noopLogger} when none is supplied.
+ */
 export interface Logger {
   trace: LogFn;
   debug: LogFn;
@@ -18,6 +21,7 @@ export interface Logger {
 
 const noop: LogFn = (() => {}) as LogFn;
 
+/** A {@link Logger} that discards everything. The runners' default. */
 export const noopLogger: Logger = {
   trace: noop,
   debug: noop,
@@ -29,6 +33,7 @@ export const noopLogger: Logger = {
 };
 
 const LEVELS = { trace: 10, debug: 20, info: 30, warn: 40, error: 50, fatal: 60 } as const;
+/** Log severity name, ordered `trace` < `debug` < … < `fatal`. */
 export type LogLevel = keyof typeof LEVELS;
 
 /**

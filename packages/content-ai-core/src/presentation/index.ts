@@ -1,5 +1,9 @@
 import type { FieldSuggestion } from "../suggestions.ts";
 
+/**
+ * Human-readable one-liner for a {@link FieldSuggestion}: the stored `summary`
+ * for a single value, or a "N candidates (pick …)" line for a choice.
+ */
 export function summarizeSuggestion(suggestion: FieldSuggestion): string {
   if (suggestion.kind === "single") {
     return suggestion.summary;
@@ -11,6 +15,7 @@ export function summarizeSuggestion(suggestion: FieldSuggestion): string {
   return `${count} candidates (${pickLabel})`;
 }
 
+/** Title-case a confidence level for display ("high" → "High"). */
 export function formatConfidence(confidence: "high" | "medium" | "low"): string {
   switch (confidence) {
     case "high":
@@ -22,6 +27,7 @@ export function formatConfidence(confidence: "high" | "medium" | "low"): string 
   }
 }
 
+/** Convert a runner's `suggestions` Map into a plain field-keyed object for rendering. */
 export function groupSuggestionsByField(
   suggestions: Map<string, FieldSuggestion>,
 ): Record<string, FieldSuggestion> {

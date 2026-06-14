@@ -1,0 +1,78 @@
+name: Docs – content-ai
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/content-ai-core/**"
+      - "packages/content-ai-ingest/**"
+      - "packages/content-ai-refine/**"
+      - "docs/content-ai/**"
+      - "typedoc.json"
+      - "tsconfig.typedoc.json"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+# Least privilege at the workflow level; the deploy job widens scope for itself.
+permissions:
+  contents: read
+
+# One in-flight deploy at a time; don't cancel a running publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build docs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # pnpm version read from package.json's `packageManager` field.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Generates the typedoc API reference into docs/content-ai/api/
+      # (gitignored — built fresh here). The hand-authored guides under
+      # docs/content-ai/ are already in the checkout.
+      - name: Build API reference
+        run: pnpm exec typedoc
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/content-ai
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    # Pages deployment is the only step that needs these scopes.
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

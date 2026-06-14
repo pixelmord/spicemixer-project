@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "skipLibCheck": true,
+    "paths": {
+      "@pixelmord/content-ai-core": ["./packages/content-ai-core/src/index.ts"],
+      "@pixelmord/content-ai-core/server": ["./packages/content-ai-core/src/server.ts"],
+      "@pixelmord/content-ai-core/presentation": [
+        "./packages/content-ai-core/src/presentation/index.ts"
+      ],
+      "@pixelmord/content-ai-core/testing": ["./packages/content-ai-core/src/testing/index.ts"]
+    }
+  },
+  "include": [
+    "packages/content-ai-core/src/**/*.ts",
+    "packages/content-ai-ingest/src/**/*.ts",
+    "packages/content-ai-refine/src/**/*.ts"
+  ],
+  "exclude": ["**/node_modules/**", "**/dist/**", "**/*.test.ts"]
+}

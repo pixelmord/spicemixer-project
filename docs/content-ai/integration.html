@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>content-ai — integration walkthrough</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <script type="module">
+      // Syntax-highlight every code block with Shiki (loads langs/themes on demand).
+      // Mermaid blocks are `pre.mermaid` with no <code> child, so they're skipped.
+      import { codeToHtml } from "https://esm.sh/shiki@3.0.0";
+      for (const code of document.querySelectorAll("pre:not(.mermaid) > code")) {
+        const text = code.textContent ?? "";
+        const firstLine = text.trimStart().split("\n", 1)[0];
+        const lang = firstLine.startsWith("#") || /\bpnpm add\b/.test(text) ? "bash" : "tsx";
+        const html = await codeToHtml(text, { lang, theme: "github-dark" });
+        const inner = new DOMParser().parseFromString(html, "text/html").querySelector("code");
+        if (inner) code.innerHTML = inner.innerHTML;
+      }
+    </script>
+    <style>
+      .seam {
+        stroke-dasharray: 5 4;
+      }
+      .deep {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+      }
+      .font-serif {
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans antialiased">
+    <div class="flex min-h-screen">
+      <aside
+        class="hidden md:flex flex-col w-60 shrink-0 border-r border-slate-200 bg-white/60 px-5 py-8 sticky top-0 h-screen overflow-y-auto"
+      >
+        <p class="font-serif text-lg font-semibold"><a href="index.html">content-ai</a></p>
+        <p class="text-xs text-slate-400 mb-6">AI content substrate</p>
+        <nav class="text-sm space-y-1">
+          <a href="index.html" class="block px-2 py-1 rounded text-slate-600">Overview</a>
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">Guides</p>
+          <a href="core.html" class="block px-2 py-1 rounded text-slate-600">core — substrate</a>
+          <a href="ingest.html" class="block px-2 py-1 rounded text-slate-600">ingest — runFill</a>
+          <a href="refine.html" class="block px-2 py-1 rounded text-slate-600"
+            >refine — runRefine / runRefresh</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">Flow</p>
+          <a href="control-flow.html" class="block px-2 py-1 rounded text-slate-600"
+            >End-to-end control flow</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">
+            Integrate
+          </p>
+          <a
+            href="integration.html"
+            aria-current="page"
+            class="block px-2 py-1 rounded font-semibold text-slate-900 bg-slate-100"
+            >Integration walkthrough</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">
+            Reference
+          </p>
+          <a href="api/index.html" class="block px-2 py-1 rounded text-slate-600"
+            >API reference ↗</a
+          >
+        </nav>
+      </aside>
+
+      <main class="flex-1 max-w-4xl mx-auto px-6 py-12 space-y-16">
+        <header class="space-y-3">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Step by step</p>
+          <h1 class="text-4xl font-serif font-semibold">Integration walkthrough</h1>
+          <p class="text-lg text-slate-600 max-w-2xl">
+            Wiring a refine-and-review flow end to end: a contract, a server action that runs the
+            substrate, the <code>useAiSuggestions</code> bridge, and the registry components that
+            render the review UI. The snippets are adapted from the Spicemixer admin (recipe /
+            ingredient / pairing forms).
+          </p>
+        </header>
+
+        <!-- THREE LAYERS -->
+        <section class="space-y-5">
+          <h2 class="text-2xl font-serif font-semibold">Three layers, one boundary</h2>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            An integration is three layers stacked on the
+            <a href="control-flow.html" class="text-slate-900 underline underline-offset-2">seam</a
+            >. The <strong>substrate</strong> (the npm packages) is headless and I/O-free. The
+            <strong>registry components</strong> are a copy-in UI layer — installed into your app
+            via the component registry, <em>not</em> an npm dependency — so you own and restyle
+            them. The <strong>bridge</strong> is your server action: the one place storage, the
+            event log, and the model key live.
+          </p>
+          <div class="rounded-lg border border-slate-200 bg-white p-4">
+            <pre class="mermaid">
+flowchart TB
+  subgraph ui["REGISTRY COMPONENTS — copy-in review UI (client)"]
+    direction TB
+    HOOK["useAiSuggestions(hook)"]
+    PROV["SuggestionFlowProvider"]
+    COMP["AiBulkSuggestButton · SuggestionsOverview<br/>InlineTextSuggestion · ConfidenceBadge · IngestDialog"]
+    HOOK --> PROV --> COMP
+  end
+  subgraph bridge["YOUR SERVER ACTION — the bridge (owns I/O)"]
+    direction TB
+    ACT["aiRefreshSuggestions / aiFillTranslation"]
+    ASM["assemble(): store + event-log writes"]
+    ACT --> ASM
+  end
+  subgraph sub["content-ai — substrate (NO I/O)"]
+    direction TB
+    RUN["runRefine · runFill · runRefresh"]
+  end
+  HOOK -->|"onRefine / onFill"| ACT
+  ACT --> RUN
+  RUN -->|"suggestions · autoApplied · traces · events"| ACT
+  ACT -->|"RunResult"| HOOK
+  classDef deep fill:#0f172a,color:#e2e8f0,stroke:#0f172a;
+  class RUN deep
+            </pre>
+          </div>
+        </section>
+
+        <!-- STEP 1 -->
+        <section class="space-y-4">
+          <div class="flex items-baseline gap-3">
+            <span class="font-serif text-3xl font-semibold text-slate-300">1</span>
+            <h2 class="text-2xl font-serif font-semibold">Author the contract</h2>
+          </div>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            The contract is the vocabulary both layers share. A Zod <code>schema</code> defines the
+            entity; <code>fields</code> carry per-field <code>systemPrompt</code> (return
+            <code>""</code> to gate a field off), <code>bulk</code> flags (what a full refresh
+            targets), and translation behavior. Define it once, server-side, and re-export the
+            field-path type so client callsites are typo-checked.
+          </p>
+          <pre
+            class="rounded-lg bg-slate-900 text-slate-100 text-xs p-4 overflow-x-auto"
+          ><code>// src/contracts/recipeContract.ts
+import type { AiContract } from "@pixelmord/content-ai-core";
+import { recipeSchema } from "@/schemas/recipe.ts";
+
+export const recipeContract = {
+  schema: recipeSchema,
+  presets: [{ id: "tighten", label: "Tighten copy", userPrompt: "Make it concise." }],
+  fields: {
+    title:       { bulk: true, systemPrompt: (ctx) => `Improve the recipe title. ${ctx.userPrompt ?? ""}` },
+    description: { bulk: true, systemPrompt: () => "Write a one-paragraph description.",
+                   translation: { mode: "translate" } },
+    // systemPrompt returning "" gates the field off for this run:
+    notes:       { systemPrompt: (ctx) => (ctx.preset === "tighten" ? "Trim the notes." : "") },
+  },
+} satisfies AiContract&lt;typeof recipeSchema&gt;;
+
+// Field-path union → typos at callsites become TS errors.
+export type RecipeFieldPath = keyof typeof recipeContract.fields;</code></pre>
+          <p class="text-xs text-slate-500 max-w-3xl">
+            See the
+            <a href="core.html" class="text-slate-900 underline underline-offset-2">core guide</a>
+            for the full contract vocabulary.
+          </p>
+        </section>
+
+        <!-- STEP 2 -->
+        <section class="space-y-4">
+          <div class="flex items-baseline gap-3">
+            <span class="font-serif text-3xl font-semibold text-slate-300">2</span>
+            <h2 class="text-2xl font-serif font-semibold">
+              Run the substrate behind a server action
+            </h2>
+          </div>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            This is the bridge — and the only place I/O happens. The action reads current data and
+            the event log, calls <code>runRefresh</code> (which drives <code>runRefine</code>),
+            persists any auto-applied writes and emitted events in your
+            <code>assemble</code> strategy, then shapes a <code>RunResult</code> for the client.
+            Server-only: <code>createProvider</code> and tracing come from <code>/server</code>.
+          </p>
+          <pre
+            class="rounded-lg bg-slate-900 text-slate-100 text-xs p-4 overflow-x-auto"
+          ><code>// src/actions/ai.ts  (Astro action / route handler — server only)
+import { runRefresh } from "@pixelmord/content-ai-refine";
+import { recipeContract } from "@/contracts/recipeContract.ts";
+
+export const aiRefreshRecipeSuggestions = defineAction({
+  handler: async ({ id, locale, payload, target }) =&gt; {
+    const result = await runRefresh({
+      contract: recipeContract,
+      currentData: payload,
+      // per-field scope: target exactly these fields, skip side-effect proposers
+      ...(target?.length ? { target } : {}),
+      config: resolveConfig(),            // provider base URL · key · model
+      events: await eventLog.read(entityRef),  // rejection history → suppression
+      // assemble is the seam: the ONLY place store + event writes happen.
+      strategy: {
+        assemble: async ({ suggestions, autoApplied, events }) =&gt; {
+          for (const ev of events) await eventLog.append(entityRef, ev);
+          for (const [field, applied] of autoApplied) await store.write(field, applied.value);
+          return { suggestions, autoApplied };
+        },
+      },
+    });
+
+    // Shape into the RunResult the client hook expects (records keyed by field).
+    return adaptToRunResult(result);  // { suggestions, autoApplied, traces, fieldSummaries }
+  },
+});</code></pre>
+          <div
+            class="rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-sm px-4 py-3 max-w-3xl"
+          >
+            <span class="font-semibold">The runner never writes.</span> If you find yourself
+            reaching for the store or event log anywhere but <code>assemble</code>, the boundary has
+            leaked — see
+            <a href="control-flow.html" class="underline underline-offset-2">control flow</a>.
+          </div>
+        </section>
+
+        <!-- STEP 3 -->
+        <section class="space-y-4">
+          <div class="flex items-baseline gap-3">
+            <span class="font-serif text-3xl font-semibold text-slate-300">3</span>
+            <h2 class="text-2xl font-serif font-semibold">
+              Bridge to the UI with <code>useAiSuggestions</code>
+            </h2>
+          </div>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            <code>useAiSuggestions</code> (a registry hook) holds all review state — suggestions,
+            auto-applied values, traces, per-field accessors, the overview roll-up. You feed it the
+            contract and two callbacks: <code>onRefine</code> (prompt-driven, calls your refine
+            action) and <code>onFill</code> (source-driven / translation, calls your fill action).
+            The hook passes <code>params.target</code> for per-field runs.
+          </p>
+          <pre
+            class="rounded-lg bg-slate-900 text-slate-100 text-xs p-4 overflow-x-auto"
+          ><code>// RecipeForm.tsx (client)
+import { useAiSuggestions } from "@/components/use-ai-suggestions"; // from the registry
+import { actions } from "astro:actions";
+
+const aiFlow = useAiSuggestions({
+  contract: recipeContract,
+  currentData: formValues,
+  entityRef: { kind: "recipe", id },
+  aiEventLog,                       // client-side log adapter
+  origin: { surface: "admin", action: "refine", entityKind: "recipe",
+            userInitiated: true, runId: `recipe-${id}`, triggeredBy: "editor" },
+
+  onRefine: async (params) =&gt; {
+    const { data } = await actions.aiRefreshRecipeSuggestions({
+      id, locale, payload: formValues,
+      ...(params.target?.length ? { target: params.target } : {}),
+    });
+    return data!;                   // RunResult: { suggestions, autoApplied, traces, fieldSummaries }
+  },
+
+  // Optional — only if you support source-driven fill / translation:
+  onFill: async (params) =&gt; {
+    const { data, error } = await actions.aiFillTranslation({ /* …source… */ });
+    if (error) throw new Error(error.message);
+    return data!;
+  },
+  siblingLocale: siblingLocaleData ?? undefined,  // enables translation accessors
+});</code></pre>
+        </section>
+
+        <!-- STEP 4 -->
+        <section class="space-y-4">
+          <div class="flex items-baseline gap-3">
+            <span class="font-serif text-3xl font-semibold text-slate-300">4</span>
+            <h2 class="text-2xl font-serif font-semibold">Render the registry review components</h2>
+          </div>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            Wrap the form in <code>SuggestionFlowProvider</code> so the components read the flow
+            from context instead of prop-drilling. Then drop them in: a global trigger (<code
+              >AiBulkSuggestButton</code
+            >
+            with <code>overviewFields</code> renders the <code>SuggestionsOverview</code> dropdown),
+            and per-field inline components keyed by <code>fieldPath</code>. Each inline component
+            pulls its accessor via <code>useSuggestionFlowContext().forField(path)</code> —
+            accept/reject calls <code>recordAccept</code> / <code>recordReject</code>, which feed
+            the next run's suppression.
+          </p>
+          <pre
+            class="rounded-lg bg-slate-900 text-slate-100 text-xs p-4 overflow-x-auto"
+          ><code>import {
+  SuggestionFlowProvider,
+  AiBulkSuggestButton,
+  InlineTextSuggestion,
+  ConfidenceBadge,
+} from "@/components"; // copy-in registry components
+
+const overviewFields = [
+  { field: "title",       label: "Title",       anchor: "field-title" },
+  { field: "description", label: "Description", anchor: "field-description" },
+];
+
+&lt;SuggestionFlowProvider value={aiFlow}&gt;
+  {/* Global trigger + "what did the AI change?" overview */}
+  &lt;AiBulkSuggestButton overviewFields={overviewFields} /&gt;
+
+  {/* Per field — fieldPath is type-checked against RecipeFieldPath */}
+  &lt;div id="field-title"&gt;
+    &lt;label&gt;Title&lt;/label&gt;
+    &lt;input value={formValues.title} onChange={…} /&gt;
+    &lt;InlineTextSuggestion
+      fieldPath="title"
+      currentValue={formValues.title}
+      onApply={(value) =&gt; setField("title", value)}
+    /&gt;
+  &lt;/div&gt;
+&lt;/SuggestionFlowProvider&gt;</code></pre>
+          <div class="grid sm:grid-cols-2 gap-3 text-sm">
+            <div class="rounded-lg border border-slate-200 p-4 bg-white">
+              <p class="font-mono text-xs text-slate-400 mb-1">global</p>
+              <p class="font-semibold">
+                <code>AiBulkSuggestButton</code> · <code>SuggestionsOverview</code>
+              </p>
+              <p class="text-slate-600 text-xs mt-1">
+                Triggers <code>aiFlow.run()</code> and lists which fields got new suggestions —
+                including the all-duplicate case, so a run is never silently empty.
+              </p>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 bg-white">
+              <p class="font-mono text-xs text-slate-400 mb-1">per field</p>
+              <p class="font-semibold"><code>InlineTextSuggestion</code> + siblings</p>
+              <p class="text-slate-600 text-xs mt-1">
+                <code>Inline{Text,Array,Enum,MultiEnum,Date}Suggestion</code> +
+                <code>AiFieldSuggestButton</code>. Pick by field type; all read the same per-field
+                accessor.
+              </p>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 bg-white">
+              <p class="font-mono text-xs text-slate-400 mb-1">signal</p>
+              <p class="font-semibold">
+                <code>ConfidenceBadge</code> · <code>SuggestionTraceInfo</code>
+              </p>
+              <p class="text-slate-600 text-xs mt-1">
+                Render the suggestion's self-reported confidence and a trace link. Confidence is an
+                <em>uncalibrated</em> self-report — don't gate destructive actions on it.
+              </p>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 bg-white">
+              <p class="font-mono text-xs text-slate-400 mb-1">source-driven</p>
+              <p class="font-semibold"><code>IngestDialog</code></p>
+              <p class="text-slate-600 text-xs mt-1">
+                The modal for the <code>runFill</code> path — see step 5.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 5 -->
+        <section class="space-y-4">
+          <div class="flex items-baseline gap-3">
+            <span class="font-serif text-3xl font-semibold text-slate-300">5</span>
+            <h2 class="text-2xl font-serif font-semibold">Source-driven fill &amp; translation</h2>
+          </div>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            When content comes from <em>outside</em> the entity — a PDF, image, pasted text, or a
+            sibling-locale entity to translate — the path is <code>runFill</code> behind your fill
+            action, surfaced by the registry <code>IngestDialog</code>. Pass it the same
+            <code>flow</code> (so it can show presets / write-policy and reuse the review UI) and an
+            <code>onRun</code> that triggers the call. Translation always goes through
+            <code>runFill</code> — <code>runRefine</code> rejects sibling-locale sources.
+          </p>
+          <pre
+            class="rounded-lg bg-slate-900 text-slate-100 text-xs p-4 overflow-x-auto"
+          ><code>import { IngestDialog } from "@/components";
+
+&lt;IngestDialog
+  open={open}
+  onOpenChange={setOpen}
+  flow={aiFlow}                       // shares review state with the inline components
+  presets={recipeContract.presets}
+  onRun={async (source) =&gt; {
+    // source: { kind: "pdf" | "image" | "text" | "url", … }
+    // Hand it to your fill action, which calls runFill server-side with an IngestContract:
+    const result = await actions.aiFillRecipe({ source, locale });
+    aiFlow.ingestRefresh(result);     // reuse the same review UI as the refine path
+  }}
+/&gt;</code></pre>
+          <p class="text-xs text-slate-500 max-w-3xl">
+            On the server, the fill action mirrors step 2 but calls <code>runFill</code> with an
+            <code>IngestContract</code>; see the
+            <a href="ingest.html" class="text-slate-900 underline underline-offset-2"
+              >ingest guide</a
+            >.
+          </p>
+        </section>
+
+        <!-- CLOSING THE LOOP -->
+        <section class="space-y-4">
+          <h2 class="text-2xl font-serif font-semibold">Closing the loop</h2>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            The two layers meet at the event log. When an editor rejects a suggestion, the inline
+            component's <code>recordReject</code> appends a <code>rejected</code> event; on the next
+            run your action passes those <code>events</code> into the runner, and the substrate
+            suppresses that exact fingerprint. Accepted and auto-applied writes are recorded the
+            same way. Persisting those events is a write — so it lives in your action /
+            <code>assemble</code>, never in the substrate.
+          </p>
+          <div class="rounded-lg border border-slate-200 bg-white p-4">
+            <pre class="mermaid">
+flowchart LR
+  REJ["recordReject (registry component)"] --> EV["rejected event → your event log"]
+  EV --> NEXT["next onRefine passes events"]
+  NEXT --> SUP["substrate suppresses<br/>matching fingerprint"]
+  SUP --> RUN["cleaner suggestions"]
+  classDef deep fill:#0f172a,color:#e2e8f0,stroke:#0f172a;
+  class SUP deep
+            </pre>
+          </div>
+        </section>
+
+        <footer class="pt-8 border-t border-slate-200 text-xs text-slate-400">
+          Exact signatures:
+          <a href="api/index.html" class="underline underline-offset-2">API reference</a>.
+          Per-runner detail: <a href="refine.html" class="underline underline-offset-2">refine</a> ·
+          <a href="ingest.html" class="underline underline-offset-2">ingest</a>.
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

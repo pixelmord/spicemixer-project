@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>content-ai-core — the substrate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <script type="module">
+      // Syntax-highlight every code block with Shiki (loads langs/themes on demand).
+      // Mermaid blocks are `pre.mermaid` with no <code> child, so they're skipped.
+      import { codeToHtml } from "https://esm.sh/shiki@3.0.0";
+      for (const code of document.querySelectorAll("pre:not(.mermaid) > code")) {
+        const text = code.textContent ?? "";
+        const firstLine = text.trimStart().split("\n", 1)[0];
+        const lang = firstLine.startsWith("#") || /\bpnpm add\b/.test(text) ? "bash" : "tsx";
+        const html = await codeToHtml(text, { lang, theme: "github-dark" });
+        const inner = new DOMParser().parseFromString(html, "text/html").querySelector("code");
+        if (inner) code.innerHTML = inner.innerHTML;
+      }
+    </script>
+    <style>
+      .seam {
+        stroke-dasharray: 5 4;
+      }
+      .deep {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+      }
+      .font-serif {
+        font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans antialiased">
+    <div class="flex min-h-screen">
+      <aside
+        class="hidden md:flex flex-col w-60 shrink-0 border-r border-slate-200 bg-white/60 px-5 py-8 sticky top-0 h-screen"
+      >
+        <p class="font-serif text-lg font-semibold"><a href="index.html">content-ai</a></p>
+        <p class="text-xs text-slate-400 mb-6">AI content substrate</p>
+        <nav class="text-sm space-y-1">
+          <a href="index.html" class="block px-2 py-1 rounded text-slate-600">Overview</a>
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">Guides</p>
+          <a
+            href="core.html"
+            aria-current="page"
+            class="block px-2 py-1 rounded font-semibold text-slate-900 bg-slate-100"
+            >core — substrate</a
+          >
+          <a href="ingest.html" class="block px-2 py-1 rounded text-slate-600">ingest — runFill</a>
+          <a href="refine.html" class="block px-2 py-1 rounded text-slate-600"
+            >refine — runRefine / runRefresh</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">Flow</p>
+          <a href="control-flow.html" class="block px-2 py-1 rounded text-slate-600"
+            >End-to-end control flow</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">
+            Integrate
+          </p>
+          <a href="integration.html" class="block px-2 py-1 rounded text-slate-600"
+            >Integration walkthrough</a
+          >
+          <p class="text-[11px] uppercase tracking-wider text-slate-400 pt-4 pb-1 px-2">
+            Reference
+          </p>
+          <a
+            href="api/modules/content-ai-core_src.html"
+            class="block px-2 py-1 rounded text-slate-600"
+            >core API ↗</a
+          >
+        </nav>
+      </aside>
+
+      <main class="flex-1 max-w-4xl mx-auto px-6 py-12 space-y-14">
+        <header class="space-y-3">
+          <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Guide · package</p>
+          <h1 class="text-4xl font-serif font-semibold">content-ai-core</h1>
+          <p class="text-lg text-slate-600 max-w-2xl">
+            The shared substrate every runner builds on: the contract vocabulary, the AI event log,
+            fingerprinting, the provider factory with tracing, and presentation helpers. You rarely
+            call core directly — you author types it defines and read results it shapes.
+          </p>
+        </header>
+
+        <!-- ENTRY POINTS -->
+        <section class="space-y-4">
+          <h2 class="text-2xl font-serif font-semibold">Entry points</h2>
+          <p class="text-sm text-slate-600 max-w-3xl">
+            Core splits its surface so browser bundles never pull in Node-only code. The
+            <code>/server</code> and <code>/testing</code> entries use
+            <code>node:async_hooks</code>.
+          </p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+              <thead class="bg-slate-50 text-left text-slate-500">
+                <tr>
+                  <th class="px-3 py-2 font-medium">Import</th>
+                  <th class="px-3 py-2 font-medium">Contains</th>
+                  <th class="px-3 py-2 font-medium">Env</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 font-mono text-xs">
+                <tr>
+                  <td class="px-3 py-2">@pixelmord/content-ai-core</td>
+                  <td class="px-3 py-2 font-sans">
+                    Contract types, events + suppression, hashing, translation/field-diff, logger,
+                    errors
+                  </td>
+                  <td class="px-3 py-2">isomorphic</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2">…/server</td>
+                  <td class="px-3 py-2 font-sans">
+                    Origin (ALS), tracing middleware, <code>createProvider</code>,
+                    <code>resolveConfig</code>
+                  </td>
+                  <td class="px-3 py-2 text-rose-600">node</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2">…/testing</td>
+                  <td class="px-3 py-2 font-sans">
+                    <code>InMemoryAiEventLog</code>, <code>InMemoryTraceSink</code>, mock model
+                  </td>
+                  <td class="px-3 py-2 text-rose-600">node</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2">…/presentation</td>
+                  <td class="px-3 py-2 font-sans">
+                    <code>summarizeSuggestion</code>, <code>formatConfidence</code>, grouping
+                    helpers
+                  </td>
+                  <td class="px-3 py-2">isomorphic</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- CONCEPTS -->
+        <section class="space-y-5">
+          <h2 class="text-2xl font-serif font-semibold">Core concepts</h2>
+
+          <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2">
+            <p class="font-serif text-lg font-semibold">AiContract — the object you author</p>
+            <p class="text-sm text-slate-600">
+              A contract pairs a Zod <code>schema</code> with per-field AI behavior. Each
+              <code>FieldConfig</code> says how to prompt (<code>systemPrompt</code>), what JSON to
+              ask for (<code>outputSchema</code>), whether a result may auto-apply
+              (<code>autoApply</code>), how it interacts with an existing value
+              (<code>writePolicy</code>), and how it behaves under translation. A
+              <code>systemPrompt</code> that returns <code>""</code> <em>gates the field off</em> —
+              that is how preconditions like “no inventory ⇒ no pairings” are expressed.
+            </p>
+            <pre
+              class="rounded-lg bg-slate-900 text-slate-100 text-xs p-4 overflow-x-auto mt-2"
+            ><code>import type { AiContract } from "@pixelmord/content-ai-core";
+
+const recipeContract: AiContract&lt;typeof recipeSchema&gt; = {
+  schema: recipeSchema,
+  presets: [expandPreset, summarizePreset],
+  fields: {
+    description: {
+      systemPrompt: (ctx) =&gt; `Write a description for ${ctx.currentData?.name}.`,
+      autoApply: { policy: "high-confidence", threshold: 1.0 },
+      writePolicy: "fill-if-empty",
+    },
+    pairings: {
+      bulk: true, // attempted on every full refresh
+      systemPrompt: (ctx) =&gt;
+        ctx.sourceContext?.inventory.length ? PAIRING_PROMPT : "", // gated
+    },
+  },
+};</code></pre>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2">
+              <p class="font-serif text-lg font-semibold">Event log &amp; suppression</p>
+              <p class="text-sm text-slate-600">
+                <code>AiEventLog</code> is an append-only history per entity
+                (<code>EntityRef</code>). Core stamps <code>id</code> and <code>at</code>.
+                <code>rejected</code> and <code>ingested</code> events are never pruned — the former
+                drives <strong>suppression</strong> (a re-proposed identical suggestion is filtered
+                by fingerprint), the latter records source attribution (ADR 0004 / 0012).
+              </p>
+              <p class="text-xs text-slate-500">
+                <code>isSuppressed</code> · <code>filterSuggestions</code> ·
+                <code>buildRejectedContext</code> · <code>recordAiEvent</code>
+              </p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2">
+              <p class="font-serif text-lg font-semibold">Fingerprinting</p>
+              <p class="text-sm text-slate-600">
+                <code>fingerprintHash</code> normalizes a value (trim/lowercase strings, sort keys,
+                recurse arrays) then takes a short SHA-256. Cosmetically different values hash
+                identically — the basis for dedup and suppression. <code>hashContent</code> gives a
+                full-length hash for per-field staleness diffing.
+              </p>
+              <p class="text-xs text-slate-500">
+                <code>fingerprintHash</code> · <code>hashContent</code> ·
+                <code>diffFieldHashes</code>
+              </p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2">
+              <p class="font-serif text-lg font-semibold">
+                Provider &amp; tracing
+                <span class="text-xs font-sans font-normal text-rose-600">/server</span>
+              </p>
+              <p class="text-sm text-slate-600">
+                <code>createProvider(config, { sinks })</code> builds the language model. With
+                <code>sinks</code>, it wraps the model in <code>tracingMiddleware</code> so every
+                call emits a <code>TraceEvent</code> tagged with the ambient
+                <code>Origin</code> (carried via async-local storage). Set
+                <code>AI_PROVIDER=mock</code> for the synthesizing e2e model.
+              </p>
+              <p class="text-xs text-slate-500">
+                <code>createProvider</code> · <code>resolveConfig</code> ·
+                <code>wrapWithOrigin</code> · <code>TraceSink</code>
+              </p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-5 space-y-2">
+              <p class="font-serif text-lg font-semibold">
+                Translation &amp; refresh classification
+              </p>
+              <p class="text-sm text-slate-600">
+                <code>TranslationBehavior</code> declares per-field translate / copy / localize /
+                skip. <code>classifyRefreshKind</code> reads those modes against a set of stale
+                fields: all-<code>copy</code> ⇒ <code>silent</code>, otherwise
+                <code>review-required</code> (ADR 0015).
+              </p>
+              <p class="text-xs text-slate-500">
+                <code>resolveTranslation</code> · <code>classifyRefreshKind</code>
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div
+          class="rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-sm px-4 py-3"
+        >
+          <span class="font-semibold">Type ownership.</span> Core is the single source of truth for
+          the shared types (ADR 0017). The runner packages re-export them so you can import from the
+          runtime package you already depend on — but there is one definition, not divergent copies.
+        </div>
+
+        <footer class="pt-8 border-t border-slate-200 text-xs text-slate-400">
+          Full symbol reference:
+          <a href="api/modules/content-ai-core_src.html" class="underline underline-offset-2"
+            >core</a
+          >
+          ·
+          <a href="api/modules/content-ai-core_src_server.html" class="underline underline-offset-2"
+            >/server</a
+          >
+          ·
+          <a
+            href="api/modules/content-ai-core_src_testing.html"
+            class="underline underline-offset-2"
+            >/testing</a
+          >
+          ·
+          <a
+            href="api/modules/content-ai-core_src_presentation.html"
+            class="underline underline-offset-2"
+            >/presentation</a
+          >
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

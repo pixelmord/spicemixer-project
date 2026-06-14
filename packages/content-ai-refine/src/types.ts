@@ -30,6 +30,7 @@ export type {
 
 // ── Suggestion types ──────────────────────────────────────────────────────────
 
+/** A model proposal for one refined field, awaiting review. See core's `FieldSuggestion`. */
 export type FieldSuggestion<T = unknown> =
   | {
       kind: "single";
@@ -51,6 +52,7 @@ export type FieldSuggestion<T = unknown> =
       traceId: string;
     };
 
+/** A suggestion the runner auto-applied rather than queuing. See core's `AppliedSuggestion`. */
 export interface AppliedSuggestion {
   value: unknown;
   hash: string;
@@ -58,6 +60,7 @@ export interface AppliedSuggestion {
   confidence: "high" | "medium" | "low";
 }
 
+/** Per-call LLM metadata keyed by `traceId` in the result. See core's `TraceSummary`. */
 export interface TraceSummary {
   traceId: string;
   model: string;
@@ -67,8 +70,11 @@ export interface TraceSummary {
   confidence?: "high" | "medium" | "low";
 }
 
-// ── AiEvent (minimal, for suppression filtering) ──────────────────────────────
-
+/**
+ * Minimal AI event shape the refine runner reads for suppression — it only
+ * needs `type`/`field`/`suggestion.hash` to drop previously rejected
+ * suggestions. The full event type lives in content-ai-core.
+ */
 export interface AiEvent {
   type: "auto-applied" | "accepted" | "rejected" | "ingested";
   field?: string;
@@ -82,6 +88,12 @@ export interface AiEvent {
 
 // ── RunRefine params/result ───────────────────────────────────────────────────
 
+/**
+ * Arguments to {@link runRefine}: the {@link AiContract}, the entity's
+ * `currentData`, and what to run (`target` fields, optional `preset`/`userPrompt`).
+ * `events` supply the suppression history; `sinks` enable tracing; `errorMode`
+ * chooses collect-vs-throw for per-field failures.
+ */
 export interface RunRefineParams<S extends ZodSchema, Source = never> {
   contract: AiContract<S, Source>;
   // Partial of the entity shape: callers routinely refine a subset of fields
@@ -110,6 +122,7 @@ export interface RunRefineParams<S extends ZodSchema, Source = never> {
   errorMode?: "collect" | "throw";
 }
 
+/** A per-field failure during refinement, collected (or thrown) per `errorMode`. */
 export interface FieldRunError {
   field: string;
   message: string;
@@ -117,6 +130,10 @@ export interface FieldRunError {
   cause?: unknown;
 }
 
+/**
+ * Result of {@link runRefine}: `suggestions` to review and `autoApplied` writes
+ * (keyed by field), per-call `traces`, and per-field `errors`.
+ */
 export interface RunRefineResult {
   suggestions: Map<string, FieldSuggestion>;
   autoApplied: Map<string, AppliedSuggestion>;

@@ -15,14 +15,23 @@ export type { AiConfig, EntityRef, FieldWritePolicy, TranslationBehavior };
 
 // ── Source-context message set ─────────────────────────────────────────────────
 
+/**
+ * The model messages a {@link IngestContract.buildMessages} call produces for a
+ * source: either prebuilt `messages` (e.g. multimodal PDF/image parts) or a
+ * plain `prompt` string, plus any `warnings` to surface (e.g. truncation).
+ */
 export interface MessageSet {
   messages?: ModelMessage[];
   prompt?: string;
   warnings?: string[];
 }
 
-// ── SiblingLocaleSource ───────────────────────────────────────────────────────
-
+/**
+ * Source context for a translation fill: an existing sibling-locale entity to
+ * generate the target locale from. `runFill` blends `sourceData` into the
+ * target language; `fieldHashes` lets the caller detect which source fields
+ * changed since the last sync.
+ */
 export interface SiblingLocaleSource<S extends ZodSchema = ZodSchema> {
   kind: "sibling-locale";
   sourceRef: EntityRef;
@@ -32,8 +41,16 @@ export interface SiblingLocaleSource<S extends ZodSchema = ZodSchema> {
   fieldHashes: Record<string, string>;
 }
 
-// ── IngestContract ────────────────────────────────────────────────────────────
-
+/**
+ * Describes how to fill one entity kind from an external source. The
+ * source-driven analogue of an `AiContract`: a Zod `schema`, a `systemPrompt`,
+ * and `buildMessages` to turn the source context into model input. Optional
+ * `fieldPolicies`/`fieldConfigs` set per-field write and translation behavior.
+ *
+ * @typeParam S - The entity's Zod schema.
+ * @typeParam Source - The source-context type (extracted artifact, or a
+ * {@link SiblingLocaleSource} for translation).
+ */
 export interface IngestContract<S extends ZodSchema, Source> {
   schema: S;
   systemPrompt: string;
@@ -44,6 +61,7 @@ export interface IngestContract<S extends ZodSchema, Source> {
 
 // ── FieldSuggestion ───────────────────────────────────────────────────────────
 
+/** A model proposal for one filled field, awaiting review. See core's `FieldSuggestion`. */
 export type FieldSuggestion<T = unknown> =
   | {
       kind: "single";
@@ -67,6 +85,7 @@ export type FieldSuggestion<T = unknown> =
 
 // ── AppliedSuggestion ─────────────────────────────────────────────────────────
 
+/** A suggestion the runner auto-applied rather than queuing. See core's `AppliedSuggestion`. */
 export interface AppliedSuggestion {
   value: unknown;
   hash: string;
@@ -74,17 +93,19 @@ export interface AppliedSuggestion {
   confidence: "high" | "medium" | "low";
 }
 
-// ── IngestTraceSummary ─────────────────────────────────────────────────────────
-// Core's TraceSummary plus the ingest-only merge prompt recorded on sibling-locale
-// fills. mergeInstruction is genuinely ingest-specific, so it extends rather than
-// pollutes the shared core type.
-
+/**
+ * Core's {@link TraceSummary} plus the ingest-only `mergeInstruction` recorded
+ * on sibling-locale fills. Extends rather than pollutes the shared core type.
+ */
 export interface IngestTraceSummary extends TraceSummary {
   mergeInstruction?: string;
 }
 
-// ── Minimal AiEvent shape for ingestedEvent ──────────────────────────────────
-
+/**
+ * The `ingested` event `runFill` returns for the caller to persist — records
+ * the source attribution (hash, summary, model, optional {@link SourceDescriptor})
+ * for the fill. Append it to the entity's event log.
+ */
 export interface IngestAiEvent {
   type: "ingested";
   at: string;
@@ -96,6 +117,12 @@ export interface IngestAiEvent {
 
 // ── RunFill params/result ─────────────────────────────────────────────────────
 
+/**
+ * Arguments to {@link runFill}: the {@link IngestContract}, the `sourceContext`
+ * to fill from, provider `config`, and optional review/trace controls. Existing
+ * `currentData` plus `writePolicy`/`fieldPolicies` govern whether a filled field
+ * overwrites an existing value.
+ */
 export interface RunFillParams<S extends ZodSchema, Source> {
   contract: IngestContract<S, Source>;
   sourceContext: Source;
@@ -120,6 +147,11 @@ export interface RunFillParams<S extends ZodSchema, Source> {
   mergeInstruction?: string;
 }
 
+/**
+ * Result of {@link runFill}: `suggestions` to review and `autoApplied` writes
+ * (both keyed by field), per-call `traces`, the `ingestedEvent` to persist, and
+ * any `warnings` accumulated while building messages.
+ */
 export interface RunFillResult {
   suggestions: Map<string, FieldSuggestion>;
   autoApplied: Map<string, AppliedSuggestion>;

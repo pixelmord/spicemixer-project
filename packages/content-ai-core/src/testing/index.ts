@@ -9,6 +9,12 @@ function refKey(ref: EntityRef): string {
   return `${ref.kind}:${ref.id}`;
 }
 
+/**
+ * In-memory {@link AiEventLog} for tests. Serialises appends per-ref (matching
+ * the production locking contract) and adds test helpers: {@link InMemoryAiEventLog.seed | seed},
+ * {@link InMemoryAiEventLog.clear | clear}, {@link InMemoryAiEventLog.all | all}.
+ * Never use in production — state is lost on restart.
+ */
 export class InMemoryAiEventLog implements AiEventLog {
   #store = new Map<string, AiEvent[]>();
   #pending = new Map<string, Promise<void>>();
@@ -74,6 +80,10 @@ export class InMemoryAiEventLog implements AiEventLog {
   }
 }
 
+/**
+ * In-memory {@link TraceSink} for tests: collects emitted {@link TraceEvent}s
+ * on `.events` for assertions, with `.clear()` to reset.
+ */
 export class InMemoryTraceSink implements TraceSink {
   #events: TraceEvent[] = [];
 
