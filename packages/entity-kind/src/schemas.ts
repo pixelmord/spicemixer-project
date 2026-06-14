@@ -54,6 +54,7 @@ export const REGIONS = [
   "caribbean",
   "andean",
   "south-atlantic",
+  "oceania",
 ] as const;
 
 export type RegionCode = (typeof REGIONS)[number];

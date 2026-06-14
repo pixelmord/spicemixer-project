@@ -19,6 +19,7 @@ export const REGIONS = [
   "caribbean",
   "andean",
   "south-atlantic",
+  "oceania",
 ] as const;
 
 export type RegionCode = (typeof REGIONS)[number];
@@ -44,6 +45,7 @@ export const REGION_LABELS: Record<RegionCode, { en: string; de: string }> = {
   caribbean: { en: "Caribbean", de: "Karibik" },
   andean: { en: "Andean", de: "Andenraum" },
   "south-atlantic": { en: "South Atlantic", de: "Südatlantik" },
+  oceania: { en: "Oceania", de: "Ozeanien" },
 };
 
 export const REGION_OPTIONS = REGIONS.map((code) => ({
@@ -73,4 +75,5 @@ export const DOT_POSITIONS: Record<RegionCode, { x: number; y: number }> = {
   caribbean: { x: 23, y: 37 },
   andean: { x: 22, y: 52 },
   "south-atlantic": { x: 27, y: 60 },
+  oceania: { x: 86, y: 64 },
 };
