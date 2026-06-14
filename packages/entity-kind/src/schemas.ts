@@ -45,6 +45,8 @@ export const REGIONS = [
   "mediterranean",
   "western-europe",
   "central-europe",
+  "northern-europe",
+  "eastern-europe",
   "central-asia",
   "south-asia",
   "southeast-asia",

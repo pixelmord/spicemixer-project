@@ -1,28 +1,8 @@
-export const REGIONS = [
-  "north-africa",
-  "east-africa",
-  "horn-of-africa",
-  "west-africa",
-  "southern-africa",
-  "levant",
-  "gulf",
-  "caucasus",
-  "mediterranean",
-  "western-europe",
-  "central-europe",
-  "central-asia",
-  "south-asia",
-  "southeast-asia",
-  "east-asia",
-  "north-america",
-  "mesoamerica",
-  "caribbean",
-  "andean",
-  "south-atlantic",
-  "oceania",
-] as const;
-
-export type RegionCode = (typeof REGIONS)[number];
+// REGIONS / RegionCode are owned by `entity-kind` (the content-validation
+// source of truth). This module adds the presentation layer — labels and
+// worldmap dot positions — so the two never drift out of sync.
+export { REGIONS, type RegionCode } from "entity-kind";
+import { REGIONS, type RegionCode } from "entity-kind";
 
 export const REGION_LABELS: Record<RegionCode, { en: string; de: string }> = {
   "north-africa": { en: "North Africa", de: "Nordafrika" },
@@ -36,6 +16,8 @@ export const REGION_LABELS: Record<RegionCode, { en: string; de: string }> = {
   mediterranean: { en: "Mediterranean", de: "Mittelmeer" },
   "western-europe": { en: "Western Europe", de: "Westeuropa" },
   "central-europe": { en: "Central Europe", de: "Mitteleuropa" },
+  "northern-europe": { en: "Northern Europe", de: "Nordeuropa" },
+  "eastern-europe": { en: "Eastern Europe", de: "Osteuropa" },
   "central-asia": { en: "Central Asia", de: "Zentralasien" },
   "south-asia": { en: "South Asia", de: "Südasien" },
   "southeast-asia": { en: "Southeast Asia", de: "Südostasien" },
@@ -66,6 +48,8 @@ export const DOT_POSITIONS: Record<RegionCode, { x: number; y: number }> = {
   mediterranean: { x: 50, y: 26 },
   "western-europe": { x: 44, y: 20 },
   "central-europe": { x: 49, y: 19 },
+  "northern-europe": { x: 47, y: 13 },
+  "eastern-europe": { x: 55, y: 16 },
   "central-asia": { x: 67, y: 26 },
   "south-asia": { x: 68, y: 37 },
   "southeast-asia": { x: 78, y: 44 },
