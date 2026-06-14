@@ -13,11 +13,9 @@ on:
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
-# Allow the workflow to publish to GitHub Pages.
+# Least privilege at the workflow level; the deploy job widens scope for itself.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # One in-flight deploy at a time; don't cancel a running publish.
 concurrency:
@@ -28,9 +26,13 @@ jobs:
   build:
     name: Build docs
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       # pnpm version read from package.json's `packageManager` field.
       - name: Setup pnpm
@@ -63,6 +65,10 @@ jobs:
     name: Deploy to Pages
     needs: build
     runs-on: ubuntu-latest
+    # Pages deployment is the only step that needs these scopes.
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

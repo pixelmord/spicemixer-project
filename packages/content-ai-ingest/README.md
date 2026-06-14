@@ -2,7 +2,7 @@
 
 Source-driven AI fill. One runner — `runFill` — turns an external source (PDF, image, text, URL, or a sibling-locale entity) into per-field suggestions in a single structured model call.
 
-> **Using `runFill`?** See the [ingest guide](../../docs/content-ai/ingest.html) and the [API reference](../../docs/content-ai/index.html). This README is for people working **on** the package.
+> **Using `runFill`?** See the [ingest guide](../../docs/content-ai/ingest.html) and the [API reference](../../docs/content-ai/api/index.html). This README is for people working **on** the package.
 
 ## Module map
 

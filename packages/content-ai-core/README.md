@@ -2,7 +2,7 @@
 
 The shared substrate for the content-ai packages: contract vocabulary, the AI event log + suppression, fingerprinting, the provider factory with tracing, and presentation helpers. The runner packages (`content-ai-ingest`, `content-ai-refine`) depend on it; it owns the types they re-export (ADR 0017).
 
-> **Using the substrate?** See the [consumer guides](../../docs/content-ai/index.html) and the [generated API reference](../../docs/content-ai/index.html). This README is for people working **on** the package.
+> **Using the substrate?** See the [consumer guides](../../docs/content-ai/index.html) and the [generated API reference](../../docs/content-ai/api/index.html). This README is for people working **on** the package.
 
 ## Module map
 

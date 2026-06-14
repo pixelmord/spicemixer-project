@@ -2,7 +2,7 @@
 
 Prompt-driven AI refinement. `runRefine` generates or improves entity fields from existing data and prompts (one model call per field); `runRefresh` orchestrates a full or per-field refresh on top of it, writing results back through a per-kind strategy the consumer supplies.
 
-> **Using these runners?** See the [refine guide](../../docs/content-ai/refine.html) and the [API reference](../../docs/content-ai/index.html). This README is for people working **on** the package.
+> **Using these runners?** See the [refine guide](../../docs/content-ai/refine.html) and the [API reference](../../docs/content-ai/api/index.html). This README is for people working **on** the package.
 
 ## Module map
 

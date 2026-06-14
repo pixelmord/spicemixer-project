@@ -376,8 +376,10 @@ const overviewFields = [
   flow={aiFlow}                       // shares review state with the inline components
   presets={recipeContract.presets}
   onRun={async (source) =&gt; {
-    // source: { kind: "pdf" | "image" | "text" | "url", … } → your fill action → runFill
-    await aiFlow.runTranslation();    // or a bespoke action that calls runFill server-side
+    // source: { kind: "pdf" | "image" | "text" | "url", … }
+    // Hand it to your fill action, which calls runFill server-side with an IngestContract:
+    const result = await actions.aiFillRecipe({ source, locale });
+    aiFlow.ingestRefresh(result);     // reuse the same review UI as the refine path
   }}
 /&gt;</code></pre>
           <p class="text-xs text-slate-500 max-w-3xl">
