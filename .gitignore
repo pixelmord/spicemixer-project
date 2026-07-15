@@ -47,3 +47,7 @@ packages/*/src/**/*.d.ts
 
 # Generated typedoc API reference (regenerated via `vp run docs:api` / CI)
 docs/content-ai/api/
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json
