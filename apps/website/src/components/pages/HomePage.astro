@@ -6,7 +6,10 @@ import RecentlyAddedFeed from "../RecentlyAddedFeed.astro";
 import { getPublished, getPublishedIngredients, getPublishedPairings, slugFromLocaleId } from "../../lib/recipe-augment.ts";
 import { recentlyAdded, type RecentEntry } from "../../lib/recently-added.ts";
 import { FEATURED_PAIRING_SLUG } from "../../lib/homepage.config.ts";
-import { regionAggregation, type AggregationEntry } from "../../lib/region-aggregation.ts";
+import { firstImage } from "../../lib/instructions.ts";
+import { assignItemsToDots, type PlacementItem } from "../../lib/worldmap-placement.ts";
+import { WORLDMAP_COLS, WORLDMAP_DOTS, WORLDMAP_ROWS } from "../../lib/worldmap-dots.ts";
+import type { RegionCode } from "../../lib/regions.ts";
 import { getCollection } from "astro:content";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 
@@ -30,26 +33,50 @@ const ingredients = (rawIngredients as Array<{ id: string; data: { name: string 
   (e) => !draftSlugs.has(e.id),
 );
 
-// Build aggregation entries for the worldmap (locale-scoped to avoid double-counting)
-const ingredientAggEntries: AggregationEntry[] = (
-  rawIngredients as Array<{ id: string; data: { region?: string[] } }>
-)
-  .filter((e) => !draftSlugs.has(e.id))
-  .map((e) => ({ type: "ingredient", region: e.data.region ?? [] }));
+// Worldmap placement: one filled dot per published mixture/recipe in the
+// current locale, assigned to a dot in one of its regions (see ADR 0021).
+const recipesMain = await getPublished("recipes");
+const metaRegion = new Map<string, string[]>(
+  (allMeta as Array<{ id: string; data: { region?: string[] } }>).map((m) => [
+    m.id,
+    m.data.region ?? [],
+  ]),
+);
 
-const metaAggEntries: AggregationEntry[] = (
-  allMeta as Array<{ id: string; data: { draft?: boolean; region?: string[] } }>
-)
-  .filter((m) => {
-    const parts = m.id.split("/");
-    return parts[1] === locale && m.data.draft !== true;
-  })
-  .map((m) => ({
-    type: m.id.startsWith("mixtures/") ? ("mixture" as const) : ("recipe" as const),
-    region: m.data.region ?? [],
-  }));
+const toPlacementItems = (
+  entries: Array<{ id: string; data: Record<string, unknown> }>,
+  collection: "mixtures" | "recipes",
+): PlacementItem[] =>
+  entries
+    .filter((e) => e.id.startsWith(`${locale}/`))
+    .map((e) => {
+      const d = e.data as {
+        name: string;
+        description?: string;
+        image?: Parameters<typeof firstImage>[0];
+        datePublished?: string;
+      };
+      return {
+        slug: slugFromLocaleId(e.id),
+        collection,
+        region: (metaRegion.get(`${collection}/${e.id}`) ?? []) as RegionCode[],
+        title: d.name,
+        description: d.description ?? "",
+        image: firstImage(d.image) ?? null,
+        datePublished: d.datePublished,
+      } satisfies PlacementItem;
+    })
+    .filter((it) => it.region.length > 0);
 
-const aggregation = regionAggregation([...ingredientAggEntries, ...metaAggEntries]);
+const placementItems = [
+  ...toPlacementItems(mixtures, "mixtures"),
+  ...toPlacementItems(recipesMain, "recipes"),
+];
+const worldmapDots = assignItemsToDots(placementItems, WORLDMAP_DOTS);
+const worldmapLabels = {
+  moreRecipes: t("worldmap.moreRecipes"),
+  moreMixtures: t("worldmap.moreMixtures"),
+};
 
 const mixtureEntries: RecentEntry[] = mixtures.map((e) => {
   const slug = slugFromLocaleId(e.id);
@@ -97,7 +124,15 @@ const featuredPairing = pairings.find((p) => p.id === FEATURED_PAIRING_SLUG) ?? 
       <p class="mt-3 max-w-2xl text-lg text-stone-600">{t("page.home.description")}</p>
     </header>
 
-    <Worldmap aggregation={aggregation} locale={locale} />
+    <Worldmap
+      dots={worldmapDots}
+      cols={WORLDMAP_COLS}
+      rows={WORLDMAP_ROWS}
+      prefix={prefix}
+      lang={locale}
+      labels={worldmapLabels}
+      heading={t("worldmap.heading")}
+    />
 
     {
       featuredPairing && (

@@ -1,94 +1,196 @@
 ---
-import { REGIONS, REGION_LABELS, DOT_POSITIONS, type RegionCode } from "../lib/regions.ts";
-import type { RegionCount } from "../lib/region-aggregation.ts";
+import WorldmapHero from "./WorldmapHero.tsx";
+import type { ResolvedDot } from "../lib/worldmap-placement.ts";
 
 interface Props {
-  aggregation: Map<RegionCode, RegionCount>;
-  locale?: string;
+  dots: ResolvedDot[];
+  cols: number;
+  rows: number;
+  prefix: string;
+  lang: "en" | "de";
+  labels: { moreRecipes: string; moreMixtures: string };
+  heading?: string;
   class?: string;
 }
 
-const { aggregation, locale, class: className } = Astro.props;
-const prefix = locale === "de" ? "/de" : "";
-const lang = (locale ?? "en") as "en" | "de";
-const plannedLabel = lang === "de" ? "Geplant" : "Planned";
-
-type DotData = {
-  code: RegionCode;
-  label: string;
-  x: number;
-  y: number;
-  filled: boolean;
-  href: string;
-  tooltip: string;
-};
-
-const dots: DotData[] = REGIONS.map((code) => {
-  const counts = aggregation.get(code) ?? { mixtures: 0, ingredients: 0, recipes: 0 };
-  const total = counts.mixtures + counts.ingredients + counts.recipes;
-  const filled = total >= 1;
-  const label = REGION_LABELS[code][lang];
-  const tooltip = filled
-    ? `${label} · ${counts.mixtures} mixtures · ${counts.ingredients} ingredients · ${counts.recipes} recipes`
-    : plannedLabel;
-  return {
-    code,
-    label,
-    x: DOT_POSITIONS[code].x,
-    y: DOT_POSITIONS[code].y,
-    filled,
-    href: `${prefix}/ingredients/?region=${code}`,
-    tooltip,
-  };
-});
+const { dots, cols, rows, prefix, lang, labels, heading, class: className } = Astro.props;
 ---
 
 <section class:list={["worldmap-section mb-12", className]} aria-label="Worldmap">
-  <div class="relative w-full overflow-hidden rounded-2xl bg-stone-100 ring-1 ring-stone-200">
-    <svg
-      viewBox="0 0 100 75"
-      xmlns="http://www.w3.org/2000/svg"
-      class="w-full"
-      aria-label="Culinary regions worldmap"
-      role="img"
-    >
-      <!-- Abstract world canvas background -->
-      <rect width="100" height="75" fill="#f5f5f4" />
-      <!-- Stylised continental outlines (abstract, not geographic) -->
-      <rect x="5" y="10" width="28" height="45" rx="4" fill="#e7e5e4" opacity="0.6" />
-      <rect x="38" y="8" width="24" height="50" rx="4" fill="#e7e5e4" opacity="0.6" />
-      <rect x="60" y="10" width="28" height="45" rx="4" fill="#e7e5e4" opacity="0.6" />
-      <rect x="78" y="58" width="14" height="12" rx="3" fill="#e7e5e4" opacity="0.6" />
-
-      {
-        dots.map((dot) =>
-          dot.filled ? (
-            <a href={dot.href} aria-label={dot.tooltip}>
-              <circle
-                cx={dot.x}
-                cy={dot.y}
-                r="2"
-                fill="#b45309"
-                class="cursor-pointer transition-transform hover:scale-125"
-              >
-                <title>{dot.tooltip}</title>
-              </circle>
-            </a>
-          ) : (
-            <circle
-              cx={dot.x}
-              cy={dot.y}
-              r="2"
-              fill="none"
-              stroke="#a8a29e"
-              stroke-width="0.5"
-              aria-label={`${dot.label} · ${plannedLabel}`}
-            >
-              <title>{`${dot.label} · ${plannedLabel}`}</title>
-            </circle>
-          )
-        )
-      }
-    </svg>
+  {
+    heading && (
+      <p class="mb-4 text-xs font-semibold uppercase tracking-[0.3em] text-stone-500">{heading}</p>
+    )
+  }
+  <div class="overflow-visible rounded-2xl bg-stone-50 p-4 ring-1 ring-stone-200 sm:p-8">
+    <WorldmapHero dots={dots} cols={cols} rows={rows} prefix={prefix} lang={lang} labels={labels} />
   </div>
 </section>
+
+<style is:global>
+  .worldmap-grid {
+    overflow: visible;
+  }
+  .worldmap-dot {
+    margin: auto;
+    width: 62%;
+    aspect-ratio: 1;
+    border-radius: 9999px;
+  }
+  .worldmap-dot--empty {
+    background: transparent;
+    border: 1.5px solid var(--dot-color);
+    opacity: 0.32;
+  }
+  .worldmap-dot--filled {
+    position: relative;
+    width: 70%;
+  }
+  .worldmap-dot__hit {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: var(--dot-color);
+    transition:
+      transform 0.16s ease-out,
+      box-shadow 0.16s ease-out;
+    cursor: pointer;
+  }
+  .worldmap-dot--filled:hover .worldmap-dot__hit,
+  .worldmap-dot--filled:focus-within .worldmap-dot__hit {
+    transform: scale(1.45);
+    box-shadow: 0 0 6px var(--dot-color);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .worldmap-dot__hit {
+      transition: none;
+    }
+  }
+
+  .worldmap-popover {
+    position: absolute;
+    z-index: 50;
+    width: 232px;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    background: #fffdf8;
+    border: 1px solid #c8bba8;
+    box-shadow: 0 8px 32px rgba(28, 22, 16, 0.16);
+    opacity: 0;
+    transform: scale(0.96);
+    pointer-events: none;
+    transition:
+      opacity 0.14s ease-out,
+      transform 0.14s ease-out;
+  }
+  /* Horizontal anchor: centered uses margin-left so transform stays scale-only. */
+  .worldmap-popover[data-halign="center"] {
+    left: 50%;
+    margin-left: -116px;
+    transform-origin: top center;
+  }
+  .worldmap-popover[data-halign="start"] {
+    left: 0;
+    transform-origin: top left;
+  }
+  .worldmap-popover[data-halign="end"] {
+    right: 0;
+    transform-origin: top right;
+  }
+  /* Vertical anchor. */
+  .worldmap-popover[data-valign="below"] {
+    top: 150%;
+  }
+  .worldmap-popover[data-valign="above"] {
+    bottom: 150%;
+    transform-origin: bottom center;
+  }
+  .worldmap-popover[data-valign="above"][data-halign="start"] {
+    transform-origin: bottom left;
+  }
+  .worldmap-popover[data-valign="above"][data-halign="end"] {
+    transform-origin: bottom right;
+  }
+  .worldmap-dot--filled:hover .worldmap-popover,
+  .worldmap-dot--filled:focus-within .worldmap-popover {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+  }
+
+  .worldmap-popover__img {
+    height: 6rem;
+    width: 100%;
+    object-fit: cover;
+  }
+  .worldmap-popover__body {
+    padding: 0.875rem 1rem 1rem;
+  }
+  .worldmap-popover__tag {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.1rem 0.5rem;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #fff;
+  }
+  .worldmap-popover__title {
+    font-family: var(--font-serif, ui-serif, Georgia, serif);
+    font-size: 1.05rem;
+    line-height: 1.2;
+    color: #1c1610;
+  }
+  .worldmap-popover__desc {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: #6b5d4f;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .worldmap-popover__link {
+    display: block;
+    margin-top: 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #b5470b;
+  }
+  .worldmap-popover__link:hover {
+    text-decoration: underline;
+  }
+  .worldmap-popover__link--muted {
+    margin-top: 0.3rem;
+    font-weight: 500;
+    color: #6b5d4f;
+  }
+
+  .worldmap-legend {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.25rem;
+  }
+  .worldmap-legend__item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .worldmap-legend__swatch {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 9999px;
+  }
+  .worldmap-legend__label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b5d4f;
+  }
+</style>

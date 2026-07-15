@@ -4,12 +4,14 @@ import RecipeMeta from "./RecipeMeta.astro";
 import { firstImage, keywordList } from "../lib/instructions.ts";
 import { slugFromLocaleId } from "../lib/recipe-augment.ts";
 import { useTranslations, type Lang } from "../i18n/translations.ts";
+import { regionFilterAttr } from "../lib/region-filter.ts";
 
 interface Props {
   recipe: CollectionEntry<"recipes">;
+  region?: string[];
 }
 
-const { recipe } = Astro.props;
+const { recipe, region } = Astro.props;
 const data = recipe.data;
 const slug = slugFromLocaleId(recipe.id);
 const image = firstImage(data.image);
@@ -23,6 +25,7 @@ const transitionName = `recipe-${slug}`;
 const filterAttrs = {
   "data-filter-item": "",
   "data-filter-category": data.recipeCategory ?? "",
+  "data-filter-region": regionFilterAttr(region),
   "data-filter-cuisine": data.recipeCuisine ?? "",
   "data-filter-tags": tags.join(","),
 };

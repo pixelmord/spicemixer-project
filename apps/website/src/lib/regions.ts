@@ -35,6 +35,85 @@ export const REGION_OPTIONS = REGIONS.map((code) => ({
   label: REGION_LABELS[code].en,
 }));
 
+// --- Region groups (presentation-only clusters; see CONTEXT.md → Group) ---
+// A coarse grouping of regions used to organise the worldmap legend. Not a
+// content enum, not queryable — display language only.
+export type RegionGroup = "Africa" | "Middle East" | "Europe" | "Asia" | "Americas" | "Oceania";
+
+export const REGION_GROUPS: Record<RegionCode, RegionGroup> = {
+  "north-africa": "Africa",
+  "west-africa": "Africa",
+  "east-africa": "Africa",
+  "horn-of-africa": "Africa",
+  "southern-africa": "Africa",
+  levant: "Middle East",
+  gulf: "Middle East",
+  caucasus: "Middle East",
+  mediterranean: "Europe",
+  "western-europe": "Europe",
+  "central-europe": "Europe",
+  "northern-europe": "Europe",
+  "eastern-europe": "Europe",
+  "central-asia": "Asia",
+  "south-asia": "Asia",
+  "southeast-asia": "Asia",
+  "east-asia": "Asia",
+  "north-america": "Americas",
+  mesoamerica: "Americas",
+  caribbean: "Americas",
+  andean: "Americas",
+  "south-atlantic": "Americas",
+  oceania: "Oceania",
+};
+
+// Per-region dot colors for the worldmap. Shaded within each group so a
+// continent reads as one colour family while regions stay distinguishable.
+export const REGION_COLORS: Record<RegionCode, string> = {
+  "north-africa": "#C0670A",
+  "west-africa": "#B5470B",
+  "east-africa": "#A33D09",
+  "horn-of-africa": "#8C3207",
+  "southern-africa": "#7A2C06",
+  levant: "#2E6B8A",
+  gulf: "#1F5273",
+  caucasus: "#174861",
+  mediterranean: "#5B8C3E",
+  "western-europe": "#4A7A30",
+  "central-europe": "#3D6828",
+  "northern-europe": "#2F5220",
+  "eastern-europe": "#234016",
+  "central-asia": "#7B5EA7",
+  "south-asia": "#6A4D94",
+  "southeast-asia": "#593D81",
+  "east-asia": "#472D6E",
+  "north-america": "#D4A017",
+  mesoamerica: "#C08A10",
+  caribbean: "#A8740D",
+  andean: "#8F5E0A",
+  "south-atlantic": "#764808",
+  oceania: "#2A7A6E",
+};
+
+// One representative colour per group, for the legend swatches.
+export const GROUP_COLORS: Record<RegionGroup, string> = {
+  Africa: "#B5470B",
+  "Middle East": "#1F5273",
+  Europe: "#4A7A30",
+  Asia: "#6A4D94",
+  Americas: "#C08A10",
+  Oceania: "#2A7A6E",
+};
+
+// Legend order: groups in a stable display order.
+export const GROUP_ORDER: RegionGroup[] = [
+  "Americas",
+  "Europe",
+  "Africa",
+  "Middle East",
+  "Asia",
+  "Oceania",
+];
+
 // Placeholder — will be refined when the SVG worldmap asset is designed.
 export const DOT_POSITIONS: Record<RegionCode, { x: number; y: number }> = {
   "north-africa": { x: 47, y: 32 },

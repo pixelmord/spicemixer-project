@@ -152,6 +152,25 @@ schema commits to "culinary macro-region" granularity. Pure additions to
 the enum are migration-free; splits or merges of an existing region
 require a content migration.
 
+### Group (region group)
+
+A **presentation-only cluster of regions** used to organise the worldmap
+legend — `Africa`, `Middle East`, `Europe`, `Asia`, `Americas`, `Oceania`.
+A grouping of the closed-enum **Region** for display; it is _not_ a content
+enum, not queryable, and carries no editorial meaning. Lives in
+`regions.ts` alongside region labels and colors. Distinct from **Region**
+(the queryable macro-region) and from the coarse _continent_ classes in the
+source silhouette grid.
+
+### Dot / land dot / filled dot
+
+The worldmap's atomic unit. The world is a **dot matrix** (76×136 grid). A
+**land dot** is a grid cell that falls on land and is assigned to exactly one
+**Region** (water cells are not dots). A **filled dot** is a land dot that an
+item (mixture or recipe) has been placed on — it lights up and links out; an
+**empty dot** is a land dot with no item, drawn as a faint region-colored
+ring. One item occupies one dot. See ADR 0021.
+
 ### Variant
 
 An alternative recipe for the same conceptual thing. Mango chutney comes

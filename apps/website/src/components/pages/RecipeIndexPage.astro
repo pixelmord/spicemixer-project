@@ -1,19 +1,29 @@
 ---
+import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import FilterBar from "../FilterBar.astro";
 import RecipeCard from "../RecipeCard.astro";
 import { keywordList } from "../../lib/instructions.ts";
 import { getPublished } from "../../lib/recipe-augment.ts";
+import { regionFilterValues } from "../../lib/region-filter.ts";
 import { useTranslations, type Lang } from "../../i18n/translations.ts";
 
 const locale = Astro.currentLocale as Lang;
 const t = useTranslations(locale);
 
-const recipes = (await getPublished("recipes")).sort((a, b) => {
+const [allRecipes, rawMeta] = await Promise.all([getPublished("recipes"), getCollection("meta")]);
+const recipes = allRecipes.sort((a, b) => {
   const da = a.data.datePublished ?? "";
   const db = b.data.datePublished ?? "";
   return db.localeCompare(da);
 });
+
+const regionByEntry = new Map<string, string[]>(
+  (rawMeta as Array<{ id: string; data: { region?: string[] } }>)
+    .filter((m) => m.id.startsWith("recipes/"))
+    .map((m) => [m.id.replace(/^recipes\//, ""), m.data.region ?? []]),
+);
+const regionOf = (id: string): string[] => regionByEntry.get(id) ?? [];
 
 const categories = [...new Set(recipes.map((r) => r.data.recipeCategory).filter((c): c is string => Boolean(c)))].sort();
 const cuisines = [...new Set(recipes.map((r) => r.data.recipeCuisine).filter((c): c is string => Boolean(c)))].sort();
@@ -21,6 +31,7 @@ const tags = [...new Set(recipes.flatMap((r) => keywordList(r.data.keywords)))].
 
 const groups = [
   { key: "category", label: t("filter.category"), values: categories.map((v) => ({ value: v, label: v })) },
+  { key: "region", label: t("filter.region"), values: regionFilterValues(recipes.map((r) => ({ region: regionOf(r.id) })), locale) },
   { key: "cuisine", label: t("filter.cuisine"), values: cuisines.map((v) => ({ value: v, label: v })) },
   { key: "tags", label: t("filter.tag"), values: tags.map((v) => ({ value: v, label: v })) },
 ];
@@ -41,7 +52,7 @@ const countSuffix = t("filter.count").replace("{total}", String(recipes.length))
     <FilterBar groups={groups} totalCount={recipes.length} countSuffix={countSuffix} />
 
     <section class="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
-      {recipes.map((recipe) => <RecipeCard recipe={recipe} />)}
+      {recipes.map((recipe) => <RecipeCard recipe={recipe} region={regionOf(recipe.id)} />)}
     </section>
 
     <p data-empty-state hidden class="mt-16 text-center text-stone-500">
