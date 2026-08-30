@@ -28,6 +28,7 @@ export type {
   EndpointRef,
   Recipe,
   RecipeMeta,
+  RegionCode,
 } from "./schemas.ts";
 
 export type { SlugConflict, VariantsViolation } from "./validators.ts";
@@ -45,4 +46,5 @@ export {
   INGREDIENT_FLAVOR_PROFILE,
   INGREDIENT_CATEGORIES,
   MIXTURE_KINDS,
+  REGIONS,
 } from "./schemas.ts";

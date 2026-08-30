@@ -1,5 +1,5 @@
 {
-  "draft": true,
+  "draft": false,
   "region": [],
   "tags": [],
   "ingredientLinks": [
@@ -25,21 +25,116 @@
     }
   ],
   "sources": [],
-  "variants": [],
+  "variants": ["mango-chutney"],
   "translations": {},
   "aiEvents": [],
   "language": "en",
   "locale": "en",
   "kind": "chutney",
   "canonicalLocale": "en",
-  "canonicalContentHash": "48ae2cfd84f315a4",
+  "canonicalContentHash": "83c580c5ae234086",
   "aiSuggestions": {
-    "fingerprint": "265e5ac35d6b68683d452ce234ccda8ba8503bc7ad11e3b0640e8c88cb1887c4",
-    "at": "2026-06-06T18:05:51.542Z",
+    "fingerprint": "f177329077b708e7214463feef9fbb666efa2cb7fccd20417a01158d3942c06f",
+    "at": "2026-08-30T14:43:47.429Z",
     "model": "gpt-4o-mini",
     "data": {
       "improvements": [],
-      "tags": [],
+      "fields": {
+        "tags": {
+          "field": "tags",
+          "total": 5,
+          "newCount": 5,
+          "hasNew": true,
+          "summary": "tags: [5 items]",
+          "confidence": "high",
+          "traceId": "23753ad8-a2f0-41bd-8664-64e8c3fda301",
+          "hash": "1d1a61fc1336",
+          "value": ["condiment", "indian-cuisine", "easy-recipe", "vegan", "snack-dipping"]
+        },
+        "keywords": {
+          "field": "keywords",
+          "total": 8,
+          "newCount": 8,
+          "hasNew": true,
+          "summary": "keywords: [8 items]",
+          "confidence": "high",
+          "traceId": "5222dce4-a814-4d27-8258-ffa860189b50",
+          "hash": "678ae98210b0",
+          "value": [
+            "indian-style chutney",
+            "mango condiment",
+            "fruit sauce",
+            "savory dip",
+            "curry accompaniment",
+            "spicy dipping sauce",
+            "tropical chutney",
+            "easy chutney recipe"
+          ]
+        },
+        "ingredientLinks": {
+          "field": "ingredientLinks",
+          "total": 3,
+          "newCount": 3,
+          "hasNew": true,
+          "summary": "ingredientLinks: [3 items]",
+          "confidence": "high",
+          "traceId": "9bad9186-f058-4ffa-88e0-5cf9c866f3a1",
+          "hash": "48b4e7e30b44",
+          "value": [
+            {
+              "pattern": "cumin",
+              "slug": "cumin",
+              "confidence": "high"
+            },
+            {
+              "pattern": "koriander",
+              "slug": "koriander",
+              "confidence": "high"
+            },
+            {
+              "pattern": "turmeric",
+              "slug": "turmeric",
+              "confidence": "high"
+            }
+          ]
+        },
+        "pairings": {
+          "field": "pairings",
+          "total": 4,
+          "newCount": 4,
+          "hasNew": true,
+          "summary": "pairings: [4 items]",
+          "confidence": "high",
+          "traceId": "ee1c7949-5542-480d-8947-cfbce3f323d0",
+          "hash": "d32a283bbb3f",
+          "value": [
+            {
+              "otherCollection": "ingredients",
+              "otherSlug": "cumin",
+              "rationale": "Ground cumin complements the spices already present in the mango chutney, enhancing its warm, earthy notes and further highlighting the Indian flavors.",
+              "confidence": "high"
+            },
+            {
+              "otherCollection": "mixtures",
+              "otherSlug": "harissa",
+              "rationale": "Harissa, with its spicy and aromatic profile, provides a nice contrast to the sweetness of mango chutney, creating a dynamic flavor experience when paired together, especially with grilled meats.",
+              "confidence": "medium"
+            },
+            {
+              "otherCollection": "recipes",
+              "otherSlug": "gemuese-rindfleisch-pfanne",
+              "rationale": "The Gemüse- und Rinderpfanne, a hearty dish, can benefit from the sweetness and tanginess of mango chutney, adding layers of flavor that elevate the overall dining experience.",
+              "confidence": "medium"
+            },
+            {
+              "otherCollection": "ingredients",
+              "otherSlug": "cardamom",
+              "rationale": "Cardamom's warm and aromatic qualities can enhance the tropical flavors of the mango chutney, making it a delightful pairing that resonates with Indian cuisine.",
+              "confidence": "high"
+            }
+          ]
+        }
+      },
       "ingredientLinks": [
         {
           "pattern": "cumin",
@@ -60,30 +155,44 @@
       "relations": [],
       "pairings": [
         {
-          "otherCollection": "mixtures",
-          "otherSlug": "berbere",
-          "rationale": "The warm spices in berbere, such as paprika and chili, complement the sweetness of mango chutney, enhancing its depth and creating a harmonious balance of flavors.",
-          "traceId": "e52f9a31-327c-407d-8ac7-c09b27bb36f0"
-        },
-        {
-          "otherCollection": "recipes",
-          "otherSlug": "gemuese-rindfleisch-pfanne",
-          "rationale": "This hearty vegetable and beef skillet dish can benefit from the sweet and tangy notes of mango chutney, adding brightness and complexity to the savory elements.",
-          "traceId": "e52f9a31-327c-407d-8ac7-c09b27bb36f0"
-        },
-        {
           "otherCollection": "ingredients",
-          "otherSlug": "cardamom",
-          "rationale": "Cardamom's aromatic and slightly sweet profile pairs beautifully with the mango chutney, intensifying its fragrant qualities and making it a great addition in various dishes.",
-          "traceId": "e52f9a31-327c-407d-8ac7-c09b27bb36f0"
+          "otherSlug": "cumin",
+          "rationale": "Ground cumin complements the spices already present in the mango chutney, enhancing its warm, earthy notes and further highlighting the Indian flavors.",
+          "confidence": "high",
+          "traceId": "ee1c7949-5542-480d-8947-cfbce3f323d0"
         },
         {
           "otherCollection": "mixtures",
           "otherSlug": "harissa",
-          "rationale": "The spicy and smoky notes of harissa contrast wonderfully with the sweet mango chutney, allowing for a bold layering of flavors that can elevate grilled meats or vegetables.",
-          "traceId": "e52f9a31-327c-407d-8ac7-c09b27bb36f0"
+          "rationale": "Harissa, with its spicy and aromatic profile, provides a nice contrast to the sweetness of mango chutney, creating a dynamic flavor experience when paired together, especially with grilled meats.",
+          "confidence": "medium",
+          "traceId": "ee1c7949-5542-480d-8947-cfbce3f323d0"
+        },
+        {
+          "otherCollection": "recipes",
+          "otherSlug": "gemuese-rindfleisch-pfanne",
+          "rationale": "The Gemüse- und Rinderpfanne, a hearty dish, can benefit from the sweetness and tanginess of mango chutney, adding layers of flavor that elevate the overall dining experience.",
+          "confidence": "medium",
+          "traceId": "ee1c7949-5542-480d-8947-cfbce3f323d0"
+        },
+        {
+          "otherCollection": "ingredients",
+          "otherSlug": "cardamom",
+          "rationale": "Cardamom's warm and aromatic qualities can enhance the tropical flavors of the mango chutney, making it a delightful pairing that resonates with Indian cuisine.",
+          "confidence": "high",
+          "traceId": "ee1c7949-5542-480d-8947-cfbce3f323d0"
         }
-      ]
+      ],
+      "detectedLanguage": "en"
     }
+  },
+  "imageAttribution": {
+    "source": "flickr",
+    "sourceUrl": "https://www.flickr.com/photos/48600074651@N01/139771490",
+    "creator": "chotda",
+    "creatorUrl": "https://www.flickr.com/photos/48600074651@N01",
+    "license": "by-nc-nd",
+    "licenseUrl": "https://creativecommons.org/licenses/by-nc-nd/2.0/",
+    "attribution": "\"green mango chutney\" by chotda is licensed under CC BY-NC-ND 2.0. To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-nd/2.0/."
   }
 }

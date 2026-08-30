@@ -1,6 +1,7 @@
 {
-  "draft": true,
+  "draft": false,
   "canonicalLocale": "en",
   "translationOf": "caraway--cumin",
-  "featured": true
+  "featured": true,
+  "translations": {}
 }

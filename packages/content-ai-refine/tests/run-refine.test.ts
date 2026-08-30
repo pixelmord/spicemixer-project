@@ -12,7 +12,7 @@ vi.mock("@pixelmord/content-ai-core/server", () => ({
   PROVIDER_OPTIONS: { openai: { strictJsonSchema: false } },
 }));
 
-const { generateText } = await import("ai");
+const { generateText, Output } = await import("ai");
 const { runRefine } = await import("../src/run-refine.ts");
 const { createProvider } = await import("@pixelmord/content-ai-core/server");
 
@@ -312,6 +312,93 @@ describe("confidence source", () => {
     const suggestion = suggestions.get("summary");
     if (suggestion?.kind === "single") {
       expect(suggestion.confidence).toBe("medium");
+    }
+  });
+});
+
+// ── OpenAI strict-schema compatibility ───────────────────────────────────────
+
+describe("OpenAI strict-schema compatibility", () => {
+  // The wrapped schema is sent to OpenAI's Responses API with
+  // strictJsonSchema: true. Strict mode rejects any JSON Schema whose object
+  // `required` array does not include every key in `properties`. The AI SDK
+  // converts zod schemas with io: "input", where `.optional()` and
+  // `.default()` both leave the key out of `required` — so the wrapper must
+  // not use them. Regression test for the 400 "Missing 'confidence'" error.
+  function toJsonSchemaLikeAiSdk(schema: z.ZodType): Record<string, unknown> {
+    return z.toJSONSchema(schema, { target: "draft-7", io: "input", reused: "inline" });
+  }
+
+  function assertStrictCompatible(node: unknown, path: string): void {
+    if (Array.isArray(node)) {
+      node.forEach((child, i) => assertStrictCompatible(child, `${path}[${i}]`));
+      return;
+    }
+    if (typeof node !== "object" || node === null) return;
+    const schema = node as Record<string, unknown>;
+    const type = schema["type"];
+    if (type === "object" || (Array.isArray(type) && type.includes("object"))) {
+      const props = Object.keys((schema["properties"] ?? {}) as Record<string, unknown>);
+      expect(
+        schema["required"],
+        `${path}: strict mode requires a 'required' array listing every property`,
+      ).toBeInstanceOf(Array);
+      for (const key of props) {
+        expect(
+          schema["required"],
+          `${path}: property '${key}' missing from 'required' (OpenAI strict mode 400)`,
+        ).toContain(key);
+      }
+    }
+    for (const [key, value] of Object.entries(schema)) {
+      if (key === "properties") {
+        for (const [propKey, propValue] of Object.entries(value as Record<string, unknown>)) {
+          assertStrictCompatible(propValue, `${path}.${propKey}`);
+        }
+      } else if (["items", "anyOf", "allOf", "oneOf", "definitions", "$defs"].includes(key)) {
+        assertStrictCompatible(value, `${path}.${key}`);
+      }
+    }
+  }
+
+  test("wrapped schema puts every property (incl. confidence) in required", async () => {
+    vi.mocked(generateText).mockResolvedValue({
+      output: { value: "A summary", confidence: "high" },
+    } as never);
+
+    const pairingsField = {
+      systemPrompt: () => "Propose pairings.",
+      autoApply: { policy: "never" as const },
+      outputSchema: z.array(
+        z.object({
+          otherCollection: z.enum(["ingredients", "mixtures", "recipes"]),
+          otherSlug: z.string(),
+          rationale: z.string(),
+          confidence: z.enum(["high", "medium", "low"]),
+        }),
+      ),
+    };
+
+    await runRefine({
+      contract: {
+        ...baseContract,
+        fields: { ...baseContract.fields, pairings: pairingsField },
+      },
+      currentData: { name: "Cumin" },
+      target: ["summary", "pairings"],
+      config: MOCK_CONFIG,
+    });
+
+    const calls = vi.mocked(Output.object).mock.calls;
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    const wrappedSchemas = calls.slice(-2).map(([arg]) => arg?.schema);
+    for (const [index, wrappedSchema] of wrappedSchemas.entries()) {
+      expect(wrappedSchema).toBeDefined();
+      const wireSchema = toJsonSchemaLikeAiSdk(wrappedSchema as z.ZodType);
+      expect(wireSchema).toMatchObject({
+        properties: { value: expect.anything(), confidence: expect.anything() },
+      });
+      assertStrictCompatible(wireSchema, `$[call ${index}]`);
     }
   });
 });

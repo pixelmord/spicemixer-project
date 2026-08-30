@@ -1,0 +1,13 @@
+{
+  "endpoints": [
+    {
+      "collection": "ingredients",
+      "slug": "cumin"
+    },
+    {
+      "collection": "recipes",
+      "slug": "mango-chutney-india"
+    }
+  ],
+  "description": "The ground cumin used in the mango chutney creates a warm and earthy backdrop that complements the sweet and spicy notes of the chutney, making it an ideal pairing."
+}

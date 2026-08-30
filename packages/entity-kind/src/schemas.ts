@@ -45,6 +45,8 @@ export const REGIONS = [
   "mediterranean",
   "western-europe",
   "central-europe",
+  "northern-europe",
+  "eastern-europe",
   "central-asia",
   "south-asia",
   "southeast-asia",
@@ -54,6 +56,7 @@ export const REGIONS = [
   "caribbean",
   "andean",
   "south-atlantic",
+  "oceania",
 ] as const;
 
 export type RegionCode = (typeof REGIONS)[number];

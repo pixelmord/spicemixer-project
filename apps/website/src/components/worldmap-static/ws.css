@@ -1,0 +1,89 @@
+html {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+*,
+*:before,
+*:after {
+  -webkit-box-sizing: inherit;
+  -moz-box-sizing: inherit;
+  box-sizing: inherit;
+}
+
+.dotmap {
+  width: 1000px;
+  overflow: hidden;
+  .row {
+    &:after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+  }
+}
+
+//global dot styles
+.dot {
+  float: left;
+  display: inline-block;
+  border-radius: 100%;
+  width: 10px;
+  height: 10px;
+  background: #ccc;
+  margin: 2px;
+}
+
+//color groups
+.water {
+  background: #c5eff7;
+}
+.north-america {
+  background: #90c695;
+}
+.south-america {
+  background: #e26a6a;
+}
+.europe {
+  background: #be90d4;
+}
+.africa {
+  background: #fde3a7;
+}
+.asia {
+  background: #f4b350;
+}
+.australia {
+  background: #1e824c;
+}
+
+//minimal color group
+.minimal {
+  .water {
+    background: transparent;
+  }
+  .north-america,
+  .south-america,
+  .europe,
+  .africa,
+  .asia,
+  .australia {
+    background: #eee;
+  }
+}
+
+@keyframes water {
+  0% {
+    background: lightcyan;
+  }
+  50% {
+    background: paleturquoise;
+  }
+  100% {
+    background: lightcyan;
+  }
+}
+
+.water {
+  //animation: water 1s infinite;
+}

@@ -241,9 +241,13 @@ export async function runRefine<S extends ZodSchema, Source = never>(
         const model = createProvider(config, sinks?.length ? { sinks } : undefined);
         // Ask the model to self-report confidence alongside the value. This is a
         // soft, uncalibrated hint — see ADR / issue #160 — not a logprob score.
+        // NOTE: `confidence` must stay required (no `.optional()`/`.default()`).
+        // OpenAI strict structured outputs reject schemas whose `required`
+        // array misses any property key, and the AI SDK converts zod with
+        // io: "input", where both wrappers drop the key from `required`.
         const wrappedSchema = z.object({
           value: outputSchema,
-          confidence: z.enum(["high", "medium", "low"]).optional(),
+          confidence: z.enum(["high", "medium", "low"]),
         });
 
         // Reinforce the wrapper-key contract in the user prompt as

@@ -7,6 +7,7 @@ import { firstImage, keywordList } from "../../lib/instructions.ts";
 import { getPublished, slugFromLocaleId } from "../../lib/recipe-augment.ts";
 import { resolvePublished } from "../../lib/published-entity.ts";
 import { MIXTURE_KINDS, buildKindBySlug } from "../../lib/mixture-schema.ts";
+import { regionFilterAttr, regionFilterValues } from "../../lib/region-filter.ts";
 import { useTranslations, type Lang, type TranslationKey } from "../../i18n/translations.ts";
 
 const locale = Astro.currentLocale as Lang;
@@ -26,6 +27,12 @@ const sorted = mixtures.sort((a, b) =>
   (b.data.datePublished ?? "").localeCompare(a.data.datePublished ?? ""),
 );
 const kindBySlug = buildKindBySlug(rawMeta);
+const regionByEntry = new Map<string, string[]>(
+  (rawMeta as Array<{ id: string; data: { region?: string[] } }>)
+    .filter((m) => m.id.startsWith("mixtures/"))
+    .map((m) => [m.id.replace(/^mixtures\//, ""), m.data.region ?? []]),
+);
+const regionOf = (id: string): string[] => regionByEntry.get(id) ?? [];
 
 const cuisines = [...new Set(sorted.map((r) => r.data.recipeCuisine).filter((c): c is string => Boolean(c)))].sort();
 const tags = [...new Set(sorted.flatMap((r) => keywordList(r.data.keywords)))].sort();
@@ -33,6 +40,7 @@ const presentKinds = MIXTURE_KINDS.filter((k) => sorted.some((m) => kindBySlug.g
 
 const groups = [
   { key: "kind", label: t("filter.kind"), values: presentKinds.map((k) => ({ value: k, label: t(`kind.${k}` as TranslationKey) })) },
+  { key: "region", label: t("filter.region"), values: regionFilterValues(sorted.map((m) => ({ region: regionOf(m.id) })), locale) },
   { key: "cuisine", label: t("filter.cuisine"), values: cuisines.map((v) => ({ value: v, label: v })) },
   { key: "tags", label: t("filter.tag"), values: tags.map((v) => ({ value: v, label: v })) },
 ];
@@ -64,6 +72,7 @@ const groups = [
             <article
               data-filter-item
               data-filter-kind={kind}
+              data-filter-region={regionFilterAttr(regionOf(mix.id))}
               data-filter-cuisine={mix.data.recipeCuisine ?? ""}
               data-filter-tags={cardTags.join(",")}
               class="mb-6 break-inside-avoid rounded-2xl bg-white shadow-sm ring-1 ring-stone-200 transition hover:shadow-md hover:ring-stone-300"
