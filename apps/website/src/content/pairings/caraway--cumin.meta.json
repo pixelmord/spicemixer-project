@@ -1,0 +1,17 @@
+{
+  "aiEvents": [
+    {
+      "type": "accepted",
+      "field": "description",
+      "suggestion": {
+        "hash": "0a1b712fcc1c",
+        "summary": "description: Kümmel und Kreuzkümmel sind essentielle Begleiter in Harissa, wo die warmen, erd"
+      },
+      "model": "unknown",
+      "confidence": "medium",
+      "traceId": "e5b385fc-074d-4c88-9d71-473a4b71630c",
+      "id": "435d2985-ae87-4c25-aed4-0babe82908d6",
+      "at": "2026-08-30T12:44:47.117Z"
+    }
+  ]
+}
